@@ -85,6 +85,19 @@ async function initializeTables() {
       )
     `);
 
+    // 8. Password resets table for OTP & reset token
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS password_resets (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        mssv VARCHAR(50) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        otp_code VARCHAR(10) NOT NULL,
+        token VARCHAR(255) NOT NULL,
+        expires_at DATETIME NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     console.log('✅ All database tables initialized successfully.');
     connection.release();
   } catch (error) {

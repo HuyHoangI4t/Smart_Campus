@@ -92,6 +92,32 @@ export async function apiForgotPassword(identifier: string) {
   }
 }
 
+export async function apiVerifyOtp(mssv: string, otpCode: string) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mssv, otpCode })
+    });
+    return await handleResponse(response);
+  } catch {
+    return { success: false, message: `Không thể kết nối đến server (${API_BASE_URL}).` };
+  }
+}
+
+export async function apiResetPassword(payload: { mssv: string; token?: string; otpCode?: string; newPassword: string }) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return await handleResponse(response);
+  } catch {
+    return { success: false, message: `Không thể kết nối đến server (${API_BASE_URL}).` };
+  }
+}
+
 export async function apiChangePassword(currentPassword: string, newPassword: string) {
   try {
     const headers = await getAuthHeaders();

@@ -1,5 +1,17 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
+
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.SMTP_PORT || '587', 10),
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
 
 // Register
 exports.register = async (req, res) => {
@@ -183,7 +195,7 @@ exports.changePassword = async (req, res) => {
   }
 };
 
-// Forgot Password
+// Forgot Password: Request OTP & Reset Token (Sends real email to mssv@sv.ttn.edu.vn or user.email)
 exports.forgotPassword = async (req, res) => {
   const { mssv, email } = req.body;
   const key = mssv || email;
@@ -201,16 +213,138 @@ exports.forgotPassword = async (req, res) => {
     }
 
     const user = rows[0];
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash('123456', salt);
+    const recipientEmail = user.email || `${user.mssv}@sv.ttn.edu.vn`;
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes expiry
 
-    await db.query('UPDATE users SET password = ? WHERE mssv = ?', [hashedPassword, user.mssv]);
+    await db.query('DELETE FROM password_resets WHERE mssv = ?', [user.mssv]);
+    await db.query(
+      'INSERT INTO password_resets (mssv, email, otp_code, token, expires_at) VALUES (?, ?, ?, ?, ?)',
+      [user.mssv, recipientEmail, otpCode, token, expiresAt]
+    );
+
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Hệ thống chưa cấu hình SMTP email. Vui lòng cấu hình SMTP_USER và SMTP_PASS trong file .env.' 
+      });
+    }
+
+    try {
+      await transporter.sendMail({
+        from: `"Smart Campus" <${process.env.SMTP_USER}>`,
+        to: recipientEmail,
+        subject: '[Smart Campus] Mã OTP xác thực khôi phục mật khẩu',
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 24px; background-color: #f3f6fd; border-radius: 12px; max-width: 600px; margin: auto;">
+            <div style="text-align: center; margin-bottom: 20px;">
+              <h2 style="color: #132F73; margin: 0;">Smart Campus TTN</h2>
+              <p style="color: #64748B; font-size: 13px; margin-top: 4px;">Hệ thống Quản lý Sinh viên</p>
+            </div>
+            <div style="background: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid #e2e8f0;">
+              <p style="color: #0f172a; font-size: 15px;">Xin chào <b>${user.full_name || user.mssv}</b>,</p>
+              <p style="color: #475569; font-size: 14px;">Bạn nhận được yêu cầu cấp lại mật khẩu cho tài khoản sinh viên với MSSV: <b>${user.mssv}</b>.</p>
+              <p style="color: #475569; font-size: 14px;">Mã OTP xác thực của bạn (hiệu lực trong 15 phút):</p>
+              <div style="text-align: center; margin: 24px 0;">
+                <span style="font-size: 28px; font-weight: 900; color: #5B61F4; background: #eef2ff; padding: 12px 28px; border-radius: 10px; letter-spacing: 6px; border: 1.5px dashed #818cf8;">
+                  ${otpCode}
+                </span>
+              </div>
+              <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-top: 20px;">Nếu bạn không yêu cầu điều này, vui lòng bỏ qua email này.</p>
+            </div>
+          </div>
+        `
+      });
+      console.log(`[Email Sent] Successfully sent real OTP email to ${recipientEmail}`);
+    } catch (err) {
+      console.error('[Email Error] Could not send email via SMTP:', err.message);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Không thể gửi email OTP qua SMTP. Vui lòng kiểm tra lại App Password (xmgs efrs ykrj tnmv) hoặc kết nối mạng.',
+        error: err.message 
+      });
+    }
 
     res.json({
       success: true,
-      message: 'Mật khẩu đã được đặt lại thành mặc định: 123456. Vui lòng đăng nhập và đổi lại mật khẩu.'
+      message: `Mã OTP đã được gửi thành công đến email ${recipientEmail}. Vui lòng kiểm tra hộp thư.`,
+      mssv: user.mssv,
+      email: recipientEmail
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Lỗi quên mật khẩu', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi yêu cầu quên mật khẩu', error: error.message });
+  }
+};
+
+// Verify OTP
+exports.verifyOtp = async (req, res) => {
+  const { mssv, otpCode } = req.body;
+
+  if (!mssv || !otpCode) {
+    return res.status(400).json({ success: false, message: 'Vui lòng cung cấp MSSV và mã OTP.' });
+  }
+
+  try {
+    const [rows] = await db.query(
+      'SELECT * FROM password_resets WHERE mssv = ? AND otp_code = ? AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1',
+      [mssv, otpCode]
+    );
+
+    if (rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Mã OTP không chính xác hoặc đã hết hạn.' });
+    }
+
+    const record = rows[0];
+
+    res.json({
+      success: true,
+      message: 'Xác thực OTP thành công.',
+      token: record.token
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi xác thực OTP', error: error.message });
+  }
+};
+
+// Reset Password with New Password
+exports.resetPassword = async (req, res) => {
+  const { mssv, token, otpCode, newPassword } = req.body;
+
+  if (!mssv || !newPassword || (!token && !otpCode)) {
+    return res.status(400).json({ success: false, message: 'Vui lòng điền đầy đủ thông tin.' });
+  }
+
+  try {
+    let queryStr = '';
+    let queryParams = [];
+
+    if (token) {
+      queryStr = 'SELECT * FROM password_resets WHERE mssv = ? AND token = ? AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1';
+      queryParams = [mssv, token];
+    } else {
+      queryStr = 'SELECT * FROM password_resets WHERE mssv = ? AND otp_code = ? AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1';
+      queryParams = [mssv, otpCode];
+    }
+
+    const [rows] = await db.query(queryStr, queryParams);
+
+    if (rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Phiên yêu cầu đã hết hạn hoặc không hợp lệ.' });
+    }
+
+    const record = rows[0];
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    await db.query('UPDATE users SET password = ? WHERE mssv = ?', [hashedPassword, record.mssv]);
+    await db.query('DELETE FROM password_resets WHERE mssv = ?', [record.mssv]);
+
+    res.json({
+      success: true,
+      message: 'Đặt lại mật khẩu mới thành công! Vui lòng đăng nhập lại.'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi đặt lại mật khẩu', error: error.message });
   }
 };

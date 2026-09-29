@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppColors } from '@/src/constants/appColors';
 import { authStyles } from '@/src/constants/globalStyles';
 import { AuthHeader } from '@/src/components/AuthHeader';
-import { apiLogin, apiRegister, apiForgotPassword } from '@/src/services/api';
+import { apiLogin, apiRegister } from '@/src/services/api';
 
 export default function AuthScreen() {
   const [authType, setAuthType] = useState<'login' | 'register'>('login');
@@ -86,30 +86,8 @@ export default function AuthScreen() {
     }
   };
 
-  const handleForgotPassword = async () => {
-    if (!email) {
-      Alert.alert('Quên mật khẩu', 'Vui lòng nhập Mã số sinh viên (hoặc Email) vào ô đăng nhập ở trên trước khi bấm Quên mật khẩu.');
-      return;
-    }
-
-    Alert.alert(
-      'Xác nhận quên mật khẩu',
-      `Bạn có muốn đặt lại mật khẩu cho tài khoản ${email} thành mật khẩu mặc định (123456) không?`,
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Đồng ý',
-          onPress: async () => {
-            const res = await apiForgotPassword(email.trim());
-            if (res.success) {
-              Alert.alert('Thành công', res.message);
-            } else {
-              Alert.alert('Lỗi', res.message || 'Không thể đặt lại mật khẩu.');
-            }
-          }
-        }
-      ]
-    );
+  const handleForgotPassword = () => {
+    router.push('/(auth)/forgot-password');
   };
 
   return (
