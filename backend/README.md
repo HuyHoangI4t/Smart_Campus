@@ -21,14 +21,14 @@ Backend API server built with **Node.js**, **Express**, **Axios**, and **Cheerio
 ## API Endpoints
 
 - `GET /api/health` - Health check
-- `POST /api/v1/auth/login` / `POST /api/auth/login` - Student login
-- `GET /api/v1/auth/me` - Get current student profile
-- `POST /api/v1/student/grades` - Get student grades (scrapes ttn.edu.vn or falls back to mock data)
-- `POST /api/v1/student/schedule` - Get student timetable (scrapes ttn.edu.vn or falls back to mock data)
-- `GET /api/v1/notifications` - Get notifications
-- `POST /api/v1/feedback` - Submit student feedback
-- `POST /api/v1/sos` - Send emergency SOS alert
-- `GET /api/v1/map` - Get campus map locations
+- `POST /api/auth/login` / `POST /api/auth/login` - Student login
+- `GET /api/auth/me` - Get current student profile
+- `POST /api/student/grades` - Get student grades (scrapes ttn.edu.vn or falls back to mock data)
+- `POST /api/student/schedule` - Get student timetable (scrapes ttn.edu.vn or falls back to mock data)
+- `GET /api/notifications` - Get notifications
+- `POST /api/feedback` - Submit student feedback
+- `POST /api/sos` - Send emergency SOS alert
+- `GET /api/map` - Get campus map locations
 
 
 📂 Cấu trúc tại thư mục backend/src/:
