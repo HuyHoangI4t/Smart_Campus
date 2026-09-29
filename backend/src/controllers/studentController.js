@@ -1,6 +1,12 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 const db = require('../config/db');
+const https = require('https');
+
+// Tạo một httpsAgent để bỏ qua lỗi chứng chỉ SSL tự ký của trường (tránh SSLCertVerificationError)
+const httpsAgent = new https.Agent({  
+  rejectUnauthorized: false
+});
 
 // Helper to get mssv from request (headers, token, body, query, or latest user)
 const getMssvFromReq = async (req) => {
@@ -79,11 +85,8 @@ const calculateGpaFromAllTables = (tablesData) => {
 
   tablesData.forEach(tableObj => {
     const rows = tableObj.rows;
-    // Bỏ qua dòng tiêu đề (index 0)
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
-      
-      // Đ1 ở index 6, Đ2 ở index 7, TChỉ ở index 9
       const d1Str = row[6];
       const d2Str = row[7];
       const tChiStr = row[9];
@@ -94,8 +97,6 @@ const calculateGpaFromAllTables = (tablesData) => {
 
       if (!isNaN(credits) && credits > 0) {
         let finalScore10 = null;
-
-        // Ưu tiên lấy Đ2 nếu có, nếu không có Đ2 mới lấy Đ1
         if (!isNaN(d2)) {
           finalScore10 = d2;
         } else if (!isNaN(d1)) {
@@ -110,10 +111,7 @@ const calculateGpaFromAllTables = (tablesData) => {
     }
   });
 
-  // Tính GPA hệ 10 chuẩn
   const cumulativeGpa10 = totalCredits > 0 ? (weightedSum10 / totalCredits).toFixed(2) : '0.00';
-
-  // Quy đổi thẳng sang hệ 4 bằng công thức: (GPA_10 * 4) / 10
   const cumulativeGpa4 = totalCredits > 0 ? ((parseFloat(cumulativeGpa10) * 4) / 10).toFixed(2) : '0.00';
 
   return {
@@ -146,11 +144,10 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-// Get Grades & Loại bỏ hoàn toàn bảng số 1 (index === 0)
+// Get Grades
 exports.getGrades = async (req, res) => {
   const mssv = await getMssvFromReq(req);
   const { dk, semester, search } = req.body;
-
   const studentDk = dk || '10';
 
   try {
@@ -158,6 +155,7 @@ exports.getGrades = async (req, res) => {
     const payload = new URLSearchParams({ 'msv': mssv, 'dk': studentDk });
 
     const response = await axios.post(url, payload.toString(), {
+      httpsAgent, // Bỏ qua lỗi SSL
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Referer': 'https://www.ttn.edu.vn/index.php?option=com_tnu&view=kqchinhquy',
@@ -180,7 +178,6 @@ exports.getGrades = async (req, res) => {
 
     let tablesData = [];
     $('table').each((index, table) => {
-      // BẮT BUỘC: Bỏ qua bảng đầu tiên (index 0 chính là bảng tổng quan)
       if (index === 0) return;
 
       const rows = [];
@@ -199,15 +196,16 @@ exports.getGrades = async (req, res) => {
       }
     });
 
-    // Tự động tính toán GPA chuẩn từ dữ liệu bảng điểm đã cào (Ưu tiên Đ2)
+    if (tablesData.length === 0) {
+      throw new Error('Không cào được dữ liệu bảng điểm từ cổng trường.');
+    }
+
     const gpaSummary = calculateGpaFromAllTables(tablesData);
 
-    // Lọc theo học kỳ nếu client truyền lên
     if (semester !== undefined && semester !== null && semester !== '') {
       tablesData = tablesData.filter(t => t.tableIndex === Number(semester));
     }
 
-    // Lọc theo từ khóa tìm kiếm tên học phần
     if (search && search.trim()) {
       const keyword = search.trim().toLowerCase();
       tablesData = tablesData.map(t => {
@@ -228,7 +226,8 @@ exports.getGrades = async (req, res) => {
       tables: tablesData
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Lỗi kết nối cổng thông tin trường', error: error.message });
+    console.warn('External portal grades error:', error.message);
+    res.status(500).json({ success: false, message: 'Không thể kết nối cổng thông tin trường', error: error.message });
   }
 };
 
@@ -236,7 +235,6 @@ exports.getGrades = async (req, res) => {
 exports.getCurrentCourses = async (req, res) => {
   const mssv = await getMssvFromReq(req);
   const { dk } = req.body;
-
   const studentDk = dk || '10';
 
   try {
@@ -244,6 +242,7 @@ exports.getCurrentCourses = async (req, res) => {
     const payload = new URLSearchParams({ 'msv': mssv, 'dk': studentDk });
 
     const response = await axios.post(url, payload.toString(), {
+      httpsAgent,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Referer': 'https://www.ttn.edu.vn/index.php?option=com_tnu&view=kqchinhquy',
@@ -277,19 +276,10 @@ exports.getCurrentCourses = async (req, res) => {
     res.json({
       success: true,
       mssv: mssv,
-      currentCourses: currentCourses.length > 0 ? currentCourses : [
-        { code: 'IT301', name: 'Lập trình Web nâng cao', credits: 3, letterGrade: 'X' }
-      ]
+      currentCourses
     });
   } catch (error) {
-    res.json({
-      success: true,
-      mssv: mssv,
-      note: 'External portal unavailable, serving mock current courses data.',
-      currentCourses: [
-        { code: 'IT301', name: 'Lập trình Web nâng cao', credits: 3, letterGrade: 'X' }
-      ]
-    });
+    res.status(500).json({ success: false, message: 'Lỗi lấy học phần hiện tại', error: error.message });
   }
 };
 
@@ -297,7 +287,6 @@ exports.getCurrentCourses = async (req, res) => {
 exports.getSchedule = async (req, res) => {
   const mssv = await getMssvFromReq(req);
   const { dk } = req.body;
-
   const studentDk = dk || '10';
 
   try {
@@ -305,6 +294,7 @@ exports.getSchedule = async (req, res) => {
     const payload = new URLSearchParams({ 'msv': mssv, 'dk': studentDk });
 
     const response = await axios.post(url, payload.toString(), {
+      httpsAgent,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Referer': 'https://www.ttn.edu.vn/',
@@ -337,27 +327,16 @@ exports.getSchedule = async (req, res) => {
       tables: tablesData
     });
   } catch (error) {
-    res.json({
-      success: true,
-      mssv: mssv,
-      note: 'External portal unavailable, serving mock schedule data for ' + mssv,
-      schedule: [
-        { day: 'Thứ 2', time: '07:00 - 09:15', subject: 'Lập trình Web nâng cao', room: 'A201', teacher: 'Nguyễn Văn A' }
-      ]
-    });
+    res.status(500).json({ success: false, message: 'Lỗi lấy thời khóa biểu', error: error.message });
   }
 };
 
 // Get Enrolled Courses
 exports.getCourses = async (req, res) => {
   const mssv = req.params.mssv || await getMssvFromReq(req);
-
   res.json({
     success: true,
     mssv: mssv,
-    courses: [
-      { code: 'IT101', name: 'Lập trình Web nâng cao', credits: 3, teacher: 'Nguyễn Văn A' },
-      { code: 'IT102', name: 'Lập trình Node.js & React', credits: 4, teacher: 'Trần Thị B' }
-    ]
+    courses: []
   });
 };

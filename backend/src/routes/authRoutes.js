@@ -29,6 +29,7 @@ const authController = require('../controllers/authController');
  *         description: Đăng ký thành công
  */
 router.post('/register', authController.register);
+router.post('/register-verify', authController.verifyRegisterOtp);
 
 /**
  * @swagger

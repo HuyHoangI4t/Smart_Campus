@@ -13,8 +13,8 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Register
-exports.register = async (req, res) => {
+// Register Request (Sends OTP and stores pending registration)
+exports.registerRequest = async (req, res) => {
   const { mssv, password, fullName, faculty, email } = req.body;
 
   if (!mssv || !password) {
@@ -33,21 +33,114 @@ exports.register = async (req, res) => {
     const userFullName = fullName || ('Sinh viên ' + mssv);
     const userFaculty = faculty || 'Công nghệ thông tin';
     const userEmail = email || `${mssv}@sv.ttn.edu.vn`;
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
 
+    await db.query('DELETE FROM registration_otps WHERE mssv = ?', [mssv]);
+    await db.query(
+      'INSERT INTO registration_otps (mssv, full_name, faculty, email, password, otp_code, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [mssv, userFullName, userFaculty, userEmail, hashedPassword, otpCode, expiresAt]
+    );
+
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Hệ thống chưa cấu hình SMTP email. Vui lòng cấu hình SMTP_USER và SMTP_PASS trong file .env.' 
+      });
+    }
+
+    try {
+      await transporter.sendMail({
+        from: `"Smart Campus" <${process.env.SMTP_USER}>`,
+        to: userEmail,
+        subject: '[Smart Campus] Mã OTP xác thực đăng ký tài khoản sinh viên',
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 24px; background-color: #f3f6fd; border-radius: 12px; max-width: 600px; margin: auto;">
+            <div style="text-align: center; margin-bottom: 20px;">
+              <h2 style="color: #132F73; margin: 0;">Smart Campus TTN</h2>
+              <p style="color: #64748B; font-size: 13px; margin-top: 4px;">Hệ thống Quản lý Sinh viên</p>
+            </div>
+            <div style="background: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid #e2e8f0;">
+              <p style="color: #0f172a; font-size: 15px;">Xin chào <b>${userFullName}</b>,</p>
+              <p style="color: #475569; font-size: 14px;">Bạn đang thực hiện đăng ký tài khoản sinh viên với MSSV: <b>${mssv}</b>.</p>
+              <p style="color: #475569; font-size: 14px;">Mã OTP xác thực đăng ký của bạn (hiệu lực trong 15 phút):</p>
+              <div style="text-align: center; margin: 24px 0;">
+                <span style="font-size: 28px; font-weight: 900; color: #5B61F4; background: #eef2ff; padding: 12px 28px; border-radius: 10px; letter-spacing: 6px; border: 1.5px dashed #818cf8;">
+                  ${otpCode}
+                </span>
+              </div>
+              <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-top: 20px;">Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này.</p>
+            </div>
+          </div>
+        `
+      });
+      console.log(`[Email Sent] Successfully sent registration OTP email to ${userEmail}`);
+    } catch (err) {
+      console.error('[Email Error] Could not send registration email via SMTP:', err.message);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Không thể gửi email OTP qua SMTP. Vui lòng kiểm tra lại cấu hình email.',
+        error: err.message 
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Mã OTP xác thực đã được gửi đến email ${userEmail}. Vui lòng nhập mã để hoàn tất đăng ký.`,
+      mssv,
+      email: userEmail
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi yêu cầu đăng ký', error: error.message });
+  }
+};
+
+// Verify Register OTP & Save to DB
+exports.verifyRegisterOtp = async (req, res) => {
+  const { mssv, otpCode } = req.body;
+
+  if (!mssv || !otpCode) {
+    return res.status(400).json({ success: false, message: 'Vui lòng cung cấp MSSV và mã OTP.' });
+  }
+
+  try {
+    const [rows] = await db.query(
+      'SELECT * FROM registration_otps WHERE mssv = ? AND otp_code = ? AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1',
+      [mssv, otpCode]
+    );
+
+    if (rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Mã OTP không chính xác hoặc đã hết hạn.' });
+    }
+
+    const regData = rows[0];
+
+    // Insert user into users table
     await db.query(
       'INSERT INTO users (mssv, full_name, faculty, email, password) VALUES (?, ?, ?, ?, ?)',
-      [mssv, userFullName, userFaculty, userEmail, hashedPassword]
+      [regData.mssv, regData.full_name, regData.faculty, regData.email, regData.password]
     );
+
+    // Clean up registration_otps
+    await db.query('DELETE FROM registration_otps WHERE mssv = ?', [mssv]);
 
     res.status(201).json({
       success: true,
-      message: 'Đăng ký tài khoản thành công',
-      user: { mssv, fullName: userFullName, faculty: userFaculty, email: userEmail }
+      message: 'Đăng ký tài khoản thành công và đã lưu vào hệ thống!',
+      user: {
+        mssv: regData.mssv,
+        fullName: regData.full_name,
+        faculty: regData.faculty,
+        email: regData.email
+      }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Lỗi đăng ký', error: error.message });
+    res.status(500).json({ success: false, message: 'Lỗi xác thực đăng ký', error: error.message });
   }
 };
+
+// Register (Direct or backwards compatible)
+exports.register = exports.registerRequest;
 
 // Login
 exports.login = async (req, res) => {

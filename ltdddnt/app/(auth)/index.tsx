@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView} from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -7,19 +7,21 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppColors } from '@/src/constants/appColors';
 import { authStyles } from '@/src/constants/globalStyles';
 import { AuthHeader } from '@/src/components/AuthHeader';
-import { apiLogin, apiRegister } from '@/src/services/api';
+import { apiLogin, apiRegister, apiVerifyRegisterOtp } from '@/src/services/api';
 
 export default function AuthScreen() {
   const [authType, setAuthType] = useState<'login' | 'register'>('login');
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [loading, setLoading] = useState(false);
   
   // Login State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [obscurePassword, setObscurePassword] = useState(true);
   
-  // Register State
+  // Register State & Steps (1: Fill form, 2: Enter OTP)
+  const [regStep, setRegStep] = useState<1 | 2>(1);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [studentId, setStudentId] = useState('');
@@ -27,8 +29,31 @@ export default function AuthScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [obscureRegPassword, setObscureRegPassword] = useState(true);
   const [obscureConfirmPassword, setObscureConfirmPassword] = useState(true);
+  const [emailSentTo, setEmailSentTo] = useState('');
+
+  // 6 individual OTP digit states for registration
+  const [otpValues, setOtpValues] = useState(['', '', '', '', '', '']);
+  const inputRefs = useRef<(TextInput | null)[]>([]);
 
   const router = useRouter();
+
+  // Handle individual OTP digit change
+  const handleOtpChange = (text: string, index: number) => {
+    const digit = text.replace(/[^0-9]/g, '').slice(-1);
+    const newValues = [...otpValues];
+    newValues[index] = digit;
+    setOtpValues(newValues);
+
+    if (digit && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyPress = (e: any, index: number) => {
+    if (e.nativeEvent.key === 'Backspace' && !otpValues[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
 
   const handleAuthAction = async () => {
     setError('');
@@ -39,49 +64,94 @@ export default function AuthScreen() {
         setError('Vui lòng nhập Mã sinh viên (hoặc Email) và Mật khẩu.');
         return;
       }
-      const res = await apiLogin(email.trim(), password);
-      if (res.success) {
-        if (res.token) {
-          await AsyncStorage.setItem('@auth_token', res.token);
+      setLoading(true);
+      try {
+        const res = await apiLogin(email.trim(), password);
+        if (res.success) {
+          if (res.token) {
+            await AsyncStorage.setItem('@auth_token', res.token);
+          }
+          if (res.user) {
+            await AsyncStorage.setItem('@auth_user', JSON.stringify(res.user));
+          }
+          setSuccessMsg('Đăng nhập thành công!');
+          setTimeout(() => {
+            router.replace('/(main)/home');
+          }, 500);
+        } else {
+          setError(res.message || 'Đăng nhập thất bại.');
         }
-        if (res.user) {
-          await AsyncStorage.setItem('@auth_user', JSON.stringify(res.user));
-        }
-        setSuccessMsg('Đăng nhập thành công!');
-        setTimeout(() => {
-          router.replace('/(main)/home');
-        }, 500);
-      } else {
-        setError(res.message || 'Đăng nhập thất bại.');
+      } catch {
+        setError('Lỗi kết nối đến server.');
+      } finally {
+        setLoading(false);
       }
     } else {
-      if (!firstName || !lastName || !studentId || !regPassword || !confirmPassword) {
-        setError('Vui lòng điền đầy đủ thông tin.');
-        return;
-      }
-      if (regPassword !== confirmPassword) {
-        setError('Mật khẩu xác nhận không khớp.');
-        return;
-      }
-      const fullFullName = `${firstName.trim()} ${lastName.trim()}`;
-      const fullEmail = `${studentId.trim().toLowerCase()}@sv.ttn.edu.vn`;
+      if (regStep === 1) {
+        if (!firstName || !lastName || !studentId || !regPassword || !confirmPassword) {
+          setError('Vui lòng điền đầy đủ thông tin.');
+          return;
+        }
+        if (regPassword !== confirmPassword) {
+          setError('Mật khẩu xác nhận không khớp.');
+          return;
+        }
+        if (regPassword.length < 6) {
+          setError('Mật khẩu phải có ít nhất 6 ký tự.');
+          return;
+        }
+        const fullFullName = `${firstName.trim()} ${lastName.trim()}`;
+        const fullEmail = `${studentId.trim().toLowerCase()}@sv.ttn.edu.vn`;
 
-      const res = await apiRegister({
-        mssv: studentId.trim(),
-        password: regPassword,
-        fullName: fullFullName,
-        email: fullEmail
-      });
+        setLoading(true);
+        try {
+          const res = await apiRegister({
+            mssv: studentId.trim(),
+            password: regPassword,
+            fullName: fullFullName,
+            email: fullEmail
+          });
 
-      if (res.success) {
-        setSuccessMsg('Đăng ký tài khoản thành công! Vui lòng đăng nhập.');
-        setTimeout(() => {
-          setAuthType('login');
-          setEmail(studentId.trim());
-          setSuccessMsg('');
-        }, 1500);
+          if (res.success) {
+            setEmailSentTo(res.email || fullEmail);
+            setSuccessMsg(res.message || 'Mã OTP xác thực đã được gửi đến email.');
+            setRegStep(2);
+          } else {
+            setError(res.message || 'Đăng ký thất bại.');
+          }
+        } catch {
+          setError('Lỗi kết nối đến server.');
+        } finally {
+          setLoading(false);
+        }
       } else {
-        setError(res.message || 'Đăng ký thất bại.');
+        // RegStep 2: Verify OTP & Save to DB
+        const fullOtp = otpValues.join('');
+        if (fullOtp.length < 6) {
+          setError('Vui lòng nhập đầy đủ 6 chữ số OTP.');
+          return;
+        }
+
+        setLoading(true);
+        try {
+          const res = await apiVerifyRegisterOtp(studentId.trim(), fullOtp);
+          if (res.success) {
+            setSuccessMsg('Đăng ký tài khoản thành công và đã lưu vào cơ sở dữ liệu! Vui lòng đăng nhập.');
+            setTimeout(() => {
+              setAuthType('login');
+              setRegStep(1);
+              setEmail(studentId.trim());
+              setPassword('');
+              setSuccessMsg('');
+            }, 1500);
+          } else {
+            setError(res.message || 'Mã OTP không chính xác hoặc đã hết hạn.');
+          }
+        } catch {
+          setError('Lỗi kết nối đến server.');
+        } finally {
+          setLoading(false);
+        }
       }
     }
   };
@@ -100,21 +170,28 @@ export default function AuthScreen() {
           <View>
             <AuthHeader 
               currentTab={authType} 
-              onTabChange={setAuthType} 
+              onTabChange={(tab) => {
+                setAuthType(tab);
+                setRegStep(1);
+                setError('');
+                setSuccessMsg('');
+              }} 
               isKeyboardVisible={false}
             />
 
             <View style={authStyles.formContainer}>
               {error ? (
-                <Text style={{ color: 'red', marginBottom: 12, textAlign: 'center', fontWeight: 'bold' }}>
-                  {error}
-                </Text>
+                <View style={localStyles.errorBox}>
+                  <Feather name="alert-circle" size={16} color={AppColors.danger} style={{ marginRight: 8 }} />
+                  <Text style={localStyles.errorText}>{error}</Text>
+                </View>
               ) : null}
 
               {successMsg ? (
-                <Text style={{ color: 'green', marginBottom: 12, textAlign: 'center', fontWeight: 'bold' }}>
-                  {successMsg}
-                </Text>
+                <View style={localStyles.successBox}>
+                  <Feather name="check-circle" size={16} color={AppColors.success} style={{ marginRight: 8 }} />
+                  <Text style={localStyles.successText}>{successMsg}</Text>
+                </View>
               ) : null}
 
               {authType === 'login' ? (
@@ -155,8 +232,8 @@ export default function AuthScreen() {
                     <Text style={authStyles.forgotPassText}>Quên mật khẩu?</Text>
                   </TouchableOpacity>
                 </>
-              ) : (
-                // ================= REGISTER FORM =================
+              ) : regStep === 1 ? (
+                // ================= REGISTER FORM STEP 1 =================
                 <>
                   <View style={authStyles.row}>
                     <View style={authStyles.col}>
@@ -192,7 +269,7 @@ export default function AuthScreen() {
                   <View style={[authStyles.inputBox, { paddingHorizontal: 16 }]}>
                     <TextInput 
                       style={authStyles.textInput} 
-                      placeholder="mssv" 
+                      placeholder="mssv (VD: 23103023)" 
                       placeholderTextColor={AppColors.textMuted} 
                       value={studentId} 
                       onChangeText={setStudentId} 
@@ -200,6 +277,9 @@ export default function AuthScreen() {
                       keyboardType="numeric"
                     />
                   </View>
+                  <Text style={{ fontSize: 11, color: AppColors.textMuted, marginTop: 4 }}>
+                    Email hệ thống sẽ tạo tự động: {studentId ? `${studentId.toLowerCase()}@sv.ttn.edu.vn` : 'mssv@sv.ttn.edu.vn'}
+                  </Text>
 
                   <View style={{ height: 14 }} />
                   
@@ -237,13 +317,65 @@ export default function AuthScreen() {
                     </TouchableOpacity>
                   </View>
                 </>
+              ) : (
+                // ================= REGISTER FORM STEP 2: OTP VERIFICATION =================
+                <>
+                  <View style={localStyles.infoCard}>
+                    <Feather name="mail" size={24} color={AppColors.primary} style={{ marginBottom: 8 }} />
+                    <Text style={localStyles.infoTitle}>Xác thực Email đăng ký</Text>
+                    <Text style={localStyles.infoDesc}>
+                      Mã OTP 6 chữ số đã được gửi đến email <Text style={{ fontWeight: 'bold', color: AppColors.primary }}>{emailSentTo}</Text>. Nhập mã để hoàn tất đăng ký và lưu tài khoản vào hệ thống.
+                    </Text>
+                  </View>
+
+                  <View style={{ height: 16 }} />
+
+                  <Text style={authStyles.label}>MÃ OTP 6 CHỮ SỐ</Text>
+                  <View style={localStyles.otpContainer}>
+                    {otpValues.map((val, index) => (
+                      <TextInput
+                        key={index}
+                        ref={(el) => { inputRefs.current[index] = el; }}
+                        style={[
+                          localStyles.otpBox,
+                          val ? localStyles.otpBoxFilled : null
+                        ]}
+                        value={val}
+                        onChangeText={(text) => handleOtpChange(text, index)}
+                        onKeyPress={(e) => handleKeyPress(e, index)}
+                        keyboardType="number-pad"
+                        maxLength={1}
+                        selectTextOnFocus
+                      />
+                    ))}
+                  </View>
+
+                  <View style={{ height: 16 }} />
+
+                  <TouchableOpacity onPress={() => setRegStep(1)} activeOpacity={0.7} style={{ alignSelf: 'center' }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: AppColors.accent }}>
+                      ← Sửa lại thông tin đăng ký
+                    </Text>
+                  </TouchableOpacity>
+                </>
               )}
 
               <View style={{ height: 20 }} />
 
-              <TouchableOpacity style={authStyles.primaryButton} onPress={handleAuthAction} activeOpacity={0.85}>
+              <TouchableOpacity 
+                style={[authStyles.primaryButton, loading && { opacity: 0.7 }]} 
+                onPress={handleAuthAction} 
+                disabled={loading}
+                activeOpacity={0.85}
+              >
                 <Text style={authStyles.primaryBtnText}>
-                  {authType === 'login' ? 'Đăng Nhập Vào Campus' : 'Tạo Tài Khoản Mới'}
+                  {loading 
+                    ? 'Đang xử lý...' 
+                    : authType === 'login' 
+                    ? 'Đăng Nhập Vào Campus' 
+                    : regStep === 1 
+                    ? 'Tiếp Tục' 
+                    : 'Dăng Ký'}
                 </Text>
               </TouchableOpacity>
 
@@ -272,3 +404,82 @@ export default function AuthScreen() {
     </SafeAreaView>
   );
 }
+
+const localStyles = StyleSheet.create({
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#F87171',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
+  },
+  successBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#34D399',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  successText: {
+    color: '#059669',
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
+  },
+  infoCard: {
+    backgroundColor: AppColors.cardBg,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: AppColors.border,
+  },
+  infoTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: AppColors.textForeground,
+    marginBottom: 4,
+  },
+  infoDesc: {
+    fontSize: 13,
+    color: AppColors.textMuted,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  otpContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+    paddingHorizontal: 4,
+  },
+  otpBox: {
+    width: 44,
+    height: 50,
+    backgroundColor: AppColors.cardBg,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: AppColors.border,
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '900',
+    color: AppColors.textForeground,
+  },
+  otpBoxFilled: {
+    borderColor: AppColors.primary,
+    backgroundColor: '#EEF2FF',
+  },
+});

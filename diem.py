@@ -16,7 +16,7 @@ headers = {
     'X-Requested-With': 'XMLHttpRequest' # Đánh dấu đây là một request AJAX giống như trình duyệt
 }
 
-response = requests.post(url, data=payload, headers=headers)
+response = requests.post(url, data=payload, headers=headers, verify=False)
 
 if response.status_code == 200:
     print("=== KẾT QUẢ TRA CỨU THÀNH CÔNG ===\n")
