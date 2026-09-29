@@ -43,17 +43,16 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Mount Routes (supporting both /api/v1 and /api for backwards compatibility)
-app.use('/api/v1/auth', authRoutes);
+// Mount Routes (supporting both /api and /api for backwards compatibility)
 app.use('/api/auth', authRoutes);
-
-app.use('/api/v1', generalRoutes);
-app.use('/api/v1', studentRoutes);
-app.use('/api/v1', campusRoutes);
 
 app.use('/api', generalRoutes);
 app.use('/api', studentRoutes);
 app.use('/api', campusRoutes);
+
+// app.use('/api', generalRoutes);
+// app.use('/api', studentRoutes);
+// app.use('/api', campusRoutes);
 
 app.listen(PORT, () => {
   console.log(`🚀 LTDDDNT Backend server đang chạy tại cổng ${PORT}`);

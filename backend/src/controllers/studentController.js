@@ -2,6 +2,41 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const db = require('../config/db');
 
+// Helper to get mssv from request (headers, token, body, query, or latest user)
+const getMssvFromReq = async (req) => {
+  if (req.body && req.body.mssv) return req.body.mssv;
+  if (req.body && req.body.masv) return req.body.masv;
+  if (req.query && req.query.mssv) return req.query.mssv;
+  if (req.query && req.query.masv) return req.query.masv;
+  if (req.headers['x-mssv']) return req.headers['x-mssv'];
+  if (req.headers['x-masv']) return req.headers['x-masv'];
+
+  const authHeader = req.headers['authorization'];
+  if (authHeader) {
+    const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+    if (token.startsWith('jwt-token-')) {
+      const parts = token.split('-');
+      if (parts.length >= 3 && parts[2]) {
+        return parts[2];
+      }
+    }
+    if (token && !token.includes(' ') && token.length <= 15) {
+      return token;
+    }
+  }
+
+  try {
+    const [rows] = await db.query('SELECT mssv FROM users ORDER BY created_at DESC LIMIT 1');
+    if (rows.length > 0) {
+      return rows[0].mssv;
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  return '23103023';
+};
+
 // Hàm làm sạch tên
 const cleanName = (name) => {
   if (!name) return name;
@@ -38,29 +73,59 @@ const extractFullNameFromHtml = ($) => {
   return cleanName(fullName);
 };
 
-const extractGpaSummary = ($) => {
-  let gpaSummary = { cumulativeGpa10: '8.35', cumulativeGpa4: '3.52', totalCredits: '28' };
-  $('table').each((_, table) => {
-    $(table).find('tr').each((_, row) => {
-      const rowText = $(row).text();
-      if (/Đ1|Đ2|Điểm trung bình|Tích lũy/i.test(rowText)) {
-        const numbers = rowText.match(/\d+[.,]\d+/g);
-        if (numbers && numbers.length > 0) {
-          gpaSummary.cumulativeGpa10 = numbers[0];
-          if (numbers.length > 1) gpaSummary.cumulativeGpa4 = numbers[1];
+const calculateGpaFromAllTables = (tablesData) => {
+  let totalCredits = 0;
+  let weightedSum10 = 0;
+
+  tablesData.forEach(tableObj => {
+    const rows = tableObj.rows;
+    // Bỏ qua dòng tiêu đề (index 0)
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      
+      // Đ1 ở index 6, Đ2 ở index 7, TChỉ ở index 9
+      const d1Str = row[6];
+      const d2Str = row[7];
+      const tChiStr = row[9];
+
+      const d1 = parseFloat(d1Str);
+      const d2 = parseFloat(d2Str);
+      const credits = parseFloat(tChiStr);
+
+      if (!isNaN(credits) && credits > 0) {
+        let finalScore10 = null;
+
+        // Ưu tiên lấy Đ2 nếu có, nếu không có Đ2 mới lấy Đ1
+        if (!isNaN(d2)) {
+          finalScore10 = d2;
+        } else if (!isNaN(d1)) {
+          finalScore10 = d1;
+        } else {
+          continue; 
         }
+
+        totalCredits += credits;
+        weightedSum10 += finalScore10 * credits;
       }
-    });
+    }
   });
-  return gpaSummary;
+
+  // Tính GPA hệ 10 chuẩn
+  const cumulativeGpa10 = totalCredits > 0 ? (weightedSum10 / totalCredits).toFixed(2) : '0.00';
+
+  // Quy đổi thẳng sang hệ 4 bằng công thức: (GPA_10 * 4) / 10
+  const cumulativeGpa4 = totalCredits > 0 ? ((parseFloat(cumulativeGpa10) * 4) / 10).toFixed(2) : '0.00';
+
+  return {
+    totalCredits: totalCredits.toString(),
+    cumulativeGpa10,
+    cumulativeGpa4
+  };
 };
 
 // Get Student Profile from Database
 exports.getProfile = async (req, res) => {
-  const { mssv } = req.params;
-  if (!mssv) {
-    return res.status(400).json({ success: false, message: 'Mã số sinh viên (mssv) là bắt buộc.' });
-  }
+  const mssv = req.params.mssv || await getMssvFromReq(req);
 
   try {
     const [rows] = await db.query('SELECT mssv, full_name, faculty, email, created_at FROM users WHERE mssv = ?', [mssv]);
@@ -83,14 +148,8 @@ exports.getProfile = async (req, res) => {
 
 // Get Grades & Loại bỏ hoàn toàn bảng số 1 (index === 0)
 exports.getGrades = async (req, res) => {
-  const { mssv, dk, semester, search } = req.body;
-
-  if (!mssv) {
-    return res.status(400).json({ 
-      success: false, 
-      message: 'Vui lòng nhập Mã số sinh viên (mssv) để tra cứu điểm.' 
-    });
-  }
+  const mssv = await getMssvFromReq(req);
+  const { dk, semester, search } = req.body;
 
   const studentDk = dk || '10';
 
@@ -110,7 +169,6 @@ exports.getGrades = async (req, res) => {
 
     const $ = cheerio.load(response.data);
     const extractedFullName = extractFullNameFromHtml($);
-    const gpaSummary = extractGpaSummary($);
 
     if (extractedFullName) {
       try {
@@ -122,7 +180,7 @@ exports.getGrades = async (req, res) => {
 
     let tablesData = [];
     $('table').each((index, table) => {
-      // BẮT BUỘC: Bỏ qua bảng đầu tiên (index 0 chính là bảng 1 / bảng tổng quan)
+      // BẮT BUỘC: Bỏ qua bảng đầu tiên (index 0 chính là bảng tổng quan)
       if (index === 0) return;
 
       const rows = [];
@@ -140,6 +198,9 @@ exports.getGrades = async (req, res) => {
         tablesData.push({ tableIndex: index + 1, rows });
       }
     });
+
+    // Tự động tính toán GPA chuẩn từ dữ liệu bảng điểm đã cào (Ưu tiên Đ2)
+    const gpaSummary = calculateGpaFromAllTables(tablesData);
 
     // Lọc theo học kỳ nếu client truyền lên
     if (semester !== undefined && semester !== null && semester !== '') {
@@ -167,35 +228,14 @@ exports.getGrades = async (req, res) => {
       tables: tablesData
     });
   } catch (error) {
-    res.json({
-      success: true,
-      mssv: mssv,
-      fullName: 'Nguyễn Huy Hoàng',
-      gpaSummary: { cumulativeGpa10: '8.35', cumulativeGpa4: '3.52', totalCredits: '28' },
-      note: 'External portal unavailable, serving mock grades data for ' + mssv,
-      tables: [
-        {
-          tableIndex: 2,
-          rows: [
-            ['Năm học', 'Kỳ', 'Học phần', 'ĐBP', 'Thi1', 'Thi2', 'Đ1', 'Đ2', 'ĐChữ', 'TChỉ', 'Học phí'],
-            ['2025-2026', '2', 'Cấu trúc dữ liệu & Giải thuật', '8.5', '9.0', '', '8.8', '', 'A', '4', '4500000']
-          ]
-        }
-      ]
-    });
+    res.status(500).json({ success: false, message: 'Lỗi kết nối cổng thông tin trường', error: error.message });
   }
 };
 
 // Get Current In-Progress Courses 
 exports.getCurrentCourses = async (req, res) => {
-  const { mssv, dk } = req.body;
-
-  if (!mssv) {
-    return res.status(400).json({ 
-      success: false, 
-      message: 'Vui lòng nhập Mã số sinh viên (mssv) để lấy danh sách học phần đang học.' 
-    });
-  }
+  const mssv = await getMssvFromReq(req);
+  const { dk } = req.body;
 
   const studentDk = dk || '10';
 
@@ -255,14 +295,8 @@ exports.getCurrentCourses = async (req, res) => {
 
 // Get Schedule (TKB)
 exports.getSchedule = async (req, res) => {
-  const { mssv, dk } = req.body;
-
-  if (!mssv) {
-    return res.status(400).json({ 
-      success: false, 
-      message: 'Vui lòng nhập Mã số sinh viên (mssv) từ bàn phím để tra cứu thời khóa biểu.' 
-    });
-  }
+  const mssv = await getMssvFromReq(req);
+  const { dk } = req.body;
 
   const studentDk = dk || '10';
 
@@ -290,7 +324,7 @@ exports.getSchedule = async (req, res) => {
         $(row).find('td, th').each((j, col) => {
           cols.push($(col).text().trim());
         });
-        if (cols.length > 0 && cols.some(c => c !== '')) {
+        if (cols.length > 1 && cols.some(c => c !== '')) {
           rows.push(cols);
         }
       });
@@ -316,10 +350,7 @@ exports.getSchedule = async (req, res) => {
 
 // Get Enrolled Courses
 exports.getCourses = async (req, res) => {
-  const { mssv } = req.params;
-  if (!mssv) {
-    return res.status(400).json({ success: false, message: 'Mã số sinh viên (mssv) là bắt buộc trong URL.' });
-  }
+  const mssv = req.params.mssv || await getMssvFromReq(req);
 
   res.json({
     success: true,

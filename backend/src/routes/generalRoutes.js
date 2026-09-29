@@ -4,7 +4,7 @@ const generalController = require('../controllers/generalController');
 
 /**
  * @swagger
- * /api/v1/notifications:
+ * /api/notifications:
  *   get:
  *     summary: Lấy danh sách thông báo chung (có hỗ trợ phân trang page, limit)
  *     parameters:
@@ -24,7 +24,7 @@ router.get('/notifications', generalController.getNotifications);
 
 /**
  * @swagger
- * /api/v1/notifications/{id}:
+ * /api/notifications/{id}:
  *   get:
  *     summary: Xem chi tiết nội dung của một thông báo
  *     parameters:
@@ -41,7 +41,7 @@ router.get('/notifications/:id', generalController.getNotificationById);
 
 /**
  * @swagger
- * /api/v1/surveys:
+ * /api/surveys:
  *   get:
  *     summary: Lấy danh sách các phiếu khảo sát (đánh giá giảng viên, khảo sát ý kiến)
  *     responses:
@@ -52,7 +52,7 @@ router.get('/surveys', generalController.getSurveys);
 
 /**
  * @swagger
- * /api/v1/surveys/submit:
+ * /api/surveys/submit:
  *   post:
  *     summary: Gửi kết quả khảo sát của sinh viên lên hệ thống
  *     requestBody:
@@ -76,7 +76,7 @@ router.post('/surveys/submit', generalController.submitSurvey);
 
 /**
  * @swagger
- * /api/v1/support/tickets:
+ * /api/support/tickets:
  *   post:
  *     summary: Gửi phản hồi, kiến nghị hoặc báo lỗi về phòng công tác sinh viên
  *     requestBody:

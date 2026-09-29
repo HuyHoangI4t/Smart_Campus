@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
-
-const API_BASE_URL = "http://localhost:5000/api";
-
+import { API_BASE_URL, getAuthHeaders } from "@/src/services/api";
 
 const CACHE_KEY_GRADES = "@cache_student_grades_v1";
 const CACHE_KEY_CURRENT = "@cache_current_courses_v1";
@@ -52,11 +50,8 @@ export default function GradesScreen() {
   const [gradeData, setGradeData] = useState<any>(null);
   const [currentCourses, setCurrentCourses] = useState<any[]>([]);
   const [errorMessage, setErrorMessage] = useState("");
-  
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedSemester, setSelectedSemester] = useState<number | null>(null);
 
-  const fetchAcademicData = useCallback(async (forceRefresh = false, semesterFilter = selectedSemester, searchKeyword = searchQuery) => {
+  const fetchAcademicData = useCallback(async (forceRefresh = false) => {
     try {
       if (!forceRefresh) {
         const cachedGrades = await AsyncStorage.getItem(CACHE_KEY_GRADES);
@@ -66,7 +61,7 @@ export default function GradesScreen() {
         const now = Date.now();
         const isCacheValid = cachedTime && (now - parseInt(cachedTime) < CACHE_VALID_DURATION);
 
-        if (cachedGrades && isCacheValid && !searchKeyword && semesterFilter === null) {
+        if (cachedGrades && isCacheValid) {
           setGradeData(JSON.parse(cachedGrades));
           if (cachedCurrent) setCurrentCourses(JSON.parse(cachedCurrent));
           return;
@@ -76,22 +71,20 @@ export default function GradesScreen() {
       setLoading(true);
       setErrorMessage("");
 
+      const authHeaders = await getAuthHeaders();
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
 
       const [resGrades, resCurrent] = await Promise.all([
         fetch(`${API_BASE_URL}/grades`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            semester: semesterFilter, 
-            search: searchKeyword 
-          }),
+          headers: authHeaders,
+          body: JSON.stringify({}),
           signal: controller.signal
         }),
         fetch(`${API_BASE_URL}/student/current-courses`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders,
           signal: controller.signal
         })
       ]);
@@ -103,10 +96,8 @@ export default function GradesScreen() {
 
       if (dataGrades.success) {
         setGradeData(dataGrades);
-        if (!searchKeyword && semesterFilter === null) {
-          await AsyncStorage.setItem(CACHE_KEY_GRADES, JSON.stringify(dataGrades));
-          await AsyncStorage.setItem(CACHE_KEY_TIMESTAMP, Date.now().toString());
-        }
+        await AsyncStorage.setItem(CACHE_KEY_GRADES, JSON.stringify(dataGrades));
+        await AsyncStorage.setItem(CACHE_KEY_TIMESTAMP, Date.now().toString());
       } else {
         setErrorMessage(dataGrades.message || "Không thể tải dữ liệu điểm.");
       }
@@ -116,7 +107,7 @@ export default function GradesScreen() {
         setCurrentCourses(courses);
         await AsyncStorage.setItem(CACHE_KEY_CURRENT, JSON.stringify(courses));
       }
-    } catch (error: any) {
+    } catch {
       const cachedGrades = await AsyncStorage.getItem(CACHE_KEY_GRADES);
       const cachedCurrent = await AsyncStorage.getItem(CACHE_KEY_CURRENT);
       
@@ -129,11 +120,11 @@ export default function GradesScreen() {
     } finally {
       setLoading(false);
     }
-  }, [selectedSemester, searchQuery]);
+  }, []);
 
   useEffect(() => {
-    fetchAcademicData(false, selectedSemester, searchQuery);
-  }, [selectedSemester, searchQuery, fetchAcademicData]);
+    fetchAcademicData(false);
+  }, [fetchAcademicData]);
 
   return (
     <View style={{ flex: 1, backgroundColor: AppColors.background }}>
@@ -199,61 +190,6 @@ export default function GradesScreen() {
               </View>
             </View>
 
-            {/* Search Bar & Semester Filter Chips */}
-            <View style={{ gap: 12 }}>
-              <View style={[s.inputRow, { borderRadius: 16, paddingHorizontal: 14 }]}>
-                <Feather name="search" size={16} color={AppColors.textMuted} style={{ marginRight: 8 }} />
-                <TextInput
-                  style={[s.input, { paddingHorizontal: 0 }]}
-                  placeholder="Tìm kiếm theo tên học phần..."
-                  placeholderTextColor={AppColors.textSubtle}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                />
-                {searchQuery ? (
-                  <TouchableOpacity onPress={() => setSearchQuery("")}>
-                    <Feather name="x" size={16} color={AppColors.textMuted} />
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                <TouchableOpacity
-                  onPress={() => setSelectedSemester(null)}
-                  style={{
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                    borderRadius: 12,
-                    backgroundColor: selectedSemester === null ? AppColors.primary : AppColors.cardBg,
-                    borderWidth: 1,
-                    borderColor: selectedSemester === null ? AppColors.primary : AppColors.border
-                  }}
-                >
-                  <Text style={{ fontSize: 12, fontWeight: "900", color: selectedSemester === null ? "#FFF" : AppColors.textForeground }}>
-                    Tất cả học kỳ
-                  </Text>
-                </TouchableOpacity>
-                {[2, 3, 4, 5, 6, 7, 8].map((sem) => (
-                  <TouchableOpacity
-                    key={sem}
-                    onPress={() => setSelectedSemester(sem)}
-                    style={{
-                      paddingHorizontal: 12,
-                      paddingVertical: 8,
-                      borderRadius: 12,
-                      backgroundColor: selectedSemester === sem ? AppColors.primary : AppColors.cardBg,
-                      borderWidth: 1,
-                      borderColor: selectedSemester === sem ? AppColors.primary : AppColors.border
-                    }}
-                  >
-                    <Text style={{ fontSize: 12, fontWeight: "900", color: selectedSemester === sem ? "#FFF" : AppColors.textForeground }}>
-                      Học kỳ {sem}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-
             {/* Current Courses Section */}
             {currentCourses.length > 0 && (
               <View style={{ gap: 10, marginTop: 4 }}>
@@ -277,7 +213,7 @@ export default function GradesScreen() {
               {!gradeData.tables || gradeData.tables.length === 0 ? (
                 <View style={[s.card, { padding: 30, alignItems: "center", justifyContent: "center", borderRadius: 16 }]}>
                   <Feather name="search" size={28} color={AppColors.textMuted} />
-                  <Text style={{ fontSize: 13, fontWeight: "800", color: AppColors.textMuted, marginTop: 10 }}>Không tìm thấy học phần phù hợp</Text>
+                  <Text style={{ fontSize: 13, fontWeight: "800", color: AppColors.textMuted, marginTop: 10 }}>Không có dữ liệu điểm</Text>
                 </View>
               ) : (
                 gradeData.tables.map((t: any, tIdx: number) => {
@@ -288,7 +224,7 @@ export default function GradesScreen() {
                     <View key={tIdx} style={{ gap: 10 }}>
                       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 4 }}>
                         <Text style={{ fontSize: 11, fontWeight: "700", color: AppColors.textMuted }}>
-                          {dataRows.length} học phần
+                          Học kỳ {t.tableIndex} • {dataRows.length} học phần
                         </Text>
                       </View>
 

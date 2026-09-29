@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppColors } from '@/src/constants/appColors';
 import { authStyles } from '@/src/constants/globalStyles';
 import { AuthHeader } from '@/src/components/AuthHeader';
@@ -40,6 +41,12 @@ export default function AuthScreen() {
       }
       const res = await apiLogin(email.trim(), password);
       if (res.success) {
+        if (res.token) {
+          await AsyncStorage.setItem('@auth_token', res.token);
+        }
+        if (res.user) {
+          await AsyncStorage.setItem('@auth_user', JSON.stringify(res.user));
+        }
         setSuccessMsg('Đăng nhập thành công!');
         setTimeout(() => {
           router.replace('/(main)/home');

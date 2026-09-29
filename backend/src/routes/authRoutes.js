@@ -4,7 +4,7 @@ const authController = require('../controllers/authController');
 
 /**
  * @swagger
- * /api/v1/auth/register:
+ * /api/auth/register:
  *   post:
  *     summary: Đăng ký tài khoản sinh viên
  *     requestBody:
@@ -32,7 +32,7 @@ router.post('/register', authController.register);
 
 /**
  * @swagger
- * /api/v1/auth/login:
+ * /api/auth/login:
  *   post:
  *     summary: Đăng nhập sinh viên (nhận vào mã SV/email + mật khẩu, trả về JWT Token)
  *     requestBody:
@@ -54,7 +54,7 @@ router.post('/login', authController.login);
 
 /**
  * @swagger
- * /api/v1/auth/logout:
+ * /api/auth/logout:
  *   post:
  *     summary: Đăng xuất (hủy phiên làm việc trên server)
  *     responses:
@@ -65,7 +65,7 @@ router.post('/logout', authController.logout);
 
 /**
  * @swagger
- * /api/v1/auth/me:
+ * /api/auth/me:
  *   get:
  *     summary: Lấy thông tin chi tiết của người đang đăng nhập (họ tên, mã, email, avatar, lớp)
  *     parameters:
@@ -82,7 +82,7 @@ router.get('/profile', authController.getMe);
 
 /**
  * @swagger
- * /api/v1/auth/change-password:
+ * /api/auth/change-password:
  *   put:
  *     summary: Đổi mật khẩu tài khoản
  *     requestBody:
@@ -106,7 +106,7 @@ router.put('/change-password', authController.changePassword);
 
 /**
  * @swagger
- * /api/v1/auth/forgot-password:
+ * /api/auth/forgot-password:
  *   post:
  *     summary: Quên mật khẩu (đặt lại mật khẩu mặc định)
  *     requestBody:

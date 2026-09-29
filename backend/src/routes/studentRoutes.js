@@ -61,7 +61,7 @@ router.post('/schedule', studentController.getSchedule);
  *     parameters:
  *       - in: path
  *         name: mssv
- *         required: true
+ *         required: false
  *         schema:
  *           type: string
  *         example: 23103023
@@ -70,6 +70,7 @@ router.post('/schedule', studentController.getSchedule);
  *         description: Thành công
  */
 router.get('/student/profile/:mssv', studentController.getProfile);
+router.get('/student/profile', studentController.getProfile);
  
 
 module.exports = router;
