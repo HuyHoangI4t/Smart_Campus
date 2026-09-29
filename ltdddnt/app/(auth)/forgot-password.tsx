@@ -15,7 +15,7 @@ export default function ForgotPasswordScreen() {
   
   // 6 individual OTP digit states
   const [otpValues, setOtpValues] = useState(['', '', '', '', '', '']);
-  const inputRefs = useRef<Array<TextInput | null>>([]);
+  const inputRefs = useRef<(TextInput | null)[]>([]);
 
   const [resetToken, setResetToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
