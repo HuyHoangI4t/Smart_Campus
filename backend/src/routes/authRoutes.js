@@ -92,7 +92,7 @@ router.post('/register-verify', authController.verifyRegisterOtp);
  *                 description: Mã số sinh viên hoặc email
  *               password:
  *                 type: string
- *                 example: '123456'
+ *                 example: '1872005'
  *                 description: Mật khẩu
  *     responses:
  *       200:

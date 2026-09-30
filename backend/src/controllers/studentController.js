@@ -302,6 +302,7 @@ exports.updateProfile = async (req, res) => {
 };
 
 // Get Schedule (TKB)
+// Get Schedule (TKB) - Đã tối ưu bóc tách theo tuần và ngày
 exports.getSchedule = async (req, res) => {
   const mssv = await getMssvFromReq(req);
   const { dk } = req.body || {};
@@ -311,14 +312,23 @@ exports.getSchedule = async (req, res) => {
     return res.json({
       success: true,
       mssv: mssv,
-      tables: [
+      schedule: [
         {
-          tableIndex: 1,
-          rows: [
-            ["Mã HP", "Thứ", "Tên môn học", "Tiết", "Phòng", "Phòng", "Giảng viên"],
-            ["NT118", "Thứ 2", "Lập trình thiết bị di động", "1 - 3", "LAB-03", "LAB-03", "TS. Trần Thị B"],
-            ["CS301", "Thứ 2", "Cấu trúc dữ liệu & Giải thuật", "4 - 6", "ENG-B204", "ENG-B204", "ThS. Nguyễn Văn A"],
-            ["IT202", "Thứ 3", "Hệ cơ sở dữ liệu", "7 - 9", "ENG-A102", "ENG-A102", "ThS. Lê Hoàng C"]
+          weekRange: "Từ ngày 28/09/2026 đến ngày 04/10/2026",
+          days: [
+            {
+              date: "28/09",
+              dayOfWeek: "Thứ 2",
+              sessions: [
+                {
+                  buoi: "Chiều",
+                  ten_hp: "CN ltrình đa nền",
+                  tiet: "7-10",
+                  giang_vien: "Trương Thị Hương Giang",
+                  phong: "7.3.18"
+                }
+              ]
+            }
           ]
         }
       ]
@@ -341,27 +351,103 @@ exports.getSchedule = async (req, res) => {
     });
 
     const $ = cheerio.load(response.data);
-    const tablesData = [];
+    
+    // Lấy thông tin sinh viên nếu có
+    const headerText = $('body').text();
+    let hoTen = null;
+    const nameMatch = headerText.match(/Họ tên:\s*<b>([^<]+)<\/b>/i);
+    if (nameMatch) hoTen = nameMatch[1].trim();
 
-    $('table').each((index, table) => {
-      const rows = [];
-      $(table).find('tr').each((i, row) => {
-        const cols = [];
-        $(row).find('td, th').each((j, col) => {
-          cols.push($(col).text().trim());
-        });
-        if (cols.length > 1 && cols.some(c => c !== '')) {
-          rows.push(cols);
+    const weeksData = [];
+
+    // Duyệt qua các thẻ <p> chứa khoảng thời gian tuần và bảng tương ứng tiếp theo
+    $('p').each((i, pElem) => {
+      const pText = $(pElem).text().trim();
+      if (pText.startsWith('Từ ngày')) {
+        const weekRange = pText;
+        const table = $(pElem).next('table');
+        if (table.length > 0) {
+          const headers = [];
+          // Lấy tiêu đề các ngày trong tuần từ dòng đầu tiên của bảng
+          table.find('tr').first().find('th').slice(1).each((j, th) => {
+            const thText = $(th).text().replace(/\s+/g, ' ').trim(); // Ví dụ: "Thứ 2 28/09"
+            headers.push(thText);
+          });
+
+          // Ánh xạ cột index với ngày tháng
+          // headers[0] -> Thứ 2 28/09, ... headers[6] -> CN 04/10
+          const daySchedules = headers.map(h => {
+            const parts = h.split(' ');
+            return {
+              dayOfWeek: parts[0] + (parts[1] ? ' ' + parts[1] : ''),
+              date: parts[parts.length - 1], // Lấy phần ngày tháng (ví dụ: 28/09)
+              sessions: []
+            };
+          });
+
+          // Duyệt các dòng buổi (Sáng, Chiều, Tối)
+          table.find('tr').slice(1).each((rowIdx, tr) => {
+            const tds = $(tr).find('td');
+            if (tds.length > 0) {
+              const buoi = $(tds[0]).text().trim(); // Sáng, Chiều, Tối
+
+              // Duyệt từ cột 1 đến hết (tương ứng 7 ngày trong tuần)
+              for (let colIdx = 1; colIdx < tds.length; colIdx++) {
+                const cellHtml = $(tds[colIdx]).html() || '';
+                // Mỗi môn học trong ô được ngăn cách bởi <br> hoặc nằm trong text
+                // Format mẫu: HP: LS Đảng CS VN (1-4)<br>GV: Đoàn Văn Kỳ<br>Phòng: 2.21 (CLC)<br>
+                const lessons = cellHtml.split(/<br\s*\/?>/i);
+
+                let currentLesson = null;
+                lessons.forEach(line => {
+                  const cleanLine = cheerio.load(line).text().trim();
+                  if (!cleanLine) return;
+
+                  if (cleanLine.startsWith('HP:')) {
+                    if (currentLesson) {
+                      daySchedules[colIdx - 1].sessions.push(currentLesson);
+                    }
+                    const match = cleanLine.match(/HP:\s*(.*?)\s*\(([\d\s-]+)\)/);
+                    currentLesson = {
+                      buoi: buoi,
+                      ten_hp: match ? match[1].trim() : cleanLine.replace('HP:', '').trim(),
+                      tiet: match ? match[2].trim() : '',
+                      giang_vien: '',
+                      phong: ''
+                    };
+                  } else if (cleanLine.startsWith('GV:')) {
+                    if (currentLesson) {
+                      currentLesson.giang_vien = cleanLine.replace('GV:', '').trim();
+                    }
+                  } else if (cleanLine.startsWith('Phòng:')) {
+                    if (currentLesson) {
+                      currentLesson.phong = cleanLine.replace('Phòng:', '').trim();
+                    }
+                  }
+                });
+
+                if (currentLesson) {
+                  daySchedules[colIdx - 1].sessions.push(currentLesson);
+                }
+              }
+            }
+          });
+
+          weeksData.push({
+            weekRange,
+            days: daySchedules.filter(d => d.sessions.length > 0) // Chỉ giữ các ngày có lịch học cho gọn
+          });
         }
-      });
-      tablesData.push({ tableIndex: index + 1, rows });
+      }
     });
 
     res.json({
       success: true,
       mssv: mssv,
-      tables: tablesData
+      ho_ten: hoTen,
+      schedule: weeksData
     });
+
   } catch (error) {
     console.warn('Lỗi cào lịch học từ TTN portal, dùng dữ liệu dự phòng:', error.message);
     res.json({
@@ -369,17 +455,24 @@ exports.getSchedule = async (req, res) => {
       mssv: mssv,
       isFallback: true,
       message: 'Hiển thị lịch học lưu tạm (cổng trường phản hồi chậm)',
-      tables: [
+      schedule: [
         {
-          tableIndex: 1,
-          rows: [
-            ["Mã HP", "Thứ", "Tên môn học", "Tiết", "Phòng", "Phòng", "Giảng viên"],
-            ["NT118", "Thứ 2", "Lập trình thiết bị di động", "1 - 3", "LAB-03", "LAB-03", "TS. Trần Thị B"],
-            ["CS301", "Thứ 2", "Cấu trúc dữ liệu & Giải thuật", "4 - 6", "ENG-B204", "ENG-B204", "ThS. Nguyễn Văn A"],
-            ["IT202", "Thứ 3", "Hệ cơ sở dữ liệu", "7 - 9", "ENG-A102", "ENG-A102", "ThS. Lê Hoàng C"],
-            ["NT101", "Thứ 4", "Mạng máy tính & Truyền thông", "1 - 3", "NET-LAB", "NET-LAB", "TS. Phạm Văn D"],
-            ["NT205", "Thứ 5", "An toàn thông tin mạng", "4 - 6", "ENG-B301", "ENG-B301", "ThS. Vũ Thị E"],
-            ["NT300", "Thứ 6", "Đồ án chuyên ngành", "1 - 4", "ENG-B101", "ENG-B101", "Hội đồng bộ môn"]
+          weekRange: "Từ ngày 28/09/2026 đến ngày 04/10/2026",
+          days: [
+            {
+              date: "28/09",
+              dayOfWeek: "Thứ 2",
+              sessions: [
+                { buoi: "Chiều", ten_hp: "CN ltrình đa nền", tiet: "7-10", giang_vien: "Trương Thị Hương Giang", phong: "7.3.18" }
+              ]
+            },
+            {
+              date: "29/09",
+              dayOfWeek: "Thứ 3",
+              sessions: [
+                { buoi: "Sáng", ten_hp: "LS Đảng CS VN", tiet: "1-4", giang_vien: "Đoàn Văn Kỳ", phong: "2.21 (CLC)" }
+              ]
+            }
           ]
         }
       ]

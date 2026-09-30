@@ -100,8 +100,8 @@ export default function ScheduleScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: AppColors.background }} edges={['top', 'left', 'right']}>
       <NavHeader
-        title="Lịch học & Lịch thi"
-        subtitle="Học kỳ 1 • Năm học 2025 - 2026"
+        title="Thời khóa biểu"
+        subtitle="Lịch học trong tuần"
         showBack={true}
         onBack={() => router.push("/(main)/home")}
       />
