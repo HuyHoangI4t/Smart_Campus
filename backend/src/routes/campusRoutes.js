@@ -2,13 +2,12 @@ const express = require('express');
 const router = express.Router();
 const campusController = require('../controllers/campusController');
 
-
-
 /**
  * @swagger
  * /api/feedback:
  *   post:
- *     summary: Gửi phản hồi
+ *     summary: Gửi phản hồi, góp ý cơ sở vật chất
+ *     tags: [Campus]
  *     requestBody:
  *       required: true
  *       content:
@@ -26,6 +25,7 @@ router.post('/feedback', campusController.submitFeedback);
  * /api/sos:
  *   post:
  *     summary: Gửi cảnh báo khẩn cấp SOS
+ *     tags: [Campus]
  *     requestBody:
  *       required: false
  *       content:
@@ -43,6 +43,7 @@ router.post('/sos', campusController.submitSos);
  * /api/map:
  *   get:
  *     summary: Lấy vị trí bản đồ khuôn viên
+ *     tags: [Campus]
  *     responses:
  *       200:
  *         description: Thành công
