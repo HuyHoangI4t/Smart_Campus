@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from "react-
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
@@ -31,7 +31,7 @@ const DEFAULT_ALERTS: AlertItem[] = [
 
 export default function HomeScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  //const insets = useSafeAreaInsets();
 
   const [student, setStudent] = useState<StudentInfo>({ ho_ten: "Sinh viên", mssv: "" });
   const [nextClass, setNextClass] = useState<any>(null);

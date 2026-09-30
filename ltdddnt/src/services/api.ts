@@ -119,7 +119,7 @@ export async function apiLogout() {
       headers,
     });
     return await handleResponse(response);
-  } catch (err: any){
+  } catch{
     return {
       success: true,
       message: 'Đăng xuất hoàn tất.',
