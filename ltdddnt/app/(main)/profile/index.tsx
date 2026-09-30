@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -16,7 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
-import { apiGetProfile, apiUpdateProfile, clearAuthAndCache } from "../../../src/services/api";
+import { apiGetProfile, apiUpdateProfile, apiLogout, clearAuthAndCache } from "../../../src/services/api";
 
 interface UserProfile {
   mssv: string;
@@ -48,6 +49,8 @@ export default function ProfileScreen() {
     khoa: "",
   });
   const [saving, setSaving] = useState(false);
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const loadProfile = async () => {
     try {
@@ -120,17 +123,27 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất tài khoản khỏi thiết bị này?", [
-      { text: "Hủy", style: "cancel" },
-      {
-        text: "Đăng xuất",
-        style: "destructive",
-        onPress: async () => {
-          await clearAuthAndCache();
-          router.replace("/(auth)");
-        },
-      },
-    ]);
+    setLogoutModalVisible(true);
+  };
+
+  const confirmLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await apiLogout();
+    } catch (err) {
+      console.error("Lỗi apiLogout:", err);
+    } finally {
+      await clearAuthAndCache();
+      setLoggingOut(false);
+      setLogoutModalVisible(false);
+      router.replace("/(auth)");
+    }
+  };
+
+  const cancelLogout = () => {
+    if (!loggingOut) {
+      setLogoutModalVisible(false);
+    }
   };
 
   return (
@@ -446,6 +459,122 @@ export default function ProfileScreen() {
                 )}
               </TouchableOpacity>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal Popup Xác nhận Đăng xuất */}
+      <Modal
+        visible={logoutModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={cancelLogout}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 24,
+          }}
+        >
+          <View
+            style={{
+              width: "100%",
+              maxWidth: 340,
+              backgroundColor: AppColors.cardBg,
+              borderRadius: 24,
+              padding: 24,
+              alignItems: "center",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 12,
+              elevation: 8,
+            }}
+          >
+            <View
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                backgroundColor: "#FEF2F2",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 16,
+              }}
+            >
+              <Feather name="log-out" size={26} color="#DC2626" />
+            </View>
+
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "900",
+                color: AppColors.text,
+                marginBottom: 8,
+                textAlign: "center",
+              }}
+            >
+              Đăng xuất
+            </Text>
+
+            <Text
+              style={{
+                fontSize: 14,
+                color: AppColors.textSecondary,
+                textAlign: "center",
+                lineHeight: 20,
+                marginBottom: 24,
+              }}
+            >
+              Bạn có chắc chắn muốn đăng xuất tài khoản khỏi thiết bị này?
+            </Text>
+
+            <View style={{ flexDirection: "row", gap: 12, width: "100%" }}>
+              {/* Nút Hủy */}
+              <TouchableOpacity
+                onPress={cancelLogout}
+                disabled={loggingOut}
+                activeOpacity={0.7}
+                style={{
+                  flex: 1,
+                  height: 46,
+                  borderRadius: 12,
+                  backgroundColor: "#F1F5F9",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: "700", color: AppColors.textSecondary }}>
+                  Hủy
+                </Text>
+              </TouchableOpacity>
+
+              {/* Nút Xác nhận */}
+              <TouchableOpacity
+                onPress={confirmLogout}
+                disabled={loggingOut}
+                activeOpacity={0.8}
+                style={{
+                  flex: 1,
+                  height: 46,
+                  borderRadius: 12,
+                  backgroundColor: "#DC2626",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {loggingOut ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={{ fontSize: 14, fontWeight: "800", color: "#FFFFFF" }}>
+                    Xác nhận
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>

@@ -111,6 +111,22 @@ export async function apiLogin(mssv: string, mat_khau: string) {
   }
 }
 
+export async function apiLogout() {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${API_BASE_URL}/auth/logout`, {
+      method: 'POST',
+      headers,
+    });
+    return await handleResponse(response);
+  } catch (err: any){
+    return {
+      success: true,
+      message: 'Đăng xuất hoàn tất.',
+    };
+  }
+}
+
 export async function apiRegister(userData: {
   mssv: string;
   ho_ten?: string;
