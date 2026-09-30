@@ -13,7 +13,7 @@ const getApiBaseUrl = () => {
     return `http://${ip}:5000/api`;
   }
 
-  return Platform.OS === 'android' ? 'http://192.168.1.54:5000/api' : 'http://localhost:5000/api';
+  return Platform.OS === 'android' ? 'http://192.168.1.5:5000/api' : 'http://192.168.1.5:5000/api';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
@@ -98,7 +98,7 @@ export async function apiLogin(mssv: string, mat_khau: string) {
     const response = await fetchWithTimeout(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mssv, mat_khau }),
+      body: JSON.stringify({ mssv, password: mat_khau }),
     });
     return await handleResponse(response);
   } catch (err: any) {
