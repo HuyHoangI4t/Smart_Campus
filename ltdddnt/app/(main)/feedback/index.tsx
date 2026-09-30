@@ -1,162 +1,201 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert } from "react-native";
-import { Feather, MaterialIcons } from "@expo/vector-icons";
+import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
+import { NavHeader } from "../../../src/components/NavHeader";
+import { apiSubmitFeedback } from "../../../src/services/api";
 
 const CATEGORIES = [
-  { id: "facility", label: "Cơ sở vật chất", icon: "home", color: "#F59E0B" },
-  { id: "academic", label: "Học vụ & Giảng viên", icon: "book", color: "#3B82F6" },
-  { id: "canteen", label: "Căng tin & Dịch vụ", icon: "coffee", color: "#10B981" },
-  { id: "wifi", label: "WiFi & Mạng", icon: "wifi", color: "#8B5CF6" },
-  { id: "other", label: "Khác", icon: "message-square", color: "#64748B" },
+  "Cơ sở vật chất",
+  "Chất lượng giảng dạy",
+  "Căng tin & Dịch vụ",
+  "An ninh & Gửi xe",
+  "Thủ tục sinh viên",
+  "Khác",
 ];
 
 export default function FeedbackScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const [category, setCategory] = useState("facility");
+  const [category, setCategory] = useState("Cơ sở vật chất");
   const [rating, setRating] = useState(5);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = () => {
-    if (!title.trim() || !content.trim()) {
-      Alert.alert("Thông báo", "Vui lòng nhập đầy đủ tiêu đề và nội dung phản hồi.");
+  const handleSubmit = async () => {
+    if (!title.trim()) {
+      Alert.alert("Thông báo", "Vui lòng nhập tiêu đề phản ánh.");
       return;
     }
-    setSubmitted(true);
+    if (!content.trim()) {
+      Alert.alert("Thông báo", "Vui lòng nhập nội dung chi tiết ý kiến của bạn.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await apiSubmitFeedback({
+        title: title.trim(),
+        content: content.trim(),
+        category,
+        rating,
+      });
+
+      if (res && res.success) {
+        Alert.alert(
+          "Thành công",
+          res.message || "Ý kiến phản ánh của bạn đã được gửi thành công đến ban quản lý.",
+          [{ text: "Đóng", onPress: () => router.push("/(main)/home") }]
+        );
+        setTitle("");
+        setContent("");
+      } else {
+        Alert.alert("Lỗi", res?.message || "Không thể gửi ý kiến lúc này. Vui lòng thử lại sau.");
+      }
+    } catch {
+      Alert.alert("Lỗi", "Đã xảy ra sự cố khi kết nối đến máy chủ.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: AppColors.background }}>
-      {/* Safe Area Header */}
-      <View style={{ paddingHorizontal: 24, paddingTop: Math.max(insets.top + 16, 20), paddingBottom: 20, backgroundColor: AppColors.primary }}>
-        <View style={[s.row, { gap: 12 }]}>
-          <TouchableOpacity onPress={() => router.back()} style={[s.iconBtn, { backgroundColor: "rgba(255,255,255,0.15)" }]}>
-            <Feather name="arrow-left" size={16} color="#fff" />
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: "#fff", fontWeight: "900", fontSize: 18 }}>Phản hồi & Góp ý</Text>
-            <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, marginTop: 2 }}>Gửi ý kiến đóng góp đến ban quản lý trường</Text>
-          </View>
+      <NavHeader
+        title="Góp ý & Phản ánh"
+        subtitle="Ý kiến của bạn giúp nâng cao chất lượng môi trường học"
+        showBack={true}
+        onBack={() => router.push("/(main)/home")}
+      />
+
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+        {/* Danh mục */}
+        <Text style={{ fontSize: 14, fontWeight: "800", color: AppColors.text, marginBottom: 8 }}>
+          Lĩnh vực góp ý
+        </Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 18 }}>
+          {CATEGORIES.map((cat) => {
+            const isSelected = cat === category;
+            return (
+              <TouchableOpacity
+                key={cat}
+                onPress={() => setCategory(cat)}
+                style={{
+                  paddingVertical: 8,
+                  paddingHorizontal: 14,
+                  borderRadius: 20,
+                  backgroundColor: isSelected ? AppColors.primary : AppColors.muted,
+                  borderWidth: 1,
+                  borderColor: isSelected ? AppColors.primary : AppColors.cardBorder,
+                }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: "700", color: isSelected ? "#FFFFFF" : AppColors.textSecondary }}>
+                  {cat}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
-      </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24, gap: 20, paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
-        {submitted ? (
-          <View style={[s.card, { alignItems: "center", padding: 32, gap: 16 }]}>
-            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "#ECFDF5", alignItems: "center", justifyContent: "center" }}>
-              <Feather name="check" size={32} color={AppColors.success} />
-            </View>
-            <Text style={{ fontSize: 18, fontWeight: "900", color: AppColors.textForeground, textAlign: "center" }}>Gửi phản hồi thành công!</Text>
-            <Text style={{ fontSize: 13, color: AppColors.textMuted, textAlign: "center", lineHeight: 20 }}>
-              Cảm ơn bạn đã đóng góp ý kiến. Phản hồi của bạn đã được chuyển đến bộ phận phụ trách và sẽ được xử lý trong vòng 24 giờ.
-            </Text>
-            <TouchableOpacity
-              onPress={() => {
-                setSubmitted(false);
-                setTitle("");
-                setContent("");
-                setRating(5);
-              }}
-              style={[s.primaryBtn, { width: "100%", marginTop: 8 }]}
-            >
-              <Text style={s.primaryBtnText}>Gửi phản hồi mới</Text>
+        {/* Đánh giá sao */}
+        <Text style={{ fontSize: 14, fontWeight: "800", color: AppColors.text, marginBottom: 8 }}>
+          Mức độ hài lòng chung
+        </Text>
+        <View style={[s.row, { gap: 12, marginBottom: 20 }]}>
+          {[1, 2, 3, 4, 5].map((star) => (
+            <TouchableOpacity key={star} onPress={() => setRating(star)} activeOpacity={0.7}>
+              <Feather
+                name="star"
+                size={28}
+                color={star <= rating ? "#F59E0B" : "#D1D5DB"}
+              />
             </TouchableOpacity>
-          </View>
-        ) : (
-          <>
-            {/* Category selection */}
-            <View>
-              <Text style={s.label}>CHỌN LĨNH VỰC</Text>
-              <View style={{ gap: 8, marginTop: 4 }}>
-                {CATEGORIES.map((cat) => {
-                  const isSelected = category === cat.id;
-                  return (
-                    <TouchableOpacity
-                      key={cat.id}
-                      onPress={() => setCategory(cat.id)}
-                      activeOpacity={0.8}
-                      style={[
-                        s.row,
-                        {
-                          padding: 14,
-                          borderRadius: 14,
-                          backgroundColor: AppColors.cardBg,
-                          borderWidth: 1.5,
-                          borderColor: isSelected ? AppColors.accent : AppColors.border,
-                        },
-                      ]}
-                    >
-                      <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: cat.color + "15", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-                        <Feather name={cat.icon as any} size={18} color={cat.color} />
-                      </View>
-                      <Text style={{ flex: 1, fontSize: 14, fontWeight: isSelected ? "800" : "600", color: isSelected ? AppColors.primary : AppColors.textForeground }}>
-                        {cat.label}
-                      </Text>
-                      {isSelected && <Feather name="check-circle" size={18} color={AppColors.accent} />}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
+          ))}
+          <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.textSecondary, marginLeft: 8 }}>
+            {rating === 5 ? "Rất hài lòng" : rating === 4 ? "Hài lòng" : rating === 3 ? "Bình thường" : "Chưa hài lòng"}
+          </Text>
+        </View>
 
-            {/* Rating */}
-            <View style={[s.card, { padding: 16 }]}>
-              <Text style={[s.label, { marginBottom: 12 }]}>Đánh giá mức độ hài lòng</Text>
-              <View style={[s.row, { justifyContent: "space-around" }]}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <TouchableOpacity key={star} onPress={() => setRating(star)} style={{ padding: 8 }}>
-                    <MaterialIcons
-                      name={star <= rating ? "star" : "star-border"}
-                      size={32}
-                      color={star <= rating ? AppColors.warning : AppColors.textMuted}
-                    />
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <Text style={{ textAlign: "center", fontSize: 12, fontWeight: "700", color: AppColors.textMuted, marginTop: 8 }}>
-                {rating === 5 ? "Rất hài lòng ⭐⭐⭐⭐⭐" : rating === 4 ? "Hài lòng ⭐⭐⭐⭐" : rating === 3 ? "Bình thường ⭐⭐⭐" : rating === 2 ? "Chưa hài lòng ⭐⭐" : "Rất tệ ⭐"}
-              </Text>
-            </View>
+        {/* Tiêu đề */}
+        <Text style={{ fontSize: 14, fontWeight: "800", color: AppColors.text, marginBottom: 6 }}>
+          Tiêu đề góp ý <Text style={{ color: AppColors.danger }}>*</Text>
+        </Text>
+        <TextInput
+          placeholder="Ví dụ: Máy chiếu phòng B201 bị mờ, đèn hành lang hỏng..."
+          placeholderTextColor={AppColors.textMuted}
+          value={title}
+          onChangeText={setTitle}
+          style={{
+            height: 48,
+            borderRadius: 14,
+            backgroundColor: AppColors.cardBg,
+            borderWidth: 1,
+            borderColor: AppColors.cardBorder,
+            paddingHorizontal: 14,
+            fontSize: 14,
+            color: AppColors.text,
+            marginBottom: 16,
+          }}
+        />
 
-            {/* Title & Content */}
-            <View style={{ gap: 14 }}>
-              <View>
-                <Text style={s.label}>TIÊU ĐỀ PHẢN HỒI</Text>
-                <TextInput
-                  style={s.inputPlain}
-                  placeholder="Ví dụ: Máy chiếu phòng học A201 bị hỏng..."
-                  placeholderTextColor={AppColors.textMuted}
-                  value={title}
-                  onChangeText={setTitle}
-                />
-              </View>
+        {/* Nội dung chi tiết */}
+        <Text style={{ fontSize: 14, fontWeight: "800", color: AppColors.text, marginBottom: 6 }}>
+          Nội dung chi tiết <Text style={{ color: AppColors.danger }}>*</Text>
+        </Text>
+        <TextInput
+          placeholder="Mô tả cụ thể vấn đề hoặc đề xuất giải pháp của bạn..."
+          placeholderTextColor={AppColors.textMuted}
+          value={content}
+          onChangeText={setContent}
+          multiline
+          numberOfLines={6}
+          textAlignVertical="top"
+          style={{
+            height: 140,
+            borderRadius: 14,
+            backgroundColor: AppColors.cardBg,
+            borderWidth: 1,
+            borderColor: AppColors.cardBorder,
+            padding: 14,
+            fontSize: 14,
+            color: AppColors.text,
+            marginBottom: 24,
+          }}
+        />
 
-              <View>
-                <Text style={s.label}>NỘI DUNG CHI TIẾT</Text>
-                <TextInput
-                  style={[s.inputPlain, { height: 120, textAlignVertical: "top" }]}
-                  placeholder="Mô tả chi tiết vấn đề hoặc đề xuất của bạn..."
-                  placeholderTextColor={AppColors.textMuted}
-                  multiline
-                  numberOfLines={5}
-                  value={content}
-                  onChangeText={setContent}
-                />
-              </View>
-            </View>
-
-            <TouchableOpacity onPress={handleSubmit} style={[s.primaryBtn, { marginTop: 8 }]} activeOpacity={0.85}>
-              <Text style={s.primaryBtnText}>Gửi Phản Hồi Ngay</Text>
-            </TouchableOpacity>
-          </>
-        )}
+        {/* Submit button */}
+        <TouchableOpacity
+          onPress={handleSubmit}
+          disabled={submitting}
+          activeOpacity={0.8}
+          style={{
+            height: 50,
+            borderRadius: 14,
+            backgroundColor: AppColors.primary,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            shadowColor: AppColors.primary,
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: 0.3,
+            shadowRadius: 6,
+            elevation: 4,
+          }}
+        >
+          {submitting ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <>
+              <Feather name="send" size={18} color="#FFFFFF" />
+              <Text style={{ fontSize: 15, fontWeight: "800", color: "#FFFFFF" }}>Gửi ý kiến phản hồi</Text>
+            </>
+          )}
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
 }
+

@@ -1,127 +1,454 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, TextInput } from "react-native";
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+  Modal,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
-import { clearAuthAndCache } from "../../../src/services/api";
+import { NavHeader } from "../../../src/components/NavHeader";
+import { apiGetProfile, apiUpdateProfile, clearAuthAndCache } from "../../../src/services/api";
+
+interface UserProfile {
+  mssv: string;
+  ho_ten: string;
+  email: string;
+  so_dien_thoai: string;
+  lop: string;
+  khoa: string;
+  ngay_sinh?: string;
+  gioi_tinh?: string;
+}
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState("Sinh Viên Mẫu");
-  const [phone, setPhone] = useState("+84 123 456 789");
-  const [notifs, setNotifs] = useState(true);
-  const [campusAlerts, setCampusAlerts] = useState(true);
+  const [profile, setProfile] = useState<UserProfile>({
+    mssv: "",
+    ho_ten: "Đang tải...",
+    email: "",
+    so_dien_thoai: "",
+    lop: "",
+    khoa: "",
+  });
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editForm, setEditForm] = useState({
+    ho_ten: "",
+    email: "",
+    so_dien_thoai: "",
+    lop: "",
+    khoa: "",
+  });
+  const [saving, setSaving] = useState(false);
 
-  const handleLogout = async () => {
-    await clearAuthAndCache();
-    router.replace("/(auth)");
+  const loadProfile = async () => {
+    try {
+      const userStr = await AsyncStorage.getItem("@auth_user");
+      let localUser: any = {};
+      if (userStr) {
+        localUser = JSON.parse(userStr);
+        setProfile((prev) => ({ ...prev, ...localUser }));
+      }
+
+      const res = await apiGetProfile();
+      if (res && res.success && res.student) {
+        const remote = res.student;
+        const merged: UserProfile = {
+          mssv: remote.mssv || remote.masv || localUser.mssv || "",
+          ho_ten: remote.ho_ten || remote.ten || localUser.ho_ten || "Sinh viên",
+          email: remote.email || localUser.email || "",
+          so_dien_thoai: remote.so_dien_thoai || remote.sdt || localUser.so_dien_thoai || "",
+          lop: remote.lop || localUser.lop || "Kỹ thuật phần mềm",
+          khoa: remote.khoa || localUser.khoa || "Công nghệ Thông tin",
+          ngay_sinh: remote.ngay_sinh || localUser.ngay_sinh || "",
+          gioi_tinh: remote.gioi_tinh || localUser.gioi_tinh || "",
+        };
+        setProfile(merged);
+        await AsyncStorage.setItem("@auth_user", JSON.stringify(merged));
+      }
+    } catch {
+      // Keep cached
+    }
   };
 
-  const info = [
-    { label: "Họ và Tên", value: name, editable: true, onChange: setName },
-    { label: "Mã Sinh viên", value: "23103023", editable: false },
-    { label: "Khoa", value: "Khoa KHTN&CN", editable: false },
-    { label: "Khóa", value: "k23", editable: false },
-    { label: "Email", value: "sinhvien@sv.ttn.edu.vn", editable: false },
-    { label: "Số điện thoại", value: phone, editable: true, onChange: setPhone },
-  ];
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const openEditModal = () => {
+    setEditForm({
+      ho_ten: profile.ho_ten,
+      email: profile.email,
+      so_dien_thoai: profile.so_dien_thoai,
+      lop: profile.lop,
+      khoa: profile.khoa,
+    });
+    setEditModalVisible(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editForm.ho_ten.trim()) {
+      Alert.alert("Thông báo", "Họ tên không được để trống.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await apiUpdateProfile(editForm);
+      if (res && res.success) {
+        const updated = { ...profile, ...editForm };
+        setProfile(updated);
+        await AsyncStorage.setItem("@auth_user", JSON.stringify(updated));
+        Alert.alert("Thành công", "Đã cập nhật thông tin cá nhân.");
+        setEditModalVisible(false);
+      } else {
+        Alert.alert("Lỗi", res?.message || "Không thể cập nhật hồ sơ vào lúc này.");
+      }
+    } catch {
+      Alert.alert("Lỗi", "Có lỗi xảy ra khi kết nối máy chủ.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLogout = () => {
+    Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất tài khoản khỏi thiết bị này?", [
+      { text: "Hủy", style: "cancel" },
+      {
+        text: "Đăng xuất",
+        style: "destructive",
+        onPress: async () => {
+          await clearAuthAndCache();
+          router.replace("/(auth)");
+        },
+      },
+    ]);
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: AppColors.background }}>
-      <LinearGradient
-        colors={[AppColors.primary, AppColors.primary] as [string, string]}
-        style={{ paddingHorizontal: 24, paddingTop: Math.max(insets.top + 16, 24), paddingBottom: 40 }}
-      >
-        <View style={[s.row, s.between]}>
-          <TouchableOpacity onPress={() => router.push("/(main)/home")} style={[s.iconBtn, { backgroundColor: "rgba(255,255,255,0.15)" }]}>
-            <Feather name="arrow-left" size={16} color="#fff" />
+      <NavHeader
+        title="Hồ sơ sinh viên"
+        subtitle="Thông tin cá nhân & Tài khoản"
+        showBack={true}
+        onBack={() => router.push("/(main)/home")}
+        rightElement={
+          <TouchableOpacity onPress={openEditModal}>
+            <Feather name="edit-2" size={18} color="#FFFFFF" />
           </TouchableOpacity>
-          <Text style={{ color: "#fff", fontWeight: "900", fontSize: 18, flex: 1, marginLeft: 12 }}>Hồ sơ của tôi</Text>
-          <TouchableOpacity onPress={() => setEditing(!editing)} style={[s.iconBtn, { backgroundColor: "rgba(255,255,255,0.15)" }]}>
-            <Feather name="edit-3" size={15} color="#fff" />
+        }
+      />
+
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+        {/* Avatar & Header Card */}
+        <View
+          style={{
+            padding: 24,
+            borderRadius: 24,
+            backgroundColor: AppColors.cardBg,
+            alignItems: "center",
+            borderWidth: 1,
+            borderColor: AppColors.cardBorder,
+            marginBottom: 20,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.06,
+            shadowRadius: 6,
+            elevation: 3,
+          }}
+        >
+          <View
+            style={{
+              width: 80,
+              height: 80,
+              borderRadius: 40,
+              backgroundColor: AppColors.primary,
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 12,
+            }}
+          >
+            <Text style={{ fontSize: 32, fontWeight: "900", color: "#FFFFFF" }}>
+              {profile.ho_ten ? profile.ho_ten.charAt(0).toUpperCase() : "S"}
+            </Text>
+          </View>
+
+          <Text style={{ fontSize: 20, fontWeight: "900", color: AppColors.text, textAlign: "center" }}>
+            {profile.ho_ten}
+          </Text>
+          <Text style={{ fontSize: 13, color: AppColors.primary, fontWeight: "700", marginTop: 4 }}>
+            MSSV: {profile.mssv || "Chưa có"}
+          </Text>
+          <View
+            style={{
+              marginTop: 10,
+              paddingHorizontal: 12,
+              paddingVertical: 4,
+              borderRadius: 12,
+              backgroundColor: "#ECFDF5",
+            }}
+          >
+            <Text style={{ fontSize: 11, fontWeight: "700", color: "#059669" }}>● Đang theo học chính quy</Text>
+          </View>
+        </View>
+
+        {/* Thông tin chi tiết */}
+        <Text style={{ fontSize: 15, fontWeight: "800", color: AppColors.text, marginBottom: 12 }}>
+          Thông tin học tập & liên hệ
+        </Text>
+
+        <View
+          style={{
+            padding: 16,
+            borderRadius: 20,
+            backgroundColor: AppColors.cardBg,
+            borderWidth: 1,
+            borderColor: AppColors.cardBorder,
+            gap: 14,
+            marginBottom: 24,
+          }}
+        >
+          <View style={[s.row, s.between]}>
+            <View style={[s.row, { gap: 10 }]}>
+              <Feather name="book" size={16} color={AppColors.primary} />
+              <Text style={{ fontSize: 13, color: AppColors.textSecondary, fontWeight: "600" }}>Khoa đào tạo</Text>
+            </View>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text }}>{profile.khoa || "Chưa cập nhật"}</Text>
+          </View>
+
+          <View style={{ height: 1, backgroundColor: AppColors.cardBorder }} />
+
+          <View style={[s.row, s.between]}>
+            <View style={[s.row, { gap: 10 }]}>
+              <Feather name="users" size={16} color={AppColors.primary} />
+              <Text style={{ fontSize: 13, color: AppColors.textSecondary, fontWeight: "600" }}>Lớp sinh hoạt</Text>
+            </View>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text }}>{profile.lop || "Chưa cập nhật"}</Text>
+          </View>
+
+          <View style={{ height: 1, backgroundColor: AppColors.cardBorder }} />
+
+          <View style={[s.row, s.between]}>
+            <View style={[s.row, { gap: 10 }]}>
+              <Feather name="mail" size={16} color={AppColors.primary} />
+              <Text style={{ fontSize: 13, color: AppColors.textSecondary, fontWeight: "600" }}>Email trường</Text>
+            </View>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text }}>{profile.email || "Chưa cập nhật"}</Text>
+          </View>
+
+          <View style={{ height: 1, backgroundColor: AppColors.cardBorder }} />
+
+          <View style={[s.row, s.between]}>
+            <View style={[s.row, { gap: 10 }]}>
+              <Feather name="phone" size={16} color={AppColors.primary} />
+              <Text style={{ fontSize: 13, color: AppColors.textSecondary, fontWeight: "600" }}>Số điện thoại</Text>
+            </View>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text }}>{profile.so_dien_thoai || "Chưa cập nhật"}</Text>
+          </View>
+        </View>
+
+        {/* Thiết lập & Bảo mật */}
+        <Text style={{ fontSize: 15, fontWeight: "800", color: AppColors.text, marginBottom: 12 }}>
+          Bảo mật tài khoản
+        </Text>
+
+        <View style={{ gap: 10, marginBottom: 24 }}>
+          <TouchableOpacity
+            onPress={() => router.push("/(main)/profile/change_password")}
+            activeOpacity={0.7}
+            style={{
+              padding: 16,
+              borderRadius: 16,
+              backgroundColor: AppColors.cardBg,
+              borderWidth: 1,
+              borderColor: AppColors.cardBorder,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <View style={[s.row, { gap: 12 }]}>
+              <Feather name="lock" size={18} color={AppColors.primary} />
+              <Text style={{ fontSize: 14, fontWeight: "700", color: AppColors.text }}>Đổi mật khẩu tài khoản</Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={AppColors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={openEditModal}
+            activeOpacity={0.7}
+            style={{
+              padding: 16,
+              borderRadius: 16,
+              backgroundColor: AppColors.cardBg,
+              borderWidth: 1,
+              borderColor: AppColors.cardBorder,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <View style={[s.row, { gap: 12 }]}>
+              <Feather name="user-check" size={18} color={AppColors.primary} />
+              <Text style={{ fontSize: 14, fontWeight: "700", color: AppColors.text }}>Chỉnh sửa hồ sơ cá nhân</Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={AppColors.textMuted} />
           </TouchableOpacity>
         </View>
-      </LinearGradient>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
-        <View style={{ alignItems: "center", marginTop: -32, marginBottom: 20 }}>
-          <View style={{ position: "relative" }}>
-            <View style={{ width: 80, height: 80, borderRadius: 20, backgroundColor: AppColors.accent, alignItems: "center", justifyContent: "center", borderWidth: 4, borderColor: AppColors.background, elevation: 8, shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 8 }}>
-              <Text style={{ color: "#fff", fontWeight: "900", fontSize: 30 }}>KA</Text>
-            </View>
-            {editing && (
-              <TouchableOpacity style={{ position: "absolute", bottom: -4, right: -4, width: 28, height: 28, borderRadius: 14, backgroundColor: AppColors.primary, borderWidth: 2, borderColor: AppColors.background, alignItems: "center", justifyContent: "center" }}>
-                <Feather name="camera" size={12} color="#fff" />
-              </TouchableOpacity>
-            )}
-          </View>
-          <Text style={{ fontSize: 22, fontWeight: "900", color: AppColors.textForeground, marginTop: 12 }}>{name}</Text>
-          <Text style={{ fontSize: 12, fontWeight: "600", color: AppColors.textMuted }}>23103023  • Khóa k23</Text>
-        </View>
-
-        <View style={{ paddingHorizontal: 24, gap: 16 }}>
-          <View style={[s.card, { padding: 0 }]}>
-            <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: AppColors.border, backgroundColor: AppColors.muted + "80" }}>
-              <Text style={{ fontSize: 11, fontWeight: "900", color: AppColors.textMuted, textTransform: "uppercase", letterSpacing: 1 }}>Thông tin sinh viên</Text>
-            </View>
-            {info.map(({ label, value, editable, onChange }, i) => (
-              <View key={label} style={[{ paddingHorizontal: 16, paddingVertical: 12 }, i < info.length - 1 && { borderBottomWidth: 1, borderBottomColor: AppColors.border }]}>
-                <Text style={{ fontSize: 10, fontWeight: "900", color: AppColors.textMuted, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 2 }}>{label}</Text>
-                {editing && editable ? (
-                  <TextInput defaultValue={value} onChangeText={onChange} style={{ fontSize: 14, fontWeight: "600", color: AppColors.textForeground, borderBottomWidth: 1, borderBottomColor: AppColors.accent, paddingVertical: 2 }} />
-                ) : (
-                  <Text style={{ fontSize: 14, fontWeight: "600", color: AppColors.textForeground }} numberOfLines={1}>{value}</Text>
-                )}
-              </View>
-            ))}
-          </View>
-
-          <View style={{ flexDirection: "row", gap: 10 }}>
-            {[{ label: "Sự kiện tham gia", value: "12" }, { label: "Báo cáo đã gửi", value: "3" }, { label: "Nhóm học tập", value: "2" }].map(({ label, value }) => (
-              <View key={label} style={[s.card, { flex: 1, alignItems: "center", padding: 12 }]}>
-                <Text style={{ fontSize: 24, fontWeight: "900", color: AppColors.primary }}>{value}</Text>
-                <Text style={{ fontSize: 9, fontWeight: "700", color: AppColors.textMuted, textTransform: "uppercase", letterSpacing: 0.5, textAlign: "center", marginTop: 2 }}>{label}</Text>
-              </View>
-            ))}
-          </View>
-
-          <View style={[s.card, { padding: 0 }]}>
-            <View style={{ paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: AppColors.border, backgroundColor: AppColors.muted + "80" }}>
-              <Text style={{ fontSize: 11, fontWeight: "900", color: AppColors.textMuted, textTransform: "uppercase", letterSpacing: 1 }}>Cài đặt & Tùy chọn</Text>
-            </View>
-            {[
-              { label: "Thông báo đẩy", icon: "bell", toggle: true, val: notifs, set: setNotifs },
-              { label: "Cảnh báo từ trường", icon: "alert-triangle", toggle: true, val: campusAlerts, set: setCampusAlerts },
-              { label: "Cài đặt quyền riêng tư", icon: "lock", chevron: true },
-              { label: "Trợ giúp & Hỗ trợ", icon: "info", chevron: true, onPress: () => router.push("/(main)/feedback") },
-            ].map(({ label, icon, toggle, val, set, chevron, onPress }, i) => (
-              <TouchableOpacity key={label} onPress={onPress} activeOpacity={onPress ? 0.7 : 1} style={[s.row, s.between, { paddingHorizontal: 16, paddingVertical: 14 }, i < 3 && { borderBottomWidth: 1, borderBottomColor: AppColors.border }]}>
-                <View style={s.row}>
-                  <Feather name={icon as any} size={16} color={AppColors.textMuted} style={{ marginRight: 12 }} />
-                  <Text style={{ fontSize: 14, fontWeight: "600", color: AppColors.textForeground }}>{label}</Text>
-                </View>
-                {toggle && (
-                  <TouchableOpacity onPress={() => set?.(!val)} style={{ width: 40, height: 20, borderRadius: 10, backgroundColor: val ? AppColors.accent : AppColors.muted, justifyContent: "center", paddingHorizontal: 2 }}>
-                    <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: "#fff", alignSelf: val ? "flex-end" : "flex-start" }} />
-                  </TouchableOpacity>
-                )}
-                {chevron && <Feather name="chevron-right" size={14} color={AppColors.textMuted} />}
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <TouchableOpacity onPress={handleLogout} activeOpacity={0.85}
-            style={[s.row, { justifyContent: "center", paddingVertical: 14, borderRadius: 16, borderWidth: 1, borderColor: "#FECACA", backgroundColor: "#FEF2F2", gap: 8 }]}>
-            <Feather name="log-out" size={16} color="#DC2626" />
-            <Text style={{ fontSize: 14, fontWeight: "900", color: "#DC2626" }}>Đăng xuất</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Nút đăng xuất */}
+        <TouchableOpacity
+          onPress={handleLogout}
+          activeOpacity={0.8}
+          style={{
+            height: 48,
+            borderRadius: 14,
+            backgroundColor: "#FEF2F2",
+            borderWidth: 1,
+            borderColor: "#FECACA",
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+          }}
+        >
+          <Feather name="log-out" size={18} color="#DC2626" />
+          <Text style={{ fontSize: 14, fontWeight: "800", color: "#DC2626" }}>Đăng xuất khỏi thiết bị</Text>
+        </TouchableOpacity>
       </ScrollView>
+
+      {/* Edit Profile Modal */}
+      <Modal visible={editModalVisible} animationType="slide" transparent>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}>
+          <View
+            style={{
+              backgroundColor: AppColors.cardBg,
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              padding: 24,
+              maxHeight: "85%",
+            }}
+          >
+            <View style={[s.row, s.between, { marginBottom: 20 }]}>
+              <Text style={{ fontSize: 18, fontWeight: "900", color: AppColors.text }}>Cập nhật hồ sơ</Text>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                <Feather name="x" size={22} color={AppColors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={{ fontSize: 12, fontWeight: "700", color: AppColors.textSecondary, marginBottom: 4 }}>Họ và tên</Text>
+              <TextInput
+                value={editForm.ho_ten}
+                onChangeText={(t) => setEditForm((f) => ({ ...f, ho_ten: t }))}
+                style={{
+                  height: 44,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: AppColors.cardBorder,
+                  paddingHorizontal: 12,
+                  fontSize: 14,
+                  marginBottom: 12,
+                  color: AppColors.text,
+                }}
+              />
+
+              <Text style={{ fontSize: 12, fontWeight: "700", color: AppColors.textSecondary, marginBottom: 4 }}>Email</Text>
+              <TextInput
+                value={editForm.email}
+                onChangeText={(t) => setEditForm((f) => ({ ...f, email: t }))}
+                keyboardType="email-address"
+                style={{
+                  height: 44,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: AppColors.cardBorder,
+                  paddingHorizontal: 12,
+                  fontSize: 14,
+                  marginBottom: 12,
+                  color: AppColors.text,
+                }}
+              />
+
+              <Text style={{ fontSize: 12, fontWeight: "700", color: AppColors.textSecondary, marginBottom: 4 }}>Số điện thoại</Text>
+              <TextInput
+                value={editForm.so_dien_thoai}
+                onChangeText={(t) => setEditForm((f) => ({ ...f, so_dien_thoai: t }))}
+                keyboardType="phone-pad"
+                style={{
+                  height: 44,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: AppColors.cardBorder,
+                  paddingHorizontal: 12,
+                  fontSize: 14,
+                  marginBottom: 12,
+                  color: AppColors.text,
+                }}
+              />
+
+              <Text style={{ fontSize: 12, fontWeight: "700", color: AppColors.textSecondary, marginBottom: 4 }}>Lớp sinh hoạt</Text>
+              <TextInput
+                value={editForm.lop}
+                onChangeText={(t) => setEditForm((f) => ({ ...f, lop: t }))}
+                style={{
+                  height: 44,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: AppColors.cardBorder,
+                  paddingHorizontal: 12,
+                  fontSize: 14,
+                  marginBottom: 12,
+                  color: AppColors.text,
+                }}
+              />
+
+              <Text style={{ fontSize: 12, fontWeight: "700", color: AppColors.textSecondary, marginBottom: 4 }}>Khoa</Text>
+              <TextInput
+                value={editForm.khoa}
+                onChangeText={(t) => setEditForm((f) => ({ ...f, khoa: t }))}
+                style={{
+                  height: 44,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: AppColors.cardBorder,
+                  paddingHorizontal: 12,
+                  fontSize: 14,
+                  marginBottom: 20,
+                  color: AppColors.text,
+                }}
+              />
+
+              <TouchableOpacity
+                onPress={handleSaveProfile}
+                disabled={saving}
+                style={{
+                  height: 48,
+                  borderRadius: 14,
+                  backgroundColor: AppColors.primary,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 10,
+                }}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={{ fontSize: 15, fontWeight: "800", color: "#FFFFFF" }}>Lưu thay đổi</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
+

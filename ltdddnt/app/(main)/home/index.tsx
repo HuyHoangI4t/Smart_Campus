@@ -1,21 +1,91 @@
-import React from "react";
-import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
+import { apiGetSchedule, apiGetNotifications } from "../../../src/services/api";
 
-const ALERTS = [
-  { id: 1, type: "info", text: "Thư viện đóng cửa lúc 8 giờ tối nay để bảo trì.", time: "2 giờ trước" },
-  { id: 2, type: "warning", text: "Đổi phòng: CS301 chuyển sang ENG-B204 từ ENG-B201.", time: "45 phút trước" },
-  { id: 3, type: "success", text: "Phản hồi #204 của bạn đã được giải quyết.", time: "1 giờ trước" },
+interface StudentInfo {
+  mssv?: string;
+  ho_ten?: string;
+  lop?: string;
+  khoa?: string;
+}
+
+interface AlertItem {
+  id: number | string;
+  type: "info" | "warning" | "success";
+  text: string;
+  time: string;
+}
+
+const DEFAULT_ALERTS: AlertItem[] = [
+  { id: 1, type: "info", text: "Thư viện mở cửa phục vụ mùa thi từ 7h00 - 21h30.", time: "Hôm nay" },
+  { id: 2, type: "warning", text: "Hạn đóng học phí học kỳ này trước ngày 15 hàng tháng.", time: "Quan trọng" },
+  { id: 3, type: "success", text: "Lịch thi học phần đã được cập nhật chính thức.", time: "1 giờ trước" },
 ];
 
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+
+  const [student, setStudent] = useState<StudentInfo>({ ho_ten: "Sinh viên", mssv: "" });
+  const [nextClass, setNextClass] = useState<any>(null);
+  const [alerts, setAlerts] = useState<AlertItem[]>(DEFAULT_ALERTS);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadData = async () => {
+    try {
+      const userStr = await AsyncStorage.getItem("@auth_user");
+      if (userStr) {
+        const parsed = JSON.parse(userStr);
+        setStudent(parsed);
+      }
+
+      // Load schedule for next class preview
+      const scheduleRes = await apiGetSchedule();
+      if (scheduleRes && scheduleRes.success && scheduleRes.tables) {
+        const rows = scheduleRes.tables[0]?.rows || [];
+        if (rows.length > 1) {
+          const firstRow = rows[1];
+          setNextClass({
+            subject: firstRow[2] || firstRow[1] || "Môn chuyên ngành",
+            room: firstRow[5] || firstRow[4] || "Phòng B201",
+            time: firstRow[3] ? `Tiết ${firstRow[3]}` : "Ca sáng 07:30",
+            lecturer: firstRow[6] || "Giảng viên bộ môn",
+          });
+        }
+      }
+
+      // Load real notifications
+      const notifRes = await apiGetNotifications();
+      if (notifRes && notifRes.success && notifRes.notifications?.length > 0) {
+        const mapped: AlertItem[] = notifRes.notifications.slice(0, 3).map((n: any, idx: number) => ({
+          id: n.id || idx,
+          type: n.type === 'warning' ? 'warning' : n.type === 'success' ? 'success' : 'info',
+          text: n.title || n.content,
+          time: n.created_at ? new Date(n.created_at).toLocaleDateString('vi-VN') : 'Mới',
+        }));
+        setAlerts(mapped);
+      }
+    } catch {
+      // Keep fallbacks
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
 
   const onNavigate = (screen: string) => {
     if (screen === "home") router.push("/(main)/home");
@@ -23,35 +93,43 @@ export default function HomeScreen() {
   };
 
   const quickActions = [
-    { icon: "navigation", label: "Bản đồ", screen: "map", bg: AppColors.muted, fg: AppColors.accent },
-    { icon: "calendar", label: "Lịch học", screen: "schedule", bg: "#DBEAFE", fg: AppColors.primary },
-    { icon: "message-square", label: "Phản hồi", screen: "feedback", bg: "#FEF3C7", fg: "#D97706" },
-    { icon: "bar-chart-2", label: "Kết quả", screen: "grades", bg: "#D1FAE5", fg: "#059669" },
+    { icon: "navigation" as const, label: "Bản đồ", screen: "map", bg: AppColors.muted, fg: AppColors.accent },
+    { icon: "calendar" as const, label: "Lịch học", screen: "schedule", bg: "#DBEAFE", fg: AppColors.primary },
+    { icon: "message-square" as const, label: "Phản hồi", screen: "feedback", bg: "#FEF3C7", fg: "#D97706" },
+    { icon: "bar-chart-2" as const, label: "Kết quả", screen: "grades", bg: "#D1FAE5", fg: "#059669" },
   ];
 
-  const alertMeta: Record<string, { icon: string; color: string; bg: string; border: string }> = {
-    info: { icon: "info", color: AppColors.info, bg: "#EFF6FF", border: "#BFDBFE" },
-    warning: { icon: "alert-triangle", color: AppColors.warning, bg: "#FFFBEB", border: "#FDE68A" },
-    success: { icon: "check", color: AppColors.success, bg: "#ECFDF5", border: "#A7F3D0" },
+  const alertMeta = {
+    info: { icon: "info" as const, color: AppColors.info, bg: "#EFF6FF", border: "#BFDBFE" },
+    warning: { icon: "alert-triangle" as const, color: AppColors.warning, bg: "#FFFBEB", border: "#FDE68A" },
+    success: { icon: "check" as const, color: AppColors.success, bg: "#ECFDF5", border: "#A7F3D0" },
   };
 
   const stats = [
-    { label: "Ghế Thư viện", value: "34", sub: "Còn trống", icon: "book-open", color: AppColors.success },
-    { label: "Căng tin", value: "8 phút", sub: "Thời gian chờ", icon: "coffee", color: AppColors.warning },
-    { label: "Sự kiện", value: "5", sub: "Diễn ra hôm nay", icon: "star", color: AppColors.purple },
-    { label: "WiFi", value: "Mạnh", sub: "Tất cả vùng ổn định", icon: "wifi", color: AppColors.info },
+    { label: "Ghế Thư viện", value: "34", sub: "Còn trống", icon: "book-open" as const, color: AppColors.success },
+    { label: "Căng tin", value: "8 phút", sub: "Thời gian chờ", icon: "coffee" as const, color: AppColors.warning },
+    { label: "Tiện ích số", value: "24/7", sub: "Hoạt động", icon: "wifi" as const, color: AppColors.info },
+    { label: "Trạng thái", value: "Bình thường", sub: "Toàn khuôn viên", icon: "check-circle" as const, color: AppColors.purple },
   ];
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: AppColors.background }} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: AppColors.background }}
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+    >
       <LinearGradient
         colors={[AppColors.primary, AppColors.primary]}
         style={{ paddingHorizontal: 24, paddingTop: Math.max(insets.top + 16, 24), paddingBottom: 32 }}
       >
         <View style={[s.row, s.between, { marginBottom: 16 }]}>
           <View>
-            <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, fontWeight: "600", textTransform: "uppercase", letterSpacing: 1 }}>Chào buổi sáng</Text>
-            <Text style={{ color: "#fff", fontSize: 20, fontWeight: "900" }}>Kwame Asante 👋</Text>
+            <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 }}>
+              Xin chào {student.mssv ? `• ${student.mssv}` : ""}
+            </Text>
+            <Text style={{ color: "#fff", fontSize: 22, fontWeight: "900", marginTop: 2 }}>
+              {student.ho_ten || "Sinh viên"} 👋
+            </Text>
           </View>
           <View style={s.row}>
             <TouchableOpacity onPress={() => onNavigate("sos")} style={[s.iconBtn, { backgroundColor: AppColors.danger, marginRight: 8 }]}>
@@ -63,92 +141,134 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <View style={{ backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" }}>
+        {/* Lớp học tiếp theo preview */}
+        <View style={{ backgroundColor: "rgba(255,255,255,0.15)", borderWidth: 1, borderColor: "rgba(255,255,255,0.25)", padding: 18, borderRadius: 20 }}>
           <View style={[s.row, s.between, { marginBottom: 8 }]}>
-            <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 }}>Lớp tiếp theo</Text>
-            <View style={{ backgroundColor: AppColors.accent, borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2 }}>
-              <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>Đang diễn ra</Text>
+            <View style={s.row}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: AppColors.accent, marginRight: 8 }} />
+              <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 12, fontWeight: "700" }}>LỚP HỌC KẾ TIẾP</Text>
             </View>
+            <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 12 }}>{nextClass?.time || "Hôm nay"}</Text>
           </View>
-          <Text style={{ color: "#fff", fontWeight: "900", fontSize: 16, marginBottom: 6 }}>Calculus III</Text>
-          <View style={s.row}>
-            <Feather name="clock" size={12} color="rgba(255,255,255,0.6)" />
-            <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, marginLeft: 4, marginRight: 16 }}>10:00 – 11:30</Text>
-            <Feather name="map-pin" size={12} color="rgba(255,255,255,0.6)" />
-            <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, marginLeft: 4 }}>SCI-A101</Text>
+          <Text style={{ color: "#fff", fontSize: 17, fontWeight: "900", marginBottom: 6 }}>
+            {nextClass?.subject || "Kiểm tra lịch học trong tuần"}
+          </Text>
+          <View style={[s.row, s.between]}>
+            <View style={s.row}>
+              <Feather name="map-pin" size={13} color="rgba(255,255,255,0.7)" style={{ marginRight: 4 }} />
+              <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: "600" }}>
+                {nextClass?.room || "Khu giảng đường"}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => onNavigate("schedule")}>
+              <Text style={{ color: "#93C5FD", fontSize: 12, fontWeight: "700" }}>Chi tiết lịch →</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={() => onNavigate("map")} style={[s.row, { marginTop: 12 }]}>
-            <Text style={{ color: "#A5B4FC", fontSize: 12, fontWeight: "700", marginRight: 4 }}>Đến lớp</Text>
-            <Feather name="chevron-right" size={12} color="#A5B4FC" />
-          </TouchableOpacity>
         </View>
       </LinearGradient>
 
-      <View style={{ paddingHorizontal: 24, marginTop: -16, gap: 20, paddingBottom: 110 }}>
-        <View style={{ flexDirection: "row", gap: 10 }}>
-          {quickActions.map(({ icon, label, screen, bg, fg }) => (
-            <TouchableOpacity key={screen} onPress={() => onNavigate(screen)} activeOpacity={0.8}
-              style={{ flex: 1, backgroundColor: AppColors.cardBg, borderRadius: 16, padding: 12, alignItems: "center", borderWidth: 1, borderColor: AppColors.border, elevation: 2, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 4 }}>
-              <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: bg, alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
-                <Feather name={icon as any} size={20} color={fg} />
+      {/* Quick Actions */}
+      <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
+        <Text style={[s.sectionTitle, { fontSize: 15, fontWeight: "800", color: AppColors.text, marginBottom: 12 }]}>
+          Tác vụ nhanh
+        </Text>
+        <View style={[s.row, s.between, { marginBottom: 20 }]}>
+          {quickActions.map((qa) => (
+            <TouchableOpacity
+              key={qa.label}
+              onPress={() => onNavigate(qa.screen)}
+              activeOpacity={0.7}
+              style={{ alignItems: "center", width: "22%" }}
+            >
+              <View
+                style={{
+                  width: 54,
+                  height: 54,
+                  borderRadius: 16,
+                  backgroundColor: qa.bg,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 6,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 3,
+                  elevation: 2,
+                }}
+              >
+                <Feather name={qa.icon} size={22} color={qa.fg} />
               </View>
-              <Text style={{ fontSize: 10, fontWeight: "700", color: AppColors.textForeground, textAlign: "center" }}>{label}</Text>
+              <Text style={{ fontSize: 12, fontWeight: "700", color: AppColors.text, textAlign: "center" }}>
+                {qa.label}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <View>
-          <View style={[s.row, s.between, { marginBottom: 12 }]}>
-            <Text style={s.sectionTitle}>Cảnh báo</Text>
-            <Text style={s.sectionLink}>Xem tất cả</Text>
-          </View>
-          <View style={{ gap: 8 }}>
-            {ALERTS.map((a) => {
-              const m = alertMeta[a.type];
-              return (
-                <View key={a.id} style={[s.row, { padding: 12, borderRadius: 12, borderWidth: 1, backgroundColor: m.bg, borderColor: m.border, alignItems: "flex-start" }]}>
-                  <Feather name={m.icon as any} size={14} color={m.color} style={{ marginTop: 2 }} />
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={{ fontSize: 12, fontWeight: "600", color: AppColors.textForeground, lineHeight: 18 }}>{a.text}</Text>
-                    <Text style={{ fontSize: 10, color: AppColors.textMuted, marginTop: 2 }}>{a.time}</Text>
-                  </View>
+        {/* Thông báo khuôn viên */}
+        <View style={[s.row, s.between, { alignItems: "center", marginBottom: 10 }]}>
+          <Text style={[s.sectionTitle, { fontSize: 15, fontWeight: "800", color: AppColors.text }]}>
+            Thông báo & Cảnh báo
+          </Text>
+          <Text style={{ fontSize: 12, color: AppColors.primary, fontWeight: "700" }}>
+            {alerts.length} tin mới
+          </Text>
+        </View>
+
+        <View style={{ gap: 8, marginBottom: 20 }}>
+          {alerts.map((alert) => {
+            const meta = alertMeta[alert.type] || alertMeta.info;
+            return (
+              <View
+                key={alert.id}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  padding: 12,
+                  borderRadius: 14,
+                  backgroundColor: meta.bg,
+                  borderWidth: 1,
+                  borderColor: meta.border,
+                }}
+              >
+                <Feather name={meta.icon} size={16} color={meta.color} style={{ marginRight: 10 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, color: AppColors.text, fontWeight: "600" }}>{alert.text}</Text>
+                  <Text style={{ fontSize: 11, color: AppColors.textMuted, marginTop: 2 }}>{alert.time}</Text>
                 </View>
-              );
-            })}
-          </View>
+              </View>
+            );
+          })}
         </View>
 
-        <View>
-          <Text style={[s.sectionTitle, { marginBottom: 12 }]}>Tổng quan hôm nay</Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-            {stats.map(({ label, value, sub, icon, color }) => (
-              <View key={label} style={{ width: "47%", backgroundColor: AppColors.cardBg, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: AppColors.border, elevation: 2, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 4 }}>
-                <Feather name={icon as any} size={18} color={color} style={{ marginBottom: 8 }} />
-                <Text style={{ fontSize: 18, fontWeight: "900", color: AppColors.textForeground }}>{value}</Text>
-                <Text style={{ fontSize: 10, fontWeight: "700", color: AppColors.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 2 }}>{label}</Text>
-                <Text style={{ fontSize: 10, color: AppColors.textMuted }}>{sub}</Text>
+        {/* Trạng thái tiện ích cơ sở */}
+        <Text style={[s.sectionTitle, { fontSize: 15, fontWeight: "800", color: AppColors.text, marginBottom: 12 }]}>
+          Tiện ích khuôn viên
+        </Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 10, marginBottom: 30 }}>
+          {stats.map((st) => (
+            <View
+              key={st.label}
+              style={{
+                width: "48%",
+                padding: 14,
+                borderRadius: 16,
+                backgroundColor: AppColors.cardBg,
+                borderWidth: 1,
+                borderColor: AppColors.cardBorder,
+              }}
+            >
+              <View style={[s.row, s.between, { marginBottom: 8 }]}>
+                <Feather name={st.icon} size={18} color={st.color} />
+                <Text style={{ fontSize: 11, color: AppColors.textMuted, fontWeight: "500" }}>{st.sub}</Text>
               </View>
-            ))}
-          </View>
-        </View>
-
-        <View>
-          <View style={[s.row, s.between, { marginBottom: 12 }]}>
-            <Text style={s.sectionTitle}>Sự kiện sắp tới</Text>
-            <TouchableOpacity onPress={() => onNavigate("events")}><Text style={s.sectionLink}>Xem tất cả</Text></TouchableOpacity>
-          </View>
-          <TouchableOpacity onPress={() => onNavigate("events")} style={{ borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: AppColors.border }} activeOpacity={0.9}>
-            <Image source={{ uri: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=780&h=300&fit=crop" }} style={{ width: "100%", height: 128 }} resizeMode="cover" />
-            <LinearGradient colors={["transparent", "rgba(30,58,138,0.85)"]} style={{ ...StyleSheet.absoluteFillObject, justifyContent: "flex-end", padding: 16 }} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
-              <View style={{ backgroundColor: AppColors.accent, borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2, alignSelf: "flex-start", marginBottom: 4 }}>
-                <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>Công nghệ</Text>
-              </View>
-              <Text style={{ color: "#fff", fontWeight: "900", fontSize: 14 }}>Tech Innovation Summit 2025</Text>
-              <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 12 }}>5 Tháng 8 • Hội trường chính</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+              <Text style={{ fontSize: 18, fontWeight: "900", color: AppColors.text }}>{st.value}</Text>
+              <Text style={{ fontSize: 12, color: AppColors.textSecondary, marginTop: 2 }}>{st.label}</Text>
+            </View>
+          ))}
         </View>
       </View>
     </ScrollView>
   );
 }
+

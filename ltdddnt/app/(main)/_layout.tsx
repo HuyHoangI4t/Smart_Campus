@@ -5,18 +5,19 @@ export default function MainLayout() {
   return (
     <Tabs
       screenOptions={{ headerShown: false }}
-      tabBar={props => <CustomBottomNav
-        selectedIndex={props.state.index}
-        onDestinationSelected={(index) => props.navigation.navigate(props.state.routeNames[index])}
-      />}
+      tabBar={(props) => <CustomBottomNav {...props} />}
     >
-      <Tabs.Screen name="home/index" />
-      <Tabs.Screen name="map/index" />
-      <Tabs.Screen name="schedule/index" />
-      <Tabs.Screen name="grades/index" />
-      <Tabs.Screen name="profile/index" />
+      <Tabs.Screen name="home/index" options={{ title: 'Trang chủ' }} />
+      <Tabs.Screen name="map/index" options={{ title: 'Bản đồ' }} />
+      <Tabs.Screen name="schedule/index" options={{ title: 'Lịch học' }} />
+      <Tabs.Screen name="grades/index" options={{ title: 'Kết quả' }} />
+      <Tabs.Screen name="profile/index" options={{ title: 'Hồ sơ' }} />
       <Tabs.Screen name="feedback/index" options={{ href: null }} />
       <Tabs.Screen name="sos/index" options={{ href: null }} />
+      <Tabs.Screen name="grades/grades_detail" options={{ href: null }} />
+      <Tabs.Screen name="profile/change_password" options={{ href: null }} />
+      <Tabs.Screen name="test/index" options={{ href: null }} />
     </Tabs>
   );
 }
+

@@ -1,3 +1,4 @@
+// Campus & Utility Controller - Handled Feedback, SOS and Map locations
 const db = require('../config/db');
 
 // Helper to get mssv from request
