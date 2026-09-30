@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { AppColors } from "../../../src/constants/appColors";
@@ -97,7 +98,7 @@ export default function ScheduleScreen() {
   const filtered = scheduleList.filter((item) => item.dayNum === selectedDay);
 
   return (
-    <View style={{ flex: 1, backgroundColor: AppColors.background }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: AppColors.background }} edges={['top', 'left', 'right']}>
       <NavHeader
         title="Lịch học & Lịch thi"
         subtitle="Học kỳ 1 • Năm học 2025 - 2026"
@@ -133,7 +134,7 @@ export default function ScheduleScreen() {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 110 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {loading ? (
@@ -194,7 +195,7 @@ export default function ScheduleScreen() {
           </View>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

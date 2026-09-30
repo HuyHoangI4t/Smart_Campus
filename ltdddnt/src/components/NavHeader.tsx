@@ -46,7 +46,7 @@ export function NavHeader({
 
   const shouldShowBack = showBack || !!onBack;
   const headerBg = bg || backgroundColor || AppColors.primary;
-  const paddingTop = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 8 : Math.max(insets.top + 12, 20);
+  const paddingTop = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 14 : Math.max(insets.top + 16, 32);
 
   return (
     <View

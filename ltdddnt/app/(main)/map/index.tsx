@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { AppColors } from "../../../src/constants/appColors";
@@ -71,7 +72,7 @@ export default function MapScreen() {
   });
 
   return (
-    <View style={{ flex: 1, backgroundColor: AppColors.background }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: AppColors.background }} edges={['top', 'left', 'right']}>
       <NavHeader
         title="Bản đồ khuôn viên"
         subtitle="Tìm kiếm tòa nhà, phòng học và tiện ích"
@@ -163,7 +164,7 @@ export default function MapScreen() {
         </View>
       ) : null}
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 110 }}>
         <Text style={{ fontSize: 14, fontWeight: "800", color: AppColors.text, marginBottom: 10 }}>
           Danh sách địa điểm ({filtered.length})
         </Text>
@@ -221,7 +222,7 @@ export default function MapScreen() {
           </View>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
