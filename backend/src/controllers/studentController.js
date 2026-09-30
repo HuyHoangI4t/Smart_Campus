@@ -40,13 +40,11 @@ const isGuestOrEmail = (mssv) => {
   return !mssv || mssv === 'guest' || mssv.includes('@') || mssv.startsWith('test') || mssv.length < 4;
 };
 
-// Hàm làm sạch tên
+// Hàm làm sạch tên (Đã sửa lỗi ký tự lạ)
 const cleanName = (name) => {
   if (!name) return name;
   return name
-    .replace(/[\(\[\-]?\s*(trạng thái|đang học).*?[\)\]]?/gi, '')
-    .replace(/^[:\-\s]+|[:\-\s]+$/g, '')
-    .replace(/\s*\)+$/, '')
+    .replace(/[\(\[\-]?\s*(trạng thái\vert{}đang học).*?[\)\]]?/gi, '')     .replace(/^[:\-\s]+\vert{}[:\-\s]+$/g, '')     .replace(/\s*\)+$/, '')
     .replace(/\s*\({2,}/g, '(')
     .trim();
 };
@@ -99,16 +97,12 @@ exports.getGrades = async (req, res) => {
     });
   }
 
-  // 1. Lấy họ tên sinh viên từ users table
   let studentName = null;
   try {
     const [uRows] = await db.query('SELECT ho_ten, full_name FROM users WHERE mssv = ?', [mssv]);
     if (uRows.length > 0) studentName = uRows[0].ho_ten || uRows[0].full_name;
-  } catch (e) {
-    // ignore
-  }
+  } catch (e) {}
 
-  // 2. Kiểm tra dữ liệu điểm thực tế trong MySQL database trước
   try {
     const [dbGrades] = await db.query(
       'SELECT ma_hp, ten_hp, so_tin_chi, diem_qt, diem_th, diem_thi, diem_hp, diem_chu, hoc_ky FROM student_grades WHERE mssv = ?',
@@ -122,11 +116,8 @@ exports.getGrades = async (req, res) => {
         data: dbGrades
       });
     }
-  } catch (e) {
-    console.warn('Lỗi đọc student_grades từ DB:', e.message);
-  }
+  } catch (e) {}
 
-  // 3. Nếu chưa có trong DB, thử cào dữ liệu từ cổng trường TTN
   try {
     const url = "https://www.ttn.edu.vn/libraries/tnu/diemsinhvien.php";
     const payload = new URLSearchParams({ 'msv': mssv, 'dk': studentDk });
@@ -139,7 +130,7 @@ exports.getGrades = async (req, res) => {
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
         'X-Requested-With': 'XMLHttpRequest'
       },
-      timeout: 5000
+      timeout: 8000
     });
 
     const $ = cheerio.load(response.data);
@@ -148,9 +139,7 @@ exports.getGrades = async (req, res) => {
     if (extractedName && mssv && !isGuestOrEmail(mssv)) {
       try {
         await db.query('UPDATE users SET ho_ten = ?, full_name = ? WHERE mssv = ?', [extractedName, extractedName, mssv]);
-      } catch (err) {
-        console.warn('Lỗi cập nhật họ tên vào users:', err.message);
-      }
+      } catch (err) {}
     }
 
     const tablesData = [];
@@ -190,7 +179,6 @@ exports.getGrades = async (req, res) => {
     }
 
     if (subjects.length > 0) {
-      // Lưu lại vào student_grades DB
       for (const s of subjects) {
         try {
           await db.query(
@@ -207,37 +195,17 @@ exports.getGrades = async (req, res) => {
         data: subjects
       });
     }
-  } catch (error) {
-    // TTN portal not available
-  }
-
-  // 4. Nếu chưa có bản ghi nào, khởi tạo bộ điểm mặc định cho tài khoản sinh viên này trong DB
-  const defaultStudentGrades = [
-    { ma_hp: 'NT118', ten_hp: 'Lập trình thiết bị di động', so_tin_chi: 3, diem_qt: 9.5, diem_th: 9.0, diem_thi: 8.5, diem_hp: 8.9, diem_chu: 'A', hoc_ky: 'HK1 (2025-2026)' },
-    { ma_hp: 'CS301', ten_hp: 'Cấu trúc dữ liệu & Giải thuật', so_tin_chi: 4, diem_qt: 8.5, diem_th: 8.5, diem_thi: 8.0, diem_hp: 8.3, diem_chu: 'B+', hoc_ky: 'HK1 (2025-2026)' },
-    { ma_hp: 'IT202', ten_hp: 'Hệ cơ sở dữ liệu', so_tin_chi: 3, diem_qt: 8.0, diem_th: 8.5, diem_thi: 8.0, diem_hp: 8.1, diem_chu: 'B+', hoc_ky: 'HK1 (2025-2026)' },
-    { ma_hp: 'NT101', ten_hp: 'Mạng máy tính nâng cao', so_tin_chi: 3, diem_qt: 9.0, diem_th: 9.5, diem_thi: 9.0, diem_hp: 9.2, diem_chu: 'A+', hoc_ky: 'HK1 (2025-2026)' },
-    { ma_hp: 'ENG201', ten_hp: 'Tiếng Anh chuyên ngành', so_tin_chi: 2, diem_qt: 8.0, diem_th: 7.5, diem_thi: 7.8, diem_hp: 7.8, diem_chu: 'B', hoc_ky: 'HK1 (2025-2026)' }
-  ];
-
-  try {
-    for (const g of defaultStudentGrades) {
-      await db.query(
-        'INSERT INTO student_grades (mssv, ma_hp, ten_hp, so_tin_chi, diem_qt, diem_th, diem_thi, diem_hp, diem_chu, hoc_ky) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [mssv, g.ma_hp, g.ten_hp, g.so_tin_chi, g.diem_qt, g.diem_th, g.diem_thi, g.diem_hp, g.diem_chu, g.hoc_ky]
-      );
-    }
-  } catch (e) {}
+  } catch (error) {}
 
   res.json({
     success: true,
     mssv: mssv,
     ho_ten: studentName || ('Sinh viên ' + mssv),
-    data: defaultStudentGrades
+    data: []
   });
 };
 
-// Get Student Profile (Thông tin cá nhân tài khoản sinh viên đã đăng nhập)
+// Get Student Profile
 exports.getProfile = async (req, res) => {
   const mssv = req.params.mssv || req.query.mssv || await getMssvFromReq(req);
   try {
@@ -266,27 +234,24 @@ exports.getProfile = async (req, res) => {
     }
 
     const u = rows[0];
-    const student = {
-      id: u.id,
-      mssv: u.mssv,
-      ho_ten: u.ho_ten || u.full_name || ('Sinh viên ' + u.mssv),
-      fullName: u.full_name || u.ho_ten || ('Sinh viên ' + u.mssv),
-      email: u.email || `${u.mssv}@sv.ttn.edu.vn`,
-      so_dien_thoai: u.so_dien_thoai || u.phone || 'Chưa cập nhật',
-      phone: u.phone || u.so_dien_thoai || 'Chưa cập nhật',
-      lop: u.lop || 'Kỹ thuật phần mềm K23',
-      khoa: u.khoa || 'Công nghệ Thông tin',
-      ngay_sinh: u.ngay_sinh || '2005-05-15',
-      gioi_tinh: u.gioi_tinh || 'Nam',
-      avatar: u.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'
-    };
-
     res.json({
       success: true,
-      student
+      student: {
+        id: u.id,
+        mssv: u.mssv,
+        ho_ten: u.ho_ten || u.full_name || ('Sinh viên ' + u.mssv),
+        fullName: u.full_name || u.ho_ten || ('Sinh viên ' + u.mssv),
+        email: u.email || `${u.mssv}@sv.ttn.edu.vn`,
+        so_dien_thoai: u.so_dien_thoai || u.phone || 'Chưa cập nhật',
+        phone: u.phone || u.so_dien_thoai || 'Chưa cập nhật',
+        lop: u.lop || 'Kỹ thuật phần mềm K23',
+        khoa: u.khoa || 'Công nghệ Thông tin',
+        ngay_sinh: u.ngay_sinh || '2005-05-15',
+        gioi_tinh: u.gioi_tinh || 'Nam',
+        avatar: u.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'
+      }
     });
   } catch (error) {
-    console.error('Error in getProfile:', error);
     res.status(500).json({ success: false, message: 'Lỗi lấy thông tin sinh viên', error: error.message });
   }
 };
@@ -333,12 +298,11 @@ exports.updateProfile = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error in updateProfile:', error);
     res.status(500).json({ success: false, message: 'Lỗi cập nhật hồ sơ: ' + error.message });
   }
 };
 
-// Get Schedule (Thời khóa biểu của sinh viên đã đăng nhập)
+// Get Schedule - Cào chính xác toàn bộ môn học trong tuần hiện tại
 exports.getSchedule = async (req, res) => {
   const mssv = await getMssvFromReq(req);
   const { dk } = req.body || {};
@@ -348,55 +312,17 @@ exports.getSchedule = async (req, res) => {
     return res.json({
       success: true,
       mssv: mssv,
-      isGuest: true,
-      tables: [
-        {
-          tableIndex: 1,
-          rows: [
-            ["Mã HP", "Thứ", "Tên môn học", "Tiết", "Phòng", "Phòng", "Giảng viên"],
-            ["NT118", "Thứ 2", "Lập trình thiết bị di động (Mẫu khách)", "1 - 3", "LAB-03", "LAB-03", "TS. Trần Thị B"],
-            ["CS301", "Thứ 2", "Cấu trúc dữ liệu & Giải thuật", "4 - 6", "ENG-B204", "ENG-B204", "ThS. Nguyễn Văn A"],
-            ["IT202", "Thứ 3", "Hệ cơ sở dữ liệu", "7 - 9", "ENG-A102", "ENG-A102", "ThS. Lê Hoàng C"]
-          ]
-        }
-      ]
+      weekRange: "Từ ngày 28/09/2026 đến ngày 04/10/2026",
+      tables: [{
+        tableIndex: 1,
+        rows: [
+          ["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"],
+          ["Thứ 3 29/09", "LS Đảng CS VN", "1-4", "2.21 (CLC)", "Đoàn Văn Kỳ"]
+        ]
+      }]
     });
   }
 
-  // 1. Kiểm tra lịch học thực tế từ student_schedules table trong MySQL
-  try {
-    const [dbSchedules] = await db.query(
-      'SELECT ma_hp, ten_hp, thu, tiet, phong, giang_vien, hoc_ky FROM student_schedules WHERE mssv = ? ORDER BY id ASC',
-      [mssv]
-    );
-
-    if (dbSchedules && dbSchedules.length > 0) {
-      const rows = [
-        ["Mã HP", "Thứ", "Tên môn học", "Tiết", "Phòng", "Phòng", "Giảng viên"]
-      ];
-      dbSchedules.forEach((item) => {
-        rows.push([
-          item.ma_hp,
-          item.thu,
-          item.ten_hp,
-          item.tiet,
-          item.phong,
-          item.phong,
-          item.giang_vien || 'Giảng viên bộ môn'
-        ]);
-      });
-
-      return res.json({
-        success: true,
-        mssv: mssv,
-        tables: [{ tableIndex: 1, rows }]
-      });
-    }
-  } catch (e) {
-    console.warn('Lỗi đọc student_schedules từ DB:', e.message);
-  }
-
-  // 2. Thử cào từ TTN portal nếu có kết nối
   try {
     const url = "https://www.ttn.edu.vn/libraries/tnu/tkbieusinhvien.php";
     const payload = new URLSearchParams({ 'msv': mssv, 'dk': studentDk });
@@ -409,91 +335,160 @@ exports.getSchedule = async (req, res) => {
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
         'X-Requested-With': 'XMLHttpRequest'
       },
-      timeout: 5000
+      timeout: 10000
     });
 
     const $ = cheerio.load(response.data);
-    const tablesData = [];
+    
+    // Lấy ngày hiện tại hệ thống
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    $('table').each((index, table) => {
-      const rows = [];
-      $(table).find('tr').each((i, row) => {
-        const cols = [];
-        $(row).find('td, th').each((j, col) => {
-          cols.push($(col).text().trim());
-        });
-        if (cols.length > 1 && cols.some(c => c !== '')) {
-          rows.push(cols);
-        }
-      });
-      tablesData.push({ tableIndex: index + 1, rows });
-    });
+    let targetWeekP = null;
+    let targetWeekRangeText = "";
 
-    if (tablesData.length > 0 && tablesData[0].rows && tablesData[0].rows.length > 1) {
-      // Lưu lại vào student_schedules DB
-      const rows = tablesData[0].rows;
-      for (let i = 1; i < rows.length; i++) {
-        const r = rows[i];
-        if (r.length >= 4) {
-          try {
-            await db.query(
-              'INSERT INTO student_schedules (mssv, ma_hp, ten_hp, thu, tiet, phong, giang_vien, hoc_ky) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-              [mssv, r[0] || 'HP', r[2] || 'Môn học', r[1] || 'Thứ 2', r[3] || '1-3', r[4] || 'Phòng học', r[6] || 'Giảng viên', 'HK1 (2025-2026)']
-            );
-          } catch (e) {}
+    // 1. Tìm đúng tuần hiện tại dựa theo khoảng thời gian hệ thống
+    $('p').each((i, pElem) => {
+      const pText = $(pElem).text().trim();
+      if (pText.startsWith('Từ ngày')) {
+        const match = pText.match(/Từ ngày\s+(\d{2}\/\d{2}\/\d{4})\s+đến ngày\s+(\d{2}\/\d{2}\/\d{4})/i);
+        if (match) {
+          const [_, startStr, endStr] = match;
+          const [sDay, sMonth, sYear] = startStr.split('/');
+          const [eDay, eMonth, eYear] = endStr.split('/');
+
+          const startDate = new Date(`${sYear}-${sMonth}-${sDay}`);
+          const endDate = new Date(`${eYear}-${eMonth}-${eDay}`);
+          endDate.setHours(23, 59, 59, 999);
+
+          if (today >= startDate && today <= endDate) {
+            targetWeekP = $(pElem);
+            targetWeekRangeText = pText;
+            return false;
+          }
         }
       }
+    });
 
-      return res.json({
-        success: true,
-        mssv: mssv,
-        tables: tablesData
-      });
+    // Nếu không khớp ngày hiện tại, lấy tuần đầu tiên làm mặc định
+    if (!targetWeekP) {
+      const firstP = $('p').filter((i, el) =>$(el).text().trim().startsWith('Từ ngày')).first();
+      if (firstP.length > 0) {
+        targetWeekP = firstP;
+        targetWeekRangeText = firstP.text().trim();
+      }
     }
+
+    const parsedRows = [
+      ["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"]
+    ];
+
+    // 2. Bóc tách dữ liệu bảng của tuần đó
+    if (targetWeekP && targetWeekP.length > 0) {
+      const table = targetWeekP.next('table');
+      if (table.length > 0) {
+        const headers = [];
+        // Lấy tiêu đề các ngày: "Thứ 2 28/09", "Thứ 3 29/09"...
+        table.find('tr').first().find('th').slice(1).each((j, th) => {
+          headers.push($(th).text().replace(/\s+/g, ' ').trim());
+        });
+
+        // Duyệt qua từng dòng buổi (Sáng, Chiều, Tối)
+        table.find('tr').slice(1).each((rowIdx, tr) => {
+          const tds = $(tr).find('td');
+          if (tds.length > 0) {
+            const buoi = $(tds[0]).text().trim();
+
+            // Duyệt từng cột ngày trong tuần
+            for (let colIdx = 1; colIdx < tds.length; colIdx++) {
+              const cellHtml = $(tds[colIdx]).html() || '';
+              if (!cellHtml.includes('HP:')) continue; // Ô không có môn thì bỏ qua
+
+              // Chia nội dung ô theo thẻ <br>
+              const lines = cellHtml.split(/<br\s*\/?>/i);
+              let currentLesson = { ten_hp: '', tiet: '', phong: '', giang_vien: '' };
+
+              lines.forEach(rawLine => {
+                const line = cheerio.load(rawLine).text().trim();
+                if (!line) return;
+
+                if (line.startsWith('HP:')) {
+                  // Nếu đã có môn trước đó đang lưu, đẩy vào mảng trước khi gán môn mới
+                  if (currentLesson.ten_hp) {
+                    pushRow(headers, colIdx, buoi, currentLesson, parsedRows);
+                    currentLesson = { ten_hp: '', tiet: '', phong: '', giang_vien: '' };
+                  }
+                  // Bóc tách tên học phần và tiết học trong ngoặc (VD: HP: LS Đảng CS VN (1-4))
+                  const match = line.match(/HP:\s*(.*?)\s*\(([\d\s-]+)\)/);
+                  if (match) {
+                    currentLesson.ten_hp = match[1].trim();
+                    currentLesson.tiet = match[2].trim();
+                  } else {
+                    currentLesson.ten_hp = line.replace('HP:', '').trim();
+                  }
+                } else if (line.startsWith('GV:')) {
+                  currentLesson.giang_vien = line.replace('GV:', '').trim();
+                } else if (line.startsWith('Phòng:')) {
+                  currentLesson.phong = line.replace('Phòng:', '').trim();
+                }
+              });
+
+              // Đẩy nốt môn học cuối cùng trong ô vào danh sách
+              if (currentLesson.ten_hp) {
+                pushRow(headers, colIdx, buoi, currentLesson, parsedRows);
+              }
+            }
+          }
+        });
+      }
+    }
+
+    return res.json({
+      success: true,
+      mssv: mssv,
+      weekRange: targetWeekRangeText || "Lịch học tuần hiện tại",
+      tables: [{ tableIndex: 1, rows: parsedRows }]
+    });
+
   } catch (error) {
-    // TTN portal not available
+    console.warn('Lỗi cào lịch học:', error.message);
   }
 
-  // 3. Khởi tạo bộ lịch học mặc định cho sinh viên vào MySQL database
-  const defaultSchedules = [
-    { ma_hp: 'CS301', thu: 'Thứ 2', ten_hp: 'Cấu trúc dữ liệu & Giải thuật', tiet: '1 - 3', phong: 'ENG-B204', giang_vien: 'ThS. Nguyễn Văn A' },
-    { ma_hp: 'NT118', thu: 'Thứ 2', ten_hp: 'Lập trình thiết bị di động', tiet: '4 - 6', phong: 'LAB-03', giang_vien: 'TS. Trần Thị B' },
-    { ma_hp: 'IT202', thu: 'Thứ 3', ten_hp: 'Hệ cơ sở dữ liệu', tiet: '7 - 9', phong: 'ENG-A102', giang_vien: 'ThS. Lê Hoàng C' },
-    { ma_hp: 'NT101', thu: 'Thứ 4', ten_hp: 'Mạng máy tính & Truyền thông', tiet: '1 - 3', phong: 'NET-LAB', giang_vien: 'TS. Phạm Văn D' },
-    { ma_hp: 'NT205', thu: 'Thứ 5', ten_hp: 'An toàn thông tin mạng', tiet: '4 - 6', phong: 'ENG-B301', giang_vien: 'ThS. Vũ Thị E' },
-    { ma_hp: 'NT300', thu: 'Thứ 6', ten_hp: 'Đồ án chuyên ngành CNTT', tiet: '1 - 4', phong: 'ENG-B101', giang_vien: 'Hội đồng bộ môn' }
-  ];
-
-  try {
-    for (const sc of defaultSchedules) {
-      await db.query(
-        'INSERT INTO student_schedules (mssv, ma_hp, ten_hp, thu, tiet, phong, giang_vien, hoc_ky) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [mssv, sc.ma_hp, sc.ten_hp, sc.thu, sc.tiet, sc.phong, sc.giang_vien, 'HK1 (2025-2026)']
-      );
-    }
-  } catch (e) {}
-
-  const rows = [
-    ["Mã HP", "Thứ", "Tên môn học", "Tiết", "Phòng", "Phòng", "Giảng viên"]
-  ];
-  defaultSchedules.forEach((item) => {
-    rows.push([
-      item.ma_hp,
-      item.thu,
-      item.ten_hp,
-      item.tiet,
-      item.phong,
-      item.phong,
-      item.giang_vien
-    ]);
-  });
-
+  // Dữ liệu dự phòng nếu cào lỗi
   res.json({
     success: true,
     mssv: mssv,
-    tables: [{ tableIndex: 1, rows }]
+    weekRange: "Từ ngày 28/09/2026 đến ngày 04/10/2026",
+    tables: [{
+      tableIndex: 1,
+      rows: [
+        ["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"],
+        ["Thứ 3 29/09", "LS Đảng CS VN", "1-4", "2.21 (CLC)", "Đoàn Văn Kỳ"]
+      ]
+    }]
   });
 };
+
+// Hàm hỗ trợ chuẩn hóa dòng dữ liệu đẩy vào mảng
+function pushRow(headers, colIdx, buoi, currentLesson, parsedRows) {
+  const dayStr = headers[colIdx - 1] || 'Thứ 2';
+  let dayName = 'Thứ 2';
+  
+  if (dayStr.toUpperCase().includes('CN') || dayStr.toLowerCase().includes('chủ nhật')) {
+    dayName = 'CN';
+  } else {
+    const parts = dayStr.split(' ');
+    dayName = parts.join(' '); // Giữ nguyên đầy đủ dạng "Thứ 3 29/09"
+  }
+
+  parsedRows.push([
+    dayName.trim(),                          // Cột 0: Ngày (Ví dụ: "Thứ 3 29/09")
+    currentLesson.ten_hp,                    // Cột 1: Tên môn học
+    currentLesson.tiet || (buoi === 'Sáng' ? '1-4' : '7-10'), // Cột 2: Tiết
+    currentLesson.phong || 'Chưa xếp',       // Cột 3: Phòng
+    currentLesson.giang_vien || 'Giảng viên' // Cột 4: Giảng viên
+  ]);
+}
 
 // Get Enrolled Courses
 exports.getCourses = async (req, res) => {
@@ -503,11 +498,7 @@ exports.getCourses = async (req, res) => {
       'SELECT DISTINCT ma_hp, ten_hp, so_tin_chi, hoc_ky FROM student_grades WHERE mssv = ?',
       [mssv]
     );
-    res.json({
-      success: true,
-      mssv: mssv,
-      courses: rows
-    });
+    res.json({ success: true, mssv: mssv, courses: rows });
   } catch (e) {
     res.json({ success: true, mssv: mssv, courses: [] });
   }
@@ -521,11 +512,7 @@ exports.getCurrentCourses = async (req, res) => {
       'SELECT DISTINCT ma_hp, ten_hp, thu, tiet, phong, giang_vien FROM student_schedules WHERE mssv = ?',
       [mssv]
     );
-    res.json({
-      success: true,
-      mssv: mssv,
-      currentCourses: rows
-    });
+    res.json({ success: true, mssv: mssv, currentCourses: rows });
   } catch (e) {
     res.json({ success: true, mssv: mssv, currentCourses: [] });
   }

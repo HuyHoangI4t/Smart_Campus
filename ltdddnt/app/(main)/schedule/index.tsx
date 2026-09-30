@@ -21,12 +21,12 @@ interface ScheduleItem {
 }
 
 const FALLBACK_SCHEDULE: ScheduleItem[] = [
-  { id: '1', course: "Cấu trúc dữ liệu & Giải thuật", code: "CS301", room: "ENG-B204", time: "08:00 – 09:30", day: "Thứ 2", dayNum: 2, lecturer: "ThS. Nguyễn Văn A" },
-  { id: '2', course: "Lập trình thiết bị di động", code: "NT118", room: "LAB-03", time: "09:45 – 11:15", day: "Thứ 2", dayNum: 2, lecturer: "TS. Trần Thị B" },
-  { id: '3', course: "Hệ cơ sở dữ liệu", code: "IT202", room: "ENG-A102", time: "13:30 – 15:00", day: "Thứ 3", dayNum: 3, lecturer: "ThS. Lê Hoàng C" },
-  { id: '4', course: "Mạng máy tính & Truyền thông", code: "NT101", room: "NET-LAB", time: "08:00 – 10:15", day: "Thứ 4", dayNum: 4, lecturer: "TS. Phạm Văn D" },
-  { id: '5', course: "An toàn thông tin mạng", code: "NT205", room: "ENG-B301", time: "10:30 – 12:00", day: "Thứ 5", dayNum: 5, lecturer: "ThS. Vũ Thị E" },
-  { id: '6', course: "Đồ án chuyên ngành", code: "NT300", room: "ENG-B101", time: "08:00 – 11:30", day: "Thứ 6", dayNum: 6, lecturer: "Hội đồng bộ môn" },
+  { id: '1', course: "Cấu trúc dữ liệu & Giải thuật", code: "Thứ 2 28/09", room: "ENG-B204", time: "08:00 – 09:30", day: "Thứ 2", dayNum: 2, lecturer: "ThS. Nguyễn Văn A" },
+  { id: '2', course: "Lập trình thiết bị di động", code: "Thứ 2 28/09", room: "LAB-03", time: "09:45 – 11:15", day: "Thứ 2", dayNum: 2, lecturer: "TS. Trần Thị B" },
+  { id: '3', course: "Hệ cơ sở dữ liệu", code: "Thứ 3 29/09", room: "ENG-A102", time: "13:30 – 15:00", day: "Thứ 3", dayNum: 3, lecturer: "ThS. Lê Hoàng C" },
+  { id: '4', course: "Mạng máy tính & Truyền thông", code: "Thứ 4 30/09", room: "NET-LAB", time: "08:00 – 10:15", day: "Thứ 4", dayNum: 4, lecturer: "TS. Phạm Văn D" },
+  { id: '5', course: "An toàn thông tin mạng", code: "Thứ 5 01/10", room: "ENG-B301", time: "10:30 – 12:00", day: "Thứ 5", dayNum: 5, lecturer: "ThS. Vũ Thị E" },
+  { id: '6', course: "Đồ án chuyên ngành", code: "Thứ 6 02/10", room: "ENG-B101", time: "08:00 – 11:30", day: "Thứ 6", dayNum: 6, lecturer: "Hội đồng bộ môn" },
 ];
 
 const DAYS = [
@@ -36,6 +36,7 @@ const DAYS = [
   { label: "Thứ 5", num: 5 },
   { label: "Thứ 6", num: 6 },
   { label: "Thứ 7", num: 7 },
+  { label: "CN", num: 1 },
 ];
 
 export default function ScheduleScreen() {
@@ -45,6 +46,7 @@ export default function ScheduleScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [scheduleList, setScheduleList] = useState<ScheduleItem[]>(FALLBACK_SCHEDULE);
   const [studentInfo, setStudentInfo] = useState<{ mssv: string; name: string }>({ mssv: "", name: "" });
+  const [weekRangeText, setWeekRangeText] = useState("Từ ngày 28/09/2026 đến ngày 04/10/2026");
 
   const fetchSchedule = async () => {
     try {
@@ -60,39 +62,51 @@ export default function ScheduleScreen() {
 
       const isRealAccount = mssv && mssv !== "guest";
       const res = await apiGetSchedule(isRealAccount ? mssv : undefined);
-      if (res && res.success && res.tables && res.tables.length > 0) {
-        const rows = res.tables[0].rows || [];
-        if (rows.length > 1) {
-          const parsed: ScheduleItem[] = [];
-          rows.slice(1).forEach((r: string[], idx: number) => {
-            if (r.length >= 4) {
-              const dayStr = r[1] || "";
-              let dayNum = 2;
-              if (dayStr.includes("3") || dayStr.toLowerCase().includes("ba")) dayNum = 3;
-              else if (dayStr.includes("4") || dayStr.toLowerCase().includes("tư")) dayNum = 4;
-              else if (dayStr.includes("5") || dayStr.toLowerCase().includes("năm")) dayNum = 5;
-              else if (dayStr.includes("6") || dayStr.toLowerCase().includes("sáu")) dayNum = 6;
-              else if (dayStr.includes("7") || dayStr.toLowerCase().includes("bảy")) dayNum = 7;
+      
+      if (res && res.success) {
+        if (res.weekRange) {
+          setWeekRangeText(res.weekRange);
+        }
 
-              parsed.push({
-                id: `sc-${idx}`,
-                course: r[2] || "Môn học",
-                code: r[0] || `HP-${idx + 1}`,
-                time: r[3] ? `Tiết ${r[3]}` : "Ca học tiêu chuẩn",
-                room: r[5] || r[4] || "Khu giảng đường",
-                day: `Thứ ${dayNum}`,
-                dayNum,
-                lecturer: r[6] || "Giảng viên bộ môn",
-              });
+        if (res.tables && res.tables.length > 0) {
+          const rows = res.tables[0].rows || [];
+          if (rows.length > 1) {
+            const parsed: ScheduleItem[] = [];
+            rows.slice(1).forEach((r: string[], idx: number) => {
+              if (r.length >= 5) {
+                const dayStr = r[0] || "";
+                let dayNum = 2;
+                
+                const lowerDay = dayStr.toLowerCase();
+                if (lowerDay.startsWith("thứ 3") || lowerDay.includes("thứ ba")) dayNum = 3;
+                else if (lowerDay.startsWith("thứ 4") || lowerDay.includes("thứ tư")) dayNum = 4;
+                else if (lowerDay.startsWith("thứ 5") || lowerDay.includes("thứ năm")) dayNum = 5;
+                else if (lowerDay.startsWith("thứ 6") || lowerDay.includes("thứ sáu")) dayNum = 6;
+                else if (lowerDay.startsWith("thứ 7") || lowerDay.includes("thứ bảy")) dayNum = 7;
+                else if (lowerDay.includes("cn") || lowerDay.includes("chủ nhật")) dayNum = 1;
+                else if (lowerDay.startsWith("thứ 2") || lowerDay.includes("thứ hai")) dayNum = 2;
+
+                parsed.push({
+                  id: `sc-${idx}`,
+                  course: r[1] || "Môn học",
+                  code: dayStr,
+                  time: r[2] ? `Tiết ${r[2]}` : "Ca học tiêu chuẩn",
+                  room: r[3] || "Khu giảng đường",
+                  day: dayStr,
+                  dayNum,
+                  lecturer: r[4] || "Giảng viên bộ môn",
+                });
+              }
+            });
+            
+            if (parsed.length > 0) {
+              setScheduleList(parsed);
             }
-          });
-          if (parsed.length > 0) {
-            setScheduleList(parsed);
           }
         }
       }
-    } catch {
-      // Keep fallbacks
+    } catch (error) {
+      console.warn("Lỗi tải thời khóa biểu:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -111,8 +125,8 @@ export default function ScheduleScreen() {
   const filtered = scheduleList.filter((item) => item.dayNum === selectedDay);
 
   const subtitle = studentInfo.mssv && studentInfo.mssv !== "guest"
-    ? `Lịch học của ${studentInfo.name || studentInfo.mssv} (${studentInfo.mssv})`
-    : "Từ ngày 28/09/2026 đến ngày 04/10/2026";
+    ? `${weekRangeText}`
+    : weekRangeText;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: AppColors.background }} edges={['top', 'left', 'right']}>
@@ -123,7 +137,6 @@ export default function ScheduleScreen() {
         onBack={() => router.push("/(main)/home")}
       />
 
-      {/* Days selector */}
       <View style={{ paddingVertical: 12, backgroundColor: AppColors.cardBg, borderBottomWidth: 1, borderColor: AppColors.cardBorder }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
           {DAYS.map((d) => {
@@ -215,4 +228,3 @@ export default function ScheduleScreen() {
     </SafeAreaView>
   );
 }
-
