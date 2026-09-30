@@ -7,11 +7,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
-import { apiGetSchedule, apiGetNotifications } from "../../../src/services/api";
+import { apiGetSchedule, apiGetNotifications, apiGetProfile } from "../../../src/services/api";
 
 interface StudentInfo {
   mssv?: string;
   ho_ten?: string;
+  fullName?: string;
+  email?: string;
   lop?: string;
   khoa?: string;
 }
@@ -31,9 +33,8 @@ const DEFAULT_ALERTS: AlertItem[] = [
 
 export default function HomeScreen() {
   const router = useRouter();
-  //const insets = useSafeAreaInsets();
 
-  const [student, setStudent] = useState<StudentInfo>({ ho_ten: "Sinh viên", mssv: "" });
+  const [student, setStudent] = useState<StudentInfo>({ ho_ten: "Đang tải...", mssv: "" });
   const [nextClass, setNextClass] = useState<any>(null);
   const [alerts, setAlerts] = useState<AlertItem[]>(DEFAULT_ALERTS);
   const [refreshing, setRefreshing] = useState(false);
@@ -41,14 +42,43 @@ export default function HomeScreen() {
   const loadData = async () => {
     try {
       const userStr = await AsyncStorage.getItem("@auth_user");
+      let currentUser: any = {};
       if (userStr) {
-        const parsed = JSON.parse(userStr);
-        setStudent(parsed);
+        currentUser = JSON.parse(userStr);
+        setStudent({
+          mssv: currentUser.mssv || "",
+          ho_ten: currentUser.ho_ten || currentUser.fullName || currentUser.full_name || "Sinh viên",
+          fullName: currentUser.fullName || currentUser.ho_ten || currentUser.full_name || "Sinh viên",
+          email: currentUser.email,
+          lop: currentUser.lop,
+          khoa: currentUser.khoa,
+        });
       }
 
-      // Load schedule for next class preview
-      const scheduleRes = await apiGetSchedule();
-      if (scheduleRes && scheduleRes.success && scheduleRes.tables) {
+      const mssv = currentUser.mssv || currentUser.masv;
+      const isRealAccount = mssv && mssv !== "guest";
+
+      // Nếu là tài khoản đăng nhập (không tính khách), đồng bộ dữ liệu thật từ API Profile
+      if (isRealAccount) {
+        const profileRes = await apiGetProfile(mssv);
+        if (profileRes && profileRes.success && profileRes.student) {
+          const s = profileRes.student;
+          const merged: StudentInfo = {
+            mssv: s.mssv || mssv,
+            ho_ten: s.ho_ten || s.fullName || currentUser.ho_ten || "Sinh viên",
+            fullName: s.fullName || s.ho_ten || currentUser.fullName || "Sinh viên",
+            email: s.email || currentUser.email,
+            lop: s.lop || currentUser.lop || "Kỹ thuật phần mềm K23",
+            khoa: s.khoa || currentUser.khoa || "Công nghệ Thông tin",
+          };
+          setStudent(merged);
+          await AsyncStorage.setItem("@auth_user", JSON.stringify({ ...currentUser, ...merged }));
+        }
+      }
+
+      // Load schedule for next class preview (dựa theo MSSV của tài khoản)
+      const scheduleRes = await apiGetSchedule(isRealAccount ? mssv : undefined);
+      if (scheduleRes && scheduleRes.success && scheduleRes.tables && scheduleRes.tables.length > 0) {
         const rows = scheduleRes.tables[0]?.rows || [];
         if (rows.length > 1) {
           const firstRow = rows[1];
@@ -127,10 +157,10 @@ export default function HomeScreen() {
         <View style={[s.row, s.between, { marginBottom: 16 }]}>
           <View>
             <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 }}>
-              Xin chào {student.mssv ? `• ${student.mssv}` : ""}
+              {student.mssv && student.mssv !== "guest" ? `Sinh viên • ${student.mssv}` : "Khách tham quan"}
             </Text>
             <Text style={{ color: "#fff", fontSize: 22, fontWeight: "900", marginTop: 2 }}>
-              {student.ho_ten || "Sinh viên"} 
+              {student.ho_ten || student.fullName || "Sinh viên"} 
             </Text>
           </View>
           <View style={s.row}>

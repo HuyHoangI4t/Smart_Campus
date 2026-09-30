@@ -30,18 +30,33 @@ export default function GradesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [grades, setGrades] = useState<CourseGrade[]>(FALLBACK_GRADES);
+  const [studentInfo, setStudentInfo] = useState<{ mssv: string; name: string }>({ mssv: "", name: "" });
 
   const fetchGrades = async () => {
     try {
-      const res = await apiGetGrades();
+      const userStr = await AsyncStorage.getItem("@auth_user");
+      let mssv = "";
+      let name = "";
+      if (userStr) {
+        const u = JSON.parse(userStr);
+        mssv = u.mssv || u.masv || "";
+        name = u.ho_ten || u.fullName || "";
+        setStudentInfo({ mssv, name });
+      }
+
+      const isRealAccount = mssv && mssv !== "guest";
+      const res = await apiGetGrades(isRealAccount ? mssv : undefined);
       if (res && res.success && res.data && res.data.length > 0) {
+        if (res.ho_ten && (!name || name === "Sinh viên")) {
+          setStudentInfo((prev) => ({ ...prev, name: res.ho_ten }));
+        }
         const parsed: CourseGrade[] = res.data.map((item: any, idx: number) => ({
           code: item.ma_hp || item.code || `HP-${idx + 1}`,
           name: item.ten_hp || item.name || "Học phần",
           credits: Number(item.so_tin_chi || item.credits || 3),
           grade10: Number(item.diem_hp || item.grade10 || 8.0),
           gradeLetter: item.diem_chu || (item.diem_hp >= 8.5 ? "A" : item.diem_hp >= 7.0 ? "B" : "C"),
-          semester: item.hoc_ky || "HK Hiện tại",
+          semester: item.hoc_ky || "HK1 (2025-2026)",
         }));
         setGrades(parsed);
       }
@@ -75,11 +90,15 @@ export default function GradesScreen() {
     return { bg: "#FEF2F2", text: "#DC2626", border: "#FECACA" };
   };
 
+  const subtitle = studentInfo.mssv && studentInfo.mssv !== "guest"
+    ? `Bảng điểm của ${studentInfo.name || studentInfo.mssv} (${studentInfo.mssv})`
+    : "Tra cứu điểm thi & Điểm tích lũy";
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: AppColors.background }} edges={['top', 'left', 'right']}>
       <NavHeader
         title="Kết quả học tập"
-        subtitle="Tra cứu điểm thi & Điểm tích lũy"
+        subtitle={subtitle}
         showBack={true}
         onBack={() => router.push("/(main)/home")}
         rightElement={

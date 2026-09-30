@@ -7,6 +7,7 @@ import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
 import { apiGetSchedule } from "../../../src/services/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface ScheduleItem {
   id: string | number;
@@ -43,10 +44,22 @@ export default function ScheduleScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [scheduleList, setScheduleList] = useState<ScheduleItem[]>(FALLBACK_SCHEDULE);
+  const [studentInfo, setStudentInfo] = useState<{ mssv: string; name: string }>({ mssv: "", name: "" });
 
   const fetchSchedule = async () => {
     try {
-      const res = await apiGetSchedule();
+      const userStr = await AsyncStorage.getItem("@auth_user");
+      let mssv = "";
+      let name = "";
+      if (userStr) {
+        const u = JSON.parse(userStr);
+        mssv = u.mssv || u.masv || "";
+        name = u.ho_ten || u.fullName || "";
+        setStudentInfo({ mssv, name });
+      }
+
+      const isRealAccount = mssv && mssv !== "guest";
+      const res = await apiGetSchedule(isRealAccount ? mssv : undefined);
       if (res && res.success && res.tables && res.tables.length > 0) {
         const rows = res.tables[0].rows || [];
         if (rows.length > 1) {
@@ -97,11 +110,15 @@ export default function ScheduleScreen() {
 
   const filtered = scheduleList.filter((item) => item.dayNum === selectedDay);
 
+  const subtitle = studentInfo.mssv && studentInfo.mssv !== "guest"
+    ? `Lịch học của ${studentInfo.name || studentInfo.mssv} (${studentInfo.mssv})`
+    : "Từ ngày 28/09/2026 đến ngày 04/10/2026";
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: AppColors.background }} edges={['top', 'left', 'right']}>
       <NavHeader
         title="Thời khóa biểu"
-        subtitle="Lịch học trong tuần"
+        subtitle={subtitle}
         showBack={true}
         onBack={() => router.push("/(main)/home")}
       />

@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
@@ -40,7 +41,14 @@ export default function GradesDetailScreen() {
   useEffect(() => {
     const fetchDetailedGrades = async () => {
       try {
-        const res = await apiGetGrades();
+        const userStr = await AsyncStorage.getItem("@auth_user");
+        let mssv = "";
+        if (userStr) {
+          const u = JSON.parse(userStr);
+          mssv = u.mssv || u.masv || "";
+        }
+        const isRealAccount = mssv && mssv !== "guest";
+        const res = await apiGetGrades(isRealAccount ? mssv : undefined);
         if (res && res.success && res.data && res.data.length > 0) {
           const mapped: DetailedGrade[] = res.data.map((item: any, idx: number) => {
             const dhp = Number(item.diem_hp || item.total || 8.0);

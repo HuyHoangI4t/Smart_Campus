@@ -33,7 +33,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile>({
     mssv: "",
-    ho_ten: "Demo User",
+    ho_ten: "Đang tải...",
     email: "",
     so_dien_thoai: "",
     lop: "",
@@ -57,24 +57,36 @@ export default function ProfileScreen() {
       let localUser: any = {};
       if (userStr) {
         localUser = JSON.parse(userStr);
-        setProfile((prev) => ({ ...prev, ...localUser }));
+        setProfile({
+          mssv: localUser.mssv || "",
+          ho_ten: localUser.ho_ten || localUser.fullName || localUser.full_name || "Sinh viên",
+          email: localUser.email || "",
+          so_dien_thoai: localUser.so_dien_thoai || localUser.phone || "",
+          lop: localUser.lop || "K23",
+          khoa: localUser.khoa || "Công nghệ Thông tin",
+          ngay_sinh: localUser.ngay_sinh || "",
+          gioi_tinh: localUser.gioi_tinh || "",
+        });
       }
 
-      const res = await apiGetProfile();
-      if (res && res.success && res.student) {
-        const remote = res.student;
-        const merged: UserProfile = {
-          mssv: remote.mssv || remote.masv || localUser.mssv || "",
-          ho_ten: remote.ho_ten || remote.ten || localUser.ho_ten || "Sinh viên",
-          email: remote.email || localUser.email || "",
-          so_dien_thoai: remote.so_dien_thoai || remote.sdt || localUser.so_dien_thoai || "",
-          lop: remote.lop || localUser.lop || "Kỹ thuật phần mềm",
-          khoa: remote.khoa || localUser.khoa || "Công nghệ Thông tin",
-          ngay_sinh: remote.ngay_sinh || localUser.ngay_sinh || "",
-          gioi_tinh: remote.gioi_tinh || localUser.gioi_tinh || "",
-        };
-        setProfile(merged);
-        await AsyncStorage.setItem("@auth_user", JSON.stringify(merged));
+      const mssv = localUser.mssv || localUser.masv;
+      if (mssv && mssv !== "guest") {
+        const res = await apiGetProfile(mssv);
+        if (res && res.success && res.student) {
+          const remote = res.student;
+          const merged: UserProfile = {
+            mssv: remote.mssv || mssv,
+            ho_ten: remote.ho_ten || remote.fullName || localUser.ho_ten || "Sinh viên",
+            email: remote.email || localUser.email || "",
+            so_dien_thoai: remote.so_dien_thoai || remote.phone || localUser.so_dien_thoai || "",
+            lop: remote.lop || localUser.lop || "K23",
+            khoa: remote.khoa || localUser.khoa || "Công nghệ Thông tin",
+            ngay_sinh: remote.ngay_sinh || localUser.ngay_sinh || "2005-05-15",
+            gioi_tinh: remote.gioi_tinh || localUser.gioi_tinh || "Nam",
+          };
+          setProfile(merged);
+          await AsyncStorage.setItem("@auth_user", JSON.stringify({ ...localUser, ...merged }));
+        }
       }
     } catch {
       // Keep cached
@@ -104,12 +116,21 @@ export default function ProfileScreen() {
 
     setSaving(true);
     try {
-      const res = await apiUpdateProfile(editForm);
+      const res = await apiUpdateProfile({
+        ...editForm,
+        fullName: editForm.ho_ten,
+        phone: editForm.so_dien_thoai,
+      });
       if (res && res.success) {
-        const updated = { ...profile, ...editForm };
+        const updated = {
+          ...profile,
+          ...editForm,
+          fullName: editForm.ho_ten,
+          phone: editForm.so_dien_thoai,
+        };
         setProfile(updated);
         await AsyncStorage.setItem("@auth_user", JSON.stringify(updated));
-        Alert.alert("Thành công", "Đã cập nhật thông tin cá nhân.");
+        Alert.alert("Thành công", "Đã cập nhật thông tin cá nhân lên hệ thống.");
         setEditModalVisible(false);
       } else {
         Alert.alert("Lỗi", res?.message || "Không thể cập nhật hồ sơ vào lúc này.");

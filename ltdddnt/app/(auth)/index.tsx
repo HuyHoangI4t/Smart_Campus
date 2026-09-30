@@ -73,7 +73,12 @@ export default function AuthScreen() {
             await AsyncStorage.setItem('@auth_token', res.token);
           }
           if (res.user) {
-            await AsyncStorage.setItem('@auth_user', JSON.stringify(res.user));
+            const userPayload = {
+              ...res.user,
+              ho_ten: res.user.fullName || res.user.full_name || res.user.ho_ten || ('Sinh viên ' + res.user.mssv),
+              fullName: res.user.fullName || res.user.full_name || res.user.ho_ten || ('Sinh viên ' + res.user.mssv),
+            };
+            await AsyncStorage.setItem('@auth_user', JSON.stringify(userPayload));
           }
           setSuccessMsg('Đăng nhập thành công!');
           setTimeout(() => {

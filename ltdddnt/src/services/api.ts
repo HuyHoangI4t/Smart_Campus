@@ -216,7 +216,8 @@ export async function apiChangePassword(currentPassword: string, newPassword: st
 export async function apiGetProfile(mssv?: string) {
   try {
     const headers = await getAuthHeaders();
-    const url = mssv ? `${API_BASE_URL}/student/profile/${mssv}` : `${API_BASE_URL}/student/profile`;
+    const targetMssv = mssv || (headers['X-MSSV'] !== 'guest' ? headers['X-MSSV'] : undefined);
+    const url = targetMssv ? `${API_BASE_URL}/student/profile/${targetMssv}` : `${API_BASE_URL}/student/profile`;
     const response = await fetchWithTimeout(url, { headers });
     return await handleResponse(response);
   } catch {
@@ -226,10 +227,14 @@ export async function apiGetProfile(mssv?: string) {
 
 export async function apiUpdateProfile(payload: {
   ho_ten?: string;
+  fullName?: string;
   email?: string;
   so_dien_thoai?: string;
+  phone?: string;
   lop?: string;
   khoa?: string;
+  ngay_sinh?: string;
+  gioi_tinh?: string;
 }) {
   try {
     const headers = await getAuthHeaders();
@@ -247,7 +252,8 @@ export async function apiUpdateProfile(payload: {
 export async function apiGetSchedule(mssv?: string) {
   try {
     const headers = await getAuthHeaders();
-    const url = mssv ? `${API_BASE_URL}/student/schedule/${mssv}` : `${API_BASE_URL}/student/schedule`;
+    const targetMssv = mssv || (headers['X-MSSV'] !== 'guest' ? headers['X-MSSV'] : undefined);
+    const url = targetMssv ? `${API_BASE_URL}/student/schedule/${targetMssv}` : `${API_BASE_URL}/student/schedule`;
     const response = await fetchWithTimeout(url, { headers });
     return await handleResponse(response);
   } catch {
@@ -258,7 +264,8 @@ export async function apiGetSchedule(mssv?: string) {
 export async function apiGetGrades(mssv?: string) {
   try {
     const headers = await getAuthHeaders();
-    const url = mssv ? `${API_BASE_URL}/student/grades/${mssv}` : `${API_BASE_URL}/student/grades`;
+    const targetMssv = mssv || (headers['X-MSSV'] !== 'guest' ? headers['X-MSSV'] : undefined);
+    const url = targetMssv ? `${API_BASE_URL}/student/grades/${targetMssv}` : `${API_BASE_URL}/student/grades`;
     const response = await fetchWithTimeout(url, { headers });
     return await handleResponse(response);
   } catch {
@@ -269,7 +276,8 @@ export async function apiGetGrades(mssv?: string) {
 export async function apiGetCourses(mssv?: string) {
   try {
     const headers = await getAuthHeaders();
-    const url = mssv ? `${API_BASE_URL}/student/courses/${mssv}` : `${API_BASE_URL}/student/courses`;
+    const targetMssv = mssv || (headers['X-MSSV'] !== 'guest' ? headers['X-MSSV'] : undefined);
+    const url = targetMssv ? `${API_BASE_URL}/student/courses/${targetMssv}` : `${API_BASE_URL}/student/courses`;
     const response = await fetchWithTimeout(url, { headers });
     return await handleResponse(response);
   } catch {
@@ -280,7 +288,7 @@ export async function apiGetCourses(mssv?: string) {
 // ─── CAMPUS / UTILITY APIS ──────────────────────────────────────────────────
 export async function apiGetMapLocations() {
   try {
-    const response = await fetchWithTimeout(`${API_BASE_URL}/campus/locations`);
+    const response = await fetchWithTimeout(`${API_BASE_URL}/map`);
     return await handleResponse(response);
   } catch {
     return { success: false, message: 'Lỗi tải danh sách địa điểm bản đồ.', locations: [] };

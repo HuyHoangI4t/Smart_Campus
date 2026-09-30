@@ -49,5 +49,6 @@ router.post('/sos', campusController.submitSos);
  *         description: Thành công
  */
 router.get('/map', campusController.getMapLocations);
+router.get('/locations', campusController.getMapLocations);
 
 module.exports = router;
