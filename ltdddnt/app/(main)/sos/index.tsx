@@ -277,7 +277,7 @@ export default function SosScreen() {
           ))}
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

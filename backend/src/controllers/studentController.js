@@ -4,7 +4,7 @@ const db = require('../config/db');
 const https = require('https');
 
 // Tạo một httpsAgent để bỏ qua lỗi chứng chỉ SSL tự ký của trường (tránh SSLCertVerificationError)
-const httpsAgent = new https.Agent({  
+const httpsAgent = new https.Agent({
   rejectUnauthorized: false
 });
 
@@ -49,7 +49,7 @@ const extractFullNameFromHtml = ($) => {
   let fullName = null;
   const htmlContent = $.html();
   const match = htmlContent.match(/(?:Họ và tên|Họ tên)\s*[:\-]\s*(?:<b>)?([^<]+)(?:<\/b>)?/i);
-  
+
   if (match && match[1]) {
     const cleaned = match[1].trim().replace(/<\/?b>/gi, '').replace(/[-–—]\s*$/, '').trim();
     if (cleaned.length > 2) fullName = cleaned;
@@ -405,5 +405,4 @@ exports.getCurrentCourses = async (req, res) => {
     mssv: mssv,
     currentCourses: []
   });
-};
 };

@@ -231,6 +231,6 @@ export default function GradesDetailScreen() {
           </View>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
