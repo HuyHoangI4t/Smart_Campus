@@ -7,6 +7,7 @@ import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
 import { apiGetGrades } from "../../../src/services/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface CourseGrade {
   code: string;
