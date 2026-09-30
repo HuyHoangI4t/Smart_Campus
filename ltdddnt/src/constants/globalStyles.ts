@@ -1,6 +1,10 @@
 import { StyleSheet } from 'react-native';
 import { AppColors } from './appColors';
 
+export * from '../styles/theme';
+export * from '../styles/common.styles';
+export * from '../styles/screen.styles';
+
 export const authStyles = StyleSheet.create({
   container: {
     flex: 1,
@@ -200,48 +204,6 @@ export const authStyles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: AppColors.textMuted,
-  },
-
-  /* MODAL */
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
-    maxHeight: '70%',
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: AppColors.textForeground,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  departmentItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: AppColors.border,
-  },
-  departmentItemSelected: {
-    backgroundColor: AppColors.muted,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-  },
-  departmentText: {
-    fontSize: 14,
-    color: AppColors.textForeground,
-  },
-  departmentTextSelected: {
-    fontWeight: '700',
-    color: AppColors.primary,
   },
 });
 
