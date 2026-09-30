@@ -34,9 +34,11 @@ async function ensureRegistrationOtpTable() {
 
 // Register Request (Sends OTP and stores pending registration)
 exports.registerRequest = async (req, res) => {
-  const { mssv, password, fullName, email } = req.body;
+  const { mssv, password, fullName, email, mat_khau, ho_ten } = req.body;
+  const regPassword = password || mat_khau;
+  const userFullName = fullName || ho_ten;
 
-  if (!mssv || !password) {
+  if (!mssv || !regPassword) {
     return res.status(400).json({ success: false, message: 'Mã số sinh viên (mssv) và mật khẩu là bắt buộc.' });
   }
 
@@ -49,9 +51,9 @@ exports.registerRequest = async (req, res) => {
     }
 
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashedPassword = await bcrypt.hash(regPassword, salt);
 
-    const userFullName = fullName || ('Sinh viên ' + mssv);
+    const finalFullName = userFullName || ('Sinh viên ' + mssv);
     const userEmail = email || `${mssv}@sv.ttn.edu.vn`;
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
@@ -63,7 +65,7 @@ exports.registerRequest = async (req, res) => {
     await db.query('DELETE FROM registration_otps WHERE mssv = ?', [mssv]);
     await db.query(
       'INSERT INTO registration_otps (mssv, full_name, email, password, otp_code, expires_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [mssv, userFullName, userEmail, hashedPassword, otpCode, expiresAt]
+      [mssv, finalFullName, userEmail, hashedPassword, otpCode, expiresAt]
     );
 
     if (process.env.SMTP_USER && process.env.SMTP_PASS) {
@@ -174,10 +176,11 @@ exports.register = exports.registerRequest;
 
 // Login
 exports.login = async (req, res) => {
-  const { mssv, password, email } = req.body;
+  const { mssv, password, email, mat_khau } = req.body;
   const loginKey = mssv || email;
+  const loginPassword = password || mat_khau;
 
-  if (!loginKey || !password) {
+  if (!loginKey || !loginPassword) {
     return res.status(400).json({ success: false, message: 'Vui lòng cung cấp mã số sinh viên (hoặc email) và mật khẩu.' });
   }
 
@@ -192,7 +195,7 @@ exports.login = async (req, res) => {
     }
 
     const user = rows[0];
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(loginPassword, user.password);
     if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Tài khoản hoặc mật khẩu không đúng.' });
     }

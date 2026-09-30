@@ -33,7 +33,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile>({
     mssv: "",
-    ho_ten: "Đang tải...",
+    ho_ten: "Demo User",
     email: "",
     so_dien_thoai: "",
     lop: "",

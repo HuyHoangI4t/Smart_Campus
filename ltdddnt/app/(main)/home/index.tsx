@@ -130,7 +130,7 @@ export default function HomeScreen() {
               Xin chào {student.mssv ? `• ${student.mssv}` : ""}
             </Text>
             <Text style={{ color: "#fff", fontSize: 22, fontWeight: "900", marginTop: 2 }}>
-              {student.ho_ten || "Sinh viên"} 👋
+              {student.ho_ten || "Sinh viên"} 
             </Text>
           </View>
           <View style={s.row}>

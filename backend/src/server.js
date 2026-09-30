@@ -54,7 +54,8 @@ app.use('/api', campusRoutes);
 // app.use('/api', studentRoutes);
 // app.use('/api', campusRoutes);
 
-app.listen(PORT, () => {
-  console.log(`🚀 LTDDDNT Backend server đang chạy tại cổng ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 LTDDDNT Backend server đang chạy tại cổng ${PORT} (0.0.0.0)`);
+  console.log(`📱 Expo Go / Mobile API: http://192.168.1.5:${PORT}/api`);
   console.log(`📄 Swagger UI sẵn sàng tại http://localhost:${PORT}/api-docs`);
 });

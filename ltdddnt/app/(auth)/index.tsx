@@ -137,7 +137,7 @@ export default function AuthScreen() {
         try {
           const res = await apiVerifyRegisterOtp(studentId.trim(), fullOtp);
           if (res.success) {
-            setSuccessMsg('Đăng ký tài khoản thành công và đã lưu vào cơ sở dữ liệu! Vui lòng đăng nhập.');
+            setSuccessMsg('Đăng ký tài khoản thành công.');
             setTimeout(() => {
               setAuthType('login');
               setRegStep(1);
@@ -203,7 +203,7 @@ export default function AuthScreen() {
                     <Feather name="mail" size={19} color={AppColors.textMuted} style={authStyles.iconPrefix} />
                     <TextInput
                       style={authStyles.textInput}
-                      placeholder="mssv hoặc mssv@sv.ttn.edu.vn"
+                      placeholder="MSSV hoặc Email trường"
                       placeholderTextColor={AppColors.textMuted}
                       value={email}
                       onChangeText={setEmail}
@@ -270,7 +270,7 @@ export default function AuthScreen() {
                   <View style={[authStyles.inputBox, { paddingHorizontal: 16 }]}>
                     <TextInput 
                       style={authStyles.textInput} 
-                      placeholder="mssv (VD: 23103023)" 
+                      placeholder="MSSV" 
                       placeholderTextColor={AppColors.textMuted} 
                       value={studentId} 
                       onChangeText={setStudentId} 
@@ -278,10 +278,6 @@ export default function AuthScreen() {
                       keyboardType="numeric"
                     />
                   </View>
-                  <Text style={{ fontSize: 11, color: AppColors.textMuted, marginTop: 4 }}>
-                    Email hệ thống sẽ tạo tự động: {studentId ? `${studentId.toLowerCase()}@sv.ttn.edu.vn` : 'mssv@sv.ttn.edu.vn'}
-                  </Text>
-
                   <View style={{ height: 14 }} />
                   
                   <Text style={authStyles.label}>MẬT KHẨU</Text>
@@ -355,7 +351,7 @@ export default function AuthScreen() {
 
                   <TouchableOpacity onPress={() => setRegStep(1)} activeOpacity={0.7} style={{ alignSelf: 'center' }}>
                     <Text style={{ fontSize: 13, fontWeight: '700', color: AppColors.accent }}>
-                      ← Sửa lại thông tin đăng ký
+                      ← Quay lại.
                     </Text>
                   </TouchableOpacity>
                 </>
