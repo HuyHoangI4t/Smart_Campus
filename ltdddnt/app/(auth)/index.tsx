@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppColors } from '@/src/constants/appColors';
 import { authStyles } from '@/src/constants/globalStyles';
 import { AuthHeader } from '@/src/components/AuthHeader';
-import { apiLogin, apiRegister, apiVerifyRegisterOtp } from '@/src/services/api';
+import { apiLogin, apiRegister, apiVerifyRegisterOtp, clearAuthAndCache } from '@/src/services/api';
 
 export default function AuthScreen() {
   const [authType, setAuthType] = useState<'login' | 'register'>('login');
@@ -68,6 +68,7 @@ export default function AuthScreen() {
       try {
         const res = await apiLogin(email.trim(), password);
         if (res.success) {
+          await clearAuthAndCache();
           if (res.token) {
             await AsyncStorage.setItem('@auth_token', res.token);
           }
@@ -375,7 +376,7 @@ export default function AuthScreen() {
                     ? 'Đăng Nhập Vào Campus' 
                     : regStep === 1 
                     ? 'Tiếp Tục' 
-                    : 'Dăng Ký'}
+                    : 'Đăng Ký'}
                 </Text>
               </TouchableOpacity>
 
@@ -390,7 +391,11 @@ export default function AuthScreen() {
 
                   <View style={{ height: 14 }} />
 
-                  <TouchableOpacity style={authStyles.guestButton} onPress={() => router.replace('/(main)/home')} activeOpacity={0.8}>
+                  <TouchableOpacity style={authStyles.guestButton} onPress={async () => {
+                    await clearAuthAndCache();
+                    await AsyncStorage.setItem('@auth_user', JSON.stringify({ mssv: 'guest', fullName: 'Khách' }));
+                    router.replace('/(main)/home');
+                  }} activeOpacity={0.8}>
                     <Text style={authStyles.guestBtnText}>
                       Khách (Giới hạn tính năng)
                     </Text>

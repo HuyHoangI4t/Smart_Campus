@@ -104,7 +104,6 @@ async function initializeTables() {
         id INT AUTO_INCREMENT PRIMARY KEY,
         mssv VARCHAR(50) NOT NULL,
         full_name VARCHAR(255) NOT NULL,
-        faculty VARCHAR(255),
         email VARCHAR(255) NOT NULL,
         password VARCHAR(255) NOT NULL,
         otp_code VARCHAR(10) NOT NULL,

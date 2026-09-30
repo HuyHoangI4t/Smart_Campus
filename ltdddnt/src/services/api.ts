@@ -42,6 +42,21 @@ export async function getAuthHeaders() {
   }
 }
 
+export async function clearAuthAndCache() {
+  try {
+    const keys = [
+      '@auth_token',
+      '@auth_user',
+      '@cache_student_grades_v1',
+      '@cache_current_courses_v1',
+      '@cache_timestamp_v1'
+    ];
+    await Promise.all(keys.map(key => AsyncStorage.removeItem(key)));
+  } catch (e) {
+    console.error('Failed to clear auth and cache', e);
+  }
+}
+
 async function handleResponse(response: Response) {
   const contentType = response.headers.get('content-type');
   if (contentType && contentType.includes('application/json')) {

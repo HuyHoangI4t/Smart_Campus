@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
+import { clearAuthAndCache } from "../../../src/services/api";
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -15,6 +16,11 @@ export default function ProfileScreen() {
   const [phone, setPhone] = useState("+84 123 456 789");
   const [notifs, setNotifs] = useState(true);
   const [campusAlerts, setCampusAlerts] = useState(true);
+
+  const handleLogout = async () => {
+    await clearAuthAndCache();
+    router.replace("/(auth)");
+  };
 
   const info = [
     { label: "Họ và Tên", value: name, editable: true, onChange: setName },
@@ -32,7 +38,7 @@ export default function ProfileScreen() {
         style={{ paddingHorizontal: 24, paddingTop: Math.max(insets.top + 16, 24), paddingBottom: 40 }}
       >
         <View style={[s.row, s.between]}>
-          <TouchableOpacity onPress={() => router.push("/(main)")} style={[s.iconBtn, { backgroundColor: "rgba(255,255,255,0.15)" }]}>
+          <TouchableOpacity onPress={() => router.push("/(main)/home")} style={[s.iconBtn, { backgroundColor: "rgba(255,255,255,0.15)" }]}>
             <Feather name="arrow-left" size={16} color="#fff" />
           </TouchableOpacity>
           <Text style={{ color: "#fff", fontWeight: "900", fontSize: 18, flex: 1, marginLeft: 12 }}>Hồ sơ của tôi</Text>
@@ -109,7 +115,7 @@ export default function ProfileScreen() {
             ))}
           </View>
 
-          <TouchableOpacity onPress={() => router.replace("/(auth)")} activeOpacity={0.85}
+          <TouchableOpacity onPress={handleLogout} activeOpacity={0.85}
             style={[s.row, { justifyContent: "center", paddingVertical: 14, borderRadius: 16, borderWidth: 1, borderColor: "#FECACA", backgroundColor: "#FEF2F2", gap: 8 }]}>
             <Feather name="log-out" size={16} color="#DC2626" />
             <Text style={{ fontSize: 14, fontWeight: "900", color: "#DC2626" }}>Đăng xuất</Text>

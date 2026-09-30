@@ -11,19 +11,17 @@ const authController = require('../controllers/authController');
  *       required: true
  *       content:
  *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               mssv:
- *                 type: string
- *               password:
- *                 type: string
- *               fullName:
- *                 type: string
- *               faculty:
- *                 type: string
- *               email:
- *                 type: string
+ schema:
+ type: object
+ properties:
+  mssv:
+    type: string
+  password:
+    type: string
+  fullName:
+    type: string
+  email:
+    type: string
  *     responses:
  *       201:
  *         description: Đăng ký thành công

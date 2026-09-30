@@ -31,16 +31,7 @@ const getMssvFromReq = async (req) => {
     }
   }
 
-  try {
-    const [rows] = await db.query('SELECT mssv FROM users ORDER BY created_at DESC LIMIT 1');
-    if (rows.length > 0) {
-      return rows[0].mssv;
-    }
-  } catch (e) {
-    // ignore
-  }
-
-  return '23103023';
+  return 'guest';
 };
 
 // Hàm làm sạch tên
@@ -121,12 +112,32 @@ const calculateGpaFromAllTables = (tablesData) => {
   };
 };
 
+// Helper to check if mssv/identifier is guest or email (non-MSSV)
+const isGuestOrEmail = (val) => {
+  if (!val) return true;
+  if (val.includes('@')) return true;
+  if (val === 'DEMO001' || val === 'guest' || !/^\d{5,}/.test(val)) return true;
+  return false;
+};
+
 // Get Student Profile from Database
 exports.getProfile = async (req, res) => {
   const mssv = req.params.mssv || await getMssvFromReq(req);
 
+  if (isGuestOrEmail(mssv)) {
+    return res.json({
+      success: true,
+      profile: {
+        mssv: mssv,
+        fullName: 'Khách / Demo User',
+        email: mssv,
+        createdAt: new Date()
+      }
+    });
+  }
+
   try {
-    const [rows] = await db.query('SELECT mssv, full_name, faculty, email, created_at FROM users WHERE mssv = ?', [mssv]);
+    const [rows] = await db.query('SELECT mssv, full_name, email, created_at FROM users WHERE mssv = ?', [mssv]);
     if (rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy sinh viên với mã số này.' });
     }
@@ -149,6 +160,47 @@ exports.getGrades = async (req, res) => {
   const mssv = await getMssvFromReq(req);
   const { dk, semester, search } = req.body;
   const studentDk = dk || '10';
+
+  if (isGuestOrEmail(mssv)) {
+    let tablesData = [
+      {
+        tableIndex: 1,
+        rows: [
+          ["STT", "Mã HP", "Tên học phần", "STC", "ĐQT", "ĐTH", "ĐHP", "Điểm chữ", "Ghi chú"],
+          ["1", "IT101", "Lập trình ứng dụng di động", "3", "8.5", "8.0", "8.2", "A", ""],
+          ["2", "IT102", "Cấu trúc dữ liệu và giải thuật", "3", "7.5", "8.0", "7.8", "B", ""]
+        ]
+      }
+    ];
+
+    if (semester !== undefined && semester !== null && semester !== '') {
+      tablesData = tablesData.filter(t => t.tableIndex === Number(semester));
+    }
+
+    if (search && search.trim()) {
+      const keyword = search.trim().toLowerCase();
+      tablesData = tablesData.map(t => {
+        const header = t.rows[0];
+        const dataRows = t.rows.slice(1).filter(row => {
+          const courseName = (row[2] || "").toLowerCase();
+          return courseName.includes(keyword);
+        });
+        return { ...t, rows: [header, ...dataRows] };
+      }).filter(t => t.rows.length > 1);
+    }
+
+    return res.json({
+      success: true,
+      mssv: mssv,
+      fullName: 'Khách / Demo User',
+      gpaSummary: {
+        totalCredits: '6',
+        cumulativeGpa10: '8.00',
+        cumulativeGpa4: '3.20'
+      },
+      tables: tablesData
+    });
+  }
 
   try {
     const url = "https://www.ttn.edu.vn/libraries/tnu/kqcq.php";
@@ -237,6 +289,17 @@ exports.getCurrentCourses = async (req, res) => {
   const { dk } = req.body;
   const studentDk = dk || '10';
 
+  if (isGuestOrEmail(mssv)) {
+    return res.json({
+      success: true,
+      mssv: mssv,
+      currentCourses: [
+        { name: "Lập trình ứng dụng di động", credits: "3" },
+        { name: "An toàn bảo mật thông tin", credits: "3" }
+      ]
+    });
+  }
+
   try {
     const url = "https://www.ttn.edu.vn/libraries/tnu/kqcq.php";
     const payload = new URLSearchParams({ 'msv': mssv, 'dk': studentDk });
@@ -288,6 +351,23 @@ exports.getSchedule = async (req, res) => {
   const mssv = await getMssvFromReq(req);
   const { dk } = req.body;
   const studentDk = dk || '10';
+
+  if (isGuestOrEmail(mssv)) {
+    return res.json({
+      success: true,
+      mssv: mssv,
+      tables: [
+        {
+          tableIndex: 1,
+          rows: [
+            ["Thứ", "Môn học", "Phòng", "Tiết", "Giảng viên"],
+            ["Thứ 2", "Lập trình ứng dụng di động", "P.402", "1-3", "Thầy A"],
+            ["Thứ 4", "An toàn bảo mật thông tin", "P.301", "4-6", "Cô B"]
+          ]
+        }
+      ]
+    });
+  }
 
   try {
     const url = "https://www.ttn.edu.vn/libraries/tnu/tkbieusinhvien.php";

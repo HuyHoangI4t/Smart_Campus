@@ -64,7 +64,7 @@ export default function ScheduleScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: AppColors.background }}>
-      <NavHeader title="Lịch học" subtitle="Học kỳ 1 • 2024/2025" onBack={() => router.push("/(main)")}>
+      <NavHeader title="Lịch học" subtitle="Học kỳ 1 • 2024/2025" onBack={() => router.push("/(main)/home")}>
         <View style={{ flexDirection: "row", gap: 8 }}>
           {days.map((d, i) => (
             <TouchableOpacity key={d} onPress={() => setActiveDay(dayCodes[i])}
