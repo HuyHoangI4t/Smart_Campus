@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  RefreshControl,
+  ActivityIndicator,
+  Modal,
+  Linking,
+  Dimensions,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -18,6 +28,115 @@ interface ScheduleItem {
   day: string;
   dayNum: number;
   lecturer: string;
+}
+
+interface DirectionStep {
+  step: number;
+  title: string;
+  desc: string;
+  icon: keyof typeof Feather.glyphMap;
+}
+
+interface RoomDirectionInfo {
+  room: string;
+  building: string;
+  buildingCode: string;
+  floor: string;
+  mapQuery: string;
+  steps: DirectionStep[];
+  tips: string[];
+}
+
+export function parseRoomDirections(roomRaw: string): RoomDirectionInfo {
+  const room = (roomRaw || "").trim();
+  const upper = room.toUpperCase();
+
+  let building = "Tòa A - Giảng đường chính";
+  let buildingCode = "Tòa A";
+  let floor = "Tầng 1";
+  let mapQuery = "Tòa A";
+
+  if (
+    upper.includes("LAB") ||
+    upper.includes("NET") ||
+    upper.includes("MÁY TÍNH") ||
+    upper.includes("C")
+  ) {
+    building = "Tòa C - Trung tâm Thực hành CNTT & Labs";
+    buildingCode = "Tòa C";
+    mapQuery = "Tòa C";
+  } else if (upper.includes("B") || upper.includes("ENG-B")) {
+    building = "Tòa B - Khối Giảng đường Kỹ thuật";
+    buildingCode = "Tòa B";
+    mapQuery = "Tòa B";
+  } else if (upper.includes("A") || upper.includes("ENG-A")) {
+    building = "Tòa A - Giảng đường Lý thuyết";
+    buildingCode = "Tòa A";
+    mapQuery = "Tòa A";
+  } else if (upper.includes("D")) {
+    building = "Tòa D - Khu Đào tạo Quốc tế";
+    buildingCode = "Tòa D";
+    mapQuery = "Tòa D";
+  }
+
+  // Tách tầng dựa trên mã phòng (ví dụ B204 -> tầng 2, A102 -> tầng 1, 301 -> tầng 3)
+  const matchThreeOrFour = upper.match(/(\d{3,4})/);
+  if (matchThreeOrFour) {
+    const num = matchThreeOrFour[1];
+    const floorDigit = num.length === 3 ? num[0] : num.slice(0, 2);
+    floor = `Tầng ${floorDigit}`;
+  } else {
+    const matchLabOrSingle =
+      upper.match(/LAB[-_\s]*0?(\d)/i) ||
+      upper.match(/TẦNG\s*(\d+)/i) ||
+      upper.match(/T(\d+)/i);
+    if (matchLabOrSingle) {
+      floor = `Tầng ${matchLabOrSingle[1]}`;
+    }
+  }
+
+  const steps: DirectionStep[] = [
+    {
+      step: 1,
+      title: "Cổng chính khuôn viên trường",
+      desc: `Từ cổng chính đi thẳng qua trục đường trung tâm hướng về phía ${buildingCode}.`,
+      icon: "compass",
+    },
+    {
+      step: 2,
+      title: `Vào sảnh chính ${buildingCode}`,
+      desc: `Bước vào sảnh chính ${buildingCode}, có thể tra cứu sơ đồ phân phòng tại bảng thông báo sảnh.`,
+      icon: "home",
+    },
+    {
+      step: 3,
+      title: `Lên ${floor}`,
+      desc: `Sử dụng thang bộ hoặc thang máy khu vực hành lang chính để di chuyển lên ${floor}.`,
+      icon: "arrow-up-circle",
+    },
+    {
+      step: 4,
+      title: `Đến phòng ${room || "học"}`,
+      desc: `Rẽ theo biển báo số phòng dọc hành lang ${floor}, phòng ${room || "học"} nằm ở vị trí tương ứng.`,
+      icon: "map-pin",
+    },
+  ];
+
+  const tips = [
+    `Cây nước nóng lạnh và nhà vệ sinh nằm ở hai đầu hành lang ${floor}.`,
+    `Thang máy thường đông vào đầu ca học, bạn có thể đi thang bộ để nhanh hơn.`,
+    `Nên đến trước giờ vào lớp 5 - 10 phút để ổn định vị trí và điểm danh.`,
+  ];
+
+  return {
+    room: room || "Phòng học",
+    building,
+    buildingCode,
+    floor,
+    mapQuery,
+    steps,
+    tips,
+  };
 }
 
 const FALLBACK_SCHEDULE: ScheduleItem[] = [
@@ -47,6 +166,7 @@ export default function ScheduleScreen() {
   const [scheduleList, setScheduleList] = useState<ScheduleItem[]>(FALLBACK_SCHEDULE);
   const [studentInfo, setStudentInfo] = useState<{ mssv: string; name: string }>({ mssv: "", name: "" });
   const [weekRangeText, setWeekRangeText] = useState("Từ ngày 28/09/2026 đến ngày 04/10/2026");
+  const [selectedScheduleForDirection, setSelectedScheduleForDirection] = useState<ScheduleItem | null>(null);
 
   const fetchSchedule = async () => {
     try {
@@ -62,7 +182,7 @@ export default function ScheduleScreen() {
 
       const isRealAccount = mssv && mssv !== "guest";
       const res = await apiGetSchedule(isRealAccount ? mssv : undefined);
-      
+
       if (res && res.success) {
         if (res.weekRange) {
           setWeekRangeText(res.weekRange);
@@ -76,7 +196,7 @@ export default function ScheduleScreen() {
               if (r.length >= 5) {
                 const dayStr = r[0] || "";
                 let dayNum = 2;
-                
+
                 const lowerDay = dayStr.toLowerCase();
                 if (lowerDay.startsWith("thứ 3") || lowerDay.includes("thứ ba")) dayNum = 3;
                 else if (lowerDay.startsWith("thứ 4") || lowerDay.includes("thứ tư")) dayNum = 4;
@@ -98,7 +218,7 @@ export default function ScheduleScreen() {
                 });
               }
             });
-            
+
             if (parsed.length > 0) {
               setScheduleList(parsed);
             }
@@ -124,9 +244,30 @@ export default function ScheduleScreen() {
 
   const filtered = scheduleList.filter((item) => item.dayNum === selectedDay);
 
-  const subtitle = studentInfo.mssv && studentInfo.mssv !== "guest"
-    ? `${weekRangeText}`
-    : weekRangeText;
+  const subtitle =
+    studentInfo.mssv && studentInfo.mssv !== "guest"
+      ? `${weekRangeText}`
+      : weekRangeText;
+
+  const currentDirection = selectedScheduleForDirection
+    ? parseRoomDirections(selectedScheduleForDirection.room)
+    : null;
+
+  const handleOpenCampusMap = (query: string) => {
+    setSelectedScheduleForDirection(null);
+    router.push({
+      pathname: "/(main)/map",
+      params: { search: query },
+    });
+  };
+
+  const handleOpenGoogleMaps = (building: string) => {
+    const query = encodeURIComponent(`Trường Đại học ${building}`);
+    const url = `https://www.google.com/maps/search/?api=1&query=${query}`;
+    Linking.openURL(url).catch((err) => {
+      console.warn("Không thể mở Google Maps:", err);
+    });
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: AppColors.background }} edges={['top', 'left', 'right']}>
@@ -196,6 +337,7 @@ export default function ScheduleScreen() {
                   elevation: 2,
                 }}
               >
+                {/* Header row: Code & Time */}
                 <View style={[s.row, s.between, { marginBottom: 8 }]}>
                   <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: "#EEF2FF" }}>
                     <Text style={{ fontSize: 11, fontWeight: "700", color: AppColors.primary }}>{item.code}</Text>
@@ -206,25 +348,372 @@ export default function ScheduleScreen() {
                   </View>
                 </View>
 
-                <Text style={{ fontSize: 16, fontWeight: "800", color: AppColors.text, marginBottom: 8 }}>
+                {/* Course Title */}
+                <Text style={{ fontSize: 16, fontWeight: "800", color: AppColors.text, marginBottom: 10 }}>
                   {item.course}
                 </Text>
 
-                <View style={[s.row, s.between, { paddingTop: 8, borderTopWidth: 1, borderColor: AppColors.cardBorder }]}>
-                  <View style={[s.row, { gap: 6 }]}>
-                    <Feather name="map-pin" size={13} color={AppColors.primary} />
-                    <Text style={{ fontSize: 13, fontWeight: "600", color: AppColors.textSecondary }}>{item.room}</Text>
+                {/* Bottom Row: Room & Lecturer info + Chỉ đường button */}
+                <View
+                  style={[
+                    s.row,
+                    s.between,
+                    {
+                      paddingTop: 10,
+                      borderTopWidth: 1,
+                      borderColor: AppColors.cardBorder,
+                      alignItems: "center",
+                    },
+                  ]}
+                >
+                  <View style={{ flex: 1, gap: 4, marginRight: 8 }}>
+                    <TouchableOpacity
+                      onPress={() => setSelectedScheduleForDirection(item)}
+                      activeOpacity={0.7}
+                      style={[s.row, { gap: 6, alignItems: "center" }]}
+                    >
+                      <Feather name="map-pin" size={14} color={AppColors.primary} />
+                      <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text }}>
+                        {item.room}
+                      </Text>
+                      <Feather name="info" size={12} color={AppColors.primaryLight} />
+                    </TouchableOpacity>
+
+                    <View style={[s.row, { gap: 6, alignItems: "center" }]}>
+                      <Feather name="user" size={12} color={AppColors.textMuted} />
+                      <Text style={{ fontSize: 12, color: AppColors.textMuted }} numberOfLines={1}>
+                        {item.lecturer}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={[s.row, { gap: 6 }]}>
-                    <Feather name="user" size={13} color={AppColors.textMuted} />
-                    <Text style={{ fontSize: 12, color: AppColors.textMuted }}>{item.lecturer}</Text>
-                  </View>
+
+                  {/* Nút chỉ đường */}
+                  <TouchableOpacity
+                    onPress={() => setSelectedScheduleForDirection(item)}
+                    activeOpacity={0.7}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      borderRadius: 10,
+                      backgroundColor: "#EEF2FF",
+                      borderWidth: 1,
+                      borderColor: "#C7D2FE",
+                    }}
+                  >
+                    <Feather name="navigation" size={13} color={AppColors.primary} />
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: AppColors.primary }}>
+                      Chỉ đường
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             ))}
           </View>
         )}
       </ScrollView>
+
+      {/* MODAL CHỈ ĐƯỜNG TỚI PHÒNG HỌC */}
+      <Modal
+        visible={!!selectedScheduleForDirection}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setSelectedScheduleForDirection(null)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(15, 23, 42, 0.6)",
+            justifyContent: "flex-end",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: AppColors.cardBg,
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              paddingTop: 16,
+              paddingBottom: 28,
+              maxHeight: "88%",
+            }}
+          >
+            {/* Modal Header */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingHorizontal: 20,
+                paddingBottom: 14,
+                borderBottomWidth: 1,
+                borderColor: AppColors.cardBorder,
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <View
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 19,
+                    backgroundColor: "#EEF2FF",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Feather name="navigation" size={18} color={AppColors.primary} />
+                </View>
+                <View>
+                  <Text style={{ fontSize: 16, fontWeight: "800", color: AppColors.text }}>
+                    Chỉ đường phòng học
+                  </Text>
+                  <Text style={{ fontSize: 12, color: AppColors.textMuted }}>
+                    Hướng dẫn di chuyển & định vị phòng học
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => setSelectedScheduleForDirection(null)}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: AppColors.muted,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Feather name="x" size={18} color={AppColors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Modal Body */}
+            <ScrollView
+              contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 10 }}
+              showsVerticalScrollIndicator={false}
+            >
+              {selectedScheduleForDirection && currentDirection && (
+                <View style={{ gap: 16 }}>
+                  {/* Card thông tin môn học & phòng */}
+                  <View
+                    style={{
+                      padding: 16,
+                      borderRadius: 16,
+                      backgroundColor: "#F8FAFC",
+                      borderWidth: 1,
+                      borderColor: "#E2E8F0",
+                    }}
+                  >
+                    <Text style={{ fontSize: 15, fontWeight: "800", color: AppColors.text, marginBottom: 6 }}>
+                      {selectedScheduleForDirection.course}
+                    </Text>
+
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                      <View
+                        style={{
+                          paddingHorizontal: 8,
+                          paddingVertical: 3,
+                          borderRadius: 8,
+                          backgroundColor: AppColors.primary,
+                        }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: "700", color: "#FFFFFF" }}>
+                          {currentDirection.room}
+                        </Text>
+                      </View>
+                      <View
+                        style={{
+                          paddingHorizontal: 8,
+                          paddingVertical: 3,
+                          borderRadius: 8,
+                          backgroundColor: "#EEF2FF",
+                        }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: "700", color: AppColors.primary }}>
+                          {currentDirection.floor}
+                        </Text>
+                      </View>
+                      <View
+                        style={{
+                          paddingHorizontal: 8,
+                          paddingVertical: 3,
+                          borderRadius: 8,
+                          backgroundColor: AppColors.muted,
+                        }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: "600", color: AppColors.textSecondary }}>
+                          {currentDirection.buildingCode}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={{ gap: 4 }}>
+                      <View style={[s.row, { gap: 6, alignItems: "center" }]}>
+                        <Feather name="clock" size={12} color={AppColors.textMuted} />
+                        <Text style={{ fontSize: 12, color: AppColors.textSecondary }}>
+                          {selectedScheduleForDirection.time}
+                        </Text>
+                      </View>
+                      <View style={[s.row, { gap: 6, alignItems: "center" }]}>
+                        <Feather name="user" size={12} color={AppColors.textMuted} />
+                        <Text style={{ fontSize: 12, color: AppColors.textSecondary }}>
+                          {selectedScheduleForDirection.lecturer}
+                        </Text>
+                      </View>
+                      <View style={[s.row, { gap: 6, alignItems: "center" }]}>
+                        <Feather name="map" size={12} color={AppColors.primary} />
+                        <Text style={{ fontSize: 12, fontWeight: "600", color: AppColors.primary }}>
+                          {currentDirection.building}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Lộ trình từng bước */}
+                  <View>
+                    <Text style={{ fontSize: 14, fontWeight: "800", color: AppColors.text, marginBottom: 12 }}>
+                      Lộ trình di chuyển chi tiết
+                    </Text>
+
+                    <View style={{ gap: 14 }}>
+                      {currentDirection.steps.map((step, idx) => (
+                        <View key={step.step} style={{ flexDirection: "row", gap: 12 }}>
+                          {/* Timeline icon & vertical connector line */}
+                          <View style={{ alignItems: "center" }}>
+                            <View
+                              style={{
+                                width: 30,
+                                height: 30,
+                                borderRadius: 15,
+                                backgroundColor: idx === 0 ? AppColors.primary : "#EEF2FF",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                borderWidth: 1,
+                                borderColor: idx === 0 ? AppColors.primary : "#C7D2FE",
+                              }}
+                            >
+                              <Feather
+                                name={step.icon}
+                                size={14}
+                                color={idx === 0 ? "#FFFFFF" : AppColors.primary}
+                              />
+                            </View>
+                            {idx < currentDirection.steps.length - 1 && (
+                              <View
+                                style={{
+                                  width: 2,
+                                  height: 38,
+                                  backgroundColor: "#E2E8F0",
+                                  marginTop: 4,
+                                }}
+                              />
+                            )}
+                          </View>
+
+                          {/* Content */}
+                          <View style={{ flex: 1, paddingTop: 3 }}>
+                            <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text }}>
+                              {step.step}. {step.title}
+                            </Text>
+                            <Text style={{ fontSize: 12, color: AppColors.textSecondary, marginTop: 2, lineHeight: 17 }}>
+                              {step.desc}
+                            </Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+
+                  {/* Lưu ý & tiện ích gần phòng */}
+                  <View
+                    style={{
+                      padding: 14,
+                      borderRadius: 14,
+                      backgroundColor: "#F0FDF4",
+                      borderWidth: 1,
+                      borderColor: "#BBF7D0",
+                      gap: 6,
+                    }}
+                  >
+                    <View style={[s.row, { gap: 6, alignItems: "center" }]}>
+                      <Feather name="check-circle" size={14} color="#16A34A" />
+                      <Text style={{ fontSize: 13, fontWeight: "700", color: "#16A34A" }}>
+                        Tiện ích & Lưu ý
+                      </Text>
+                    </View>
+                    {currentDirection.tips.map((tip, idx) => (
+                      <View key={idx} style={[s.row, { gap: 6, alignItems: "flex-start" }]}>
+                        <Text style={{ color: "#16A34A", fontSize: 12, lineHeight: 17 }}>•</Text>
+                        <Text style={{ flex: 1, fontSize: 12, color: "#15803D", lineHeight: 17 }}>
+                          {tip}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* Nút hành động */}
+                  <View style={{ gap: 10, marginTop: 4 }}>
+                    <TouchableOpacity
+                      onPress={() => handleOpenCampusMap(currentDirection.buildingCode)}
+                      activeOpacity={0.8}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 8,
+                        paddingVertical: 13,
+                        borderRadius: 14,
+                        backgroundColor: AppColors.primary,
+                      }}
+                    >
+                      <Feather name="map" size={16} color="#FFFFFF" />
+                      <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFFFFF" }}>
+                        Xem trên Bản đồ trường
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => handleOpenGoogleMaps(currentDirection.building)}
+                      activeOpacity={0.8}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 8,
+                        paddingVertical: 12,
+                        borderRadius: 14,
+                        backgroundColor: "#FFFFFF",
+                        borderWidth: 1.5,
+                        borderColor: AppColors.primary,
+                      }}
+                    >
+                      <Feather name="external-link" size={15} color={AppColors.primary} />
+                      <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.primary }}>
+                        Mở vị trí ngoài Google Maps
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => setSelectedScheduleForDirection(null)}
+                      activeOpacity={0.7}
+                      style={{
+                        paddingVertical: 10,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: AppColors.textSecondary }}>
+                        Đóng lại
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

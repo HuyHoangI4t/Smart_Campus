@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
@@ -32,11 +32,18 @@ const CATEGORIES = ["Tất cả", "Giảng đường", "Học tập", "Phòng m�
 
 export default function MapScreen() {
   const router = useRouter();
-  const [search, setSearch] = useState("");
+  const params = useLocalSearchParams<{ search?: string }>();
+  const [search, setSearch] = useState(params.search ? String(params.search) : "");
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
   const [locations, setLocations] = useState<LocationItem[]>(FALLBACK_LOCATIONS);
   const [selectedLoc, setSelectedLoc] = useState<LocationItem | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (params.search) {
+      setSearch(String(params.search));
+    }
+  }, [params.search]);
 
   useEffect(() => {
     const fetchLocations = async () => {
@@ -62,6 +69,21 @@ export default function MapScreen() {
 
     fetchLocations();
   }, []);
+
+  useEffect(() => {
+    if (search.trim() && locations.length > 0) {
+      const q = search.toLowerCase().trim();
+      const found = locations.find(
+        (loc) =>
+          loc.name.toLowerCase().includes(q) ||
+          loc.building.toLowerCase().includes(q) ||
+          q.includes(loc.building.toLowerCase())
+      );
+      if (found) {
+        setSelectedLoc(found);
+      }
+    }
+  }, [search, locations]);
 
   const filtered = locations.filter((loc) => {
     const matchSearch =

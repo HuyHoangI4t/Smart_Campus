@@ -36,10 +36,10 @@ async function initializeTables() {
       { name: 'full_name', def: 'VARCHAR(255)' },
       { name: 'phone', def: 'VARCHAR(50)' },
       { name: 'so_dien_thoai', def: 'VARCHAR(50)' },
-      { name: 'lop', def: "VARCHAR(100) DEFAULT 'Kỹ thuật phần mềm K23'" },
-      { name: 'khoa', def: "VARCHAR(100) DEFAULT 'Công nghệ Thông tin'" },
-      { name: 'ngay_sinh', def: "VARCHAR(50) DEFAULT '2005-05-15'" },
-      { name: 'gioi_tinh', def: "VARCHAR(20) DEFAULT 'Nam'" },
+      { name: 'lop', def: "VARCHAR(100) DEFAULT ''" },
+      { name: 'khoa', def: "VARCHAR(100) DEFAULT ''" },
+      // { name: 'ngay_sinh', def: "VARCHAR(50) DEFAULT '2005-05-15'" },
+      // { name: 'gioi_tinh', def: "VARCHAR(20) DEFAULT 'Nam'" },
       { name: 'avatar', def: "VARCHAR(255) DEFAULT 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'" },
     ];
 

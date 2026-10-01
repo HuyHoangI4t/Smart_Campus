@@ -56,8 +56,6 @@ export function NavHeader({
         paddingBottom: 16,
         backgroundColor: headerBg,
         zIndex: 10,
-        borderBottomLeftRadius: 18,
-        borderBottomRightRadius: 18,
       }}
     >
       <View style={[commonStyles.row, { gap: 12, marginBottom: children ? 12 : 0 }]}>
