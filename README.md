@@ -1,4 +1,4 @@
-# UDDD React Native — Smart Campus
+# Smart Campus
 
 Ứng dụng di động hỗ trợ sinh viên tra cứu thông tin học tập và sử dụng các tiện ích trong khuôn viên trường. Dự án gồm ứng dụng React Native/Expo và REST API Node.js/Express kết nối MySQL.
 
