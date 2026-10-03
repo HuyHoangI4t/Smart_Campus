@@ -12,22 +12,25 @@ interface DetailedGrade {
   code: string;
   name: string;
   credits: number;
-  dqt: number;
-  dth: number;
-  dhp: number;
-  total: number;
+  namHoc?: string;
+  ky?: string;
+  dbp: number | null;
+  thi1: number | null;
+  thi2: number | null;
+  d1: number | null;
+  d2: number | null;
+  total: number | null;
   letter: string;
   semester: string;
+  hocPhi?: string;
 }
 
 const FALLBACK_DETAILED_GRADES: DetailedGrade[] = [
-  { code: "NT118", name: "Lập trình thiết bị di động", credits: 3, dqt: 9.0, dth: 8.5, dhp: 8.2, total: 8.5, letter: "A", semester: "HK1 (2025-2026)" },
-  { code: "CS301", name: "Cấu trúc dữ liệu & Giải thuật", credits: 4, dqt: 8.0, dth: 8.0, dhp: 8.0, total: 8.0, letter: "B+", semester: "HK1 (2025-2026)" },
-  { code: "IT202", name: "Hệ cơ sở dữ liệu", credits: 3, dqt: 7.0, dth: 8.0, dhp: 7.5, total: 7.5, letter: "B", semester: "HK1 (2025-2026)" },
-  { code: "NT101", name: "Mạng máy tính nâng cao", credits: 3, dqt: 9.0, dth: 9.0, dhp: 8.5, total: 8.8, letter: "A", semester: "HK1 (2025-2026)" },
-  { code: "ENG201", name: "Tiếng Anh chuyên ngành", credits: 2, dqt: 7.5, dth: 7.0, dhp: 6.8, total: 7.0, letter: "C+", semester: "HK1 (2025-2026)" },
-  { code: "MTH101", name: "Giải tích I", credits: 3, dqt: 7.0, dth: 0, dhp: 6.5, total: 6.8, letter: "C", semester: "HK2 (2024-2025)" },
-  { code: "PHY101", name: "Vật lý đại cương", credits: 3, dqt: 8.5, dth: 9.0, dhp: 8.0, total: 8.3, letter: "B+", semester: "HK2 (2024-2025)" },
+  { code: "ATTT261", name: "An toàn thông tin", credits: 2.0, namHoc: "2026", ky: "1", dbp: null, thi1: null, thi2: null, d1: null, d2: null, total: null, letter: "X", semester: "HK1 (2026)", hocPhi: "Nợ:1238000" },
+  { code: "CSVL252", name: "Cơ sở vật lý cho Tin học", credits: 2.0, namHoc: "2025", ky: "2", dbp: 9.1, thi1: 5.5, thi2: null, d1: 6.9, d2: null, total: 6.9, letter: "C", semester: "HK2 (2025)", hocPhi: "Nộp:1100000" },
+  { code: "TTNT252", name: "Trí tuệ nhân tạo", credits: 2.0, namHoc: "2025", ky: "2", dbp: 9.0, thi1: 9.0, thi2: null, d1: 9.0, d2: null, total: 9.0, letter: "A", semester: "HK2 (2025)", hocPhi: "Nộp:1100000" },
+  { code: "CQTP252", name: "Các quy trình phát triển phần mềm hiện đại", credits: 2.0, namHoc: "2025", ky: "2", dbp: 8.0, thi1: 8.0, thi2: null, d1: 8.0, d2: null, total: 8.0, letter: "B", semester: "HK2 (2025)", hocPhi: "Nộp:1100000" },
+  { code: "NMHD252", name: "Nhập môn Hệ điều hành", credits: 2.0, namHoc: "2025", ky: "2", dbp: 9.5, thi1: 8.0, thi2: null, d1: 8.5, d2: null, total: 8.5, letter: "A", semester: "HK2 (2025)", hocPhi: "Nộp:1100000" },
 ];
 
 export default function GradesDetailScreen() {
@@ -49,18 +52,32 @@ export default function GradesDetailScreen() {
         const isRealAccount = mssv && mssv !== "guest";
         const res = await apiGetGrades(isRealAccount ? mssv : undefined);
         if (res && res.success && res.data && res.data.length > 0) {
+          const parseNum = (val: any) =>
+            val !== null && val !== undefined && val !== "" && !isNaN(Number(val)) ? Number(val) : null;
+
           const mapped: DetailedGrade[] = res.data.map((item: any, idx: number) => {
-            const dhp = Number(item.diem_hp || item.total || 8.0);
+            const dbp = parseNum(item.diem_dbp ?? item.diem_qt);
+            const thi1 = parseNum(item.diem_thi1 ?? item.thi1 ?? item.diem_thi);
+            const thi2 = parseNum(item.diem_thi2 ?? item.thi2);
+            const d1 = parseNum(item.diem_1 ?? item.d1);
+            const d2 = parseNum(item.diem_2 ?? item.d2);
+            const total = parseNum(item.diem_hp ?? d2 ?? d1);
+
             return {
               code: item.ma_hp || item.code || `HP-${idx + 1}`,
               name: item.ten_hp || item.name || "Học phần",
               credits: Number(item.so_tin_chi || item.credits || 3),
-              dqt: Number(item.diem_qt || (dhp * 0.9 + 0.5).toFixed(1)),
-              dth: Number(item.diem_th || (dhp * 0.95).toFixed(1)),
-              dhp: Number(item.diem_thi || dhp),
-              total: dhp,
-              letter: item.diem_chu || (dhp >= 8.5 ? "A" : dhp >= 7.0 ? "B" : "C"),
-              semester: item.hoc_ky || "HK1 (2025-2026)",
+              namHoc: item.nam_hoc || "",
+              ky: item.ky || "",
+              dbp: dbp,
+              thi1: thi1,
+              thi2: thi2,
+              d1: d1,
+              d2: d2,
+              total: total,
+              letter: item.diem_chu || (total !== null ? (total >= 8.5 ? "A" : total >= 7.0 ? "B" : "C") : "X"),
+              semester: item.hoc_ky || (item.ky ? `HK${item.ky} (${item.nam_hoc || "2026"})` : "HK1 (2026)"),
+              hocPhi: item.hoc_phi || "",
             };
           });
           setList(mapped);
@@ -86,9 +103,13 @@ export default function GradesDetailScreen() {
   });
 
   const getBadge = (letter: string) => {
+    if (!letter) return { bg: "#F3F4F6", text: "#4B5563", border: "#E5E7EB" };
     if (letter.startsWith("A")) return { bg: "#ECFDF5", text: "#059669", border: "#A7F3D0" };
     if (letter.startsWith("B")) return { bg: "#EFF6FF", text: "#2563EB", border: "#BFDBFE" };
     if (letter.startsWith("C")) return { bg: "#FFFBEB", text: "#D97706", border: "#FDE68A" };
+    if (letter.startsWith("D")) return { bg: "#FEF3C7", text: "#B45309", border: "#FDE68A" };
+    if (letter === "P") return { bg: "#F0FDF4", text: "#16A34A", border: "#BBF7D0" };
+    if (letter === "X") return { bg: "#FEF2F2", text: "#EF4444", border: "#FECACA" };
     return { bg: "#FEF2F2", text: "#DC2626", border: "#FECACA" };
   };
 
@@ -180,9 +201,32 @@ export default function GradesDetailScreen() {
                   }}
                 >
                   <View style={[s.row, s.between, { marginBottom: 6 }]}>
-                    <View style={[s.row, { gap: 6 }]}>
+                    <View style={[s.row, { gap: 6, alignItems: "center" }]}>
                       <Text style={{ fontSize: 11, fontWeight: "800", color: AppColors.primary }}>{item.code}</Text>
                       <Text style={{ fontSize: 11, color: AppColors.textMuted }}>• {item.credits} tín chỉ</Text>
+                      {item.hocPhi ? (
+                        <View
+                          style={{
+                            paddingHorizontal: 6,
+                            paddingVertical: 2,
+                            borderRadius: 6,
+                            backgroundColor: item.hocPhi.includes("Nợ") ? "#FEF2F2" : "#F0FDF4",
+                            borderWidth: 1,
+                            borderColor: item.hocPhi.includes("Nợ") ? "#FECACA" : "#BBF7D0",
+                            marginLeft: 4,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 10,
+                              fontWeight: "700",
+                              color: item.hocPhi.includes("Nợ") ? "#DC2626" : "#16A34A",
+                            }}
+                          >
+                            {item.hocPhi}
+                          </Text>
+                        </View>
+                      ) : null}
                     </View>
                     <View
                       style={{
@@ -194,7 +238,9 @@ export default function GradesDetailScreen() {
                         borderColor: badge.border,
                       }}
                     >
-                      <Text style={{ fontSize: 13, fontWeight: "900", color: badge.text }}>{item.letter}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: "900", color: badge.text }}>
+                        {item.letter === "X" ? "Đang học" : item.letter === "P" ? "Đạt" : item.letter}
+                      </Text>
                     </View>
                   </View>
 
@@ -202,34 +248,50 @@ export default function GradesDetailScreen() {
                     {item.name}
                   </Text>
 
-                  {/* Component score grid */}
+                  {/* 5 cột điểm tương ứng chuẩn 100% với bảng trường: ĐBP | Thi1 | Thi2 | Đ1 | Đ2 */}
                   <View
                     style={{
                       flexDirection: "row",
                       justifyContent: "space-between",
-                      padding: 10,
+                      paddingVertical: 10,
+                      paddingHorizontal: 4,
                       borderRadius: 12,
                       backgroundColor: AppColors.muted,
                     }}
                   >
-                    <View style={{ alignItems: "center" }}>
-                      <Text style={{ fontSize: 10, color: AppColors.textMuted, fontWeight: "600" }}>ĐQT</Text>
-                      <Text style={{ fontSize: 14, fontWeight: "800", color: AppColors.text, marginTop: 2 }}>{item.dqt}</Text>
+                    <View style={{ alignItems: "center", flex: 1 }}>
+                      <Text style={{ fontSize: 10, color: AppColors.textMuted, fontWeight: "700" }}>ĐBP</Text>
+                      <Text style={{ fontSize: 13, fontWeight: "800", color: AppColors.text, marginTop: 3 }}>
+                        {item.dbp !== null ? item.dbp : "—"}
+                      </Text>
                     </View>
                     <View style={{ width: 1, backgroundColor: AppColors.cardBorder }} />
-                    <View style={{ alignItems: "center" }}>
-                      <Text style={{ fontSize: 10, color: AppColors.textMuted, fontWeight: "600" }}>ĐTH</Text>
-                      <Text style={{ fontSize: 14, fontWeight: "800", color: AppColors.text, marginTop: 2 }}>{item.dth || "—"}</Text>
+                    <View style={{ alignItems: "center", flex: 1 }}>
+                      <Text style={{ fontSize: 10, color: AppColors.textMuted, fontWeight: "700" }}>Thi1</Text>
+                      <Text style={{ fontSize: 13, fontWeight: "800", color: AppColors.text, marginTop: 3 }}>
+                        {item.thi1 !== null ? item.thi1 : "—"}
+                      </Text>
                     </View>
                     <View style={{ width: 1, backgroundColor: AppColors.cardBorder }} />
-                    <View style={{ alignItems: "center" }}>
-                      <Text style={{ fontSize: 10, color: AppColors.textMuted, fontWeight: "600" }}>ĐHP / THI</Text>
-                      <Text style={{ fontSize: 14, fontWeight: "800", color: AppColors.text, marginTop: 2 }}>{item.dhp}</Text>
+                    <View style={{ alignItems: "center", flex: 1 }}>
+                      <Text style={{ fontSize: 10, color: AppColors.textMuted, fontWeight: "700" }}>Thi2</Text>
+                      <Text style={{ fontSize: 13, fontWeight: "800", color: AppColors.text, marginTop: 3 }}>
+                        {item.thi2 !== null ? item.thi2 : "—"}
+                      </Text>
                     </View>
                     <View style={{ width: 1, backgroundColor: AppColors.cardBorder }} />
-                    <View style={{ alignItems: "center" }}>
-                      <Text style={{ fontSize: 10, color: AppColors.primary, fontWeight: "700" }}>TỔNG KẾT</Text>
-                      <Text style={{ fontSize: 14, fontWeight: "900", color: AppColors.primary, marginTop: 2 }}>{item.total}</Text>
+                    <View style={{ alignItems: "center", flex: 1 }}>
+                      <Text style={{ fontSize: 10, color: AppColors.primary, fontWeight: "700" }}>Đ1</Text>
+                      <Text style={{ fontSize: 13, fontWeight: "900", color: AppColors.primary, marginTop: 3 }}>
+                        {item.d1 !== null ? item.d1 : (item.total !== null ? item.total : "—")}
+                      </Text>
+                    </View>
+                    <View style={{ width: 1, backgroundColor: AppColors.cardBorder }} />
+                    <View style={{ alignItems: "center", flex: 1 }}>
+                      <Text style={{ fontSize: 10, color: AppColors.primary, fontWeight: "700" }}>Đ2</Text>
+                      <Text style={{ fontSize: 13, fontWeight: "900", color: AppColors.primary, marginTop: 3 }}>
+                        {item.d2 !== null ? item.d2 : "—"}
+                      </Text>
                     </View>
                   </View>
                 </View>

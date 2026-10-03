@@ -48,9 +48,9 @@ async function initializeTables() {
       if (!existingColNames.includes(col.name.toLowerCase())) {
         try {
           await connection.query(`ALTER TABLE users ADD COLUMN ${col.name} ${col.def}`);
-          console.log(`+ Added column ${col.name} to users table`);
+          console.log(`+ Thêm cột ${col.name} vào bảng users`);
         } catch (e) {
-          console.warn(`Could not add column ${col.name}:`, e.message);
+          console.warn(`Không thể thêm cột ${col.name}:`, e.message);
         }
       }
     }
@@ -158,26 +158,41 @@ async function initializeTables() {
       )
     `);
 
-    // 10. Student Grades table (Bảng điểm thực tế lưu trong Database)
+    // 10. Student Grades table
     await connection.query(`
       CREATE TABLE IF NOT EXISTS student_grades (
         id INT AUTO_INCREMENT PRIMARY KEY,
         mssv VARCHAR(50) NOT NULL,
         ma_hp VARCHAR(50) NOT NULL,
         ten_hp VARCHAR(255) NOT NULL,
-        so_tin_chi INT DEFAULT 3,
-        diem_qt DECIMAL(4,2) DEFAULT 8.0,
-        diem_th DECIMAL(4,2) DEFAULT 8.0,
-        diem_thi DECIMAL(4,2) DEFAULT 8.0,
-        diem_hp DECIMAL(4,2) DEFAULT 8.0,
-        diem_chu VARCHAR(5) DEFAULT 'B',
-        hoc_ky VARCHAR(50) DEFAULT 'HK1 (2025-2026)',
+        so_tin_chi INT DEFAULT NULL,
+        diem_qt DECIMAL(4,2) DEFAULT NULL,
+        diem_thi1 DECIMAL(4,2) DEFAULT NULL,
+        diem_thi2 DECIMAL(4,2) DEFAULT NULL,
+        diem_hp DECIMAL(4,2) DEFAULT NULL,
+        diem_chu VARCHAR(5) DEFAULT NULL,
+        hoc_ky VARCHAR(50) DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX(mssv)
       )
     `);
 
-    // 11. Student Schedules table (Lịch học thực tế lưu trong Database)
+    // Đảm bảo đầy đủ các cột tương ứng chuẩn từ bảng điểm trường
+    try { await connection.query("ALTER TABLE student_grades ADD COLUMN nam_hoc VARCHAR(20) DEFAULT NULL"); } catch (e) {}
+    try { await connection.query("ALTER TABLE student_grades ADD COLUMN ky VARCHAR(20) DEFAULT NULL"); } catch (e) {}
+    try { await connection.query("ALTER TABLE student_grades ADD COLUMN diem_qt DECIMAL(4,2) DEFAULT NULL"); } catch (e) {}
+    try { await connection.query("ALTER TABLE student_grades ADD COLUMN diem_dbp DECIMAL(4,2) DEFAULT NULL"); } catch (e) {}
+    try { await connection.query("ALTER TABLE student_grades ADD COLUMN diem_thi1 DECIMAL(4,2) DEFAULT NULL"); } catch (e) {}
+    try { await connection.query("ALTER TABLE student_grades ADD COLUMN diem_thi2 DECIMAL(4,2) DEFAULT NULL"); } catch (e) {}
+    try { await connection.query("ALTER TABLE student_grades ADD COLUMN diem_thi DECIMAL(4,2) DEFAULT NULL"); } catch (e) {}
+    try { await connection.query("ALTER TABLE student_grades ADD COLUMN diem_1 DECIMAL(4,2) DEFAULT NULL"); } catch (e) {}
+    try { await connection.query("ALTER TABLE student_grades ADD COLUMN diem_2 DECIMAL(4,2) DEFAULT NULL"); } catch (e) {}
+    try { await connection.query("ALTER TABLE student_grades ADD COLUMN diem_hp DECIMAL(4,2) DEFAULT NULL"); } catch (e) {}
+    try { await connection.query("ALTER TABLE student_grades ADD COLUMN diem_chu VARCHAR(10) DEFAULT 'X'"); } catch (e) {}
+    try { await connection.query("ALTER TABLE student_grades ADD COLUMN hoc_ky VARCHAR(50) DEFAULT 'HK1 (2026)'"); } catch (e) {}
+    try { await connection.query("ALTER TABLE student_grades ADD COLUMN hoc_phi VARCHAR(100) DEFAULT NULL"); } catch (e) {}
+
+    // 11. Student Schedules table
     await connection.query(`
       CREATE TABLE IF NOT EXISTS student_schedules (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -188,75 +203,16 @@ async function initializeTables() {
         tiet VARCHAR(50) NOT NULL,
         phong VARCHAR(50) NOT NULL,
         giang_vien VARCHAR(100),
-        hoc_ky VARCHAR(50) DEFAULT 'HK1 (2025-2026)',
+        hoc_ky VARCHAR(50) DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX(mssv)
       )
     `);
 
-    // Seed default grades for 23103023 if not exist
-    const [existingGrades] = await connection.query('SELECT COUNT(*) as count FROM student_grades WHERE mssv = ?', ['23103023']);
-    if (existingGrades[0].count === 0) {
-      await connection.query(`
-        INSERT INTO student_grades (mssv, ma_hp, ten_hp, so_tin_chi, diem_qt, diem_th, diem_thi, diem_hp, diem_chu, hoc_ky) VALUES
-        ('23103023', 'NT118', 'Lập trình thiết bị di động', 3, 9.5, 9.0, 8.5, 8.9, 'A', 'HK1 (2025-2026)'),
-        ('23103023', 'CS301', 'Cấu trúc dữ liệu & Giải thuật', 4, 8.5, 8.5, 8.0, 8.3, 'B+', 'HK1 (2025-2026)'),
-        ('23103023', 'IT202', 'Hệ cơ sở dữ liệu', 3, 8.0, 8.5, 8.0, 8.1, 'B+', 'HK1 (2025-2026)'),
-        ('23103023', 'NT101', 'Mạng máy tính nâng cao', 3, 9.0, 9.5, 9.0, 9.2, 'A+', 'HK1 (2025-2026)'),
-        ('23103023', 'ENG201', 'Tiếng Anh chuyên ngành', 2, 8.0, 7.5, 7.8, 7.8, 'B', 'HK1 (2025-2026)')
-      `);
-      console.log('🌱 Seeded student_grades for 23103023');
-    }
-
-    // Seed default schedule for 23103023 if not exist
-    const [existingSchedule] = await connection.query('SELECT COUNT(*) as count FROM student_schedules WHERE mssv = ?', ['23103023']);
-    if (existingSchedule[0].count === 0) {
-      await connection.query(`
-        INSERT INTO student_schedules (mssv, ma_hp, ten_hp, thu, tiet, phong, giang_vien, hoc_ky) VALUES
-        ('23103023', 'CS301', 'Cấu trúc dữ liệu & Giải thuật', 'Thứ 2', '1 - 3', 'ENG-B204', 'ThS. Nguyễn Văn A', 'HK1 (2025-2026)'),
-        ('23103023', 'NT118', 'Lập trình thiết bị di động', 'Thứ 2', '4 - 6', 'LAB-03', 'TS. Trần Thị B', 'HK1 (2025-2026)'),
-        ('23103023', 'IT202', 'Hệ cơ sở dữ liệu', 'Thứ 3', '7 - 9', 'ENG-A102', 'ThS. Lê Hoàng C', 'HK1 (2025-2026)'),
-        ('23103023', 'NT101', 'Mạng máy tính & Truyền thông', 'Thứ 4', '1 - 3', 'NET-LAB', 'TS. Phạm Văn D', 'HK1 (2025-2026)'),
-        ('23103023', 'NT205', 'An toàn thông tin mạng', 'Thứ 5', '4 - 6', 'ENG-B301', 'ThS. Vũ Thị E', 'HK1 (2025-2026)'),
-        ('23103023', 'NT300', 'Đồ án chuyên ngành CNTT', 'Thứ 6', '1 - 4', 'ENG-B101', 'Hội đồng bộ môn', 'HK1 (2025-2026)')
-      `);
-      console.log('🌱 Seeded student_schedules for 23103023');
-    }
-
-    // Seed lecturer account giangvien123 (Mật khẩu: 123456)
-    const hashLecturerPass = await bcrypt.hash('123456', 10);
-    const [existingLecturer] = await connection.query('SELECT * FROM users WHERE mssv = ?', ['giangvien123']);
-    if (existingLecturer.length === 0) {
-      await connection.query(`
-        INSERT INTO users (mssv, full_name, ho_ten, email, password, role, lop, khoa, so_dien_thoai, phone, avatar) VALUES
-        ('giangvien123', 'ThS. Nguyễn Văn Giảng Viên', 'ThS. Nguyễn Văn Giảng Viên', 'giangvien123@ttn.edu.vn', ?, 'giangvien', 'Bộ môn Kỹ thuật Phần mềm', 'Khoa Công nghệ Thông tin', '0912345678', '0912345678', 'https://cdn-icons-png.flaticon.com/512/3410/3410150.png')
-      `, [hashLecturerPass]);
-      console.log('🌱 Seeded lecturer account: giangvien123 / 123456');
-    } else {
-      await connection.query(`
-        UPDATE users SET password = ?, role = 'giangvien', ho_ten = 'ThS. Nguyễn Văn Giảng Viên', full_name = 'ThS. Nguyễn Văn Giảng Viên', lop = 'Bộ môn Kỹ thuật Phần mềm', khoa = 'Khoa Công nghệ Thông tin' WHERE mssv = 'giangvien123'
-      `, [hashLecturerPass]);
-      console.log('🔄 Updated lecturer account: giangvien123 / 123456');
-    }
-
-    // Seed teaching schedule for giangvien123
-    const [existingLecturerSchedule] = await connection.query('SELECT COUNT(*) as count FROM student_schedules WHERE mssv = ?', ['giangvien123']);
-    if (existingLecturerSchedule[0].count === 0) {
-      await connection.query(`
-        INSERT INTO student_schedules (mssv, ma_hp, ten_hp, thu, tiet, phong, giang_vien, hoc_ky) VALUES
-        ('giangvien123', 'NT118', 'Lập trình thiết bị di động (Lớp K23)', 'Thứ 2', '1 - 3', 'LAB-03', 'ThS. Nguyễn Văn Giảng Viên', 'HK1 (2025-2026)'),
-        ('giangvien123', 'CS301', 'Cấu trúc dữ liệu & Giải thuật (Lớp K22)', 'Thứ 3', '4 - 6', 'ENG-B204', 'ThS. Nguyễn Văn Giảng Viên', 'HK1 (2025-2026)'),
-        ('giangvien123', 'IT202', 'Hệ cơ sở dữ liệu (Lớp K23 - KTPM)', 'Thứ 4', '1 - 3', 'ENG-A102', 'ThS. Nguyễn Văn Giảng Viên', 'HK1 (2025-2026)'),
-        ('giangvien123', 'NT300', 'Đồ án chuyên ngành CNTT (K21)', 'Thứ 5', '7 - 9', 'ENG-B101', 'ThS. Nguyễn Văn Giảng Viên', 'HK1 (2025-2026)'),
-        ('giangvien123', 'NT101', 'Mạng máy tính nâng cao (Lớp K23)', 'Thứ 6', '1 - 4', 'NET-LAB', 'ThS. Nguyễn Văn Giảng Viên', 'HK1 (2025-2026)')
-      `);
-      console.log('🌱 Seeded teaching schedules for giangvien123');
-    }
-
-    console.log('✅ All database tables initialized and verified successfully.');
+    console.log('✅ Kết nối và khởi tạo các bảng cơ sở dữ liệu thành công.');
     connection.release();
   } catch (error) {
-    console.error('❌ Error initializing database tables:', error.message);
+    console.error('❌ Lỗi khi khởi tạo bảng cơ sở dữ liệu:', error.message);
   }
 }
 

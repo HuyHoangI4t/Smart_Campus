@@ -54,9 +54,9 @@ export default function GradesScreen() {
           code: item.ma_hp || item.code || `HP-${idx + 1}`,
           name: item.ten_hp || item.name || "Học phần",
           credits: Number(item.so_tin_chi || item.credits || 3),
-          grade10: Number(item.diem_hp || item.grade10 || 8.0),
+          grade10: item.diem_hp !== null && item.diem_hp !== undefined && !isNaN(Number(item.diem_hp)) ? Number(item.diem_hp) : (item.grade10 ? Number(item.grade10) : 0),
           gradeLetter: item.diem_chu || (item.diem_hp >= 8.5 ? "A" : item.diem_hp >= 7.0 ? "B" : "C"),
-          semester: item.hoc_ky || "HK1 (2025-2026)",
+          semester: item.hoc_ky || "HK1 (2026)",
         }));
         setGrades(parsed);
       }
@@ -103,19 +103,29 @@ export default function GradesScreen() {
     selectedSemester === "Tất cả" ? true : g.semester === selectedSemester
   );
 
+  // Chỉ tính GPA trên các môn đã có điểm (bỏ qua môn đang học 'X' và môn điều kiện 'P')
+  const gradedCourses = displayedGrades.filter(
+    (g) => g.gradeLetter !== "X" && g.gradeLetter !== "P" && g.grade10 > 0
+  );
+  const totalGradedCredits = gradedCourses.reduce((acc, curr) => acc + curr.credits, 0);
   const totalCredits = displayedGrades.reduce((acc, curr) => acc + curr.credits, 0);
-  const gpa10 = displayedGrades.length > 0
-    ? (displayedGrades.reduce((acc, curr) => acc + curr.grade10 * curr.credits, 0) / Math.max(totalCredits, 1)).toFixed(2)
+
+  const gpa10 = totalGradedCredits > 0
+    ? (gradedCourses.reduce((acc, curr) => acc + curr.grade10 * curr.credits, 0) / totalGradedCredits).toFixed(2)
     : "0.00";
 
-  const totalPoints4 = displayedGrades.reduce((acc, curr) => acc + convertTo4Scale(curr.grade10) * curr.credits, 0);
-  const gpa4 = totalCredits > 0 ? (totalPoints4 / totalCredits).toFixed(2) : "0.00";
+  const totalPoints4 = gradedCourses.reduce((acc, curr) => acc + convertTo4Scale(curr.grade10) * curr.credits, 0);
+  const gpa4 = totalGradedCredits > 0 ? (totalPoints4 / totalGradedCredits).toFixed(2) : "0.00";
   const academicRank = getAcademicRank(Number(gpa4));
 
   const getBadgeColor = (letter: string) => {
+    if (!letter) return { bg: "#F3F4F6", text: "#4B5563", border: "#E5E7EB" };
     if (letter.startsWith("A")) return { bg: "#ECFDF5", text: "#059669", border: "#A7F3D0" };
     if (letter.startsWith("B")) return { bg: "#EFF6FF", text: "#2563EB", border: "#BFDBFE" };
     if (letter.startsWith("C")) return { bg: "#FFFBEB", text: "#D97706", border: "#FDE68A" };
+    if (letter.startsWith("D")) return { bg: "#FEF3C7", text: "#B45309", border: "#FDE68A" };
+    if (letter === "P") return { bg: "#F0FDF4", text: "#16A34A", border: "#BBF7D0" };
+    if (letter === "X") return { bg: "#FEF2F2", text: "#EF4444", border: "#FECACA" };
     return { bg: "#FEF2F2", text: "#DC2626", border: "#FECACA" };
   };
 
@@ -314,10 +324,16 @@ export default function GradesScreen() {
                         minWidth: 44,
                       }}
                     >
-                      <Text style={{ fontSize: 15, fontWeight: "900", color: badge.text }}>{item.gradeLetter}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: "900", color: badge.text }}>
+                        {item.gradeLetter === "X" ? "Đang học" : item.gradeLetter === "P" ? "Đạt" : item.gradeLetter}
+                      </Text>
                     </View>
                     <Text style={{ fontSize: 12, fontWeight: "700", color: AppColors.textSecondary, marginTop: 4 }}>
-                      {item.grade10.toFixed(1)} / 10
+                      {item.gradeLetter === "X"
+                        ? "Chưa có điểm"
+                        : item.gradeLetter === "P"
+                        ? "Môn điều kiện"
+                        : `${item.grade10.toFixed(1)} / 10`}
                     </Text>
                   </View>
                 </View>

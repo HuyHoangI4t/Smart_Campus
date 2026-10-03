@@ -8,10 +8,10 @@ import { NavHeader } from "../../../src/components/NavHeader";
 import { apiSubmitSos } from "../../../src/services/api";
 
 const HOTLINES = [
-  { label: "Bảo vệ & An ninh cơ sở", phone: "02838354409", icon: "shield" as const },
-  { label: "Trạm Y tế sinh viên", phone: "02838352020", icon: "plus-circle" as const },
-  { label: "Cấp cứu 115", phone: "115", icon: "phone-call" as const },
-  { label: "Cứu hỏa PCCC 114", phone: "114", icon: "alert-octagon" as const },
+  { label: "Bảo vệ & An ninh cơ sở(Huy Hoàng", phone: "0329106783", icon: "shield" as const },
+  { label: "Trạm Y tế sinh viên(Duyên)", phone: "0978269097", icon: "plus-circle" as const },
+  { label: "Cấp cứu 115(Xuân Hoàng)", phone: "0326896303", icon: "phone-call" as const },
+  { label: "Cứu hỏa PCCC 114(Kiên)", phone: "0968372005", icon: "alert-octagon" as const },
 ];
 
 const INCIDENT_TYPES = [

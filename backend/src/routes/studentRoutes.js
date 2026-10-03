@@ -21,6 +21,10 @@ const studentController = require('../controllers/studentController');
  *                 type: string
  *                 example: '23103023'
  *                 description: Mã số sinh viên
+ *               msv:
+ *                 type: string
+ *                 example: '23103023'
+ *                 description: Mã số sinh viên (viết tắt)
  *               dk:
  *                 type: string
  *                 example: '10'
@@ -30,6 +34,13 @@ const studentController = require('../controllers/studentController');
  *         description: Trả về danh sách điểm của sinh viên
  */
 router.post('/grades', studentController.getGrades);
+router.get('/grades', studentController.getGrades);
+router.get('/grades/:mssv', studentController.getGrades);
+router.post('/grades/:mssv', studentController.getGrades);
+router.post('/student/grades', studentController.getGrades);
+router.get('/student/grades', studentController.getGrades);
+router.get('/student/grades/:mssv', studentController.getGrades);
+router.post('/student/grades/:mssv', studentController.getGrades);
 
 /**
  * @swagger
@@ -59,6 +70,13 @@ router.post('/grades', studentController.getGrades);
  *         description: Thành công
  */
 router.post('/schedule', studentController.getSchedule);
+router.get('/schedule', studentController.getSchedule);
+router.get('/schedule/:mssv', studentController.getSchedule);
+router.post('/schedule/:mssv', studentController.getSchedule);
+router.post('/student/schedule', studentController.getSchedule);
+router.get('/student/schedule', studentController.getSchedule);
+router.get('/student/schedule/:mssv', studentController.getSchedule);
+router.post('/student/schedule/:mssv', studentController.getSchedule);
 
 /**
  * @swagger
@@ -132,6 +150,11 @@ router.post('/student/current-courses', studentController.getCurrentCourses);
  *         description: Cập nhật thành công
  */
 router.get('/student/profile', studentController.getProfile);
+router.get('/student/profile/:mssv', studentController.getProfile);
+router.get('/profile', studentController.getProfile);
+router.get('/profile/:mssv', studentController.getProfile);
+router.put('/student/profile', studentController.updateProfile);
+router.put('/profile', studentController.updateProfile);
 
 /**
  * @swagger
