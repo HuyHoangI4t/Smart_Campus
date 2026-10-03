@@ -158,39 +158,47 @@ async function initializeTables() {
       )
     `);
 
-    // 10. Student Grades table
+    // 10. Student Grades table (Tương ứng chuẩn 100% với bảng kết quả đào tạo chính quy của trường)
     await connection.query(`
       CREATE TABLE IF NOT EXISTS student_grades (
         id INT AUTO_INCREMENT PRIMARY KEY,
         mssv VARCHAR(50) NOT NULL,
         ma_hp VARCHAR(50) NOT NULL,
         ten_hp VARCHAR(255) NOT NULL,
-        so_tin_chi INT DEFAULT NULL,
-        diem_qt DECIMAL(4,2) DEFAULT NULL,
+        nam_hoc VARCHAR(20) DEFAULT NULL,
+        ky VARCHAR(20) DEFAULT NULL,
+        diem_dbp DECIMAL(4,2) DEFAULT NULL,
         diem_thi1 DECIMAL(4,2) DEFAULT NULL,
         diem_thi2 DECIMAL(4,2) DEFAULT NULL,
-        diem_hp DECIMAL(4,2) DEFAULT NULL,
-        diem_chu VARCHAR(5) DEFAULT NULL,
+        diem_1 DECIMAL(4,2) DEFAULT NULL,
+        diem_2 DECIMAL(4,2) DEFAULT NULL,
+        diem_chu VARCHAR(10) DEFAULT 'X',
+        so_tin_chi DECIMAL(3,1) DEFAULT NULL,
+        hoc_phi VARCHAR(100) DEFAULT NULL,
         hoc_ky VARCHAR(50) DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX(mssv)
       )
     `);
 
-    // Đảm bảo đầy đủ các cột tương ứng chuẩn từ bảng điểm trường
+    // Đảm bảo đầy đủ các cột chuẩn tương ứng với cổng web trường
     try { await connection.query("ALTER TABLE student_grades ADD COLUMN nam_hoc VARCHAR(20) DEFAULT NULL"); } catch (e) {}
     try { await connection.query("ALTER TABLE student_grades ADD COLUMN ky VARCHAR(20) DEFAULT NULL"); } catch (e) {}
-    try { await connection.query("ALTER TABLE student_grades ADD COLUMN diem_qt DECIMAL(4,2) DEFAULT NULL"); } catch (e) {}
     try { await connection.query("ALTER TABLE student_grades ADD COLUMN diem_dbp DECIMAL(4,2) DEFAULT NULL"); } catch (e) {}
     try { await connection.query("ALTER TABLE student_grades ADD COLUMN diem_thi1 DECIMAL(4,2) DEFAULT NULL"); } catch (e) {}
     try { await connection.query("ALTER TABLE student_grades ADD COLUMN diem_thi2 DECIMAL(4,2) DEFAULT NULL"); } catch (e) {}
-    try { await connection.query("ALTER TABLE student_grades ADD COLUMN diem_thi DECIMAL(4,2) DEFAULT NULL"); } catch (e) {}
     try { await connection.query("ALTER TABLE student_grades ADD COLUMN diem_1 DECIMAL(4,2) DEFAULT NULL"); } catch (e) {}
     try { await connection.query("ALTER TABLE student_grades ADD COLUMN diem_2 DECIMAL(4,2) DEFAULT NULL"); } catch (e) {}
-    try { await connection.query("ALTER TABLE student_grades ADD COLUMN diem_hp DECIMAL(4,2) DEFAULT NULL"); } catch (e) {}
     try { await connection.query("ALTER TABLE student_grades ADD COLUMN diem_chu VARCHAR(10) DEFAULT 'X'"); } catch (e) {}
-    try { await connection.query("ALTER TABLE student_grades ADD COLUMN hoc_ky VARCHAR(50) DEFAULT 'HK1 (2026)'"); } catch (e) {}
+    try { await connection.query("ALTER TABLE student_grades ADD COLUMN so_tin_chi DECIMAL(3,1) DEFAULT 3.0"); } catch (e) {}
     try { await connection.query("ALTER TABLE student_grades ADD COLUMN hoc_phi VARCHAR(100) DEFAULT NULL"); } catch (e) {}
+    try { await connection.query("ALTER TABLE student_grades ADD COLUMN hoc_ky VARCHAR(50) DEFAULT NULL"); } catch (e) {}
+
+    // Xóa triệt để các trường cũ không cần thiết / không tồn tại trong bảng trường
+    try { await connection.query("ALTER TABLE student_grades DROP COLUMN diem_th"); } catch (e) {}
+    try { await connection.query("ALTER TABLE student_grades DROP COLUMN diem_thi"); } catch (e) {}
+    try { await connection.query("ALTER TABLE student_grades DROP COLUMN diem_qt"); } catch (e) {}
+    try { await connection.query("ALTER TABLE student_grades DROP COLUMN diem_hp"); } catch (e) {}
 
     // 11. Student Schedules table
     await connection.query(`

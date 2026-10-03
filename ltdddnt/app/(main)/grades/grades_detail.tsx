@@ -64,7 +64,7 @@ export default function GradesDetailScreen() {
             const total = parseNum(item.diem_hp ?? d2 ?? d1);
 
             return {
-              code: item.ma_hp || item.code || `HP-${idx + 1}`,
+              code: item.code || "",
               name: item.ten_hp || item.name || "Học phần",
               credits: Number(item.so_tin_chi || item.credits || 3),
               namHoc: item.nam_hoc || "",
@@ -191,7 +191,7 @@ export default function GradesDetailScreen() {
               const badge = getBadge(item.letter);
               return (
                 <View
-                  key={`${item.code}-${idx}`}
+                  key={`${item.name}-${idx}`}
                   style={{
                     padding: 16,
                     borderRadius: 16,
@@ -202,8 +202,12 @@ export default function GradesDetailScreen() {
                 >
                   <View style={[s.row, s.between, { marginBottom: 6 }]}>
                     <View style={[s.row, { gap: 6, alignItems: "center" }]}>
-                      <Text style={{ fontSize: 11, fontWeight: "800", color: AppColors.primary }}>{item.code}</Text>
-                      <Text style={{ fontSize: 11, color: AppColors.textMuted }}>• {item.credits} tín chỉ</Text>
+                      {item.code ? (
+                        <Text style={{ fontSize: 11, fontWeight: "800", color: AppColors.primary }}>{item.code}</Text>
+                      ) : null}
+                      <Text style={{ fontSize: 11, color: AppColors.textMuted }}>
+                        {item.code ? "• " : ""}{item.credits} tín chỉ
+                      </Text>
                       {item.hocPhi ? (
                         <View
                           style={{

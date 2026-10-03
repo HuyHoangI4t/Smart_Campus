@@ -115,28 +115,6 @@ const extractFullNameFromHtml = ($) => {
   return cleanName(fullName);
 };
 
-// Helper sinh mã học phần từ tên môn + năm học + kỳ
-const generateMaHp = (tenHp, namHoc, ky, idx) => {
-  if (!tenHp) return `HP${idx + 1}`;
-  const words = tenHp
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-zA-Z0-9\s]/g, '')
-    .trim()
-    .split(/\s+/);
-  let prefix = '';
-  if (words.length === 1) {
-    prefix = words[0].substring(0, 3).toUpperCase();
-  } else if (words.length <= 4) {
-    prefix = words.map(w => w[0].toUpperCase()).join('');
-  } else {
-    prefix = words.slice(0, 4).map(w => w[0].toUpperCase()).join('');
-  }
-  const suffixYear = namHoc ? String(namHoc).slice(-2) : '26';
-  const suffixKy = ky || '1';
-  return `${prefix}${suffixYear}${suffixKy}`;
-};
-
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. API GET/POST GRADES - Bảng điểm sinh viên (Cào từ kqcq.php)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -152,9 +130,9 @@ exports.getGrades = async (req, res) => {
       mssv: mssv,
       isGuest: true,
       data: [
-        { ma_hp: 'NT118', ten_hp: 'Lập trình thiết bị di động (Mẫu khách)', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 9.0, diem_qt: 9.0, diem_thi1: 8.0, diem_thi2: null, diem_thi: 8.0, diem_1: 8.5, diem_2: null, diem_hp: 8.5, diem_chu: 'A', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
-        { ma_hp: 'CS301', ten_hp: 'Cấu trúc dữ liệu & Giải thuật', nam_hoc: '2026', ky: '1', so_tin_chi: 4, diem_dbp: 8.0, diem_qt: 8.0, diem_thi1: 8.0, diem_thi2: null, diem_thi: 8.0, diem_1: 8.0, diem_2: null, diem_hp: 8.0, diem_chu: 'B+', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
-        { ma_hp: 'IT202', ten_hp: 'Hệ cơ sở dữ liệu', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 7.0, diem_qt: 7.0, diem_thi1: 7.5, diem_thi2: null, diem_thi: 7.5, diem_1: 7.5, diem_2: null, diem_hp: 7.5, diem_chu: 'B', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
+        { ten_hp: 'Lập trình thiết bị di động (Mẫu khách)', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 9.0, diem_qt: 9.0, diem_thi1: 8.0, diem_thi2: null, diem_thi: 8.0, diem_1: 8.5, diem_2: null, diem_hp: 8.5, diem_chu: 'A', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
+        { ten_hp: 'Cấu trúc dữ liệu & Giải thuật', nam_hoc: '2026', ky: '1', so_tin_chi: 4, diem_dbp: 8.0, diem_qt: 8.0, diem_thi1: 8.0, diem_thi2: null, diem_thi: 8.0, diem_1: 8.0, diem_2: null, diem_hp: 8.0, diem_chu: 'B+', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
+        { ten_hp: 'Hệ cơ sở dữ liệu', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 7.0, diem_qt: 7.0, diem_thi1: 7.5, diem_thi2: null, diem_thi: 7.5, diem_1: 7.5, diem_2: null, diem_hp: 7.5, diem_chu: 'B', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
       ]
     });
   }
@@ -169,7 +147,7 @@ exports.getGrades = async (req, res) => {
   if (mssv === 'giangvien123' || (mssv && mssv.startsWith('giangvien'))) {
     try {
       const [allGrades] = await db.query(
-        'SELECT ma_hp, ten_hp, nam_hoc, ky, diem_dbp, diem_qt, diem_thi1, diem_thi2, diem_thi, diem_1, diem_2, diem_hp, diem_chu, so_tin_chi, hoc_phi, hoc_ky FROM student_grades ORDER BY id ASC'
+        'SELECT ten_hp, nam_hoc, ky, diem_dbp, diem_qt, diem_thi1, diem_thi2, diem_thi, diem_1, diem_2, diem_hp, diem_chu, so_tin_chi, hoc_phi, hoc_ky FROM student_grades ORDER BY id ASC'
       );
       return res.json({
         success: true,
@@ -177,9 +155,9 @@ exports.getGrades = async (req, res) => {
         isLecturer: true,
         ho_ten: 'ThS. Nguyễn Văn Giảng Viên',
         data: allGrades && allGrades.length > 0 ? allGrades : [
-          { ma_hp: 'NT118', ten_hp: 'Lập trình thiết bị di động (Lớp K23)', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 9.0, diem_qt: 9.0, diem_thi1: 8.5, diem_thi2: null, diem_thi: 8.5, diem_1: 8.7, diem_2: null, diem_hp: 8.7, diem_chu: 'A', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
-          { ma_hp: 'CS301', ten_hp: 'Cấu trúc dữ liệu & Giải thuật (Lớp K22)', nam_hoc: '2026', ky: '1', so_tin_chi: 4, diem_dbp: 8.5, diem_qt: 8.5, diem_thi1: 8.2, diem_thi2: null, diem_thi: 8.2, diem_1: 8.3, diem_2: null, diem_hp: 8.3, diem_chu: 'B+', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
-          { ma_hp: 'IT202', ten_hp: 'Hệ cơ sở dữ liệu (Lớp K23)', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 8.0, diem_qt: 8.0, diem_thi1: 8.0, diem_thi2: null, diem_thi: 8.0, diem_1: 8.1, diem_2: null, diem_hp: 8.1, diem_chu: 'B+', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
+          { ten_hp: 'Lập trình thiết bị di động (Lớp K23)', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 9.0, diem_qt: 9.0, diem_thi1: 8.5, diem_thi2: null, diem_thi: 8.5, diem_1: 8.7, diem_2: null, diem_hp: 8.7, diem_chu: 'A', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
+          { ten_hp: 'Cấu trúc dữ liệu & Giải thuật (Lớp K22)', nam_hoc: '2026', ky: '1', so_tin_chi: 4, diem_dbp: 8.5, diem_qt: 8.5, diem_thi1: 8.2, diem_thi2: null, diem_thi: 8.2, diem_1: 8.3, diem_2: null, diem_hp: 8.3, diem_chu: 'B+', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
+          { ten_hp: 'Hệ cơ sở dữ liệu (Lớp K23)', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 8.0, diem_qt: 8.0, diem_thi1: 8.0, diem_thi2: null, diem_thi: 8.0, diem_1: 8.1, diem_2: null, diem_hp: 8.1, diem_chu: 'B+', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
         ]
       });
     } catch (e) {}
@@ -287,10 +265,8 @@ exports.getGrades = async (req, res) => {
           }
 
           const semStr = ky ? `HK${ky} (${namHoc})` : (namHoc ? `Năm ${namHoc}` : 'HK1 (2026)');
-          const maHp = generateMaHp(tenHp, namHoc, ky, liveSubjects.length);
 
           liveSubjects.push({
-            ma_hp: maHp,
             ten_hp: tenHp,
             nam_hoc: namHoc,
             ky: ky,
@@ -321,11 +297,11 @@ exports.getGrades = async (req, res) => {
       for (const s of liveSubjects) {
         await db.query(
           `INSERT INTO student_grades 
-           (mssv, ma_hp, ten_hp, nam_hoc, ky, diem_dbp, diem_qt, diem_thi1, diem_thi2, diem_thi, diem_1, diem_2, diem_hp, diem_chu, so_tin_chi, hoc_phi, hoc_ky) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           (mssv, ten_hp, nam_hoc, ky, diem_dbp, diem_thi1, diem_thi2, diem_1, diem_2, diem_chu, so_tin_chi, hoc_phi, hoc_ky) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
-            mssv, s.ma_hp, s.ten_hp, s.nam_hoc, s.ky, s.diem_dbp, s.diem_qt, 
-            s.diem_thi1, s.diem_thi2, s.diem_thi, s.diem_1, s.diem_2, s.diem_hp, 
+            mssv, s.ten_hp, s.nam_hoc, s.ky, s.diem_dbp, 
+            s.diem_thi1, s.diem_thi2, s.diem_1, s.diem_2, 
             s.diem_chu, s.so_tin_chi, s.hoc_phi, s.hoc_ky
           ]
         );
@@ -346,17 +322,24 @@ exports.getGrades = async (req, res) => {
   // 3. Nếu cào trực tiếp không thành công, kiểm tra dữ liệu đã lưu trong Database
   try {
     const [dbGrades] = await db.query(
-      `SELECT ma_hp, ten_hp, nam_hoc, ky, diem_dbp, diem_qt, diem_thi1, diem_thi2, diem_thi, diem_1, diem_2, diem_hp, diem_chu, so_tin_chi, hoc_phi, hoc_ky 
+      `SELECT ten_hp, nam_hoc, ky, diem_dbp, diem_thi1, diem_thi2, diem_1, diem_2, diem_chu, so_tin_chi, hoc_phi, hoc_ky 
        FROM student_grades WHERE mssv = ? ORDER BY id ASC`,
       [mssv]
     );
     if (dbGrades && dbGrades.length > 0) {
+      // Bổ sung các alias tương thích cho các màn hình cũ
+      const formatted = dbGrades.map(g => ({
+        ...g,
+        diem_qt: g.diem_dbp,
+        diem_thi: g.diem_thi2 !== null ? g.diem_thi2 : g.diem_thi1,
+        diem_hp: g.diem_2 !== null ? g.diem_2 : g.diem_1,
+      }));
       return res.json({
         success: true,
         mssv: mssv,
         ho_ten: studentName || ('Sinh viên ' + mssv),
-        total: dbGrades.length,
-        data: dbGrades
+        total: formatted.length,
+        data: formatted
       });
     }
   } catch (e) {
@@ -365,13 +348,13 @@ exports.getGrades = async (req, res) => {
 
   // 4. Dự phòng: Danh sách học phần chuyên ngành chuẩn
   const fallbackList = [
-    { ma_hp: 'NT118', ten_hp: 'Lập trình thiết bị di động', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 9.5, diem_qt: 9.5, diem_thi1: 8.5, diem_thi2: null, diem_thi: 8.5, diem_1: 8.9, diem_2: null, diem_hp: 8.9, diem_chu: 'A', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
-    { ma_hp: 'CS301', ten_hp: 'Cấu trúc dữ liệu & Giải thuật', nam_hoc: '2026', ky: '1', so_tin_chi: 4, diem_dbp: 8.5, diem_qt: 8.5, diem_thi1: 8.0, diem_thi2: null, diem_thi: 8.0, diem_1: 8.3, diem_2: null, diem_hp: 8.3, diem_chu: 'B+', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
-    { ma_hp: 'IT202', ten_hp: 'Hệ cơ sở dữ liệu', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 8.0, diem_qt: 8.0, diem_thi1: 8.0, diem_thi2: null, diem_thi: 8.0, diem_1: 8.1, diem_2: null, diem_hp: 8.1, diem_chu: 'B+', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
-    { ma_hp: 'NT101', ten_hp: 'Mạng máy tính nâng cao', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 9.0, diem_qt: 9.0, diem_thi1: 9.0, diem_thi2: null, diem_thi: 9.0, diem_1: 9.2, diem_2: null, diem_hp: 9.2, diem_chu: 'A+', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
-    { ma_hp: 'ENG201', ten_hp: 'Tiếng Anh chuyên ngành', nam_hoc: '2026', ky: '1', so_tin_chi: 2, diem_dbp: 8.0, diem_qt: 8.0, diem_thi1: 7.8, diem_thi2: null, diem_thi: 7.8, diem_1: 7.8, diem_2: null, diem_hp: 7.8, diem_chu: 'B', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
-    { ma_hp: 'MTH102', ten_hp: 'Đại số tuyến tính', nam_hoc: '2025', ky: '2', so_tin_chi: 3, diem_dbp: 8.5, diem_qt: 8.5, diem_thi1: 8.0, diem_thi2: null, diem_thi: 8.0, diem_1: 8.2, diem_2: null, diem_hp: 8.2, diem_chu: 'B+', hoc_ky: 'HK2 (2025)', hoc_phi: 'Đã nộp' },
-    { ma_hp: 'PHY101', ten_hp: 'Vật lý đại cương', nam_hoc: '2025', ky: '2', so_tin_chi: 3, diem_dbp: 8.5, diem_qt: 8.5, diem_thi1: 8.2, diem_thi2: null, diem_thi: 8.2, diem_1: 8.4, diem_2: null, diem_hp: 8.4, diem_chu: 'B+', hoc_ky: 'HK2 (2025)', hoc_phi: 'Đã nộp' },
+    { ten_hp: 'Lập trình thiết bị di động', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 9.5, diem_thi1: 8.5, diem_thi2: null, diem_1: 8.9, diem_2: null, diem_chu: 'A', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
+    { ten_hp: 'Cấu trúc dữ liệu & Giải thuật', nam_hoc: '2026', ky: '1', so_tin_chi: 4, diem_dbp: 8.5, diem_thi1: 8.0, diem_thi2: null, diem_1: 8.3, diem_2: null, diem_chu: 'B+', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
+    { ten_hp: 'Hệ cơ sở dữ liệu', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 8.0, diem_thi1: 8.0, diem_thi2: null, diem_1: 8.1, diem_2: null, diem_chu: 'B+', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
+    { ten_hp: 'Mạng máy tính nâng cao', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 9.0, diem_thi1: 9.0, diem_thi2: null, diem_1: 9.2, diem_2: null, diem_chu: 'A+', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
+    { ten_hp: 'Tiếng Anh chuyên ngành', nam_hoc: '2026', ky: '1', so_tin_chi: 2, diem_dbp: 8.0, diem_thi1: 7.8, diem_thi2: null, diem_1: 7.8, diem_2: null, diem_chu: 'B', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
+    { ten_hp: 'Đại số tuyến tính', nam_hoc: '2025', ky: '2', so_tin_chi: 3, diem_dbp: 8.5, diem_thi1: 8.0, diem_thi2: null, diem_1: 8.2, diem_2: null, diem_chu: 'B+', hoc_ky: 'HK2 (2025)', hoc_phi: 'Đã nộp' },
+    { ten_hp: 'Vật lý đại cương', nam_hoc: '2025', ky: '2', so_tin_chi: 3, diem_dbp: 8.5, diem_thi1: 8.2, diem_thi2: null, diem_1: 8.4, diem_2: null, diem_chu: 'B+', hoc_ky: 'HK2 (2025)', hoc_phi: 'Đã nộp' },
   ];
 
   if (mssv && !isGuestOrEmail(mssv)) {
@@ -379,11 +362,11 @@ exports.getGrades = async (req, res) => {
       try {
         await db.query(
           `INSERT INTO student_grades 
-           (mssv, ma_hp, ten_hp, nam_hoc, ky, diem_dbp, diem_qt, diem_thi1, diem_thi2, diem_thi, diem_1, diem_2, diem_hp, diem_chu, so_tin_chi, hoc_phi, hoc_ky) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           (mssv, ten_hp, nam_hoc, ky, diem_dbp, diem_thi1, diem_thi2, diem_1, diem_2, diem_chu, so_tin_chi, hoc_phi, hoc_ky) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
-            mssv, item.ma_hp, item.ten_hp, item.nam_hoc, item.ky, item.diem_dbp, item.diem_qt, 
-            item.diem_thi1, item.diem_thi2, item.diem_thi, item.diem_1, item.diem_2, item.diem_hp, 
+            mssv, item.ten_hp, item.nam_hoc, item.ky, item.diem_dbp, 
+            item.diem_thi1, item.diem_thi2, item.diem_1, item.diem_2, 
             item.diem_chu, item.so_tin_chi, item.hoc_phi, item.hoc_ky
           ]
         );
@@ -697,7 +680,7 @@ exports.getCourses = async (req, res) => {
   const mssv = req.params.mssv || req.query.mssv || await getMssvFromReq(req);
   try {
     const [rows] = await db.query(
-      'SELECT DISTINCT ma_hp, ten_hp, so_tin_chi, hoc_ky FROM student_grades WHERE mssv = ?',
+      'SELECT DISTINCT ten_hp, so_tin_chi, hoc_ky FROM student_grades WHERE mssv = ?',
       [mssv]
     );
     res.json({ success: true, mssv: mssv, courses: rows });

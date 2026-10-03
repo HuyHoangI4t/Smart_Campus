@@ -51,7 +51,7 @@ export default function GradesScreen() {
           setStudentInfo((prev) => ({ ...prev, name: res.ho_ten }));
         }
         const parsed: CourseGrade[] = res.data.map((item: any, idx: number) => ({
-          code: item.ma_hp || item.code || `HP-${idx + 1}`,
+          code: item.code || "",
           name: item.ten_hp || item.name || "Học phần",
           credits: Number(item.so_tin_chi || item.credits || 3),
           grade10: item.diem_hp !== null && item.diem_hp !== undefined && !isNaN(Number(item.diem_hp)) ? Number(item.diem_hp) : (item.grade10 ? Number(item.grade10) : 0),
@@ -288,7 +288,7 @@ export default function GradesScreen() {
               const badge = getBadgeColor(item.gradeLetter);
               return (
                 <View
-                  key={`${item.code}-${idx}`}
+                  key={`${item.name}-${idx}`}
                   style={{
                     padding: 16,
                     borderRadius: 16,
@@ -302,8 +302,12 @@ export default function GradesScreen() {
                 >
                   <View style={{ flex: 1, paddingRight: 12 }}>
                     <View style={[s.row, { gap: 6, marginBottom: 4 }]}>
-                      <Text style={{ fontSize: 11, fontWeight: "700", color: AppColors.primary }}>{item.code}</Text>
-                      <Text style={{ fontSize: 11, color: AppColors.textMuted }}>• {item.credits} tín chỉ</Text>
+                      {item.code ? (
+                        <Text style={{ fontSize: 11, fontWeight: "700", color: AppColors.primary }}>{item.code}</Text>
+                      ) : null}
+                      <Text style={{ fontSize: 11, color: AppColors.textMuted }}>
+                        {item.code ? "• " : ""}{item.credits} tín chỉ
+                      </Text>
                     </View>
                     <Text style={{ fontSize: 14, fontWeight: "700", color: AppColors.text }} numberOfLines={2}>
                       {item.name}
