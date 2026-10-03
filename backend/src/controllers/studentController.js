@@ -640,7 +640,7 @@ exports.getProfile = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   const mssv = await getMssvFromReq(req);
-  const { ho_ten, fullName, email, so_dien_thoai, phone, lop, khoa, ngay_sinh, gioi_tinh } = req.body;
+  const { ho_ten, fullName, email, so_dien_thoai, phone, lop, khoa, ngay_sinh, gioi_tinh, avatar, avatar_url, avatarUrl } = req.body;
 
   try {
     const [existing] = await db.query('SELECT * FROM users WHERE mssv = ?', [mssv]);
@@ -656,10 +656,12 @@ exports.updateProfile = async (req, res) => {
     const updatedKhoa = khoa !== undefined ? khoa : current.khoa;
     const updatedNgaySinh = ngay_sinh !== undefined ? ngay_sinh : current.ngay_sinh;
     const updatedGioiTinh = gioi_tinh !== undefined ? gioi_tinh : current.gioi_tinh;
+    const incomingAvatar = avatar !== undefined ? avatar : (avatar_url !== undefined ? avatar_url : avatarUrl);
+    const updatedAvatar = incomingAvatar !== undefined ? incomingAvatar : (current.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png');
 
     await db.query(
-      'UPDATE users SET ho_ten = ?, full_name = ?, email = ?, so_dien_thoai = ?, phone = ?, lop = ?, khoa = ?, ngay_sinh = ?, gioi_tinh = ? WHERE mssv = ?',
-      [updatedName, updatedName, updatedEmail, updatedPhone, updatedPhone, updatedLop, updatedKhoa, updatedNgaySinh, updatedGioiTinh, mssv]
+      'UPDATE users SET ho_ten = ?, full_name = ?, email = ?, so_dien_thoai = ?, phone = ?, lop = ?, khoa = ?, ngay_sinh = ?, gioi_tinh = ?, avatar = ? WHERE mssv = ?',
+      [updatedName, updatedName, updatedEmail, updatedPhone, updatedPhone, updatedLop, updatedKhoa, updatedNgaySinh, updatedGioiTinh, updatedAvatar, mssv]
     );
 
     res.json({
@@ -675,7 +677,8 @@ exports.updateProfile = async (req, res) => {
         lop: updatedLop,
         khoa: updatedKhoa,
         ngay_sinh: updatedNgaySinh,
-        gioi_tinh: updatedGioiTinh
+        gioi_tinh: updatedGioiTinh,
+        avatar: updatedAvatar
       }
     });
   } catch (error) {

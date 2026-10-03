@@ -26,12 +26,41 @@ const TAB_ITEMS: TabItemConfig[] = [
   { route: 'profile/index', label: 'Hồ sơ', icon: 'person-outline' },
 ];
 
+type TabBarVisibilityListener = (visible: boolean) => void;
+const visibilityListeners: Set<TabBarVisibilityListener> = new Set();
+
+export function setTabBarVisible(visible: boolean) {
+  visibilityListeners.forEach((listener) => listener(visible));
+}
+
 export function CustomBottomNav(props: CustomBottomNavProps) {
+  const [forceHidden, setForceHidden] = React.useState(false);
+
+  React.useEffect(() => {
+    const listener = (visible: boolean) => {
+      setForceHidden(!visible);
+    };
+    visibilityListeners.add(listener);
+    return () => {
+      visibilityListeners.delete(listener);
+    };
+  }, []);
+
+  if (forceHidden) {
+    return null;
+  }
+
   const isTabBarProps = 'state' in props;
 
   let activeIndex = 0;
   if (isTabBarProps) {
     const currentRoute = props.state.routes[props.state.index];
+    const descriptor = (props as BottomTabBarProps).descriptors?.[currentRoute?.key];
+    const tabBarStyle: any = descriptor?.options?.tabBarStyle;
+    if (tabBarStyle?.display === 'none') {
+      return null;
+    }
+
     const matchIndex = TAB_ITEMS.findIndex((t) => t.route === currentRoute?.name);
     // Hide tab bar on sub-screens like feedback, sos, grades_detail, change_password, test
     if (matchIndex === -1) {

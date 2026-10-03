@@ -247,6 +247,7 @@ export async function apiUpdateProfile(payload: {
   khoa?: string;
   ngay_sinh?: string;
   gioi_tinh?: string;
+  avatar?: string;
 }) {
   try {
     const headers = await getAuthHeaders();

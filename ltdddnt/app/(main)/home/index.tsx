@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StatusBar, Platform, Alert } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StatusBar, Platform, Alert, Image } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -16,6 +16,7 @@ interface StudentInfo {
   email?: string;
   lop?: string;
   khoa?: string;
+  avatar?: string;
 }
 
 interface AlertItem {
@@ -64,6 +65,7 @@ export default function HomeScreen() {
           email: currentUser.email,
           lop: currentUser.lop,
           khoa: currentUser.khoa,
+          avatar: currentUser.avatar,
         });
       }
 
@@ -173,8 +175,25 @@ export default function HomeScreen() {
             <TouchableOpacity onPress={() => onNavigate("sos")} style={[s.iconBtn, { backgroundColor: AppColors.danger, marginRight: 8 }]}>
               <Feather name="shield" size={18} color="#fff" />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => onNavigate("profile")} style={[s.iconBtn, { backgroundColor: "rgba(255,255,255,0.15)" }]}>
-              <Feather name="user" size={18} color="#fff" />
+            <TouchableOpacity
+              onPress={() => onNavigate("profile")}
+              style={[
+                s.iconBtn,
+                {
+                  backgroundColor: "rgba(255,255,255,0.15)",
+                  overflow: "hidden",
+                  padding: student.avatar ? 0 : 8,
+                },
+              ]}
+            >
+              {student.avatar ? (
+                <Image
+                  source={{ uri: student.avatar }}
+                  style={{ width: 38, height: 38, borderRadius: 19 }}
+                />
+              ) : (
+                <Feather name="user" size={18} color="#fff" />
+              )}
             </TouchableOpacity>
           </View>
         </View>

@@ -41,7 +41,7 @@ async function initializeTables() {
       { name: 'lop', def: "VARCHAR(100) DEFAULT ''" },
       { name: 'khoa', def: "VARCHAR(100) DEFAULT ''" },
       { name: 'role', def: "VARCHAR(50) DEFAULT 'sinh_vien'" },
-      { name: 'avatar', def: "VARCHAR(255) DEFAULT 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'" },
+      { name: 'avatar', def: "LONGTEXT" },
     ];
 
     for (const col of userColumns) {

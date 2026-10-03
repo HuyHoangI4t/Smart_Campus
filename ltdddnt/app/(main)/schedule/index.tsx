@@ -419,16 +419,22 @@ export default function ScheduleScreen() {
       <Modal
         visible={!!selectedScheduleForDirection}
         transparent={true}
+        statusBarTranslucent
         animationType="slide"
         onRequestClose={() => setSelectedScheduleForDirection(null)}
       >
         <View
           style={{
             flex: 1,
-            backgroundColor: "rgba(15, 23, 42, 0.6)",
+            backgroundColor: "rgba(15, 23, 42, 0.45)",
             justifyContent: "flex-end",
           }}
         >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => setSelectedScheduleForDirection(null)}
+            style={{ flex: 1 }}
+          />
           <View
             style={{
               backgroundColor: AppColors.cardBg,
