@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { AppColors } from "../../../src/constants/appColors";
@@ -63,7 +62,7 @@ export default function FeedbackScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: AppColors.background }} edges={['top', 'left', 'right']}>
+    <View style={{ flex: 1, backgroundColor: AppColors.background }}>
       <NavHeader
         title="Góp ý & Phản ánh"
         subtitle="Ý kiến của bạn giúp nâng cao chất lượng môi trường học"
@@ -196,7 +195,7 @@ export default function FeedbackScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
-    </ SafeAreaView>
+    </View>
   );
 }
 

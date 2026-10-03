@@ -8,9 +8,7 @@ import {
   ActivityIndicator,
   Modal,
   Linking,
-  Dimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { AppColors } from "../../../src/constants/appColors";
@@ -270,7 +268,7 @@ export default function ScheduleScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: AppColors.background }} edges={['top', 'left', 'right']}>
+    <View style={{ flex: 1, backgroundColor: AppColors.background }}>
       <NavHeader
         title="Thời khóa biểu"
         subtitle={subtitle}
@@ -714,6 +712,6 @@ export default function ScheduleScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }

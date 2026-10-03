@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { AppColors } from "../../../src/constants/appColors";
@@ -94,7 +93,7 @@ export default function MapScreen() {
   });
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: AppColors.background }} edges={['top', 'left', 'right']}>
+    <View style={{ flex: 1, backgroundColor: AppColors.background }}>
       <NavHeader
         title="Bản đồ khuôn viên"
         subtitle="Tìm kiếm tòa nhà, phòng học và tiện ích"
@@ -244,7 +243,7 @@ export default function MapScreen() {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

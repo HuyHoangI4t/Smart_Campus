@@ -1,4 +1,5 @@
 const pool = require('./db');
+const bcrypt = require('bcryptjs');
 
 async function initializeTables() {
   try {
@@ -13,6 +14,7 @@ async function initializeTables() {
         ho_ten VARCHAR(255),
         email VARCHAR(255),
         password VARCHAR(255),
+        role VARCHAR(50) DEFAULT 'sinh_vien',
         phone VARCHAR(50),
         so_dien_thoai VARCHAR(50),
         lop VARCHAR(100) DEFAULT 'Kỹ thuật phần mềm K23',
@@ -38,8 +40,7 @@ async function initializeTables() {
       { name: 'so_dien_thoai', def: 'VARCHAR(50)' },
       { name: 'lop', def: "VARCHAR(100) DEFAULT ''" },
       { name: 'khoa', def: "VARCHAR(100) DEFAULT ''" },
-      // { name: 'ngay_sinh', def: "VARCHAR(50) DEFAULT '2005-05-15'" },
-      // { name: 'gioi_tinh', def: "VARCHAR(20) DEFAULT 'Nam'" },
+      { name: 'role', def: "VARCHAR(50) DEFAULT 'sinh_vien'" },
       { name: 'avatar', def: "VARCHAR(255) DEFAULT 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'" },
     ];
 
@@ -220,6 +221,36 @@ async function initializeTables() {
         ('23103023', 'NT300', 'Đồ án chuyên ngành CNTT', 'Thứ 6', '1 - 4', 'ENG-B101', 'Hội đồng bộ môn', 'HK1 (2025-2026)')
       `);
       console.log('🌱 Seeded student_schedules for 23103023');
+    }
+
+    // Seed lecturer account giangvien123 (Mật khẩu: 123456)
+    const hashLecturerPass = await bcrypt.hash('123456', 10);
+    const [existingLecturer] = await connection.query('SELECT * FROM users WHERE mssv = ?', ['giangvien123']);
+    if (existingLecturer.length === 0) {
+      await connection.query(`
+        INSERT INTO users (mssv, full_name, ho_ten, email, password, role, lop, khoa, so_dien_thoai, phone, avatar) VALUES
+        ('giangvien123', 'ThS. Nguyễn Văn Giảng Viên', 'ThS. Nguyễn Văn Giảng Viên', 'giangvien123@ttn.edu.vn', ?, 'giangvien', 'Bộ môn Kỹ thuật Phần mềm', 'Khoa Công nghệ Thông tin', '0912345678', '0912345678', 'https://cdn-icons-png.flaticon.com/512/3410/3410150.png')
+      `, [hashLecturerPass]);
+      console.log('🌱 Seeded lecturer account: giangvien123 / 123456');
+    } else {
+      await connection.query(`
+        UPDATE users SET password = ?, role = 'giangvien', ho_ten = 'ThS. Nguyễn Văn Giảng Viên', full_name = 'ThS. Nguyễn Văn Giảng Viên', lop = 'Bộ môn Kỹ thuật Phần mềm', khoa = 'Khoa Công nghệ Thông tin' WHERE mssv = 'giangvien123'
+      `, [hashLecturerPass]);
+      console.log('🔄 Updated lecturer account: giangvien123 / 123456');
+    }
+
+    // Seed teaching schedule for giangvien123
+    const [existingLecturerSchedule] = await connection.query('SELECT COUNT(*) as count FROM student_schedules WHERE mssv = ?', ['giangvien123']);
+    if (existingLecturerSchedule[0].count === 0) {
+      await connection.query(`
+        INSERT INTO student_schedules (mssv, ma_hp, ten_hp, thu, tiet, phong, giang_vien, hoc_ky) VALUES
+        ('giangvien123', 'NT118', 'Lập trình thiết bị di động (Lớp K23)', 'Thứ 2', '1 - 3', 'LAB-03', 'ThS. Nguyễn Văn Giảng Viên', 'HK1 (2025-2026)'),
+        ('giangvien123', 'CS301', 'Cấu trúc dữ liệu & Giải thuật (Lớp K22)', 'Thứ 3', '4 - 6', 'ENG-B204', 'ThS. Nguyễn Văn Giảng Viên', 'HK1 (2025-2026)'),
+        ('giangvien123', 'IT202', 'Hệ cơ sở dữ liệu (Lớp K23 - KTPM)', 'Thứ 4', '1 - 3', 'ENG-A102', 'ThS. Nguyễn Văn Giảng Viên', 'HK1 (2025-2026)'),
+        ('giangvien123', 'NT300', 'Đồ án chuyên ngành CNTT (K21)', 'Thứ 5', '7 - 9', 'ENG-B101', 'ThS. Nguyễn Văn Giảng Viên', 'HK1 (2025-2026)'),
+        ('giangvien123', 'NT101', 'Mạng máy tính nâng cao (Lớp K23)', 'Thứ 6', '1 - 4', 'NET-LAB', 'ThS. Nguyễn Văn Giảng Viên', 'HK1 (2025-2026)')
+      `);
+      console.log('🌱 Seeded teaching schedules for giangvien123');
     }
 
     console.log('✅ All database tables initialized and verified successfully.');

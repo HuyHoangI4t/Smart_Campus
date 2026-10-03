@@ -28,49 +28,8 @@ const studentController = require('../controllers/studentController');
  *     responses:
  *       200:
  *         description: Trả về danh sách điểm của sinh viên
- *   get:
- *     summary: Lấy bảng điểm sinh viên (GET với Query)
- *     tags: [Student]
- *     parameters:
- *       - in: query
- *         name: mssv
- *         schema:
- *           type: string
- *           example: '23103023'
- *         description: Mã số sinh viên
- *       - in: query
- *         name: dk
- *         schema:
- *           type: string
- *           example: '10'
- *         description: Đợt học / Học kỳ
- *     responses:
- *       200:
- *         description: Thành công
  */
 router.post('/grades', studentController.getGrades);
-router.get('/grades', studentController.getGrades);
-router.get('/student/grades', studentController.getGrades);
-
-/**
- * @swagger
- * /api/student/grades/{mssv}:
- *   get:
- *     summary: Lấy bảng điểm sinh viên theo MSSV trên URL
- *     tags: [Student]
- *     parameters:
- *       - in: path
- *         name: mssv
- *         required: true
- *         schema:
- *           type: string
- *           example: '23103023'
- *         description: Mã số sinh viên
- *     responses:
- *       200:
- *         description: Thành công
- */
-router.get('/student/grades/:mssv', studentController.getGrades);
 
 /**
  * @swagger
@@ -98,49 +57,8 @@ router.get('/student/grades/:mssv', studentController.getGrades);
  *     responses:
  *       200:
  *         description: Thành công
- *   get:
- *     summary: Lấy thời khóa biểu sinh viên (GET với Query)
- *     tags: [Student]
- *     parameters:
- *       - in: query
- *         name: mssv
- *         schema:
- *           type: string
- *           example: '23103023'
- *         description: Mã số sinh viên
- *       - in: query
- *         name: dk
- *         schema:
- *           type: string
- *           example: '10'
- *         description: Đợt học / Học kỳ
- *     responses:
- *       200:
- *         description: Thành công
  */
 router.post('/schedule', studentController.getSchedule);
-router.get('/schedule', studentController.getSchedule);
-router.get('/student/schedule', studentController.getSchedule);
-
-/**
- * @swagger
- * /api/student/schedule/{mssv}:
- *   get:
- *     summary: Lấy thời khóa biểu sinh viên theo MSSV trên URL
- *     tags: [Student]
- *     parameters:
- *       - in: path
- *         name: mssv
- *         required: true
- *         schema:
- *           type: string
- *           example: '23103023'
- *         description: Mã số sinh viên
- *     responses:
- *       200:
- *         description: Thành công
- */
-router.get('/student/schedule/:mssv', studentController.getSchedule);
 
 /**
  * @swagger
@@ -161,41 +79,8 @@ router.get('/student/schedule/:mssv', studentController.getSchedule);
  *     responses:
  *       200:
  *         description: Thành công
- *   get:
- *     summary: Lấy danh sách học phần đang học (GET)
- *     tags: [Student]
- *     parameters:
- *       - in: query
- *         name: mssv
- *         schema:
- *           type: string
- *           example: '23103023'
- *     responses:
- *       200:
- *         description: Thành công
  */
 router.post('/student/current-courses', studentController.getCurrentCourses);
-router.get('/student/current-courses', studentController.getCurrentCourses);
-
-/**
- * @swagger
- * /api/student/profile/{mssv}:
- *   get:
- *     summary: Lấy thông tin chi tiết sinh viên từ database theo MSSV
- *     tags: [Student]
- *     parameters:
- *       - in: path
- *         name: mssv
- *         required: true
- *         schema:
- *           type: string
- *           example: '23103023'
- *         description: Mã số sinh viên cần tra cứu
- *     responses:
- *       200:
- *         description: Thành công
- */
-router.get('/student/profile/:mssv', studentController.getProfile);
 
 /**
  * @swagger
@@ -247,7 +132,6 @@ router.get('/student/profile/:mssv', studentController.getProfile);
  *         description: Cập nhật thành công
  */
 router.get('/student/profile', studentController.getProfile);
-router.put('/student/profile', studentController.updateProfile);
 
 /**
  * @swagger

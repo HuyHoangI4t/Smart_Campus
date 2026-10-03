@@ -13,7 +13,7 @@ const getApiBaseUrl = () => {
     return `http://${ip}:5000/api`;
   }
 
-  return Platform.OS === 'android' ? 'http://192.168.1.3:5000/api' : 'http://192.168.1.3:5000/api';
+  return Platform.OS === 'android' ? 'http://192.168.1.20:5000/api' : 'http://192.168.1.20:5000/api';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
@@ -201,10 +201,22 @@ export async function apiResetPassword(payload: { mssv: string; token?: string; 
 export async function apiChangePassword(currentPassword: string, newPassword: string) {
   try {
     const headers = await getAuthHeaders();
+    let mssv = headers['X-MSSV'] || '';
+    if (!mssv) {
+      const userStr = await AsyncStorage.getItem('@auth_user');
+      if (userStr) {
+        try {
+          const u = JSON.parse(userStr);
+          mssv = u.mssv || u.masv || '';
+        } catch {
+          // ignore
+        }
+      }
+    }
     const response = await fetchWithTimeout(`${API_BASE_URL}/auth/change-password`, {
       method: 'PUT',
       headers,
-      body: JSON.stringify({ currentPassword, newPassword }),
+      body: JSON.stringify({ mssv: mssv || undefined, currentPassword, newPassword }),
     });
     return await handleResponse(response);
   } catch {

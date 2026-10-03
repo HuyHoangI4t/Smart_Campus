@@ -63,10 +63,10 @@ exports.submitFeedback = async (req, res) => {
 
 // Submit SOS
 exports.submitSos = async (req, res) => {
-  const { location, message, incidentType } = req.body;
+  const { location, message, description, incidentType } = req.body;
   const mssv = getMssvFromReq(req);
   const sosLocation = location || 'Không rõ vị trí trong khuôn viên trường';
-  const alertMsg = incidentType ? `[${incidentType}] ${message || 'Yêu cầu hỗ trợ khẩn cấp'}` : (message || 'Yêu cầu hỗ trợ khẩn cấp');
+  const alertMsg = incidentType ? `[${incidentType}] ${description || message || 'Yêu cầu hỗ trợ khẩn cấp'}` : (description || message || 'Yêu cầu hỗ trợ khẩn cấp');
 
   try {
     await db.query(

@@ -49,15 +49,17 @@ export function NavHeader({
   const paddingTop = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 14 : Math.max(insets.top + 16, 32);
 
   return (
-    <View
-      style={{
-        paddingHorizontal: 20,
-        paddingTop,
-        paddingBottom: 16,
-        backgroundColor: headerBg,
-        zIndex: 10,
-      }}
-    >
+    <>
+      <StatusBar barStyle="light-content" backgroundColor={headerBg} translucent />
+      <View
+        style={{
+          paddingHorizontal: 20,
+          paddingTop,
+          paddingBottom: 16,
+          backgroundColor: headerBg,
+          zIndex: 10,
+        }}
+      >
       <View style={[commonStyles.row, { gap: 12, marginBottom: children ? 12 : 0 }]}>
         {shouldShowBack ? (
           <TouchableOpacity
@@ -98,6 +100,7 @@ export function NavHeader({
       </View>
       {children}
     </View>
+    </>
   );
 }
 

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StatusBar, Platform, Alert } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
@@ -22,17 +22,21 @@ interface AlertItem {
   id: number | string;
   type: "info" | "warning" | "success";
   text: string;
+  content?: string;
+  sender?: string;
   time: string;
 }
 
 const DEFAULT_ALERTS: AlertItem[] = [
-  { id: 1, type: "info", text: "Thư viện mở cửa phục vụ mùa thi từ 7h00 - 21h30.", time: "Hôm nay" },
-  { id: 2, type: "warning", text: "Hạn đóng học phí học kỳ này trước ngày 15 hàng tháng.", time: "Quan trọng" },
-  { id: 3, type: "success", text: "Lịch thi học phần đã được cập nhật chính thức.", time: "1 giờ trước" },
+  { id: 1, type: "info", text: "Thư viện mở cửa phục vụ mùa thi từ 7h00 - 21h30.", content: "Thư viện mở cửa phục vụ mùa thi từ 7h00 - 21h30 tại tất cả các cơ sở.", sender: "Ban Quản lý Thư viện", time: "Hôm nay" },
+  { id: 2, type: "warning", text: "Hạn đóng học phí học kỳ này trước ngày 15 hàng tháng.", content: "Đề nghị sinh viên hoàn thành học phí đúng thời hạn quy định.", sender: "Phòng Tài vụ", time: "Quan trọng" },
+  { id: 3, type: "success", text: "Lịch thi học phần đã được cập nhật chính thức.", content: "Lịch thi kết thúc học phần đã được đăng tải trên cổng thông tin sinh viên.", sender: "Phòng Đào tạo", time: "1 giờ trước" },
 ];
 
 export default function HomeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const topPadding = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 16 : Math.max(insets.top + 12, 44);
 
   const [student, setStudent] = useState<StudentInfo>({ ho_ten: "Đang tải...", mssv: "" });
   const [nextClass, setNextClass] = useState<any>(null);
@@ -94,11 +98,13 @@ export default function HomeScreen() {
       // Load real notifications
       const notifRes = await apiGetNotifications();
       if (notifRes && notifRes.success && notifRes.notifications?.length > 0) {
-        const mapped: AlertItem[] = notifRes.notifications.slice(0, 3).map((n: any, idx: number) => ({
+        const mapped: AlertItem[] = notifRes.notifications.slice(0, 5).map((n: any, idx: number) => ({
           id: n.id || idx,
           type: n.type === 'warning' ? 'warning' : n.type === 'success' ? 'success' : 'info',
           text: n.title || n.content,
-          time: n.created_at ? new Date(n.created_at).toLocaleDateString('vi-VN') : 'Mới',
+          content: n.content || n.title,
+          sender: n.sender || 'Nhà trường',
+          time: n.date || (n.created_at ? new Date(n.created_at).toLocaleDateString('vi-VN') : 'Mới'),
         }));
         setAlerts(mapped);
       }
@@ -143,16 +149,28 @@ export default function HomeScreen() {
   ];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: AppColors.background }} edges={['top', 'left', 'right']}>
+    <View style={{ flex: 1, backgroundColor: AppColors.background }}>
+      <StatusBar barStyle="light-content" backgroundColor={AppColors.primary} translucent />
+      {/* Nền xanh cố định cho vùng tai thỏ / Dynamic Island / Status Bar */}
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: Math.max(insets.top, 50), backgroundColor: AppColors.primary, zIndex: 1 }} />
+
       <ScrollView
-        style={{ flex: 1 }}
+        style={{ flex: 1, zIndex: 2 }}
         contentContainerStyle={{ paddingBottom: 110 }}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            tintColor="#FFFFFF" 
+            colors={[AppColors.primary]} 
+            progressViewOffset={insets.top}
+          />
+        }
       >
         <LinearGradient
           colors={[AppColors.primary, AppColors.primary]}
-          style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 32 }}
+          style={{ paddingHorizontal: 24, paddingTop: topPadding, paddingBottom: 32 }}
         >
         <View style={[s.row, s.between, { marginBottom: 16 }]}>
           <View>
@@ -251,8 +269,16 @@ export default function HomeScreen() {
           {alerts.map((alert) => {
             const meta = alertMeta[alert.type] || alertMeta.info;
             return (
-              <View
+              <TouchableOpacity
                 key={alert.id}
+                activeOpacity={0.7}
+                onPress={() => {
+                  Alert.alert(
+                    alert.text,
+                    `${alert.content || alert.text}\n\n📢 Người gửi: ${alert.sender || 'Ban Giám hiệu'}\n📅 Thời gian: ${alert.time}`,
+                    [{ text: "Đã hiểu" }]
+                  );
+                }}
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
@@ -268,7 +294,8 @@ export default function HomeScreen() {
                   <Text style={{ fontSize: 13, color: AppColors.text, fontWeight: "600" }}>{alert.text}</Text>
                   <Text style={{ fontSize: 11, color: AppColors.textMuted, marginTop: 2 }}>{alert.time}</Text>
                 </View>
-              </View>
+                <Feather name="chevron-right" size={16} color={AppColors.textMuted} />
+              </TouchableOpacity>
             );
           })}
         </View>
@@ -301,7 +328,7 @@ export default function HomeScreen() {
         </View>
       </View>
     </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
