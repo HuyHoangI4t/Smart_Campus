@@ -2,6 +2,8 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const db = require('../config/db');
 const https = require('https');
+const gradeService = require('../services/gradeService');
+const scheduleService = require('../services/scheduleService');
 
 // Tạo httpsAgent để bỏ qua lỗi chứng chỉ SSL tự ký của trường (tránh SSLCertVerificationError)
 const httpsAgent = new https.Agent({
@@ -125,15 +127,17 @@ exports.getGrades = async (req, res) => {
 
   // Tài khoản khách (Guest)
   if (isGuestOrEmail(mssv)) {
+    const guestList = [
+      { ten_hp: 'Lập trình thiết bị di động (Mẫu khách)', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 9.0, diem_qt: 9.0, diem_thi1: 8.0, diem_thi2: null, diem_thi: 8.0, diem_1: 8.5, diem_2: null, diem_hp: 8.5, diem_chu: 'A', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
+      { ten_hp: 'Cấu trúc dữ liệu & Giải thuật', nam_hoc: '2026', ky: '1', so_tin_chi: 4, diem_dbp: 8.0, diem_qt: 8.0, diem_thi1: 8.0, diem_thi2: null, diem_thi: 8.0, diem_1: 8.0, diem_2: null, diem_hp: 8.0, diem_chu: 'B', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
+      { ten_hp: 'Hệ cơ sở dữ liệu', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 7.0, diem_qt: 7.0, diem_thi1: 7.5, diem_thi2: null, diem_thi: 7.5, diem_1: 7.5, diem_2: null, diem_hp: 7.5, diem_chu: 'B', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
+    ];
+    const processed = gradeService.processGradesPayload(guestList);
     return res.json({
       success: true,
       mssv: mssv,
       isGuest: true,
-      data: [
-        { ten_hp: 'Lập trình thiết bị di động (Mẫu khách)', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 9.0, diem_qt: 9.0, diem_thi1: 8.0, diem_thi2: null, diem_thi: 8.0, diem_1: 8.5, diem_2: null, diem_hp: 8.5, diem_chu: 'A', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
-        { ten_hp: 'Cấu trúc dữ liệu & Giải thuật', nam_hoc: '2026', ky: '1', so_tin_chi: 4, diem_dbp: 8.0, diem_qt: 8.0, diem_thi1: 8.0, diem_thi2: null, diem_thi: 8.0, diem_1: 8.0, diem_2: null, diem_hp: 8.0, diem_chu: 'B+', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
-        { ten_hp: 'Hệ cơ sở dữ liệu', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 7.0, diem_qt: 7.0, diem_thi1: 7.5, diem_thi2: null, diem_thi: 7.5, diem_1: 7.5, diem_2: null, diem_hp: 7.5, diem_chu: 'B', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
-      ]
+      ...processed
     });
   }
 
@@ -149,16 +153,18 @@ exports.getGrades = async (req, res) => {
       const [allGrades] = await db.query(
         'SELECT ten_hp, nam_hoc, ky, diem_dbp, diem_qt, diem_thi1, diem_thi2, diem_thi, diem_1, diem_2, diem_hp, diem_chu, so_tin_chi, hoc_phi, hoc_ky FROM student_grades ORDER BY id ASC'
       );
+      const defaultLecturerList = [
+        { ten_hp: 'Lập trình thiết bị di động (Lớp K23)', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 9.0, diem_qt: 9.0, diem_thi1: 8.5, diem_thi2: null, diem_thi: 8.5, diem_1: 8.7, diem_2: null, diem_hp: 8.7, diem_chu: 'A', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
+        { ten_hp: 'Cấu trúc dữ liệu & Giải thuật (Lớp K22)', nam_hoc: '2026', ky: '1', so_tin_chi: 4, diem_dbp: 8.5, diem_qt: 8.5, diem_thi1: 8.2, diem_thi2: null, diem_thi: 8.2, diem_1: 8.3, diem_2: null, diem_hp: 8.3, diem_chu: 'B', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
+        { ten_hp: 'Hệ cơ sở dữ liệu (Lớp K23)', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 8.0, diem_qt: 8.0, diem_thi1: 8.0, diem_thi2: null, diem_thi: 8.0, diem_1: 8.1, diem_2: null, diem_hp: 8.1, diem_chu: 'B', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
+      ];
+      const processed = gradeService.processGradesPayload(allGrades && allGrades.length > 0 ? allGrades : defaultLecturerList);
       return res.json({
         success: true,
         mssv: mssv,
         isLecturer: true,
         ho_ten: 'ThS. Nguyễn Văn Giảng Viên',
-        data: allGrades && allGrades.length > 0 ? allGrades : [
-          { ten_hp: 'Lập trình thiết bị di động (Lớp K23)', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 9.0, diem_qt: 9.0, diem_thi1: 8.5, diem_thi2: null, diem_thi: 8.5, diem_1: 8.7, diem_2: null, diem_hp: 8.7, diem_chu: 'A', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
-          { ten_hp: 'Cấu trúc dữ liệu & Giải thuật (Lớp K22)', nam_hoc: '2026', ky: '1', so_tin_chi: 4, diem_dbp: 8.5, diem_qt: 8.5, diem_thi1: 8.2, diem_thi2: null, diem_thi: 8.2, diem_1: 8.3, diem_2: null, diem_hp: 8.3, diem_chu: 'B+', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
-          { ten_hp: 'Hệ cơ sở dữ liệu (Lớp K23)', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 8.0, diem_qt: 8.0, diem_thi1: 8.0, diem_thi2: null, diem_thi: 8.0, diem_1: 8.1, diem_2: null, diem_hp: 8.1, diem_chu: 'B+', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
-        ]
+        ...processed
       });
     } catch (e) {}
   }
@@ -261,7 +267,7 @@ exports.getGrades = async (req, res) => {
 
           let dchu = dchuStr || (diemHp !== null ? '' : 'X');
           if (!dchu && diemHp !== null) {
-            dchu = diemHp >= 8.5 ? 'A' : diemHp >= 8.0 ? 'B+' : diemHp >= 7.0 ? 'B' : diemHp >= 6.5 ? 'C+' : diemHp >= 5.5 ? 'C' : diemHp >= 4.0 ? 'D' : 'F';
+            dchu = diemHp >= 8.5 ? 'A' : diemHp >= 7.0 ? 'B' : diemHp >= 5.5 ? 'C' : diemHp >= 4.0 ? 'D' : 'F';
           }
 
           const semStr = ky ? `HK${ky} (${namHoc})` : (namHoc ? `Năm ${namHoc}` : 'HK1 (2026)');
@@ -310,12 +316,12 @@ exports.getGrades = async (req, res) => {
       console.warn('Lỗi lưu student_grades:', e.message);
     }
 
+    const processed = gradeService.processGradesPayload(liveSubjects);
     return res.json({
       success: true,
       mssv: mssv,
       ho_ten: studentName || ('Sinh viên ' + mssv),
-      total: liveSubjects.length,
-      data: liveSubjects
+      ...processed
     });
   }
 
@@ -327,19 +333,12 @@ exports.getGrades = async (req, res) => {
       [mssv]
     );
     if (dbGrades && dbGrades.length > 0) {
-      // Bổ sung các alias tương thích cho các màn hình cũ
-      const formatted = dbGrades.map(g => ({
-        ...g,
-        diem_qt: g.diem_dbp,
-        diem_thi: g.diem_thi2 !== null ? g.diem_thi2 : g.diem_thi1,
-        diem_hp: g.diem_2 !== null ? g.diem_2 : g.diem_1,
-      }));
+      const processed = gradeService.processGradesPayload(dbGrades);
       return res.json({
         success: true,
         mssv: mssv,
         ho_ten: studentName || ('Sinh viên ' + mssv),
-        total: formatted.length,
-        data: formatted
+        ...processed
       });
     }
   } catch (e) {
@@ -349,12 +348,12 @@ exports.getGrades = async (req, res) => {
   // 4. Dự phòng: Danh sách học phần chuyên ngành chuẩn
   const fallbackList = [
     { ten_hp: 'Lập trình thiết bị di động', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 9.5, diem_thi1: 8.5, diem_thi2: null, diem_1: 8.9, diem_2: null, diem_chu: 'A', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
-    { ten_hp: 'Cấu trúc dữ liệu & Giải thuật', nam_hoc: '2026', ky: '1', so_tin_chi: 4, diem_dbp: 8.5, diem_thi1: 8.0, diem_thi2: null, diem_1: 8.3, diem_2: null, diem_chu: 'B+', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
-    { ten_hp: 'Hệ cơ sở dữ liệu', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 8.0, diem_thi1: 8.0, diem_thi2: null, diem_1: 8.1, diem_2: null, diem_chu: 'B+', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
-    { ten_hp: 'Mạng máy tính nâng cao', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 9.0, diem_thi1: 9.0, diem_thi2: null, diem_1: 9.2, diem_2: null, diem_chu: 'A+', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
+    { ten_hp: 'Cấu trúc dữ liệu & Giải thuật', nam_hoc: '2026', ky: '1', so_tin_chi: 4, diem_dbp: 8.5, diem_thi1: 8.0, diem_thi2: null, diem_1: 8.3, diem_2: null, diem_chu: 'B', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
+    { ten_hp: 'Hệ cơ sở dữ liệu', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 8.0, diem_thi1: 8.0, diem_thi2: null, diem_1: 8.1, diem_2: null, diem_chu: 'B', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
+    { ten_hp: 'Mạng máy tính nâng cao', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 9.0, diem_thi1: 9.0, diem_thi2: null, diem_1: 9.2, diem_2: null, diem_chu: 'A', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
     { ten_hp: 'Tiếng Anh chuyên ngành', nam_hoc: '2026', ky: '1', so_tin_chi: 2, diem_dbp: 8.0, diem_thi1: 7.8, diem_thi2: null, diem_1: 7.8, diem_2: null, diem_chu: 'B', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
-    { ten_hp: 'Đại số tuyến tính', nam_hoc: '2025', ky: '2', so_tin_chi: 3, diem_dbp: 8.5, diem_thi1: 8.0, diem_thi2: null, diem_1: 8.2, diem_2: null, diem_chu: 'B+', hoc_ky: 'HK2 (2025)', hoc_phi: 'Đã nộp' },
-    { ten_hp: 'Vật lý đại cương', nam_hoc: '2025', ky: '2', so_tin_chi: 3, diem_dbp: 8.5, diem_thi1: 8.2, diem_thi2: null, diem_1: 8.4, diem_2: null, diem_chu: 'B+', hoc_ky: 'HK2 (2025)', hoc_phi: 'Đã nộp' },
+    { ten_hp: 'Đại số tuyến tính', nam_hoc: '2025', ky: '2', so_tin_chi: 3, diem_dbp: 8.5, diem_thi1: 8.0, diem_thi2: null, diem_1: 8.2, diem_2: null, diem_chu: 'B', hoc_ky: 'HK2 (2025)', hoc_phi: 'Đã nộp' },
+    { ten_hp: 'Vật lý đại cương', nam_hoc: '2025', ky: '2', so_tin_chi: 3, diem_dbp: 8.5, diem_thi1: 8.2, diem_thi2: null, diem_1: 8.4, diem_2: null, diem_chu: 'B', hoc_ky: 'HK2 (2025)', hoc_phi: 'Đã nộp' },
   ];
 
   if (mssv && !isGuestOrEmail(mssv)) {
@@ -374,11 +373,12 @@ exports.getGrades = async (req, res) => {
     }
   }
 
+  const processed = gradeService.processGradesPayload(fallbackList);
   res.json({
     success: true,
     mssv: mssv,
     ho_ten: studentName || ('Sinh viên ' + mssv),
-    data: fallbackList
+    ...processed
   });
 };
 
@@ -391,17 +391,23 @@ exports.getSchedule = async (req, res) => {
   const studentDk = dk || (req.query ? req.query.dk : null) || '10';
 
   if (isGuestOrEmail(mssv)) {
+    const defaultTables = [{
+      tableIndex: 1,
+      rows: [
+        ["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"],
+        ["Thứ 2", "Lập trình thiết bị di động", "1-4", "B204", "TS. Trần Văn A"],
+        ["Thứ 3 29/09", "LS Đảng CS VN", "1-4", "2.21 (CLC)", "Đoàn Văn Kỳ"],
+        ["Thứ 4", "Cấu trúc dữ liệu & Giải thuật", "7-10", "C302 Lab", "ThS. Lê Thị B"],
+        ["Thứ 5", "Hệ cơ sở dữ liệu", "1-4", "B102", "TS. Nguyễn C"],
+        ["Thứ 6", "Mạng máy tính", "7-10", "C201 Net", "ThS. Phạm D"],
+      ]
+    }];
+    const processed = scheduleService.processSchedulePayload(defaultTables, "Từ ngày 28/09/2026 đến ngày 04/10/2026");
     return res.json({
       success: true,
       mssv: mssv,
-      weekRange: "Từ ngày 28/09/2026 đến ngày 04/10/2026",
-      tables: [{
-        tableIndex: 1,
-        rows: [
-          ["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"],
-          ["Thứ 3 29/09", "LS Đảng CS VN", "1-4", "2.21 (CLC)", "Đoàn Văn Kỳ"]
-        ]
-      }]
+      isGuest: true,
+      ...processed
     });
   }
 
@@ -528,11 +534,12 @@ exports.getSchedule = async (req, res) => {
       } catch (e) {}
     }
 
+    const rawTables = [{ tableIndex: 1, rows: parsedRows }];
+    const processed = scheduleService.processSchedulePayload(rawTables, targetWeekRangeText || "Lịch học tuần hiện tại");
     return res.json({
       success: true,
       mssv: mssv,
-      weekRange: targetWeekRangeText || "Lịch học tuần hiện tại",
-      tables: [{ tableIndex: 1, rows: parsedRows }]
+      ...processed
     });
 
   } catch (error) {
@@ -540,17 +547,20 @@ exports.getSchedule = async (req, res) => {
   }
 
   // Dữ liệu dự phòng nếu cào lỗi
+  const fallbackTables = [{
+    tableIndex: 1,
+    rows: [
+      ["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"],
+      ["Thứ 2", "Lập trình thiết bị di động", "1-4", "B204", "TS. Trần Văn A"],
+      ["Thứ 3 29/09", "LS Đảng CS VN", "1-4", "2.21 (CLC)", "Đoàn Văn Kỳ"],
+      ["Thứ 4", "Cấu trúc dữ liệu & Giải thuật", "7-10", "C302 Lab", "ThS. Lê Thị B"]
+    ]
+  }];
+  const processedFallback = scheduleService.processSchedulePayload(fallbackTables, "Từ ngày 28/09/2026 đến ngày 04/10/2026");
   res.json({
     success: true,
     mssv: mssv,
-    weekRange: "Từ ngày 28/09/2026 đến ngày 04/10/2026",
-    tables: [{
-      tableIndex: 1,
-      rows: [
-        ["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"],
-        ["Thứ 3 29/09", "LS Đảng CS VN", "1-4", "2.21 (CLC)", "Đoàn Văn Kỳ"]
-      ]
-    }]
+    ...processedFallback
   });
 };
 

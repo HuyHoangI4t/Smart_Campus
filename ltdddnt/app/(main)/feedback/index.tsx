@@ -1,13 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
-import { apiSubmitFeedback } from "../../../src/services/api";
+import { apiSubmitFeedback, apiGetFeedbackConfig } from "../../../src/services/api";
 
-const CATEGORIES = [
+const DEFAULT_CATEGORIES = [
   "Cơ sở vật chất",
   "Chất lượng giảng dạy",
   "Căng tin & Dịch vụ",
@@ -18,11 +18,24 @@ const CATEGORIES = [
 
 export default function FeedbackScreen() {
   const router = useRouter();
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [category, setCategory] = useState("Cơ sở vật chất");
   const [rating, setRating] = useState(5);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const res = await apiGetFeedbackConfig();
+        if (res && res.success && res.categories && Array.isArray(res.categories)) {
+          setCategories(res.categories);
+        }
+      } catch {}
+    };
+    fetchConfig();
+  }, []);
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -76,7 +89,7 @@ export default function FeedbackScreen() {
           Lĩnh vực góp ý
         </Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 18 }}>
-          {CATEGORIES.map((cat) => {
+          {categories.map((cat) => {
             const isSelected = cat === category;
             return (
               <TouchableOpacity

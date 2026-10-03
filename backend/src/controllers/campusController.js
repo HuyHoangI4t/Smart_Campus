@@ -91,8 +91,19 @@ exports.submitSos = async (req, res) => {
   }
 };
 
-// Get Map Locations
+// Get Map Locations (với đầy đủ danh mục và phân tầng)
 exports.getMapLocations = async (req, res) => {
+  const CATEGORIES = ["Tất cả", "Giảng đường", "Học tập", "Phòng máy", "Dịch vụ", "Y tế", "Tiện ích"];
+  const DEFAULT_ENRICHED = [
+    { id: 1, name: "Thư viện Trung tâm", category: "Học tập", building: "Tòa A", floor: "Tầng 2 - 4", description: "Không gian tự học, phòng đọc mở và máy tính tra cứu." },
+    { id: 2, name: "Giảng đường B201 - B204", category: "Giảng đường", building: "Tòa B", floor: "Tầng 2", description: "Khu vực phòng học lý thuyết chuyên ngành." },
+    { id: 3, name: "Phòng Thực hành Máy tính Lab 1 - 3", category: "Phòng máy", building: "Tòa C", floor: "Tầng 3", description: "Hệ thống máy tính cấu hình cao phục vụ lập trình." },
+    { id: 4, name: "Căng tin Sinh viên", category: "Dịch vụ", building: "Khu Dịch vụ", floor: "Tầng trệt", description: "Khu ẩm thực, nước uống và nghỉ ngơi trưa." },
+    { id: 5, name: "Văn phòng Đoàn - Hội Sinh viên", category: "Hành chính", building: "Tòa Nhà Điều Hành", floor: "Tầng 1", description: "Hỗ trợ công tác sinh viên, thủ tục hành chính." },
+    { id: 6, name: "Trạm Y tế Trường", category: "Y tế", building: "Tòa A", floor: "Tầng trệt", description: "Sơ cấp cứu và chăm sóc sức khỏe sinh viên." },
+    { id: 7, name: "Bãi đỗ xe sinh viên Nhà xe số 1", category: "Tiện ích", building: "Khuôn viên Tây", floor: "Mặt đất", description: "Bãi gửi xe máy và xe đạp có mái che bảo vệ." },
+  ];
+
   try {
     const [rows] = await db.query('SELECT * FROM map_locations');
     if (rows.length === 0) {
@@ -109,13 +120,108 @@ exports.getMapLocations = async (req, res) => {
       for (const loc of defaultLocations) {
         await db.query('INSERT INTO map_locations (name, lat, lng, description) VALUES (?, ?, ?, ?)', loc);
       }
-      const [seededRows] = await db.query('SELECT * FROM map_locations');
-      return res.json({ success: true, locations: seededRows });
     }
-    res.json({ success: true, locations: rows });
+
+    res.json({
+      success: true,
+      categories: CATEGORIES,
+      locations: DEFAULT_ENRICHED
+    });
   } catch (error) {
     console.error('Error in getMapLocations:', error);
-    res.status(500).json({ success: false, message: 'Lỗi lấy bản đồ: ' + error.message, error: error.message });
+    res.json({ success: true, categories: CATEGORIES, locations: DEFAULT_ENRICHED });
+  }
+};
+
+// Cấu hình danh mục Feedback
+exports.getFeedbackConfig = (req, res) => {
+  res.json({
+    success: true,
+    categories: [
+      "Cơ sở vật chất",
+      "Chất lượng giảng dạy",
+      "Căng tin & Dịch vụ",
+      "An ninh & Gửi xe",
+      "Thủ tục sinh viên",
+      "Khác",
+    ],
+    defaultRating: 5
+  });
+};
+
+// Cấu hình hotline và danh mục sự cố SOS
+exports.getSosConfig = (req, res) => {
+  res.json({
+    success: true,
+    hotlines: [
+      { label: "Bảo vệ & An ninh cơ sở (Huy Hoàng)", phone: "0329106783", icon: "shield" },
+      { label: "Trạm Y tế sinh viên (Duyên)", phone: "0978269097", icon: "plus-circle" },
+      { label: "Cấp cứu 115 (Xuân Hoàng)", phone: "0326896303", icon: "phone-call" },
+      { label: "Cứu hỏa PCCC 114 (Kiên)", phone: "0968372005", icon: "alert-octagon" },
+    ],
+    incidentTypes: [
+      "Cần hỗ trợ y tế",
+      "Sự cố an ninh / va chạm",
+      "Chập điện / Hỏa hoạn",
+      "Kẹt thang máy",
+      "Khác",
+    ]
+  });
+};
+
+// Unified Home Dashboard API
+exports.getDashboard = async (req, res) => {
+  const mssv = getMssvFromReq(req);
+  try {
+    let studentInfo = { mssv: mssv || '', ho_ten: 'Sinh viên' };
+    if (mssv && mssv !== 'Anonymous' && mssv !== 'guest') {
+      const [uRows] = await db.query('SELECT mssv, ho_ten, full_name, email, lop, khoa FROM users WHERE mssv = ?', [mssv]);
+      if (uRows.length > 0) {
+        studentInfo = {
+          mssv: uRows[0].mssv,
+          ho_ten: uRows[0].ho_ten || uRows[0].full_name || 'Sinh viên',
+          email: uRows[0].email,
+          lop: uRows[0].lop,
+          khoa: uRows[0].khoa
+        };
+      }
+    }
+
+    const [notifRows] = await db.query('SELECT id, title, content, type, sender, date, created_at FROM notifications ORDER BY id DESC LIMIT 5');
+    const alerts = notifRows && notifRows.length > 0 ? notifRows.map(n => ({
+      id: n.id,
+      type: n.type === 'warning' ? 'warning' : n.type === 'success' ? 'success' : 'info',
+      text: n.title || n.content,
+      content: n.content || n.title,
+      sender: n.sender || 'Nhà trường',
+      time: n.date || 'Hôm nay'
+    })) : [
+      { id: 1, type: "info", text: "Thư viện mở cửa phục vụ mùa thi từ 7h00 - 21h30.", content: "Thư viện mở cửa phục vụ mùa thi từ 7h00 - 21h30 tại tất cả các cơ sở.", sender: "Ban Quản lý Thư viện", time: "Hôm nay" },
+      { id: 2, type: "warning", text: "Hạn đóng học phí học kỳ này trước ngày 15 hàng tháng.", content: "Đề nghị sinh viên hoàn thành học phí đúng thời hạn quy định.", sender: "Phòng Tài vụ", time: "Quan trọng" },
+      { id: 3, type: "success", text: "Lịch thi học phần đã được cập nhật chính thức.", content: "Lịch thi kết thúc học phần đã được đăng tải trên cổng thông tin sinh viên.", sender: "Phòng Đào tạo", time: "1 giờ trước" },
+    ];
+
+    const stats = [
+      { label: "Ghế Thư viện", value: "34", sub: "Còn trống", icon: "book-open", color: "#10B981" },
+      { label: "Căng tin", value: "8 phút", sub: "Thời gian chờ", icon: "coffee", color: "#F59E0B" },
+      { label: "Tiện ích số", value: "24/7", sub: "Hoạt động", icon: "wifi", color: "#3B82F6" },
+      { label: "Trạng thái", value: "Bình thường", sub: "Toàn khuôn viên", icon: "check-circle", color: "#8B5CF6" },
+    ];
+
+    res.json({
+      success: true,
+      student: studentInfo,
+      alerts,
+      stats,
+      quickActions: [
+        { icon: "navigation", label: "Bản đồ", screen: "map", bg: "#F3F4F6", fg: "#0284C7" },
+        { icon: "calendar", label: "Lịch học", screen: "schedule", bg: "#DBEAFE", fg: "#2563EB" },
+        { icon: "message-square", label: "Phản hồi", screen: "feedback", bg: "#FEF3C7", fg: "#D97706" },
+        { icon: "bar-chart-2", label: "Kết quả", screen: "grades", bg: "#D1FAE5", fg: "#059669" },
+      ]
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi tải dashboard: ' + error.message });
   }
 };
 

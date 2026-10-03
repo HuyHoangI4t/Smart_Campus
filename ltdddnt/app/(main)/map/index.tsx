@@ -33,6 +33,7 @@ export default function MapScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ search?: string }>();
   const [search, setSearch] = useState(params.search ? String(params.search) : "");
+  const [categories, setCategories] = useState(CATEGORIES);
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
   const [locations, setLocations] = useState<LocationItem[]>(FALLBACK_LOCATIONS);
   const [selectedLoc, setSelectedLoc] = useState<LocationItem | null>(null);
@@ -48,16 +49,21 @@ export default function MapScreen() {
     const fetchLocations = async () => {
       try {
         const res = await apiGetMapLocations();
-        if (res && res.success && res.locations && res.locations.length > 0) {
-          const mapped: LocationItem[] = res.locations.map((l: any, idx: number) => ({
-            id: l.id || idx,
-            name: l.name || l.ten_dia_diem || "Địa điểm",
-            category: l.category || l.loai || "Khuôn viên",
-            building: l.building || l.toa_nha || "Khu chính",
-            floor: l.floor || l.tang || "Tầng 1",
-            description: l.description || l.mo_ta || "Khuôn viên trường Đại học",
-          }));
-          setLocations(mapped);
+        if (res && res.success) {
+          if (res.categories && Array.isArray(res.categories)) {
+            setCategories(res.categories);
+          }
+          if (res.locations && res.locations.length > 0) {
+            const mapped: LocationItem[] = res.locations.map((l: any, idx: number) => ({
+              id: l.id || idx,
+              name: l.name || l.ten_dia_diem || "Địa điểm",
+              category: l.category || l.loai || "Khuôn viên",
+              building: l.building || l.toa_nha || "Khu chính",
+              floor: l.floor || l.tang || "Tầng 1",
+              description: l.description || l.mo_ta || "Khuôn viên trường Đại học",
+            }));
+            setLocations(mapped);
+          }
         }
       } catch {
         // Fallback
@@ -130,7 +136,7 @@ export default function MapScreen() {
 
         {/* Category Tabs */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 10, paddingBottom: 4 }}>
-          {CATEGORIES.map((cat) => {
+          {categories.map((cat) => {
             const isSelected = cat === selectedCategory;
             return (
               <TouchableOpacity

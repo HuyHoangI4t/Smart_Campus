@@ -5,7 +5,7 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'LTDDDNT SmartCampus API Documentation',
+      title: 'SmartCampus API',
       version: '1.0.0',
       description: 'API documentation and interactive testing interface for LTDDDNT Node.js backend connected with MySQL (smartcampus) using mssv.',
     },
@@ -69,7 +69,7 @@ const specs = swaggerJsdoc(options);
 
 function setupSwagger(app) {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
-  console.log('📄 Swagger UI available at http://localhost:5000/api-docs');
+  console.log('📄 Swagger UI bắt đầu tại http://localhost:5000/api-docs');
 }
 
 module.exports = setupSwagger;

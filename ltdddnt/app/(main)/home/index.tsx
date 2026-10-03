@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
-import { apiGetSchedule, apiGetNotifications, apiGetProfile } from "../../../src/services/api";
+import { apiGetSchedule, apiGetDashboard } from "../../../src/services/api";
 
 interface StudentInfo {
   mssv?: string;
@@ -33,6 +33,13 @@ const DEFAULT_ALERTS: AlertItem[] = [
   { id: 3, type: "success", text: "Lịch thi học phần đã được cập nhật chính thức.", content: "Lịch thi kết thúc học phần đã được đăng tải trên cổng thông tin sinh viên.", sender: "Phòng Đào tạo", time: "1 giờ trước" },
 ];
 
+const DEFAULT_STATS = [
+  { label: "Ghế Thư viện", value: "34", sub: "Còn trống", icon: "book-open" as const, color: AppColors.success },
+  { label: "Căng tin", value: "8 phút", sub: "Thời gian chờ", icon: "coffee" as const, color: AppColors.warning },
+  { label: "Tiện ích số", value: "24/7", sub: "Hoạt động", icon: "wifi" as const, color: AppColors.info },
+  { label: "Trạng thái", value: "Bình thường", sub: "Toàn khuôn viên", icon: "check-circle" as const, color: AppColors.purple },
+];
+
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -41,6 +48,7 @@ export default function HomeScreen() {
   const [student, setStudent] = useState<StudentInfo>({ ho_ten: "Đang tải...", mssv: "" });
   const [nextClass, setNextClass] = useState<any>(null);
   const [alerts, setAlerts] = useState<AlertItem[]>(DEFAULT_ALERTS);
+  const [stats, setStats] = useState(DEFAULT_STATS);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = async () => {
@@ -62,51 +70,37 @@ export default function HomeScreen() {
       const mssv = currentUser.mssv || currentUser.masv;
       const isRealAccount = mssv && mssv !== "guest";
 
-      // Nếu là tài khoản đăng nhập (không tính khách), đồng bộ dữ liệu thật từ API Profile
-      if (isRealAccount) {
-        const profileRes = await apiGetProfile(mssv);
-        if (profileRes && profileRes.success && profileRes.student) {
-          const s = profileRes.student;
-          const merged: StudentInfo = {
-            mssv: s.mssv || mssv,
-            ho_ten: s.ho_ten || s.fullName || currentUser.ho_ten || "Sinh viên",
-            fullName: s.fullName || s.ho_ten || currentUser.fullName || "Sinh viên",
-            email: s.email || currentUser.email,
-            lop: s.lop || currentUser.lop || "Kỹ thuật phần mềm K23",
-            khoa: s.khoa || currentUser.khoa || "Công nghệ Thông tin",
-          };
-          setStudent(merged);
-          await AsyncStorage.setItem("@auth_user", JSON.stringify({ ...currentUser, ...merged }));
+      // 1. Tải dữ liệu hợp nhất từ Backend Dashboard API
+      const dashRes = await apiGetDashboard();
+      if (dashRes && dashRes.success) {
+        if (dashRes.student && isRealAccount) {
+          setStudent((prev) => ({ ...prev, ...dashRes.student }));
+        }
+        if (dashRes.alerts && dashRes.alerts.length > 0) {
+          setAlerts(dashRes.alerts);
+        }
+        if (dashRes.stats && Array.isArray(dashRes.stats)) {
+          setStats(dashRes.stats);
         }
       }
 
-      // Load schedule for next class preview (dựa theo MSSV của tài khoản)
+      // 2. Tải lịch học kế tiếp trực tiếp từ Backend Schedule
       const scheduleRes = await apiGetSchedule(isRealAccount ? mssv : undefined);
-      if (scheduleRes && scheduleRes.success && scheduleRes.tables && scheduleRes.tables.length > 0) {
-        const rows = scheduleRes.tables[0]?.rows || [];
-        if (rows.length > 1) {
-          const firstRow = rows[1];
-          setNextClass({
-            subject: firstRow[2] || firstRow[1] || "Môn chuyên ngành",
-            room: firstRow[5] || firstRow[4] || "Phòng B201",
-            time: firstRow[3] ? `Tiết ${firstRow[3]}` : "Ca sáng 07:30",
-            lecturer: firstRow[6] || "Giảng viên bộ môn",
-          });
+      if (scheduleRes && scheduleRes.success) {
+        if (scheduleRes.nextClass) {
+          setNextClass(scheduleRes.nextClass);
+        } else if (scheduleRes.tables && scheduleRes.tables.length > 0) {
+          const rows = scheduleRes.tables[0]?.rows || [];
+          if (rows.length > 1) {
+            const firstRow = rows[1];
+            setNextClass({
+              subject: firstRow[2] || firstRow[1] || "Môn chuyên ngành",
+              room: firstRow[5] || firstRow[4] || "Phòng B201",
+              time: firstRow[3] ? `Tiết ${firstRow[3]}` : "Ca sáng 07:30",
+              lecturer: firstRow[6] || "Giảng viên bộ môn",
+            });
+          }
         }
-      }
-
-      // Load real notifications
-      const notifRes = await apiGetNotifications();
-      if (notifRes && notifRes.success && notifRes.notifications?.length > 0) {
-        const mapped: AlertItem[] = notifRes.notifications.slice(0, 5).map((n: any, idx: number) => ({
-          id: n.id || idx,
-          type: n.type === 'warning' ? 'warning' : n.type === 'success' ? 'success' : 'info',
-          text: n.title || n.content,
-          content: n.content || n.title,
-          sender: n.sender || 'Nhà trường',
-          time: n.date || (n.created_at ? new Date(n.created_at).toLocaleDateString('vi-VN') : 'Mới'),
-        }));
-        setAlerts(mapped);
       }
     } catch {
       // Keep fallbacks
@@ -141,12 +135,6 @@ export default function HomeScreen() {
     success: { icon: "check" as const, color: AppColors.success, bg: "#ECFDF5", border: "#A7F3D0" },
   };
 
-  const stats = [
-    { label: "Ghế Thư viện", value: "34", sub: "Còn trống", icon: "book-open" as const, color: AppColors.success },
-    { label: "Căng tin", value: "8 phút", sub: "Thời gian chờ", icon: "coffee" as const, color: AppColors.warning },
-    { label: "Tiện ích số", value: "24/7", sub: "Hoạt động", icon: "wifi" as const, color: AppColors.info },
-    { label: "Trạng thái", value: "Bình thường", sub: "Toàn khuôn viên", icon: "check-circle" as const, color: AppColors.purple },
-  ];
 
   return (
     <View style={{ flex: 1, backgroundColor: AppColors.background }}>

@@ -50,5 +50,9 @@ router.post('/sos', campusController.submitSos);
  */
 router.get('/map', campusController.getMapLocations);
 router.get('/locations', campusController.getMapLocations);
+router.get('/dashboard', campusController.getDashboard);
+router.get('/home/dashboard', campusController.getDashboard);
+router.get('/feedback/config', campusController.getFeedbackConfig);
+router.get('/sos/config', campusController.getSosConfig);
 
 module.exports = router;

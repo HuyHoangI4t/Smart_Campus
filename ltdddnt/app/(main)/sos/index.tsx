@@ -1,20 +1,20 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Linking, ActivityIndicator } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
-import { apiSubmitSos } from "../../../src/services/api";
+import { apiSubmitSos, apiGetSosConfig } from "../../../src/services/api";
 
-const HOTLINES = [
-  { label: "Bảo vệ & An ninh cơ sở(Huy Hoàng", phone: "0329106783", icon: "shield" as const },
-  { label: "Trạm Y tế sinh viên(Duyên)", phone: "0978269097", icon: "plus-circle" as const },
-  { label: "Cấp cứu 115(Xuân Hoàng)", phone: "0326896303", icon: "phone-call" as const },
-  { label: "Cứu hỏa PCCC 114(Kiên)", phone: "0968372005", icon: "alert-octagon" as const },
+const DEFAULT_HOTLINES = [
+  { label: "Bảo vệ & An ninh cơ sở (Huy Hoàng)", phone: "0329106783", icon: "shield" as const },
+  { label: "Trạm Y tế sinh viên (Duyên)", phone: "0978269097", icon: "plus-circle" as const },
+  { label: "Cấp cứu 115 (Xuân Hoàng)", phone: "0326896303", icon: "phone-call" as const },
+  { label: "Cứu hỏa PCCC 114 (Kiên)", phone: "0968372005", icon: "alert-octagon" as const },
 ];
 
-const INCIDENT_TYPES = [
+const DEFAULT_INCIDENT_TYPES = [
   "Cần hỗ trợ y tế",
   "Sự cố an ninh / va chạm",
   "Chập điện / Hỏa hoạn",
@@ -24,10 +24,29 @@ const INCIDENT_TYPES = [
 
 export default function SosScreen() {
   const router = useRouter();
+  const [hotlines, setHotlines] = useState(DEFAULT_HOTLINES);
+  const [incidentTypes, setIncidentTypes] = useState(DEFAULT_INCIDENT_TYPES);
   const [incidentType, setIncidentType] = useState("Cần hỗ trợ y tế");
   const [locationText, setLocationText] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const res = await apiGetSosConfig();
+        if (res && res.success) {
+          if (res.hotlines && Array.isArray(res.hotlines)) {
+            setHotlines(res.hotlines);
+          }
+          if (res.incidentTypes && Array.isArray(res.incidentTypes)) {
+            setIncidentTypes(res.incidentTypes);
+          }
+        }
+      } catch {}
+    };
+    fetchConfig();
+  }, []);
 
   const handleCall = (phone: string) => {
     Linking.openURL(`tel:${phone}`).catch(() => {
@@ -120,7 +139,7 @@ export default function SosScreen() {
           Loại sự cố khẩn cấp
         </Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-          {INCIDENT_TYPES.map((type) => {
+          {incidentTypes.map((type) => {
             const isSelected = type === incidentType;
             return (
               <TouchableOpacity
@@ -225,7 +244,7 @@ export default function SosScreen() {
           Đường dây nóng hỗ trợ trực tiếp
         </Text>
         <View style={{ gap: 10 }}>
-          {HOTLINES.map((h) => (
+          {hotlines.map((h) => (
             <TouchableOpacity
               key={h.phone}
               onPress={() => handleCall(h.phone)}

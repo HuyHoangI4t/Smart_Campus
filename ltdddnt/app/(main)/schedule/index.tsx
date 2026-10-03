@@ -186,7 +186,9 @@ export default function ScheduleScreen() {
           setWeekRangeText(res.weekRange);
         }
 
-        if (res.tables && res.tables.length > 0) {
+        if (res.schedules && Array.isArray(res.schedules) && res.schedules.length > 0) {
+          setScheduleList(res.schedules);
+        } else if (res.tables && res.tables.length > 0) {
           const rows = res.tables[0].rows || [];
           if (rows.length > 1) {
             const parsed: ScheduleItem[] = [];
@@ -248,7 +250,7 @@ export default function ScheduleScreen() {
       : weekRangeText;
 
   const currentDirection = selectedScheduleForDirection
-    ? parseRoomDirections(selectedScheduleForDirection.room)
+    ? ((selectedScheduleForDirection as any).direction || parseRoomDirections(selectedScheduleForDirection.room))
     : null;
 
   const handleOpenCampusMap = (query: string) => {
@@ -575,7 +577,7 @@ export default function ScheduleScreen() {
                     </Text>
 
                     <View style={{ gap: 14 }}>
-                      {currentDirection.steps.map((step, idx) => (
+                      {currentDirection.steps.map((step: any, idx: number) => (
                         <View key={step.step} style={{ flexDirection: "row", gap: 12 }}>
                           {/* Timeline icon & vertical connector line */}
                           <View style={{ alignItems: "center" }}>
@@ -640,7 +642,7 @@ export default function ScheduleScreen() {
                         Tiện ích & Lưu ý
                       </Text>
                     </View>
-                    {currentDirection.tips.map((tip, idx) => (
+                    {currentDirection.tips.map((tip: string, idx: number) => (
                       <View key={idx} style={[s.row, { gap: 6, alignItems: "flex-start" }]}>
                         <Text style={{ color: "#16A34A", fontSize: 12, lineHeight: 17 }}>•</Text>
                         <Text style={{ flex: 1, fontSize: 12, color: "#15803D", lineHeight: 17 }}>

@@ -19,10 +19,10 @@ interface CourseGrade {
 
 const FALLBACK_GRADES: CourseGrade[] = [
   { code: "NT118", name: "Lập trình thiết bị di động", credits: 3, grade10: 8.5, gradeLetter: "A", semester: "HK1 (2025-2026)" },
-  { code: "CS301", name: "Cấu trúc dữ liệu & Giải thuật", credits: 4, grade10: 8.0, gradeLetter: "B+", semester: "HK1 (2025-2026)" },
+  { code: "CS301", name: "Cấu trúc dữ liệu & Giải thuật", credits: 4, grade10: 8.0, gradeLetter: "B", semester: "HK1 (2025-2026)" },
   { code: "IT202", name: "Hệ cơ sở dữ liệu", credits: 3, grade10: 7.5, gradeLetter: "B", semester: "HK1 (2025-2026)" },
   { code: "NT101", name: "Mạng máy tính nâng cao", credits: 3, grade10: 8.8, gradeLetter: "A", semester: "HK1 (2025-2026)" },
-  { code: "ENG201", name: "Tiếng Anh chuyên ngành", credits: 2, grade10: 7.0, gradeLetter: "C+", semester: "HK1 (2025-2026)" },
+  { code: "ENG201", name: "Tiếng Anh chuyên ngành", credits: 2, grade10: 7.0, gradeLetter: "C", semester: "HK1 (2025-2026)" },
 ];
 
 export default function GradesScreen() {
@@ -81,11 +81,8 @@ export default function GradesScreen() {
 
   const convertTo4Scale = (score10: number): number => {
     if (score10 >= 8.5) return 4.0;
-    if (score10 >= 8.0) return 3.5;
     if (score10 >= 7.0) return 3.0;
-    if (score10 >= 6.5) return 2.5;
     if (score10 >= 5.5) return 2.0;
-    if (score10 >= 5.0) return 1.5;
     if (score10 >= 4.0) return 1.0;
     return 0.0;
   };
@@ -108,25 +105,27 @@ export default function GradesScreen() {
     (g) => g.gradeLetter !== "X" && g.gradeLetter !== "P" && g.grade10 > 0
   );
   const totalGradedCredits = gradedCourses.reduce((acc, curr) => acc + curr.credits, 0);
-  const totalCredits = displayedGrades.reduce((acc, curr) => acc + curr.credits, 0);
 
-  const gpa10 = totalGradedCredits > 0
-    ? (gradedCourses.reduce((acc, curr) => acc + curr.grade10 * curr.credits, 0) / totalGradedCredits).toFixed(2)
-    : "0.00";
-
+  // Tín chỉ tích lũy: Bỏ các môn chưa học/đang học ('X') và môn không đạt ('F')
+  const accumulatedCourses = displayedGrades.filter(
+    (g) => g.gradeLetter !== "X" && g.gradeLetter !== "F" && (g.gradeLetter || g.grade10 > 0)
+  );
+  const totalCredits = accumulatedCourses.reduce((acc, curr) => acc + curr.credits, 0);
+  const gpa10 = totalGradedCredits > 0 ? (gradedCourses.reduce((acc, curr) => acc + curr.grade10 * curr.credits, 0) / totalGradedCredits).toFixed(2) : "0.00";
   const totalPoints4 = gradedCourses.reduce((acc, curr) => acc + convertTo4Scale(curr.grade10) * curr.credits, 0);
   const gpa4 = totalGradedCredits > 0 ? (totalPoints4 / totalGradedCredits).toFixed(2) : "0.00";
   const academicRank = getAcademicRank(Number(gpa4));
 
   const getBadgeColor = (letter: string) => {
-    if (!letter) return { bg: "#F3F4F6", text: "#4B5563", border: "#E5E7EB" };
-    if (letter.startsWith("A")) return { bg: "#ECFDF5", text: "#059669", border: "#A7F3D0" };
-    if (letter.startsWith("B")) return { bg: "#EFF6FF", text: "#2563EB", border: "#BFDBFE" };
-    if (letter.startsWith("C")) return { bg: "#FFFBEB", text: "#D97706", border: "#FDE68A" };
-    if (letter.startsWith("D")) return { bg: "#FEF3C7", text: "#B45309", border: "#FDE68A" };
-    if (letter === "P") return { bg: "#F0FDF4", text: "#16A34A", border: "#BBF7D0" };
-    if (letter === "X") return { bg: "#FEF2F2", text: "#EF4444", border: "#FECACA" };
-    return { bg: "#FEF2F2", text: "#DC2626", border: "#FECACA" };
+    const uc = (letter || "").toUpperCase().trim();
+    if (uc === "A") return { bg: "#ECFDF5", text: "#059669", border: "#A7F3D0" };
+    if (uc === "B") return { bg: "#EFF6FF", text: "#2563EB", border: "#BFDBFE" };
+    if (uc === "C") return { bg: "#FFFBEB", text: "#D97706", border: "#FDE68A" };
+    if (uc === "D") return { bg: "#FEF3C7", text: "#B45309", border: "#FDE68A" };
+    if (uc === "P") return { bg: "#F0FDF4", text: "#16A34A", border: "#BBF7D0" };
+    if (uc === "F") return { bg: "#FEF2F2", text: "#DC2626", border: "#FECACA" };
+    if (uc === "X") return { bg: "#FEF2F2", text: "#EF4444", border: "#FECACA" };
+    return { bg: "#F3F4F6", text: "#4B5563", border: "#E5E7EB" };
   };
 
   const subtitle = studentInfo.mssv && studentInfo.mssv !== "guest"
@@ -139,7 +138,7 @@ export default function GradesScreen() {
         title="Kết quả học tập"
         subtitle={subtitle}
         showBack={true}
-        onBack={() => router.push("/(main)/home")}
+        onBack={() => router.push("/(main)/grades")}
         rightElement={
           <TouchableOpacity
             onPress={() => router.push("/(main)/grades/grades_detail")}

@@ -356,3 +356,32 @@ export async function apiGetNotifications() {
   }
 }
 
+export async function apiGetDashboard() {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${API_BASE_URL}/campus/dashboard`, { headers });
+    return await handleResponse(response);
+  } catch {
+    return { success: false };
+  }
+}
+
+export async function apiGetFeedbackConfig() {
+  try {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/campus/feedback/config`);
+    return await handleResponse(response);
+  } catch {
+    return { success: false };
+  }
+}
+
+export async function apiGetSosConfig() {
+  try {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/campus/sos/config`);
+    return await handleResponse(response);
+  } catch {
+    return { success: false };
+  }
+}
+
+

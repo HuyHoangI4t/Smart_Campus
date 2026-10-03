@@ -12,8 +12,8 @@ interface DetailedGrade {
   code: string;
   name: string;
   credits: number;
-  namHoc?: string;
-  ky?: string;
+  namHoc: string;
+  ky: string;
   dbp: number | null;
   thi1: number | null;
   thi2: number | null;
@@ -23,14 +23,15 @@ interface DetailedGrade {
   letter: string;
   semester: string;
   hocPhi?: string;
+  badge?: { bg: string; text: string; border: string; label?: string };
 }
 
 const FALLBACK_DETAILED_GRADES: DetailedGrade[] = [
-  { code: "ATTT261", name: "An toàn thông tin", credits: 2.0, namHoc: "2026", ky: "1", dbp: null, thi1: null, thi2: null, d1: null, d2: null, total: null, letter: "X", semester: "HK1 (2026)", hocPhi: "Nợ:1238000" },
-  { code: "CSVL252", name: "Cơ sở vật lý cho Tin học", credits: 2.0, namHoc: "2025", ky: "2", dbp: 9.1, thi1: 5.5, thi2: null, d1: 6.9, d2: null, total: 6.9, letter: "C", semester: "HK2 (2025)", hocPhi: "Nộp:1100000" },
-  { code: "TTNT252", name: "Trí tuệ nhân tạo", credits: 2.0, namHoc: "2025", ky: "2", dbp: 9.0, thi1: 9.0, thi2: null, d1: 9.0, d2: null, total: 9.0, letter: "A", semester: "HK2 (2025)", hocPhi: "Nộp:1100000" },
-  { code: "CQTP252", name: "Các quy trình phát triển phần mềm hiện đại", credits: 2.0, namHoc: "2025", ky: "2", dbp: 8.0, thi1: 8.0, thi2: null, d1: 8.0, d2: null, total: 8.0, letter: "B", semester: "HK2 (2025)", hocPhi: "Nộp:1100000" },
-  { code: "NMHD252", name: "Nhập môn Hệ điều hành", credits: 2.0, namHoc: "2025", ky: "2", dbp: 9.5, thi1: 8.0, thi2: null, d1: 8.5, d2: null, total: 8.5, letter: "A", semester: "HK2 (2025)", hocPhi: "Nộp:1100000" },
+  { code: "", name: "An toàn thông tin", credits: 2.0, namHoc: "2026", ky: "1", dbp: null, thi1: null, thi2: null, d1: null, d2: null, total: null, letter: "X", semester: "HK1 (2026)", hocPhi: "Nợ:1238000" },
+  { code: "", name: "Cơ sở vật lý cho Tin học", credits: 2.0, namHoc: "2025", ky: "2", dbp: 9.1, thi1: 5.5, thi2: null, d1: 6.9, d2: null, total: 6.9, letter: "C", semester: "HK2 (2025)", hocPhi: "Nộp:1100000" },
+  { code: "", name: "Trí tuệ nhân tạo", credits: 2.0, namHoc: "2025", ky: "2", dbp: 9.0, thi1: 9.0, thi2: null, d1: 9.0, d2: null, total: 9.0, letter: "A", semester: "HK2 (2025)", hocPhi: "Nộp:1100000" },
+  { code: "", name: "Các quy trình phát triển phần mềm hiện đại", credits: 2.0, namHoc: "2025", ky: "2", dbp: 8.0, thi1: 8.0, thi2: null, d1: 8.0, d2: null, total: 8.0, letter: "B", semester: "HK2 (2025)", hocPhi: "Nộp:1100000" },
+  { code: "", name: "Nhập môn Hệ điều hành", credits: 2.0, namHoc: "2025", ky: "2", dbp: 9.5, thi1: 8.0, thi2: null, d1: 8.5, d2: null, total: 8.5, letter: "A", semester: "HK2 (2025)", hocPhi: "Nộp:1100000" },
 ];
 
 export default function GradesDetailScreen() {
@@ -39,6 +40,7 @@ export default function GradesDetailScreen() {
   const [selectedSemester, setSelectedSemester] = useState("Tất cả");
   const [loading, setLoading] = useState(true);
   const [list, setList] = useState<DetailedGrade[]>(FALLBACK_DETAILED_GRADES);
+  const [backendSemesters, setBackendSemesters] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchDetailedGrades = async () => {
@@ -52,34 +54,27 @@ export default function GradesDetailScreen() {
         const isRealAccount = mssv && mssv !== "guest";
         const res = await apiGetGrades(isRealAccount ? mssv : undefined);
         if (res && res.success && res.data && res.data.length > 0) {
-          const parseNum = (val: any) =>
-            val !== null && val !== undefined && val !== "" && !isNaN(Number(val)) ? Number(val) : null;
+          if (res.semesters && Array.isArray(res.semesters)) {
+            setBackendSemesters(res.semesters);
+          }
 
-          const mapped: DetailedGrade[] = res.data.map((item: any, idx: number) => {
-            const dbp = parseNum(item.diem_dbp ?? item.diem_qt);
-            const thi1 = parseNum(item.diem_thi1 ?? item.thi1 ?? item.diem_thi);
-            const thi2 = parseNum(item.diem_thi2 ?? item.thi2);
-            const d1 = parseNum(item.diem_1 ?? item.d1);
-            const d2 = parseNum(item.diem_2 ?? item.d2);
-            const total = parseNum(item.diem_hp ?? d2 ?? d1);
-
-            return {
-              code: item.code || "",
-              name: item.ten_hp || item.name || "Học phần",
-              credits: Number(item.so_tin_chi || item.credits || 3),
-              namHoc: item.nam_hoc || "",
-              ky: item.ky || "",
-              dbp: dbp,
-              thi1: thi1,
-              thi2: thi2,
-              d1: d1,
-              d2: d2,
-              total: total,
-              letter: item.diem_chu || (total !== null ? (total >= 8.5 ? "A" : total >= 7.0 ? "B" : "C") : "X"),
-              semester: item.hoc_ky || (item.ky ? `HK${item.ky} (${item.nam_hoc || "2026"})` : "HK1 (2026)"),
-              hocPhi: item.hoc_phi || "",
-            };
-          });
+          const mapped: DetailedGrade[] = res.data.map((item: any) => ({
+            code: item.code || "",
+            name: item.ten_hp || item.name || "Học phần",
+            credits: Number(item.so_tin_chi || 3),
+            namHoc: item.nam_hoc || "",
+            ky: item.ky || "",
+            dbp: item.diem_dbp !== null && item.diem_dbp !== undefined ? Number(item.diem_dbp) : null,
+            thi1: item.diem_thi1 !== null && item.diem_thi1 !== undefined ? Number(item.diem_thi1) : null,
+            thi2: item.diem_thi2 !== null && item.diem_thi2 !== undefined ? Number(item.diem_thi2) : null,
+            d1: item.diem_1 !== null && item.diem_1 !== undefined ? Number(item.diem_1) : null,
+            d2: item.diem_2 !== null && item.diem_2 !== undefined ? Number(item.diem_2) : null,
+            total: item.diem_hp !== null && item.diem_hp !== undefined ? Number(item.diem_hp) : null,
+            letter: item.diem_chu || "X",
+            semester: item.hoc_ky || (item.ky ? `HK${item.ky} (${item.nam_hoc || "2026"})` : "HK1 (2026)"),
+            hocPhi: item.hoc_phi || "",
+            badge: item.badge,
+          }));
           setList(mapped);
         }
       } catch {
@@ -92,7 +87,7 @@ export default function GradesDetailScreen() {
     fetchDetailedGrades();
   }, []);
 
-  const semesters = ["Tất cả", ...Array.from(new Set(list.map((i) => i.semester)))];
+  const semesters = backendSemesters.length > 0 ? backendSemesters : ["Tất cả", ...Array.from(new Set(list.map((i) => i.semester)))];
 
   const filtered = list.filter((item) => {
     const matchSearch =
@@ -102,15 +97,17 @@ export default function GradesDetailScreen() {
     return matchSearch && matchSemester;
   });
 
-  const getBadge = (letter: string) => {
-    if (!letter) return { bg: "#F3F4F6", text: "#4B5563", border: "#E5E7EB" };
-    if (letter.startsWith("A")) return { bg: "#ECFDF5", text: "#059669", border: "#A7F3D0" };
-    if (letter.startsWith("B")) return { bg: "#EFF6FF", text: "#2563EB", border: "#BFDBFE" };
-    if (letter.startsWith("C")) return { bg: "#FFFBEB", text: "#D97706", border: "#FDE68A" };
-    if (letter.startsWith("D")) return { bg: "#FEF3C7", text: "#B45309", border: "#FDE68A" };
-    if (letter === "P") return { bg: "#F0FDF4", text: "#16A34A", border: "#BBF7D0" };
-    if (letter === "X") return { bg: "#FEF2F2", text: "#EF4444", border: "#FECACA" };
-    return { bg: "#FEF2F2", text: "#DC2626", border: "#FECACA" };
+  const getBadge = (input: any) => {
+    if (typeof input === "object" && input?.badge) return input.badge;
+    const letter = (typeof input === "string" ? input : (input?.letter || "")).toUpperCase().trim();
+    if (letter === "A") return { bg: "#ECFDF5", text: "#059669", border: "#A7F3D0", label: "A" };
+    if (letter === "B") return { bg: "#EFF6FF", text: "#2563EB", border: "#BFDBFE", label: "B" };
+    if (letter === "C") return { bg: "#FFFBEB", text: "#D97706", border: "#FDE68A", label: "C" };
+    if (letter === "D") return { bg: "#FEF3C7", text: "#B45309", border: "#FDE68A", label: "D" };
+    if (letter === "P") return { bg: "#F0FDF4", text: "#16A34A", border: "#BBF7D0", label: "Đạt" };
+    if (letter === "F") return { bg: "#FEF2F2", text: "#DC2626", border: "#FECACA", label: "F" };
+    if (letter === "X") return { bg: "#FEF2F2", text: "#EF4444", border: "#FECACA", label: "Đang học" };
+    return { bg: "#F3F4F6", text: "#4B5563", border: "#E5E7EB", label: letter || "X" };
   };
 
   return (
@@ -243,7 +240,7 @@ export default function GradesDetailScreen() {
                       }}
                     >
                       <Text style={{ fontSize: 13, fontWeight: "900", color: badge.text }}>
-                        {item.letter === "X" ? "Đang học" : item.letter === "P" ? "Đạt" : item.letter}
+                        {badge.label || (item.letter === "X" ? "Đang học" : item.letter === "P" ? "Đạt" : item.letter)}
                       </Text>
                     </View>
                   </View>
