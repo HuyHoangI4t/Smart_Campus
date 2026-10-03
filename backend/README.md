@@ -1,6 +1,6 @@
-# LTDDDNT Node.js Backend
+# Smart Campus Node.js Backend (LTUDDNT)
 
-Backend API server built with **Node.js**, **Express**, **Axios**, and **Cheerio**. It provides REST endpoints for the LTDDDNT mobile app and proxies student grade and timetable data from the university portal (ttn.edu.vn).
+Backend API server built with **Node.js**, **Express**, **Axios**, và **Cheerio**. Cung cấp REST endpoints cho ứng dụng di động Smart Campus (`frontend`) và tích hợp dữ liệu điểm, thời khóa biểu từ cổng thông tin Đại học Tây Nguyên (ttn.edu.vn).
 
 ## Getting Started
 
