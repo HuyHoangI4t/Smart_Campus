@@ -10,6 +10,7 @@ const authRoutes = require('./routes/authRoutes');
 const studentRoutes = require('./routes/studentRoutes');
 const campusRoutes = require('./routes/campusRoutes');
 const generalRoutes = require('./routes/generalRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 dotenv.config();
 
@@ -48,6 +49,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/campus', campusRoutes);
 app.use('/api/general', generalRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.use('/api', generalRoutes);
 app.use('/api', studentRoutes);

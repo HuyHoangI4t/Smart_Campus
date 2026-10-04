@@ -19,7 +19,7 @@ async function ensureRegistrationOtpTable() {
       CREATE TABLE IF NOT EXISTS registration_otps (
         id INT AUTO_INCREMENT PRIMARY KEY,
         mssv VARCHAR(50) NOT NULL,
-        full_name VARCHAR(255) NOT NULL,
+        ho_ten VARCHAR(255) NOT NULL,
         email VARCHAR(255) NOT NULL,
         password VARCHAR(255) NOT NULL,
         otp_code VARCHAR(10) NOT NULL,
@@ -36,7 +36,7 @@ async function ensureRegistrationOtpTable() {
 exports.registerRequest = async (req, res) => {
   const { mssv, password, fullName, email, mat_khau, ho_ten } = req.body;
   const regPassword = password || mat_khau;
-  const userFullName = fullName || ho_ten;
+  const userFullName = ho_ten || fullName;
 
   if (!mssv || !regPassword) {
     return res.status(400).json({ success: false, message: 'Mã số sinh viên (mssv) và mật khẩu là bắt buộc.' });
@@ -64,7 +64,7 @@ exports.registerRequest = async (req, res) => {
 
     await db.query('DELETE FROM registration_otps WHERE mssv = ?', [mssv]);
     await db.query(
-      'INSERT INTO registration_otps (mssv, full_name, email, password, otp_code, expires_at) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO registration_otps (mssv, ho_ten, email, password, otp_code, expires_at) VALUES (?, ?, ?, ?, ?, ?)',
       [mssv, finalFullName, userEmail, hashedPassword, otpCode, expiresAt]
     );
 
@@ -146,9 +146,10 @@ exports.verifyRegisterOtp = async (req, res) => {
     }
 
     // Insert user into users table
+    const registeredName = regData.ho_ten || regData.full_name;
     await db.query(
-      'INSERT INTO users (mssv, full_name, email, password) VALUES (?, ?, ?, ?)',
-      [regData.mssv, regData.full_name, regData.email, regData.password]
+      'INSERT INTO users (mssv, ho_ten, email, password) VALUES (?, ?, ?, ?)',
+      [regData.mssv, registeredName, regData.email, regData.password]
     );
 
     // Clean up registration_otps
@@ -159,7 +160,8 @@ exports.verifyRegisterOtp = async (req, res) => {
       message: 'Đăng ký tài khoản thành công và đã lưu vào hệ thống!',
       user: {
         mssv: regData.mssv,
-        fullName: regData.full_name,
+        fullName: registeredName,
+        ho_ten: registeredName,
         email: regData.email
       }
     });
@@ -200,14 +202,17 @@ exports.login = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Tài khoản hoặc mật khẩu không đúng.' });
     }
 
+    const name = user.ho_ten || user.full_name || ('Sinh viên ' + user.mssv);
     res.json({
       success: true,
       message: 'Đăng nhập thành công',
       user: {
         mssv: user.mssv,
-        fullName: user.full_name,
+        fullName: name,
+        ho_ten: name,
         email: user.email,
-        avatar: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'
+        role: user.role || 'sinh_vien',
+        avatar: user.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'
       },
       token: 'jwt-token-' + user.mssv + '-' + Date.now()
     });
@@ -229,18 +234,21 @@ exports.getMe = async (req, res) => {
   const mssv = req.query.mssv || req.params.mssv || '23103023';
 
   try {
-    const [rows] = await db.query('SELECT mssv, full_name, email, created_at FROM users WHERE mssv = ?', [mssv]);
+    const [rows] = await db.query('SELECT mssv, ho_ten, email, avatar, role, created_at FROM users WHERE mssv = ?', [mssv]);
     if (rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy thông tin người dùng.' });
     }
     const user = rows[0];
+    const name = user.ho_ten || ('Sinh viên ' + user.mssv);
     res.json({
       success: true,
       profile: {
         mssv: user.mssv,
-        fullName: user.full_name,
+        fullName: name,
+        ho_ten: name,
         email: user.email,
-        avatar: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
+        role: user.role || 'sinh_vien',
+        avatar: user.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
         createdAt: user.created_at
       }
     });
@@ -358,7 +366,7 @@ exports.forgotPassword = async (req, res) => {
               <p style="color: #64748B; font-size: 13px; margin-top: 4px;">Hệ thống Quản lý Sinh viên</p>
             </div>
             <div style="background: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid #e2e8f0;">
-              <p style="color: #0f172a; font-size: 15px;">Xin chào <b>${user.full_name || user.mssv}</b>,</p>
+              <p style="color: #0f172a; font-size: 15px;">Xin chào <b>${user.ho_ten || user.mssv}</b>,</p>
               <p style="color: #475569; font-size: 14px;">Bạn nhận được yêu cầu cấp lại mật khẩu cho tài khoản sinh viên với MSSV: <b>${user.mssv}</b>.</p>
               <p style="color: #475569; font-size: 14px;">Mã OTP xác thực của bạn (hiệu lực trong 15 phút):</p>
               <div style="text-align: center; margin: 24px 0;">

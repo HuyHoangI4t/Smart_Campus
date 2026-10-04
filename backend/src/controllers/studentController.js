@@ -143,8 +143,8 @@ exports.getGrades = async (req, res) => {
 
   let studentName = null;
   try {
-    const [uRows] = await db.query('SELECT ho_ten, full_name FROM users WHERE mssv = ?', [mssv]);
-    if (uRows.length > 0) studentName = uRows[0].ho_ten || uRows[0].full_name;
+    const [uRows] = await db.query('SELECT ho_ten FROM users WHERE mssv = ?', [mssv]);
+    if (uRows.length > 0) studentName = uRows[0].ho_ten;
   } catch (e) {}
 
   // Tài khoản Giảng viên (giangvien123)
@@ -592,7 +592,7 @@ exports.getProfile = async (req, res) => {
   const mssv = req.params.mssv || req.query.mssv || await getMssvFromReq(req);
   try {
     const [rows] = await db.query(
-      'SELECT id, mssv, ho_ten, full_name, email, so_dien_thoai, phone, lop, khoa, ngay_sinh, gioi_tinh, avatar FROM users WHERE mssv = ?',
+      'SELECT id, mssv, ho_ten, email, so_dien_thoai, lop, khoa, avatar FROM users WHERE mssv = ?',
       [mssv]
     );
 
@@ -608,28 +608,26 @@ exports.getProfile = async (req, res) => {
           phone: 'Chưa cập nhật',
           lop: 'Kỹ thuật phần mềm K23',
           khoa: 'Công nghệ Thông tin',
-          ngay_sinh: '2005-05-15',
-          gioi_tinh: 'Nam',
           avatar: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'
         }
       });
     }
 
     const u = rows[0];
+    const name = u.ho_ten || ('Sinh viên ' + u.mssv);
+    const phoneNum = u.so_dien_thoai || 'Chưa cập nhật';
     res.json({
       success: true,
       student: {
         id: u.id,
         mssv: u.mssv,
-        ho_ten: u.ho_ten || u.full_name || ('Sinh viên ' + u.mssv),
-        fullName: u.full_name || u.ho_ten || ('Sinh viên ' + u.mssv),
+        ho_ten: name,
+        fullName: name,
         email: u.email || `${u.mssv}@sv.ttn.edu.vn`,
-        so_dien_thoai: u.so_dien_thoai || u.phone || 'Chưa cập nhật',
-        phone: u.phone || u.so_dien_thoai || 'Chưa cập nhật',
+        so_dien_thoai: phoneNum,
+        phone: phoneNum,
         lop: u.lop || 'Kỹ thuật phần mềm K23',
         khoa: u.khoa || 'Công nghệ Thông tin',
-        ngay_sinh: u.ngay_sinh || '2005-05-15',
-        gioi_tinh: u.gioi_tinh || 'Nam',
         avatar: u.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'
       }
     });
@@ -640,7 +638,7 @@ exports.getProfile = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   const mssv = await getMssvFromReq(req);
-  const { ho_ten, fullName, email, so_dien_thoai, phone, lop, khoa, ngay_sinh, gioi_tinh, avatar, avatar_url, avatarUrl } = req.body;
+  const { ho_ten, fullName, email, so_dien_thoai, phone, lop, khoa, avatar, avatar_url, avatarUrl } = req.body;
 
   try {
     const [existing] = await db.query('SELECT * FROM users WHERE mssv = ?', [mssv]);
@@ -649,19 +647,17 @@ exports.updateProfile = async (req, res) => {
     }
 
     const current = existing[0];
-    const updatedName = (ho_ten !== undefined ? ho_ten : fullName) || current.ho_ten || current.full_name;
+    const updatedName = (ho_ten !== undefined ? ho_ten : fullName) || current.ho_ten || ('Sinh viên ' + mssv);
     const updatedEmail = email !== undefined ? email : current.email;
-    const updatedPhone = (so_dien_thoai !== undefined ? so_dien_thoai : phone) || current.so_dien_thoai || current.phone;
+    const updatedPhone = (so_dien_thoai !== undefined ? so_dien_thoai : phone) || current.so_dien_thoai || '';
     const updatedLop = lop !== undefined ? lop : current.lop;
     const updatedKhoa = khoa !== undefined ? khoa : current.khoa;
-    const updatedNgaySinh = ngay_sinh !== undefined ? ngay_sinh : current.ngay_sinh;
-    const updatedGioiTinh = gioi_tinh !== undefined ? gioi_tinh : current.gioi_tinh;
     const incomingAvatar = avatar !== undefined ? avatar : (avatar_url !== undefined ? avatar_url : avatarUrl);
     const updatedAvatar = incomingAvatar !== undefined ? incomingAvatar : (current.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png');
 
     await db.query(
-      'UPDATE users SET ho_ten = ?, full_name = ?, email = ?, so_dien_thoai = ?, phone = ?, lop = ?, khoa = ?, ngay_sinh = ?, gioi_tinh = ?, avatar = ? WHERE mssv = ?',
-      [updatedName, updatedName, updatedEmail, updatedPhone, updatedPhone, updatedLop, updatedKhoa, updatedNgaySinh, updatedGioiTinh, updatedAvatar, mssv]
+      'UPDATE users SET ho_ten = ?, email = ?, so_dien_thoai = ?, lop = ?, khoa = ?, avatar = ? WHERE mssv = ?',
+      [updatedName, updatedEmail, updatedPhone, updatedLop, updatedKhoa, updatedAvatar, mssv]
     );
 
     res.json({
@@ -676,8 +672,6 @@ exports.updateProfile = async (req, res) => {
         phone: updatedPhone,
         lop: updatedLop,
         khoa: updatedKhoa,
-        ngay_sinh: updatedNgaySinh,
-        gioi_tinh: updatedGioiTinh,
         avatar: updatedAvatar
       }
     });

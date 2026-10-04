@@ -27,8 +27,6 @@ interface UserProfile {
   so_dien_thoai: string;
   lop: string;
   khoa: string;
-  ngay_sinh?: string;
-  gioi_tinh?: string;
   avatar?: string;
 }
 
@@ -113,8 +111,6 @@ export default function ProfileScreen() {
           so_dien_thoai: localUser.so_dien_thoai || localUser.phone || "",
           lop: localUser.lop || "K23",
           khoa: localUser.khoa || "Công nghệ Thông tin",
-          ngay_sinh: localUser.ngay_sinh || "",
-          gioi_tinh: localUser.gioi_tinh || "",
           avatar: localUser.avatar || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
         });
       }
@@ -131,8 +127,6 @@ export default function ProfileScreen() {
             so_dien_thoai: remote.so_dien_thoai || remote.phone || localUser.so_dien_thoai || "",
             lop: remote.lop || localUser.lop || "K23",
             khoa: remote.khoa || localUser.khoa || "Công nghệ Thông tin",
-            ngay_sinh: remote.ngay_sinh || localUser.ngay_sinh || "2005-05-15",
-            gioi_tinh: remote.gioi_tinh || localUser.gioi_tinh || "Nam",
             avatar: remote.avatar || localUser.avatar || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
           };
           setProfile(merged);
@@ -559,6 +553,27 @@ export default function ProfileScreen() {
             <View style={[s.row, { gap: 12 }]}>
               <Feather name="user-check" size={18} color={AppColors.primary} />
               <Text style={{ fontSize: 14, fontWeight: "700", color: AppColors.text }}>Chỉnh sửa hồ sơ cá nhân</Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={AppColors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => router.push("/(main)/admin" as any)}
+            activeOpacity={0.7}
+            style={{
+              padding: 16,
+              borderRadius: 16,
+              backgroundColor: AppColors.cardBg,
+              borderWidth: 1,
+              borderColor: AppColors.cardBorder,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <View style={[s.row, { gap: 12 }]}>
+              <Feather name="shield" size={18} color="#4F46E5" />
+              <Text style={{ fontSize: 14, fontWeight: "700", color: AppColors.text }}>Quản trị hệ thống (Admin Portal)</Text>
             </View>
             <Feather name="chevron-right" size={18} color={AppColors.textMuted} />
           </TouchableOpacity>

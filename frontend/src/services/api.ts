@@ -245,8 +245,6 @@ export async function apiUpdateProfile(payload: {
   phone?: string;
   lop?: string;
   khoa?: string;
-  ngay_sinh?: string;
-  gioi_tinh?: string;
   avatar?: string;
 }) {
   try {
@@ -384,5 +382,162 @@ export async function apiGetSosConfig() {
     return { success: false };
   }
 }
+
+// ─── ADMIN MANAGEMENT APIS ──────────────────────────────────────────────────
+export async function apiAdminGetStats() {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${API_BASE_URL}/admin/stats`, { headers });
+    return await handleResponse(response);
+  } catch {
+    return { success: false, message: 'Lỗi tải thống kê quản trị.' };
+  }
+}
+
+export async function apiAdminGetUsers(search?: string, role?: string) {
+  try {
+    const headers = await getAuthHeaders();
+    let url = `${API_BASE_URL}/admin/users`;
+    const params: string[] = [];
+    if (search) params.push(`search=${encodeURIComponent(search)}`);
+    if (role) params.push(`role=${encodeURIComponent(role)}`);
+    if (params.length > 0) url += `?${params.join('&')}`;
+
+    const response = await fetchWithTimeout(url, { headers });
+    return await handleResponse(response);
+  } catch {
+    return { success: false, users: [] };
+  }
+}
+
+export async function apiAdminCreateUser(userData: {
+  mssv: string;
+  ho_ten: string;
+  email?: string;
+  password: string;
+  role?: string;
+  so_dien_thoai?: string;
+  lop?: string;
+  khoa?: string;
+}) {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${API_BASE_URL}/admin/users`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(userData),
+    });
+    return await handleResponse(response);
+  } catch {
+    return { success: false, message: 'Lỗi tạo người dùng mới.' };
+  }
+}
+
+export async function apiAdminUpdateUser(id: number | string, updateData: any) {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${API_BASE_URL}/admin/users/${id}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(updateData),
+    });
+    return await handleResponse(response);
+  } catch {
+    return { success: false, message: 'Lỗi cập nhật người dùng.' };
+  }
+}
+
+export async function apiAdminDeleteUser(id: number | string) {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${API_BASE_URL}/admin/users/${id}`, {
+      method: 'DELETE',
+      headers,
+    });
+    return await handleResponse(response);
+  } catch {
+    return { success: false, message: 'Lỗi xóa người dùng.' };
+  }
+}
+
+export async function apiAdminCreateNotification(payload: {
+  title: string;
+  content: string;
+  type?: string;
+  sender?: string;
+  date?: string;
+}) {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${API_BASE_URL}/admin/notifications`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    return await handleResponse(response);
+  } catch {
+    return { success: false, message: 'Lỗi đăng thông báo.' };
+  }
+}
+
+export async function apiAdminDeleteNotification(id: number | string) {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${API_BASE_URL}/admin/notifications/${id}`, {
+      method: 'DELETE',
+      headers,
+    });
+    return await handleResponse(response);
+  } catch {
+    return { success: false, message: 'Lỗi xóa thông báo.' };
+  }
+}
+
+export async function apiAdminGetFeedback() {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${API_BASE_URL}/admin/feedback`, { headers });
+    return await handleResponse(response);
+  } catch {
+    return { success: false, feedback: [] };
+  }
+}
+
+export async function apiAdminDeleteFeedback(id: number | string) {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${API_BASE_URL}/admin/feedback/${id}`, {
+      method: 'DELETE',
+      headers,
+    });
+    return await handleResponse(response);
+  } catch {
+    return { success: false, message: 'Lỗi xóa phản hồi.' };
+  }
+}
+
+export async function apiAdminGetSos() {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${API_BASE_URL}/admin/sos`, { headers });
+    return await handleResponse(response);
+  } catch {
+    return { success: false, alerts: [] };
+  }
+}
+
+export async function apiAdminDeleteSos(id: number | string) {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${API_BASE_URL}/admin/sos/${id}`, {
+      method: 'DELETE',
+      headers,
+    });
+    return await handleResponse(response);
+  } catch {
+    return { success: false, message: 'Lỗi xóa cảnh báo SOS.' };
+  }
+}
+
 
 
