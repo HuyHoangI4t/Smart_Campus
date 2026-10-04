@@ -197,7 +197,24 @@ exports.login = async (req, res) => {
     }
 
     const user = rows[0];
-    const isMatch = await bcrypt.compare(loginPassword, user.password);
+    let isMatch = false;
+
+    if (user.password && (user.password.startsWith('$2a$') || user.password.startsWith('$2b$') || user.password.startsWith('$2y$'))) {
+      isMatch = await bcrypt.compare(loginPassword, user.password);
+    } else {
+      isMatch = (user.password === loginPassword);
+      // Nếu mật khẩu khớp dạng text thô, tự động mã hóa bcrypt và lưu lại
+      if (isMatch) {
+        try {
+          const salt = await bcrypt.genSalt(10);
+          const hashed = await bcrypt.hash(loginPassword, salt);
+          await db.query('UPDATE users SET password = ? WHERE id = ?', [hashed, user.id]);
+        } catch (hashErr) {
+          console.warn('Lỗi auto-hash password:', hashErr.message);
+        }
+      }
+    }
+
     if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Tài khoản hoặc mật khẩu không đúng.' });
     }

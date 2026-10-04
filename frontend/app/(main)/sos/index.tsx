@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Linking, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Linking, ActivityIndicator, Modal } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { AppColors } from "../../../src/constants/appColors";
@@ -30,6 +30,10 @@ export default function SosScreen() {
   const [locationText, setLocationText] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Popup Modal Đã gửi SOS
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [sentInfo, setSentInfo] = useState({ type: '', location: '', time: '' });
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -69,11 +73,12 @@ export default function SosScreen() {
       });
 
       if (res && res.success) {
-        Alert.alert(
-          "ĐÃ GỬI BÁO ĐỘNG SOS",
-          "Tín hiệu khẩn cấp đã được truyền đến Đội An ninh & Y tế khuôn viên trường. Vui lòng giữ bình tĩnh tại chỗ.",
-          [{ text: "Đã hiểu", onPress: () => router.push("/(main)/home") }]
-        );
+        setSentInfo({
+          type: incidentType,
+          location: locationText.trim(),
+          time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+        });
+        setShowSuccessModal(true);
       } else {
         Alert.alert("Thông báo", res?.message || "Không thể gửi tín hiệu lúc này. Vui lòng gọi trực tiếp hotline bên dưới!");
       }
@@ -295,6 +300,202 @@ export default function SosScreen() {
           ))}
         </View>
       </ScrollView>
+
+      {/* POPUP MODAL ĐÃ GỬI SOS THÀNH CÔNG */}
+      <Modal
+        visible={showSuccessModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {
+          setShowSuccessModal(false);
+          router.push("/(main)/home");
+        }}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(15, 23, 42, 0.75)",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 20,
+          }}
+        >
+          <View
+            style={{
+              width: "100%",
+              maxWidth: 360,
+              backgroundColor: "#FFFFFF",
+              borderRadius: 24,
+              padding: 24,
+              alignItems: "center",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.25,
+              shadowRadius: 20,
+              elevation: 10,
+            }}
+          >
+            {/* Pulsing Emergency Icon Badge */}
+            <View
+              style={{
+                width: 76,
+                height: 76,
+                borderRadius: 38,
+                backgroundColor: "#FEF2F2",
+                borderWidth: 5,
+                borderColor: "#FEE2E2",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 16,
+              }}
+            >
+              <View
+                style={{
+                  width: 50,
+                  height: 50,
+                  borderRadius: 25,
+                  backgroundColor: "#DC2626",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Feather name="check" size={28} color="#FFFFFF" />
+              </View>
+            </View>
+
+            {/* Tiêu đề Popup */}
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "900",
+                color: "#DC2626",
+                textAlign: "center",
+                letterSpacing: 0.5,
+              }}
+            >
+              ĐÃ GỬI BÁO ĐỘNG SOS
+            </Text>
+
+            <Text
+              style={{
+                fontSize: 13,
+                color: AppColors.textSecondary,
+                textAlign: "center",
+                marginTop: 6,
+                lineHeight: 18,
+              }}
+            >
+              Tín hiệu cứu hộ khẩn cấp đã được truyền trực tiếp đến Trung tâm Trực ban & Đội Bảo vệ trường.
+            </Text>
+
+            {/* Chi tiết thông tin đã gửi */}
+            <View
+              style={{
+                width: "100%",
+                backgroundColor: "#F8FAFC",
+                borderRadius: 16,
+                padding: 14,
+                marginTop: 16,
+                borderWidth: 1,
+                borderColor: "#E2E8F0",
+                gap: 8,
+              }}
+            >
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: "#64748B" }}>Sự cố:</Text>
+                <Text style={{ fontSize: 12, fontWeight: "800", color: "#DC2626" }}>{sentInfo.type}</Text>
+              </View>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: "#64748B" }}>Vị trí:</Text>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "700",
+                    color: "#0F172A",
+                    flex: 1,
+                    textAlign: "right",
+                    marginLeft: 8,
+                  }}
+                  numberOfLines={2}
+                >
+                  {sentInfo.location}
+                </Text>
+              </View>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: "#64748B" }}>Thời gian:</Text>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: "#0F172A" }}>{sentInfo.time}</Text>
+              </View>
+            </View>
+
+            {/* Dặn dò an toàn */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+                backgroundColor: "#FFFBEB",
+                borderWidth: 1,
+                borderColor: "#FDE68A",
+                borderRadius: 12,
+                padding: 10,
+                marginTop: 12,
+                width: "100%",
+              }}
+            >
+              <Feather name="alert-circle" size={16} color="#D97706" />
+              <Text style={{ fontSize: 11, color: "#B45309", fontWeight: "600", flex: 1, lineHeight: 15 }}>
+                Vui lòng giữ bình tĩnh, ở nguyên vị trí an toàn. Lực lượng cứu hộ đang tiếp cận!
+              </Text>
+            </View>
+
+            {/* Hai nút hành động */}
+            <View style={{ width: "100%", marginTop: 18, gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => handleCall("0329106783")}
+                activeOpacity={0.8}
+                style={{
+                  height: 48,
+                  backgroundColor: "#DC2626",
+                  borderRadius: 14,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  shadowColor: "#DC2626",
+                  shadowOffset: { width: 0, height: 3 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 6,
+                  elevation: 4,
+                }}
+              >
+                <Feather name="phone-call" size={16} color="#FFFFFF" />
+                <Text style={{ fontSize: 14, fontWeight: "800", color: "#FFFFFF" }}>
+                  Gọi ngay Bảo vệ cơ sở
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setShowSuccessModal(false);
+                  router.push("/(main)/home");
+                }}
+                activeOpacity={0.8}
+                style={{
+                  height: 44,
+                  backgroundColor: "#F1F5F9",
+                  borderRadius: 14,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: "700", color: "#475569" }}>
+                  Đã hiểu & Về trang chủ
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

@@ -17,6 +17,7 @@ export default function MainLayout() {
       <Tabs.Screen name="grades/grades_detail" options={{ href: null }} />
       <Tabs.Screen name="profile/change_password" options={{ href: null }} />
       <Tabs.Screen name="admin/index" options={{ href: null }} />
+      <Tabs.Screen name="home/home_detail" options={{ href: null }} />
     </Tabs>
   );
 }

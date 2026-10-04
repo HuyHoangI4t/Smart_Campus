@@ -556,27 +556,6 @@ export default function ProfileScreen() {
             </View>
             <Feather name="chevron-right" size={18} color={AppColors.textMuted} />
           </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => router.push("/(main)/admin" as any)}
-            activeOpacity={0.7}
-            style={{
-              padding: 16,
-              borderRadius: 16,
-              backgroundColor: AppColors.cardBg,
-              borderWidth: 1,
-              borderColor: AppColors.cardBorder,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <View style={[s.row, { gap: 12 }]}>
-              <Feather name="shield" size={18} color="#4F46E5" />
-              <Text style={{ fontSize: 14, fontWeight: "700", color: AppColors.text }}>Quản trị hệ thống (Admin Portal)</Text>
-            </View>
-            <Feather name="chevron-right" size={18} color={AppColors.textMuted} />
-          </TouchableOpacity>
         </View>
 
         {/* Nút đăng xuất */}

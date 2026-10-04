@@ -13,7 +13,7 @@ const getApiBaseUrl = () => {
     return `http://${ip}:5000/api`;
   }
 
-  return Platform.OS === 'android' ? 'http://192.168.1.20:5000/api' : 'http://192.168.1.20:5000/api';
+  return Platform.OS === 'android' ? 'http://192.168.1.12:5000/api' : 'http://192.168.1.12:5000/api';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
@@ -260,39 +260,108 @@ export async function apiUpdateProfile(payload: {
   }
 }
 
+// ─── OFFLINE CACHE HELPERS ────────────────────────────────────────────────
+export async function saveLocalCache(key: string, data: any) {
+  try {
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} ${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const payload = {
+      timestamp: Date.now(),
+      savedAt: timeStr,
+      data,
+    };
+    await AsyncStorage.setItem(key, JSON.stringify(payload));
+  } catch (e) {
+    // ignore
+  }
+}
+
+export async function readLocalCache<T = any>(key: string): Promise<{ data: T; savedAt?: string } | null> {
+  try {
+    const str = await AsyncStorage.getItem(key);
+    if (!str) return null;
+    const parsed = JSON.parse(str);
+    return { data: parsed.data, savedAt: parsed.savedAt };
+  } catch {
+    return null;
+  }
+}
+
 export async function apiGetSchedule(mssv?: string) {
+  const cacheKey = `@offline_schedule_${mssv || 'current'}`;
   try {
     const headers = await getAuthHeaders();
     const targetMssv = mssv || (headers['X-MSSV'] !== 'guest' ? headers['X-MSSV'] : undefined);
     const url = targetMssv ? `${API_BASE_URL}/student/schedule/${targetMssv}` : `${API_BASE_URL}/student/schedule`;
     const response = await fetchWithTimeout(url, { headers });
-    return await handleResponse(response);
+    const result = await handleResponse(response);
+
+    if (result && result.success) {
+      await saveLocalCache(cacheKey, result);
+      return { ...result, isOfflineCache: false };
+    }
+
+    // Nếu server trả về lỗi, thử đọc từ cache offline
+    const cached = await readLocalCache(cacheKey);
+    if (cached && cached.data) {
+      return {
+        ...cached.data,
+        isOfflineCache: true,
+        cachedAt: cached.savedAt,
+      };
+    }
+
+    return result;
   } catch {
-    return { success: false, message: 'Không thể kết nối lấy lịch học.', tables: [] };
+    // Khi thiết bị hoàn toàn không có mạng hoặc server không phản hồi
+    const cached = await readLocalCache(cacheKey);
+    if (cached && cached.data) {
+      return {
+        ...cached.data,
+        isOfflineCache: true,
+        cachedAt: cached.savedAt,
+      };
+    }
+    return { success: false, message: 'Không thể kết nối lấy lịch học.', tables: [], isOfflineCache: true };
   }
 }
 
 export async function apiGetGrades(mssv?: string) {
+  const cacheKey = `@offline_grades_${mssv || 'current'}`;
   try {
     const headers = await getAuthHeaders();
     const targetMssv = mssv || (headers['X-MSSV'] !== 'guest' ? headers['X-MSSV'] : undefined);
     const url = targetMssv ? `${API_BASE_URL}/student/grades/${targetMssv}` : `${API_BASE_URL}/student/grades`;
     const response = await fetchWithTimeout(url, { headers });
-    return await handleResponse(response);
-  } catch {
-    return { success: false, message: 'Không thể kết nối lấy điểm số.', data: [] };
-  }
-}
+    const result = await handleResponse(response);
 
-export async function apiGetCourses(mssv?: string) {
-  try {
-    const headers = await getAuthHeaders();
-    const targetMssv = mssv || (headers['X-MSSV'] !== 'guest' ? headers['X-MSSV'] : undefined);
-    const url = targetMssv ? `${API_BASE_URL}/student/courses/${targetMssv}` : `${API_BASE_URL}/student/courses`;
-    const response = await fetchWithTimeout(url, { headers });
-    return await handleResponse(response);
+    if (result && result.success) {
+      await saveLocalCache(cacheKey, result);
+      return { ...result, isOfflineCache: false };
+    }
+
+    // Nếu server trả về lỗi, thử đọc từ cache offline
+    const cached = await readLocalCache(cacheKey);
+    if (cached && cached.data) {
+      return {
+        ...cached.data,
+        isOfflineCache: true,
+        cachedAt: cached.savedAt,
+      };
+    }
+
+    return result;
   } catch {
-    return { success: false, message: 'Lỗi lấy danh sách học phần.', courses: [] };
+    // Khi thiết bị hoàn toàn không có mạng hoặc server không phản hồi
+    const cached = await readLocalCache(cacheKey);
+    if (cached && cached.data) {
+      return {
+        ...cached.data,
+        isOfflineCache: true,
+        cachedAt: cached.savedAt,
+      };
+    }
+    return { success: false, message: 'Không thể kết nối lấy điểm số.', data: [], isOfflineCache: true };
   }
 }
 
@@ -356,12 +425,26 @@ export async function apiGetNotifications() {
 }
 
 export async function apiGetDashboard() {
+  const cacheKey = '@offline_dashboard';
   try {
     const headers = await getAuthHeaders();
     const response = await fetchWithTimeout(`${API_BASE_URL}/campus/dashboard`, { headers });
-    return await handleResponse(response);
+    const result = await handleResponse(response);
+    if (result && result.success) {
+      await saveLocalCache(cacheKey, result);
+      return { ...result, isOfflineCache: false };
+    }
+    const cached = await readLocalCache(cacheKey);
+    if (cached && cached.data) {
+      return { ...cached.data, isOfflineCache: true, cachedAt: cached.savedAt };
+    }
+    return result;
   } catch {
-    return { success: false };
+    const cached = await readLocalCache(cacheKey);
+    if (cached && cached.data) {
+      return { ...cached.data, isOfflineCache: true, cachedAt: cached.savedAt };
+    }
+    return { success: false, isOfflineCache: true };
   }
 }
 
@@ -383,161 +466,85 @@ export async function apiGetSosConfig() {
   }
 }
 
-// ─── ADMIN MANAGEMENT APIS ──────────────────────────────────────────────────
-export async function apiAdminGetStats() {
-  try {
-    const headers = await getAuthHeaders();
-    const response = await fetchWithTimeout(`${API_BASE_URL}/admin/stats`, { headers });
-    return await handleResponse(response);
-  } catch {
-    return { success: false, message: 'Lỗi tải thống kê quản trị.' };
+export const CAMPUS_FALLBACK_IMAGES = [
+  'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=800&auto=format&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1562774053-701939374585?w=800&auto=format&fit=crop&q=80',
+];
+
+export function getNewsImageUrl(imageUrl?: string | null, fallbackIndex = 0): string {
+  if (!imageUrl || typeof imageUrl !== 'string' || imageUrl.trim() === '') {
+    return CAMPUS_FALLBACK_IMAGES[Math.abs(fallbackIndex) % CAMPUS_FALLBACK_IMAGES.length];
   }
+
+  // Nếu là ảnh từ ttn.edu.vn, điều hướng qua proxy của backend để vượt tường lửa (tránh lỗi 502 & SSL trên điện thoại thật)
+  if (imageUrl.includes('ttn.edu.vn')) {
+    return `${API_BASE_URL}/news/image-proxy?url=${encodeURIComponent(imageUrl)}`;
+  }
+
+  return imageUrl;
 }
 
-export async function apiAdminGetUsers(search?: string, role?: string) {
-  try {
-    const headers = await getAuthHeaders();
-    let url = `${API_BASE_URL}/admin/users`;
-    const params: string[] = [];
-    if (search) params.push(`search=${encodeURIComponent(search)}`);
-    if (role) params.push(`role=${encodeURIComponent(role)}`);
-    if (params.length > 0) url += `?${params.join('&')}`;
-
-    const response = await fetchWithTimeout(url, { headers });
-    return await handleResponse(response);
-  } catch {
-    return { success: false, users: [] };
-  }
-}
-
-export async function apiAdminCreateUser(userData: {
-  mssv: string;
-  ho_ten: string;
-  email?: string;
-  password: string;
-  role?: string;
-  so_dien_thoai?: string;
-  lop?: string;
-  khoa?: string;
-}) {
-  try {
-    const headers = await getAuthHeaders();
-    const response = await fetchWithTimeout(`${API_BASE_URL}/admin/users`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(userData),
-    });
-    return await handleResponse(response);
-  } catch {
-    return { success: false, message: 'Lỗi tạo người dùng mới.' };
-  }
-}
-
-export async function apiAdminUpdateUser(id: number | string, updateData: any) {
-  try {
-    const headers = await getAuthHeaders();
-    const response = await fetchWithTimeout(`${API_BASE_URL}/admin/users/${id}`, {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify(updateData),
-    });
-    return await handleResponse(response);
-  } catch {
-    return { success: false, message: 'Lỗi cập nhật người dùng.' };
-  }
-}
-
-export async function apiAdminDeleteUser(id: number | string) {
-  try {
-    const headers = await getAuthHeaders();
-    const response = await fetchWithTimeout(`${API_BASE_URL}/admin/users/${id}`, {
-      method: 'DELETE',
-      headers,
-    });
-    return await handleResponse(response);
-  } catch {
-    return { success: false, message: 'Lỗi xóa người dùng.' };
-  }
-}
-
-export async function apiAdminCreateNotification(payload: {
+export interface NewsOrAnnouncementItem {
+  id: string | number;
+  type: 'news' | 'announcement';
+  source: string;
+  sourceName: string;
+  badge: string;
+  badgeColor?: string;
   title: string;
-  content: string;
-  type?: string;
+  summary?: string;
+  content?: string;
+  date: string;
+  timeAgo?: string;
+  link: string;
+  imageUrl?: string;
   sender?: string;
-  date?: string;
-}) {
+  author?: string;
+  category?: string;
+  attachments?: {
+    title: string;
+    url: string;
+    isPdf?: boolean;
+  }[];
+  likes?: number;
+  comments?: number;
+  shares?: number;
+  tags?: string[];
+  isFallback?: boolean;
+}
+
+export async function apiGetNews(type?: 'all' | 'news' | 'announcement', limit?: number) {
+  const cacheKey = `@offline_news_${type || 'all'}`;
   try {
-    const headers = await getAuthHeaders();
-    const response = await fetchWithTimeout(`${API_BASE_URL}/admin/notifications`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-    });
-    return await handleResponse(response);
+    const params = new URLSearchParams();
+    if (type && type !== 'all') params.append('type', type);
+    if (limit) params.append('limit', String(limit));
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    const response = await fetchWithTimeout(`${API_BASE_URL}/news${qs}`);
+    const result = await handleResponse(response);
+
+    if (result && result.success) {
+      await saveLocalCache(cacheKey, result);
+      return { ...result, isOfflineCache: false };
+    }
+
+    const cached = await readLocalCache(cacheKey);
+    if (cached && cached.data) {
+      return { ...cached.data, isOfflineCache: true, cachedAt: cached.savedAt };
+    }
+    return result;
   } catch {
-    return { success: false, message: 'Lỗi đăng thông báo.' };
+    const cached = await readLocalCache(cacheKey);
+    if (cached && cached.data) {
+      return { ...cached.data, isOfflineCache: true, cachedAt: cached.savedAt };
+    }
+    return { success: false, data: [], isOfflineCache: true };
   }
 }
 
-export async function apiAdminDeleteNotification(id: number | string) {
-  try {
-    const headers = await getAuthHeaders();
-    const response = await fetchWithTimeout(`${API_BASE_URL}/admin/notifications/${id}`, {
-      method: 'DELETE',
-      headers,
-    });
-    return await handleResponse(response);
-  } catch {
-    return { success: false, message: 'Lỗi xóa thông báo.' };
-  }
-}
-
-export async function apiAdminGetFeedback() {
-  try {
-    const headers = await getAuthHeaders();
-    const response = await fetchWithTimeout(`${API_BASE_URL}/admin/feedback`, { headers });
-    return await handleResponse(response);
-  } catch {
-    return { success: false, feedback: [] };
-  }
-}
-
-export async function apiAdminDeleteFeedback(id: number | string) {
-  try {
-    const headers = await getAuthHeaders();
-    const response = await fetchWithTimeout(`${API_BASE_URL}/admin/feedback/${id}`, {
-      method: 'DELETE',
-      headers,
-    });
-    return await handleResponse(response);
-  } catch {
-    return { success: false, message: 'Lỗi xóa phản hồi.' };
-  }
-}
-
-export async function apiAdminGetSos() {
-  try {
-    const headers = await getAuthHeaders();
-    const response = await fetchWithTimeout(`${API_BASE_URL}/admin/sos`, { headers });
-    return await handleResponse(response);
-  } catch {
-    return { success: false, alerts: [] };
-  }
-}
-
-export async function apiAdminDeleteSos(id: number | string) {
-  try {
-    const headers = await getAuthHeaders();
-    const response = await fetchWithTimeout(`${API_BASE_URL}/admin/sos/${id}`, {
-      method: 'DELETE',
-      headers,
-    });
-    return await handleResponse(response);
-  } catch {
-    return { success: false, message: 'Lỗi xóa cảnh báo SOS.' };
-  }
-}
 
 
 

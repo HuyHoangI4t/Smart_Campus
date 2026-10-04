@@ -26,3 +26,5 @@ export const AppColors = {
   info: '#3B82F6',
   purple: '#8B5CF6',
 };
+
+export const appColors = AppColors;

@@ -337,6 +337,7 @@ exports.getGrades = async (req, res) => {
       return res.json({
         success: true,
         mssv: mssv,
+        isDbCached: true,
         ho_ten: studentName || ('Sinh viên ' + mssv),
         ...processed
       });
@@ -546,6 +547,38 @@ exports.getSchedule = async (req, res) => {
     console.warn('Lỗi cào lịch học:', error.message);
   }
 
+  // 4. Nếu cào trực tiếp không thành công, kiểm tra dữ liệu đã lưu trong Database
+  if (mssv && !isGuestOrEmail(mssv)) {
+    try {
+      const [dbSchedules] = await db.query(
+        'SELECT thu, ten_hp, tiet, phong, giang_vien, hoc_ky FROM student_schedules WHERE mssv = ? ORDER BY id ASC',
+        [mssv]
+      );
+      if (dbSchedules && dbSchedules.length > 0) {
+        const cachedRows = [["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"]];
+        for (const row of dbSchedules) {
+          cachedRows.push([
+            row.thu || "Thứ 2",
+            row.ten_hp || "Môn học",
+            row.tiet || "1-4",
+            row.phong || "Khu giảng đường",
+            row.giang_vien || "Giảng viên bộ môn"
+          ]);
+        }
+        const rawTables = [{ tableIndex: 1, rows: cachedRows }];
+        const processed = scheduleService.processSchedulePayload(rawTables, "Lịch học đã lưu từ cổng đào tạo");
+        return res.json({
+          success: true,
+          mssv: mssv,
+          isDbCached: true,
+          ...processed
+        });
+      }
+    } catch (dbErr) {
+      console.warn('Lỗi query student_schedules từ DB:', dbErr.message);
+    }
+  }
+
   // Dữ liệu dự phòng nếu cào lỗi
   const fallbackTables = [{
     tableIndex: 1,
@@ -677,34 +710,5 @@ exports.updateProfile = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi cập nhật hồ sơ: ' + error.message });
-  }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 4. API COURSES - Danh sách học phần
-// ─────────────────────────────────────────────────────────────────────────────
-exports.getCourses = async (req, res) => {
-  const mssv = req.params.mssv || req.query.mssv || await getMssvFromReq(req);
-  try {
-    const [rows] = await db.query(
-      'SELECT DISTINCT ten_hp, so_tin_chi, hoc_ky FROM student_grades WHERE mssv = ?',
-      [mssv]
-    );
-    res.json({ success: true, mssv: mssv, courses: rows });
-  } catch (e) {
-    res.json({ success: true, mssv: mssv, courses: [] });
-  }
-};
-
-exports.getCurrentCourses = async (req, res) => {
-  const mssv = req.params.mssv || req.query.mssv || await getMssvFromReq(req);
-  try {
-    const [rows] = await db.query(
-      'SELECT DISTINCT ma_hp, ten_hp, thu, tiet, phong, giang_vien FROM student_schedules WHERE mssv = ?',
-      [mssv]
-    );
-    res.json({ success: true, mssv: mssv, currentCourses: rows });
-  } catch (e) {
-    res.json({ success: true, mssv: mssv, currentCourses: [] });
   }
 };

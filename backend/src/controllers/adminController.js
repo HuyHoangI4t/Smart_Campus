@@ -11,7 +11,6 @@ exports.getDashboardStats = async (req, res) => {
     const [[notificationsCount]] = await db.query('SELECT COUNT(*) AS total FROM notifications');
     const [[feedbackCount]] = await db.query('SELECT COUNT(*) AS total FROM feedback');
     const [[sosCount]] = await db.query('SELECT COUNT(*) AS total FROM sos_alerts');
-    const [[gradesCount]] = await db.query('SELECT COUNT(*) AS total FROM student_grades');
 
     const [recentFeedback] = await db.query('SELECT * FROM feedback ORDER BY id DESC LIMIT 5');
     const [recentSos] = await db.query('SELECT * FROM sos_alerts ORDER BY id DESC LIMIT 5');
@@ -24,7 +23,6 @@ exports.getDashboardStats = async (req, res) => {
         totalNotifications: notificationsCount.total,
         totalFeedback: feedbackCount.total,
         totalSosAlerts: sosCount.total,
-        totalGrades: gradesCount.total,
       },
       recentFeedback,
       recentSos

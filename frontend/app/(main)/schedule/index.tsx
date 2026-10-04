@@ -165,6 +165,8 @@ export default function ScheduleScreen() {
   const [studentInfo, setStudentInfo] = useState<{ mssv: string; name: string }>({ mssv: "", name: "" });
   const [weekRangeText, setWeekRangeText] = useState("Từ ngày 28/09/2026 đến ngày 04/10/2026");
   const [selectedScheduleForDirection, setSelectedScheduleForDirection] = useState<ScheduleItem | null>(null);
+  const [isOfflineData, setIsOfflineData] = useState(false);
+  const [cachedAt, setCachedAt] = useState<string | null>(null);
 
   const fetchSchedule = async () => {
     try {
@@ -180,6 +182,13 @@ export default function ScheduleScreen() {
 
       const isRealAccount = mssv && mssv !== "guest";
       const res = await apiGetSchedule(isRealAccount ? mssv : undefined);
+
+      if (res && res.isOfflineCache) {
+        setIsOfflineData(true);
+        setCachedAt(res.cachedAt || null);
+      } else {
+        setIsOfflineData(false);
+      }
 
       if (res && res.success) {
         if (res.weekRange) {
@@ -227,6 +236,7 @@ export default function ScheduleScreen() {
       }
     } catch (error) {
       console.warn("Lỗi tải thời khóa biểu:", error);
+      setIsOfflineData(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -308,6 +318,27 @@ export default function ScheduleScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: 110 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
+        {isOfflineData && (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: "#FEF3C7",
+              borderWidth: 1,
+              borderColor: "#FDE68A",
+              paddingVertical: 8,
+              paddingHorizontal: 12,
+              borderRadius: 12,
+              marginBottom: 14,
+            }}
+          >
+            <Feather name="wifi-off" size={15} color="#D97706" style={{ marginRight: 8 }} />
+            <Text style={{ fontSize: 12, color: "#92400E", fontWeight: "600", flex: 1 }}>
+              Đang xem lịch học lưu ngoại tuyến {cachedAt ? `(lưu lúc ${cachedAt})` : ""} • Vuốt xuống để cập nhật lại
+            </Text>
+          </View>
+        )}
+
         {loading ? (
           <View style={{ paddingVertical: 40, alignItems: "center" }}>
             <ActivityIndicator size="large" color={AppColors.primary} />

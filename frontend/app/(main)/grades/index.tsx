@@ -31,6 +31,8 @@ export default function GradesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [grades, setGrades] = useState<CourseGrade[]>(FALLBACK_GRADES);
   const [studentInfo, setStudentInfo] = useState<{ mssv: string; name: string }>({ mssv: "", name: "" });
+  const [isOfflineData, setIsOfflineData] = useState(false);
+  const [cachedAt, setCachedAt] = useState<string | null>(null);
 
   const fetchGrades = async () => {
     try {
@@ -46,6 +48,13 @@ export default function GradesScreen() {
 
       const isRealAccount = mssv && mssv !== "guest";
       const res = await apiGetGrades(isRealAccount ? mssv : undefined);
+      if (res && res.isOfflineCache) {
+        setIsOfflineData(true);
+        setCachedAt(res.cachedAt || null);
+      } else {
+        setIsOfflineData(false);
+      }
+
       if (res && res.success && res.data && res.data.length > 0) {
         if (res.ho_ten && (!name || name === "Sinh viên")) {
           setStudentInfo((prev) => ({ ...prev, name: res.ho_ten }));
@@ -62,6 +71,7 @@ export default function GradesScreen() {
       }
     } catch {
       // Keep fallbacks
+      setIsOfflineData(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -159,6 +169,27 @@ export default function GradesScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: 110 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
+        {isOfflineData && (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: "#FEF3C7",
+              borderWidth: 1,
+              borderColor: "#FDE68A",
+              paddingVertical: 8,
+              paddingHorizontal: 12,
+              borderRadius: 12,
+              marginBottom: 14,
+            }}
+          >
+            <Feather name="wifi-off" size={15} color="#D97706" style={{ marginRight: 8 }} />
+            <Text style={{ fontSize: 12, color: "#92400E", fontWeight: "600", flex: 1 }}>
+              Đang xem điểm số lưu ngoại tuyến {cachedAt ? `(lưu lúc ${cachedAt})` : ""} • Vuốt xuống để cập nhật lại
+            </Text>
+          </View>
+        )}
+
         {/* GPA Summary Card */}
         <View
           style={{

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppColors } from '@/src/constants/appColors';
 import { authStyles } from '@/src/constants/globalStyles';
 import { AuthHeader } from '@/src/components/AuthHeader';
-import { apiLogin, apiRegister, apiVerifyRegisterOtp, clearAuthAndCache } from '@/src/services/api';
+import { apiLogin, apiRegister, apiVerifyRegisterOtp, clearAuthAndCache, API_BASE_URL } from '@/src/services/api';
 
 export default function AuthScreen() {
   const [authType, setAuthType] = useState<'login' | 'register'>('login');
@@ -68,6 +68,12 @@ export default function AuthScreen() {
       try {
         const res = await apiLogin(email.trim(), password);
         if (res.success) {
+          if (res.user && res.user.role === 'admin') {
+            setError('Tài khoản Quản trị viên không sử dụng qua App di động. Vui lòng đăng nhập trên máy tính tại Trang Quản trị Web:\nhttp://localhost:5000/portal');
+            setLoading(false);
+            return;
+          }
+
           await clearAuthAndCache();
           if (res.token) {
             await AsyncStorage.setItem('@auth_token', res.token);
@@ -164,6 +170,16 @@ export default function AuthScreen() {
 
   const handleForgotPassword = () => {
     router.push('/(auth)/forgot-password');
+  };
+
+  const handleOpenWebPortal = () => {
+    const portalUrl = API_BASE_URL.replace(/\/api\/?$/, '') + '/portal';
+    Linking.openURL(portalUrl).catch(() => {
+      const fallbackUrl = Platform.OS === 'android' ? 'http://10.0.2.2:5000/portal' : 'http://localhost:5000/portal';
+      Linking.openURL(fallbackUrl).catch((err) => {
+        Alert.alert('Thông báo', 'Vui lòng truy cập trên trình duyệt máy tính:\nhttp://localhost:5000/portal');
+      });
+    });
   };
 
   return (
@@ -398,7 +414,19 @@ export default function AuthScreen() {
                     router.replace('/(main)/home');
                   }} activeOpacity={0.8}>
                     <Text style={authStyles.guestBtnText}>
-                      Khách (Giới hạn tính năng)
+                      Khách (giới hạn chức năng)
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Nút mở Trang Quản Trị Web (đồng bộ phong cách với nút Khách) */}
+                  <View style={{ height: 12 }} />
+                  <TouchableOpacity
+                    style={[authStyles.guestButton, { flexDirection: 'row', gap: 8 }]}
+                    onPress={handleOpenWebPortal}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={authStyles.guestBtnText}>
+                      Mở Trang Quản Trị Web
                     </Text>
                   </TouchableOpacity>
                 </>
