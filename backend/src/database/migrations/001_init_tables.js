@@ -26,6 +26,7 @@ async function up(connection) {
       mssv VARCHAR(50),
       title VARCHAR(255) NOT NULL,
       content TEXT NOT NULL,
+      status VARCHAR(50) DEFAULT 'Đã giải quyết',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -37,6 +38,7 @@ async function up(connection) {
       mssv VARCHAR(50),
       location VARCHAR(255),
       message TEXT,
+      status VARCHAR(50) DEFAULT 'Đã tiếp nhận & hỗ trợ',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -181,6 +183,21 @@ async function up(connection) {
       INDEX(created_at)
     )
   `);
+
+  // Tối ưu hóa chỉ mục (Indexes) để tăng tốc độ truy vấn đọc/ghi DB lên tối đa
+  const safeAddIndex = async (table, col, indexName) => {
+    try {
+      await connection.query(`ALTER TABLE ${table} ADD INDEX ${indexName} (${col})`);
+    } catch (e) {
+      // index already exists or ignore
+    }
+  };
+
+  await safeAddIndex('feedback', 'mssv', 'idx_feedback_mssv');
+  await safeAddIndex('sos_alerts', 'mssv', 'idx_sos_mssv');
+  await safeAddIndex('student_grades', 'mssv', 'idx_student_grades_mssv');
+  await safeAddIndex('student_schedules', 'mssv', 'idx_student_schedules_mssv');
+  await safeAddIndex('news_cache', 'type', 'idx_news_cache_type');
 }
 
 module.exports = { up };

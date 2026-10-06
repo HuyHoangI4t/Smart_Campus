@@ -475,32 +475,80 @@ const FALLBACK_NEWS = [
   }
 ];
 
-// ─── 6. HÀM CHÍNH: LẤY DỮ LIỆU ĐỒNG BỘ CẢ LIVE & DB CACHE ─────────────────────
-async function getAnnouncementsWithFallback() {
+// ─── 6. HÀM CHÍNH: LẤY DỮ LIỆU SIÊU TỐC (DB & IN-MEMORY CACHE TRƯỚC TIÊN) ──────
+let announcementsMemCache = null;
+let announcementsCacheTime = 0;
+let newsMemCache = null;
+let newsCacheTime = 0;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 phút lưu RAM
+
+async function getAnnouncementsWithFallback(forceRefresh = false) {
+  const now = Date.now();
+  // 1. Kiểm tra RAM cache (0.1ms)
+  if (!forceRefresh && announcementsMemCache && (now - announcementsCacheTime < CACHE_TTL_MS)) {
+    return announcementsMemCache;
+  }
+
+  // 2. Đọc trực tiếp từ MySQL news_cache (1-2ms)
+  if (!forceRefresh) {
+    const cached = await getItemsFromDb('announcement', 20);
+    if (cached && cached.length > 0) {
+      announcementsMemCache = cached;
+      announcementsCacheTime = now;
+      return cached;
+    }
+  }
+
+  // 3. Chỉ cào Live RSS khi DB trống hoặc khi có yêu cầu reload (forceRefresh = true)
   const live = await fetchAnnouncementsFromRss();
   if (live.length > 0) {
     saveItemsToDb(live).catch(() => {});
+    announcementsMemCache = live;
+    announcementsCacheTime = now;
     return live;
   }
 
-  const cached = await getItemsFromDb('announcement', 20);
-  if (cached.length > 0) {
-    return cached;
+  const cachedFallback = await getItemsFromDb('announcement', 20);
+  if (cachedFallback.length > 0) {
+    announcementsMemCache = cachedFallback;
+    announcementsCacheTime = now;
+    return cachedFallback;
   }
 
   return FALLBACK_ANNOUNCEMENTS;
 }
 
-async function getNewsWithFallback() {
+async function getNewsWithFallback(forceRefresh = false) {
+  const now = Date.now();
+  // 1. Kiểm tra RAM cache (0.1ms)
+  if (!forceRefresh && newsMemCache && (now - newsCacheTime < CACHE_TTL_MS)) {
+    return newsMemCache;
+  }
+
+  // 2. Đọc trực tiếp từ MySQL news_cache (1-2ms)
+  if (!forceRefresh) {
+    const cached = await getItemsFromDb('news', 20);
+    if (cached && cached.length > 0) {
+      newsMemCache = cached;
+      newsCacheTime = now;
+      return cached;
+    }
+  }
+
+  // 3. Chỉ cào Live RSS khi DB trống hoặc khi có yêu cầu reload (forceRefresh = true)
   const live = await fetchNewsFromRss();
   if (live.length > 0) {
     saveItemsToDb(live).catch(() => {});
+    newsMemCache = live;
+    newsCacheTime = now;
     return live;
   }
 
-  const cached = await getItemsFromDb('news', 20);
-  if (cached.length > 0) {
-    return cached;
+  const cachedFallback = await getItemsFromDb('news', 20);
+  if (cachedFallback.length > 0) {
+    newsMemCache = cachedFallback;
+    newsCacheTime = now;
+    return cachedFallback;
   }
 
   return FALLBACK_NEWS;

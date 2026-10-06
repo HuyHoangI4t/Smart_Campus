@@ -173,6 +173,15 @@ exports.deleteUser = async (req, res) => {
 /**
  * 3. Quản lý thông báo (Notifications)
  */
+exports.getNotifications = async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM notifications ORDER BY id DESC');
+    res.json({ success: true, total: rows.length, notifications: rows, data: rows });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi tải danh sách thông báo: ' + error.message });
+  }
+};
+
 exports.createNotification = async (req, res) => {
   const { title, content, type, sender, date } = req.body;
 
@@ -182,18 +191,32 @@ exports.createNotification = async (req, res) => {
 
   try {
     const notifDate = date || new Date().toLocaleDateString('vi-VN');
+    const notifType = type || 'info';
+    const notifSender = sender || 'Phòng Đào Tạo';
     const [result] = await db.query(
       'INSERT INTO notifications (title, content, type, sender, date) VALUES (?, ?, ?, ?, ?)',
-      [title.trim(), content.trim(), type || 'info', sender || 'Phòng Đào Tạo', notifDate]
+      [title.trim(), content.trim(), notifType, notifSender, notifDate]
     );
+
+    const newNotif = {
+      id: result.insertId,
+      title: title.trim(),
+      content: content.trim(),
+      type: notifType,
+      sender: notifSender,
+      date: notifDate,
+      created_at: new Date()
+    };
 
     res.status(201).json({
       success: true,
-      message: 'Đăng thông báo mới thành công.',
-      id: result.insertId
+      message: 'Phát thông báo thành công.',
+      id: result.insertId,
+      notification: newNotif,
+      data: newNotif
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Lỗi tạo thông báo: ' + error.message });
+    res.status(500).json({ success: false, message: 'Lỗi phát thông báo: ' + error.message });
   }
 };
 

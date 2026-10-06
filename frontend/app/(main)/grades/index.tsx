@@ -139,7 +139,7 @@ export default function GradesScreen() {
   };
 
   const subtitle = studentInfo.mssv && studentInfo.mssv !== "guest"
-    ? `Bảng điểm của ${studentInfo.name || studentInfo.mssv} (${studentInfo.mssv})`
+    ? `Bảng điểm của ${studentInfo.name || studentInfo.mssv}`
     : "Tra cứu điểm thi & Điểm tích lũy";
 
   return (
@@ -147,8 +147,6 @@ export default function GradesScreen() {
       <NavHeader
         title="Kết quả học tập"
         subtitle={subtitle}
-        showBack={true}
-        onBack={() => router.push("/(main)/grades")}
         rightElement={
           <TouchableOpacity
             onPress={() => router.push("/(main)/grades/grades_detail")}
@@ -157,8 +155,12 @@ export default function GradesScreen() {
               paddingVertical: 5,
               borderRadius: 12,
               backgroundColor: "rgba(255,255,255,0.2)",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 4,
             }}
           >
+            <Feather name="file-text" size={12} color="#FFFFFF" />
             <Text style={{ fontSize: 11, fontWeight: "700", color: "#FFFFFF" }}>Chi tiết</Text>
           </TouchableOpacity>
         }
@@ -214,8 +216,12 @@ export default function GradesScreen() {
                 paddingVertical: 3,
                 borderRadius: 10,
                 backgroundColor: "rgba(255,255,255,0.2)",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
               }}
             >
+              <Feather name="award" size={12} color="#FFFFFF" />
               <Text style={{ fontSize: 11, fontWeight: "700", color: "#FFFFFF" }}>{academicRank.label}</Text>
             </View>
           </View>

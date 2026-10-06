@@ -328,8 +328,6 @@ export default function ProfileScreen() {
       <NavHeader
         title="Hồ sơ sinh viên"
         subtitle="Thông tin cá nhân & Tài khoản"
-        showBack={true}
-        onBack={() => router.push("/(main)/home")}
         rightElement={
           <TouchableOpacity onPress={openEditModal}>
             <Feather name="edit-2" size={18} color="#FFFFFF" />
@@ -448,9 +446,13 @@ export default function ProfileScreen() {
               paddingVertical: 4,
               borderRadius: 12,
               backgroundColor: "#ECFDF5",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 5,
             }}
           >
-            <Text style={{ fontSize: 11, fontWeight: "700", color: "#059669" }}>● Đang theo học chính quy</Text>
+            <Feather name="check-circle" size={12} color="#059669" />
+            <Text style={{ fontSize: 11, fontWeight: "700", color: "#059669" }}>Đang theo học chính quy</Text>
           </View>
         </View>
 

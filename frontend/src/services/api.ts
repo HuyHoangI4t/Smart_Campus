@@ -1,23 +1,7 @@
-import { Platform } from 'react-native';
-import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const getApiBaseUrl = () => {
-  if (Platform.OS === 'web') {
-    return 'http://localhost:5000/api';
-  }
-  
-  const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest?.debuggerHost;
-  if (hostUri) {
-    const ip = hostUri.split(':')[0];
-    return `http://${ip}:5000/api`;
-  }
-
-  return Platform.OS === 'android' ? 'http://192.168.1.12:5000/api' : 'http://192.168.1.12:5000/api';
-};
-
+import { getApiBaseUrl,getCurrentIPv4 } from './get_IPv4';
 export const API_BASE_URL = getApiBaseUrl();
-
+export const CURRENT_IPV4 = getCurrentIPv4();
 const REQUEST_TIMEOUT_MS = 8000;
 
 async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise<Response> {
@@ -260,7 +244,9 @@ export async function apiUpdateProfile(payload: {
   }
 }
 
-// ─── OFFLINE CACHE HELPERS ────────────────────────────────────────────────
+// ─── OFFLINE CACHE HELPERS (RAM Cache + AsyncStorage song song) ───────────
+const inMemoryCache = new Map<string, { data: any; savedAt: string }>();
+
 export async function saveLocalCache(key: string, data: any) {
   try {
     const now = new Date();
@@ -270,29 +256,38 @@ export async function saveLocalCache(key: string, data: any) {
       savedAt: timeStr,
       data,
     };
+    inMemoryCache.set(key, { data, savedAt: timeStr });
     await AsyncStorage.setItem(key, JSON.stringify(payload));
-  } catch (e) {
+  } catch {
     // ignore
   }
 }
 
 export async function readLocalCache<T = any>(key: string): Promise<{ data: T; savedAt?: string } | null> {
+  // 1. Đọc ngay từ RAM (0.001ms)
+  if (inMemoryCache.has(key)) {
+    const item = inMemoryCache.get(key)!;
+    return { data: item.data as T, savedAt: item.savedAt };
+  }
+  // 2. Nếu chưa có trên RAM, đọc từ AsyncStorage
   try {
     const str = await AsyncStorage.getItem(key);
     if (!str) return null;
     const parsed = JSON.parse(str);
-    return { data: parsed.data, savedAt: parsed.savedAt };
+    inMemoryCache.set(key, { data: parsed.data, savedAt: parsed.savedAt });
+    return { data: parsed.data as T, savedAt: parsed.savedAt };
   } catch {
     return null;
   }
 }
 
-export async function apiGetSchedule(mssv?: string) {
+export async function apiGetSchedule(mssv?: string, reload = false) {
   const cacheKey = `@offline_schedule_${mssv || 'current'}`;
   try {
     const headers = await getAuthHeaders();
     const targetMssv = mssv || (headers['X-MSSV'] !== 'guest' ? headers['X-MSSV'] : undefined);
-    const url = targetMssv ? `${API_BASE_URL}/student/schedule/${targetMssv}` : `${API_BASE_URL}/student/schedule`;
+    const qs = reload ? '?reload=true' : '';
+    const url = targetMssv ? `${API_BASE_URL}/student/schedule/${targetMssv}${qs}` : `${API_BASE_URL}/student/schedule${qs}`;
     const response = await fetchWithTimeout(url, { headers });
     const result = await handleResponse(response);
 
@@ -326,12 +321,13 @@ export async function apiGetSchedule(mssv?: string) {
   }
 }
 
-export async function apiGetGrades(mssv?: string) {
+export async function apiGetGrades(mssv?: string, reload = false) {
   const cacheKey = `@offline_grades_${mssv || 'current'}`;
   try {
     const headers = await getAuthHeaders();
     const targetMssv = mssv || (headers['X-MSSV'] !== 'guest' ? headers['X-MSSV'] : undefined);
-    const url = targetMssv ? `${API_BASE_URL}/student/grades/${targetMssv}` : `${API_BASE_URL}/student/grades`;
+    const qs = reload ? '?reload=true' : '';
+    const url = targetMssv ? `${API_BASE_URL}/student/grades/${targetMssv}${qs}` : `${API_BASE_URL}/student/grades${qs}`;
     const response = await fetchWithTimeout(url, { headers });
     const result = await handleResponse(response);
 
@@ -516,12 +512,13 @@ export interface NewsOrAnnouncementItem {
   isFallback?: boolean;
 }
 
-export async function apiGetNews(type?: 'all' | 'news' | 'announcement', limit?: number) {
+export async function apiGetNews(type?: 'all' | 'news' | 'announcement', limit?: number, reload = false) {
   const cacheKey = `@offline_news_${type || 'all'}`;
   try {
     const params = new URLSearchParams();
     if (type && type !== 'all') params.append('type', type);
     if (limit) params.append('limit', String(limit));
+    if (reload) params.append('reload', 'true');
     const qs = params.toString() ? `?${params.toString()}` : '';
     const response = await fetchWithTimeout(`${API_BASE_URL}/news${qs}`);
     const result = await handleResponse(response);

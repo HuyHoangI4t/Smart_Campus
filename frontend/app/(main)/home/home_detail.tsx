@@ -255,10 +255,18 @@ export default function HomeDetailScreen() {
                 paddingHorizontal: 10,
                 paddingVertical: 5,
                 borderRadius: 8,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 5,
               }}
             >
+              {isFallback ? (
+                <Feather name="alert-triangle" size={11} color="#FFFFFF" />
+              ) : (
+                <Feather name={isNews ? "book-open" : "bell"} size={11} color="#FFFFFF" />
+              )}
               <Text style={{ color: "#FFFFFF", fontSize: 11, fontWeight: "800" }}>
-                {isFallback ? "⚠️ Dữ liệu mẫu" : badge}
+                {isFallback ? "Dữ liệu mẫu" : badge}
               </Text>
             </View>
             <View
@@ -380,8 +388,18 @@ export default function HomeDetailScreen() {
                 paddingVertical: 4,
                 borderRadius: 8,
                 backgroundColor: isFallback ? "#FEF3C7" : isNews ? "#EFF6FF" : "#ECFDF5",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 5,
               }}
             >
+              {isFallback ? (
+                <Feather name="alert-triangle" size={11} color="#D97706" />
+              ) : isNews ? (
+                <Feather name="book-open" size={11} color="#2563EB" />
+              ) : (
+                <Feather name="bell" size={11} color="#059669" />
+              )}
               <Text
                 style={{
                   fontSize: 11,
@@ -389,7 +407,7 @@ export default function HomeDetailScreen() {
                   color: isFallback ? "#D97706" : isNews ? "#2563EB" : "#059669",
                 }}
               >
-                {isFallback ? "⚠️ Dữ liệu mẫu" : isNews ? `📰 ${badge}` : `📢 ${badge}`}
+                {isFallback ? "Dữ liệu mẫu" : badge}
               </Text>
             </View>
 
@@ -825,12 +843,15 @@ export default function HomeDetailScreen() {
                 backgroundColor: "#F1F5F9",
                 borderRadius: 14,
                 paddingVertical: 12,
+                flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "center",
+                gap: 6,
               }}
             >
+              <Feather name="arrow-left" size={14} color="#475569" />
               <Text style={{ color: "#475569", fontWeight: "700", fontSize: 13 }}>
-                ← Quay lại
+                Quay lại
               </Text>
             </TouchableOpacity>
           </View>

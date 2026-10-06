@@ -6,11 +6,12 @@ const newsService = require('../services/newsService');
  */
 exports.getAllNewsAndAnnouncements = async (req, res) => {
   try {
-    const { type, limit } = req.query;
+    const { type, limit, reload, refresh } = req.query;
+    const forceRefresh = reload === 'true' || refresh === 'true' || reload === '1' || refresh === '1';
 
     const [announcements, news] = await Promise.all([
-      newsService.getAnnouncementsWithFallback(),
-      newsService.getNewsWithFallback()
+      newsService.getAnnouncementsWithFallback(forceRefresh),
+      newsService.getNewsWithFallback(forceRefresh)
     ]);
 
     let result = [];

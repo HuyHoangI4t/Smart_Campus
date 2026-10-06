@@ -55,4 +55,10 @@ router.get('/home/dashboard', campusController.getDashboard);
 router.get('/feedback/config', campusController.getFeedbackConfig);
 router.get('/sos/config', campusController.getSosConfig);
 
+const generalController = require('../controllers/generalController');
+
+router.get('/notifications', generalController.getNotifications);
+router.post('/notifications', generalController.createNotification);
+router.delete('/notifications/:id', generalController.deleteNotification);
+
 module.exports = router;

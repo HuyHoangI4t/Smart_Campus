@@ -8,6 +8,7 @@ import {
   StatusBar,
   Platform,
   Image,
+  Modal,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -20,6 +21,7 @@ import {
   apiGetSchedule,
   apiGetDashboard,
   apiGetNews,
+  readLocalCache,
   NewsOrAnnouncementItem,
   getNewsImageUrl,
   CAMPUS_FALLBACK_IMAGES,
@@ -262,6 +264,22 @@ function NewsCardImage({ imageUrl, index }: { imageUrl?: string; index: number }
   );
 }
 
+export interface NotificationAlertItem {
+  id: string;
+  type: "feedback" | "sos" | "school_notice";
+  variant: "success" | "warning" | "info";
+  icon: "check" | "alert-triangle" | "info";
+  title: string;
+  subtitle?: string;
+  date: string;
+  status: string;
+  content: string;
+  sender?: string;
+  actionScreen?: string;
+}
+
+const DEFAULT_NOTIFICATION_ALERTS: NotificationAlertItem[] = [];
+
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -282,6 +300,113 @@ export default function HomeScreen() {
   const [latestNews, setLatestNews] = useState<NewsOrAnnouncementItem[]>([]);
   const [isOfflineData, setIsOfflineData] = useState(false);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
+
+  // 3 mục Thông báo & Cảnh báo (Phản hồi CSVC, SOS/Đổi phòng, Thông báo trường)
+  const [notificationAlerts, setNotificationAlerts] = useState<NotificationAlertItem[]>(DEFAULT_NOTIFICATION_ALERTS);
+  const [selectedAlertForModal, setSelectedAlertForModal] = useState<NotificationAlertItem | null>(null);
+
+  // Hàm lọc bài viết trùng tiêu đề hoặc trùng link URL
+  const deduplicateArticles = (items: NewsOrAnnouncementItem[]) => {
+    const seenTitles = new Set<string>();
+    const seenUrls = new Set<string>();
+    const uniqueItems: NewsOrAnnouncementItem[] = [];
+
+    for (const item of items) {
+      if (!item) continue;
+      const normTitle = (item.title || "")
+        .toLowerCase()
+        .replace(/[“"”'’`]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      const normUrl = (item.link || "")
+        .toLowerCase()
+        .replace(/^https?:\/\//, "")
+        .replace(/\/+$/, "")
+        .trim();
+
+      if (normTitle && seenTitles.has(normTitle)) continue;
+      if (normUrl && seenUrls.has(normUrl)) continue;
+
+      if (normTitle) seenTitles.add(normTitle);
+      if (normUrl) seenUrls.add(normUrl);
+      uniqueItems.push(item);
+    }
+    return uniqueItems;
+  };
+
+  const applyData = (dashRes: any, scheduleRes: any, newsRes: any, isRealAccount = true) => {
+    // 1. Dashboard & Thông báo/Cảnh báo
+    if (dashRes && dashRes.success) {
+      if (dashRes.student && isRealAccount) {
+        setStudent((prev) => ({ ...prev, ...dashRes.student }));
+      }
+      if (Array.isArray(dashRes.notificationAlerts)) {
+        setNotificationAlerts(dashRes.notificationAlerts);
+      }
+    }
+
+    // 2. Lịch học
+    if (scheduleRes && scheduleRes.success) {
+      let rawScheduleList: any[] = [];
+      if (Array.isArray(scheduleRes.schedules) && scheduleRes.schedules.length > 0) {
+        rawScheduleList = scheduleRes.schedules;
+      } else if (scheduleRes.tables && scheduleRes.tables.length > 0) {
+        const rows = scheduleRes.tables[0]?.rows || [];
+        if (rows.length > 1) {
+          rows.slice(1).forEach((r: string[], idx: number) => {
+            if (r.length >= 4) {
+              rawScheduleList.push({
+                id: `sc-${idx}`,
+                course: r[1] || r[2] || "Môn học",
+                day: r[0] || "",
+                time: r[2] ? `Tiết ${r[2]}` : (r[3] || "Ca học tiêu chuẩn"),
+                room: r[3] || r[4] || "Khu giảng đường",
+                lecturer: r[4] || r[5] || "Giảng viên",
+              });
+            }
+          });
+        }
+      }
+
+      if (rawScheduleList.length === 0) {
+        rawScheduleList = DEFAULT_SCHEDULE_FALLBACK;
+      }
+
+      const computed = computeNextClass(rawScheduleList);
+      if (computed) {
+        setNextClass(computed);
+      }
+    }
+
+    // 3. Thông báo & Tin tức
+    if (newsRes && newsRes.success) {
+      let rawAnnouncements: NewsOrAnnouncementItem[] = [];
+      if (Array.isArray(newsRes.latestAnnouncements) && newsRes.latestAnnouncements.length > 0) {
+        rawAnnouncements = newsRes.latestAnnouncements;
+      } else if (Array.isArray(newsRes.announcements) && newsRes.announcements.length > 0) {
+        rawAnnouncements = newsRes.announcements;
+      } else if (Array.isArray(newsRes.data)) {
+        rawAnnouncements = newsRes.data.filter((i: any) => i.type === "announcement");
+      }
+      setLatestAnnouncements(deduplicateArticles(rawAnnouncements).slice(0, 3));
+
+      let rawNews: NewsOrAnnouncementItem[] = [];
+      if (Array.isArray(newsRes.latestNews) && newsRes.latestNews.length > 0) {
+        rawNews = newsRes.latestNews;
+      } else if (Array.isArray(newsRes.news) && newsRes.news.length > 0) {
+        rawNews = newsRes.news;
+      } else if (Array.isArray(newsRes.data)) {
+        rawNews = newsRes.data.filter((i: any) => i.type === "news");
+      }
+      setLatestNews(deduplicateArticles(rawNews).slice(0, 3));
+    }
+
+    const offline = Boolean(scheduleRes?.isOfflineCache || newsRes?.isOfflineCache || dashRes?.isOfflineCache);
+    setIsOfflineData(offline);
+    if (offline) {
+      setCachedAt(scheduleRes?.cachedAt || newsRes?.cachedAt || dashRes?.cachedAt || null);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -310,109 +435,26 @@ export default function HomeScreen() {
 
       const mssv = currentUser.mssv || currentUser.masv;
       const isRealAccount = mssv && mssv !== "guest";
+      const scheduleCacheKey = `@offline_schedule_${mssv || 'current'}`;
 
-      // 1. Tải thông tin Dashboard
-      const dashRes = await apiGetDashboard();
-      if (dashRes && dashRes.success && dashRes.student && isRealAccount) {
-        setStudent((prev) => ({ ...prev, ...dashRes.student }));
+      // BƯỚC 1: Đọc tức thì từ Cache đã nạp trong lúc nhấn Đăng nhập (0ms render ngay)
+      const [cachedDash, cachedSchedule, cachedNews] = await Promise.all([
+        readLocalCache('@offline_dashboard'),
+        readLocalCache(scheduleCacheKey),
+        readLocalCache('@offline_news_all'),
+      ]);
+      if (cachedDash?.data || cachedSchedule?.data || cachedNews?.data) {
+        applyData(cachedDash?.data, cachedSchedule?.data, cachedNews?.data, isRealAccount);
       }
 
-      // 2. Tải và tính toán Lớp học kế tiếp / Đang học / Ngày hôm sau
-      const scheduleRes = await apiGetSchedule(isRealAccount ? mssv : undefined);
-      let rawScheduleList: any[] = [];
-
-      if (scheduleRes && scheduleRes.success) {
-        if (Array.isArray(scheduleRes.schedules) && scheduleRes.schedules.length > 0) {
-          rawScheduleList = scheduleRes.schedules;
-        } else if (scheduleRes.tables && scheduleRes.tables.length > 0) {
-          const rows = scheduleRes.tables[0]?.rows || [];
-          if (rows.length > 1) {
-            rows.slice(1).forEach((r: string[], idx: number) => {
-              if (r.length >= 4) {
-                rawScheduleList.push({
-                  id: `sc-${idx}`,
-                  course: r[1] || r[2] || "Môn học",
-                  day: r[0] || "",
-                  time: r[2] ? `Tiết ${r[2]}` : (r[3] || "Ca học tiêu chuẩn"),
-                  room: r[3] || r[4] || "Khu giảng đường",
-                  lecturer: r[4] || r[5] || "Giảng viên",
-                });
-              }
-            });
-          }
-        }
-      }
-
-      if (rawScheduleList.length === 0) {
-        rawScheduleList = DEFAULT_SCHEDULE_FALLBACK;
-      }
-
-      const computed = computeNextClass(rawScheduleList);
-      if (computed) {
-        setNextClass(computed);
-      }
-
-      // 3. Tải toàn bộ Thông báo (RSS thongbaosv) và Tin tức (RSS tintuc)
-      // Hàm lọc bài viết trùng tiêu đề hoặc trùng link URL
-      const deduplicateArticles = (items: NewsOrAnnouncementItem[]) => {
-        const seenTitles = new Set<string>();
-        const seenUrls = new Set<string>();
-        const uniqueItems: NewsOrAnnouncementItem[] = [];
-
-        for (const item of items) {
-          if (!item) continue;
-          const normTitle = (item.title || "")
-            .toLowerCase()
-            .replace(/[“"”'’`]/g, "")
-            .replace(/\s+/g, " ")
-            .trim();
-          const normUrl = (item.link || "")
-            .toLowerCase()
-            .replace(/^https?:\/\//, "")
-            .replace(/\/+$/, "")
-            .trim();
-
-          // Lọc nếu trùng tiêu đề hoặc trùng URL
-          if (normTitle && seenTitles.has(normTitle)) continue;
-          if (normUrl && seenUrls.has(normUrl)) continue;
-
-          if (normTitle) seenTitles.add(normTitle);
-          if (normUrl) seenUrls.add(normUrl);
-          uniqueItems.push(item);
-        }
-        return uniqueItems;
-      };
-
-      const newsRes = await apiGetNews();
-      if (newsRes && newsRes.success) {
-        let rawAnnouncements: NewsOrAnnouncementItem[] = [];
-        if (Array.isArray(newsRes.latestAnnouncements) && newsRes.latestAnnouncements.length > 0) {
-          rawAnnouncements = newsRes.latestAnnouncements;
-        } else if (Array.isArray(newsRes.announcements) && newsRes.announcements.length > 0) {
-          rawAnnouncements = newsRes.announcements;
-        } else if (Array.isArray(newsRes.data)) {
-          rawAnnouncements = newsRes.data.filter((i: any) => i.type === "announcement");
-        }
-        setLatestAnnouncements(deduplicateArticles(rawAnnouncements).slice(0, 3));
-
-        let rawNews: NewsOrAnnouncementItem[] = [];
-        if (Array.isArray(newsRes.latestNews) && newsRes.latestNews.length > 0) {
-          rawNews = newsRes.latestNews;
-        } else if (Array.isArray(newsRes.news) && newsRes.news.length > 0) {
-          rawNews = newsRes.news;
-        } else if (Array.isArray(newsRes.data)) {
-          rawNews = newsRes.data.filter((i: any) => i.type === "news");
-        }
-        setLatestNews(deduplicateArticles(rawNews).slice(0, 3));
-      }
-
-      const offline = Boolean(scheduleRes?.isOfflineCache || newsRes?.isOfflineCache || dashRes?.isOfflineCache);
-      setIsOfflineData(offline);
-      if (offline) {
-        setCachedAt(scheduleRes?.cachedAt || newsRes?.cachedAt || dashRes?.cachedAt || null);
-      }
+      // BƯỚC 2: Đồng bộ song song cả 3 API từ server để cập nhật dữ liệu mới nhất
+      const [dashRes, scheduleRes, newsRes] = await Promise.all([
+        apiGetDashboard(),
+        apiGetSchedule(isRealAccount ? mssv : undefined),
+        apiGetNews(),
+      ]);
+      applyData(dashRes, scheduleRes, newsRes, isRealAccount);
     } catch {
-      // Giữ dữ liệu hiện tại
       setIsOfflineData(true);
     }
   };
@@ -733,6 +775,77 @@ export default function HomeScreen() {
             ))}
           </View>
 
+          {/* ─── THÔNG BÁO & CẢNH BÁO (FEEDBACK, SOS, THÔNG BÁO PHÁT TỪ TRƯỜNG) ─── */}
+          {notificationAlerts && notificationAlerts.length > 0 ? (
+            <View style={{ marginBottom: 20 }}>
+              <View style={[s.row, s.between, { alignItems: "center", marginBottom: 12, paddingHorizontal: 4 }]}>
+                <Text style={{ fontSize: 16, fontWeight: "900", color: "#1E293B" }}>
+                  Thông báo & Cảnh báo
+                </Text>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: "#2563EB" }}>
+                  {notificationAlerts.length} tin mới
+                </Text>
+              </View>
+              <View style={{ gap: 10 }}>
+                {notificationAlerts.map((item) => {
+                  let bg = "#F0FDF4";
+                  let border = "#BBF7D0";
+                  let iconColor = "#10B981";
+                  let iconName: keyof typeof Feather.glyphMap = "check";
+
+                  if (item.variant === "warning") {
+                    bg = "#FFFBEB";
+                    border = "#FDE68A";
+                    iconColor = "#D97706";
+                    iconName = "alert-triangle";
+                  } else if (item.variant === "info") {
+                    bg = "#EFF6FF";
+                    border = "#BFDBFE";
+                    iconColor = "#2563EB";
+                    iconName = "info";
+                  }
+
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      onPress={() => setSelectedAlertForModal(item)}
+                      activeOpacity={0.7}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        backgroundColor: bg,
+                        borderWidth: 1,
+                        borderColor: border,
+                        borderRadius: 16,
+                        paddingVertical: 12,
+                        paddingHorizontal: 16,
+                        gap: 12,
+                      }}
+                    >
+                      <Feather name={iconName} size={18} color={iconColor} />
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={{
+                            fontSize: 13.5,
+                            fontWeight: "700",
+                            color: "#1E293B",
+                            marginBottom: 3,
+                          }}
+                          numberOfLines={1}
+                        >
+                          {item.title}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: "#64748B", fontWeight: "500" }}>
+                          {item.date || item.subtitle || "Hôm nay"}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
+
           {/* ─── 1. PHẦN THÔNG BÁO TỪ NHÀ TRƯỜNG (3 THÔNG BÁO GẦN NHẤT - RSS THONGBAOSV) ─── */}
           <View
             style={{
@@ -804,8 +917,16 @@ export default function HomeScreen() {
                           paddingVertical: 2,
                           borderRadius: 6,
                           backgroundColor: ann.isFallback || ann.badge?.toLowerCase().includes("mẫu") ? "#FEF3C7" : "#ECFDF5",
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 4,
                         }}
                       >
+                        {ann.isFallback || ann.badge?.toLowerCase().includes("mẫu") ? (
+                          <Feather name="alert-triangle" size={10} color="#D97706" />
+                        ) : (
+                          <Feather name="bell" size={10} color="#059669" />
+                        )}
                         <Text
                           style={{
                             fontSize: 10,
@@ -813,7 +934,7 @@ export default function HomeScreen() {
                             color: ann.isFallback || ann.badge?.toLowerCase().includes("mẫu") ? "#D97706" : "#059669",
                           }}
                         >
-                          {ann.isFallback || ann.badge?.toLowerCase().includes("mẫu") ? "⚠️ Dữ liệu mẫu" : `📢 ${ann.badge || "Thông báo SV"}`}
+                          {ann.isFallback || ann.badge?.toLowerCase().includes("mẫu") ? "Dữ liệu mẫu" : (ann.badge || "Thông báo SV")}
                         </Text>
                       </View>
                       {ann.attachments && ann.attachments.length > 0 ? (
@@ -854,9 +975,12 @@ export default function HomeScreen() {
                   </Text>
 
                   <View style={[s.row, s.between, { alignItems: "center", marginTop: 4 }]}>
-                    <Text style={{ fontSize: 11, color: AppColors.textMuted }} numberOfLines={1}>
-                      🏛️ {ann.author || ann.sender || "Phòng Công tác SV"}
-                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flex: 1, marginRight: 8 }}>
+                      <Feather name="home" size={11} color={AppColors.textMuted} />
+                      <Text style={{ fontSize: 11, color: AppColors.textMuted }} numberOfLines={1}>
+                        {ann.author || ann.sender || "Phòng Công tác SV"}
+                      </Text>
+                    </View>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
                       <Text
                         style={{
@@ -948,8 +1072,16 @@ export default function HomeScreen() {
                           paddingVertical: 2,
                           borderRadius: 6,
                           backgroundColor: item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? "#FEF3C7" : "#EFF6FF",
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 4,
                         }}
                       >
+                        {item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? (
+                          <Feather name="alert-triangle" size={10} color="#D97706" />
+                        ) : (
+                          <Feather name="book-open" size={10} color="#2563EB" />
+                        )}
                         <Text
                           style={{
                             fontSize: 10,
@@ -957,7 +1089,7 @@ export default function HomeScreen() {
                             color: item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? "#D97706" : "#2563EB",
                           }}
                         >
-                          {item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? "⚠️ Dữ liệu mẫu" : `📰 ${item.badge || "Tin hoạt động"}`}
+                          {item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? "Dữ liệu mẫu" : (item.badge || "Tin hoạt động")}
                         </Text>
                       </View>
                       <Text style={{ fontSize: 10, color: AppColors.textMuted, fontWeight: "600" }}>
@@ -973,7 +1105,7 @@ export default function HomeScreen() {
                         lineHeight: 19,
                         marginBottom: 4,
                       }}
-                      numberOfLines={2}
+                        numberOfLines={2}
                     >
                       {item.title}
                     </Text>
@@ -1005,9 +1137,12 @@ export default function HomeScreen() {
                         },
                       ]}
                     >
-                      <Text style={{ fontSize: 10, color: AppColors.textMuted }} numberOfLines={1}>
-                        🏛️ {item.author || item.sourceName || "Ban Biên tập TTN"}
-                      </Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flex: 1, marginRight: 8 }}>
+                        <Feather name="globe" size={10} color={AppColors.textMuted} />
+                        <Text style={{ fontSize: 10, color: AppColors.textMuted }} numberOfLines={1}>
+                          {item.author || item.sourceName || "Ban Biên tập TTN"}
+                        </Text>
+                      </View>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
                         <Text
                           style={{
@@ -1028,6 +1163,204 @@ export default function HomeScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* ─── MODAL CHI TIẾT THÔNG BÁO / PHẢN HỒI / CẢNH BÁO ─── */}
+      <Modal
+        visible={!!selectedAlertForModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedAlertForModal(null)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.55)",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 20,
+          }}
+        >
+          <View
+            style={{
+              width: "100%",
+              maxWidth: 360,
+              backgroundColor: "#FFFFFF",
+              borderRadius: 20,
+              padding: 22,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.15,
+              shadowRadius: 12,
+              elevation: 8,
+            }}
+          >
+            {/* Header Modal */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 }}>
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor:
+                    selectedAlertForModal?.variant === "success"
+                      ? "#ECFDF5"
+                      : selectedAlertForModal?.variant === "warning"
+                        ? "#FFFBEB"
+                        : "#EFF6FF",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Feather
+                  name={
+                    selectedAlertForModal?.variant === "success"
+                      ? "check-circle"
+                      : selectedAlertForModal?.variant === "warning"
+                        ? "alert-triangle"
+                        : "info"
+                  }
+                  size={20}
+                  color={
+                    selectedAlertForModal?.variant === "success"
+                      ? "#10B981"
+                      : selectedAlertForModal?.variant === "warning"
+                        ? "#D97706"
+                        : "#2563EB"
+                  }
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 16, fontWeight: "900", color: "#1E293B" }}>
+                  {selectedAlertForModal?.type === "feedback"
+                    ? "Trạng thái phản hồi"
+                    : selectedAlertForModal?.type === "sos"
+                      ? "Cảnh báo khẩn cấp"
+                      : "Thông báo từ trường"}
+                </Text>
+                <Text style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>
+                  {selectedAlertForModal?.date || "30/9/2026"}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setSelectedAlertForModal(null)}
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 15,
+                  backgroundColor: "#F1F5F9",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Feather name="x" size={16} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Trạng thái Badge */}
+            <View
+              style={{
+                alignSelf: "flex-start",
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 8,
+                backgroundColor:
+                  selectedAlertForModal?.variant === "success"
+                    ? "#DCFCE7"
+                    : selectedAlertForModal?.variant === "warning"
+                      ? "#FEF3C7"
+                      : "#DBEAFE",
+                marginBottom: 12,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 11,
+                  fontWeight: "800",
+                  color:
+                    selectedAlertForModal?.variant === "success"
+                      ? "#166534"
+                      : selectedAlertForModal?.variant === "warning"
+                        ? "#92400E"
+                        : "#1E40AF",
+                }}
+              >
+                {selectedAlertForModal?.status || "Đã tiếp nhận"}
+              </Text>
+            </View>
+
+            {/* Tiêu đề & Nội dung */}
+            <Text
+              style={{
+                fontSize: 15,
+                fontWeight: "800",
+                color: "#1E293B",
+                lineHeight: 21,
+                marginBottom: 8,
+              }}
+            >
+              {selectedAlertForModal?.title}
+            </Text>
+
+            <Text
+              style={{
+                fontSize: 13,
+                color: "#475569",
+                lineHeight: 20,
+                marginBottom: 20,
+              }}
+            >
+              {selectedAlertForModal?.content}
+            </Text>
+
+            {/* Nút tác vụ */}
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              {selectedAlertForModal?.actionScreen ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    const screen = selectedAlertForModal.actionScreen;
+                    setSelectedAlertForModal(null);
+                    if (screen) onNavigate(screen);
+                  }}
+                  activeOpacity={0.8}
+                  style={{
+                    flex: 1,
+                    backgroundColor: AppColors.primary,
+                    paddingVertical: 12,
+                    borderRadius: 12,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "800" }}>
+                    {selectedAlertForModal.type === "feedback"
+                      ? "Xem / Gửi phản hồi"
+                      : selectedAlertForModal.type === "sos"
+                        ? "Đến trang SOS"
+                        : "Xem chi tiết"}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+
+              <TouchableOpacity
+                onPress={() => setSelectedAlertForModal(null)}
+                activeOpacity={0.8}
+                style={{
+                  flex: selectedAlertForModal?.actionScreen ? 0.6 : 1,
+                  backgroundColor: "#F1F5F9",
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ color: "#475569", fontSize: 13, fontWeight: "700" }}>
+                  Đóng
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

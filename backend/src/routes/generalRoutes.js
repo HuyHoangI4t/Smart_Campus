@@ -10,14 +10,8 @@ const generalController = require('../controllers/generalController');
  *     tags: [General]
  */
 router.get('/notifications', generalController.getNotifications);
-
-/**
- * @swagger
- * /api/notifications/{id}:
- *   get:
- *     summary: Xem chi tiết nội dung thông báo theo ID
- *     tags: [General]
- */
+router.post('/notifications', generalController.createNotification);
 router.get('/notifications/:id', generalController.getNotificationById);
+router.delete('/notifications/:id', generalController.deleteNotification);
 
 module.exports = router;

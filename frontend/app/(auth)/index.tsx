@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Linking, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Linking, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -7,13 +7,26 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppColors } from '@/src/constants/appColors';
 import { authStyles } from '@/src/constants/globalStyles';
 import { AuthHeader } from '@/src/components/AuthHeader';
-import { apiLogin, apiRegister, apiVerifyRegisterOtp, clearAuthAndCache, API_BASE_URL } from '@/src/services/api';
+import { 
+  apiLogin, 
+  apiRegister, 
+  apiVerifyRegisterOtp, 
+  clearAuthAndCache, 
+  API_BASE_URL, 
+  apiGetDashboard, 
+  apiGetSchedule, 
+  apiGetNews,
+  apiGetGrades,
+  apiGetNotifications,
+  apiGetMapLocations
+} from '@/src/services/api';
 
 export default function AuthScreen() {
   const [authType, setAuthType] = useState<'login' | 'register'>('login');
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingButtonText, setLoadingButtonText] = useState('Đang đăng nhập...');
   
   // Login State
   const [email, setEmail] = useState('');
@@ -65,6 +78,7 @@ export default function AuthScreen() {
         return;
       }
       setLoading(true);
+      setLoadingButtonText('Đang đăng nhập...');
       try {
         const res = await apiLogin(email.trim(), password);
         if (res.success) {
@@ -73,6 +87,8 @@ export default function AuthScreen() {
             setLoading(false);
             return;
           }
+
+          setLoadingButtonText('Đang đăng nhập...');
 
           await clearAuthAndCache();
           if (res.token) {
@@ -86,16 +102,27 @@ export default function AuthScreen() {
             };
             await AsyncStorage.setItem('@auth_user', JSON.stringify(userPayload));
           }
-          setSuccessMsg('Đăng nhập thành công!');
-          setTimeout(() => {
-            router.replace('/(main)/home');
-          }, 500);
+
+          const targetMssv = res.user?.mssv;
+
+          // Nạp toàn bộ dữ liệu lên app vào bộ nhớ đệm cache trước khi chuyển trang để khi người dùng vào app thì dữ liệu hiển thị ngay lập tức
+          await Promise.allSettled([
+            apiGetDashboard(),
+            apiGetSchedule(targetMssv),
+            apiGetNews(),
+            apiGetGrades(targetMssv),
+            apiGetNotifications(),
+            apiGetMapLocations(),
+          ]);
+
+          setLoadingButtonText('Đang mở ứng dụng...');
+          router.replace('/(main)/home');
         } else {
           setError(res.message || 'Đăng nhập thất bại.');
+          setLoading(false);
         }
       } catch {
         setError('Lỗi kết nối đến server.');
-      } finally {
         setLoading(false);
       }
     } else {
@@ -370,9 +397,10 @@ export default function AuthScreen() {
 
                   <View style={{ height: 16 }} />
 
-                  <TouchableOpacity onPress={() => setRegStep(1)} activeOpacity={0.7} style={{ alignSelf: 'center' }}>
+                  <TouchableOpacity onPress={() => setRegStep(1)} activeOpacity={0.7} style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Feather name="arrow-left" size={13} color={AppColors.accent} />
                     <Text style={{ fontSize: 13, fontWeight: '700', color: AppColors.accent }}>
-                      ← Quay lại.
+                      Quay lại
                     </Text>
                   </TouchableOpacity>
                 </>
@@ -381,20 +409,30 @@ export default function AuthScreen() {
               <View style={{ height: 20 }} />
 
               <TouchableOpacity 
-                style={[authStyles.primaryButton, loading && { opacity: 0.7 }]} 
+                style={[
+                  authStyles.primaryButton, 
+                  loading && { opacity: 0.85, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }
+                ]} 
                 onPress={handleAuthAction} 
                 disabled={loading}
                 activeOpacity={0.85}
               >
-                <Text style={authStyles.primaryBtnText}>
-                  {loading 
-                    ? 'Đang xử lý...' 
-                    : authType === 'login' 
-                    ? 'Đăng Nhập Vào Campus' 
-                    : regStep === 1 
-                    ? 'Tiếp Tục' 
-                    : 'Đăng Ký'}
-                </Text>
+                {loading ? (
+                  <>
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <Text style={authStyles.primaryBtnText}>
+                      {loadingButtonText || 'Đang xử lý...'}
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={authStyles.primaryBtnText}>
+                    {authType === 'login' 
+                      ? 'Đăng Nhập Vào Campus' 
+                      : regStep === 1 
+                      ? 'Tiếp Tục' 
+                      : 'Đăng Ký'}
+                  </Text>
+                )}
               </TouchableOpacity>
 
               {authType === 'login' && (
@@ -409,8 +447,16 @@ export default function AuthScreen() {
                   <View style={{ height: 14 }} />
 
                   <TouchableOpacity style={authStyles.guestButton} onPress={async () => {
+                    setLoading(true);
+                    setLoadingButtonText('Đang đăng nhập như Khách...');
                     await clearAuthAndCache();
                     await AsyncStorage.setItem('@auth_user', JSON.stringify({ mssv: 'guest', fullName: 'Khách' }));
+                    await Promise.allSettled([
+                      apiGetDashboard(),
+                      apiGetNews(),
+                      apiGetNotifications(),
+                      apiGetMapLocations(),
+                    ]);
                     router.replace('/(main)/home');
                   }} activeOpacity={0.8}>
                     <Text style={authStyles.guestBtnText}>

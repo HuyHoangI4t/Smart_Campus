@@ -391,9 +391,10 @@ export default function ForgotPasswordScreen() {
           {/* Footer Back to Login */}
           {step !== 4 && (
             <View style={{ alignItems: 'center', marginTop: 24 }}>
-              <TouchableOpacity onPress={() => router.replace('/(auth)')} activeOpacity={0.7}>
+              <TouchableOpacity onPress={() => router.replace('/(auth)')} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <Feather name="arrow-left" size={13} color={AppColors.primary} />
                 <Text style={{ fontSize: 13, fontWeight: '700', color: AppColors.primary }}>
-                  ← Quay lại trang Đăng Nhập
+                  Quay lại trang Đăng Nhập
                 </Text>
               </TouchableOpacity>
             </View>

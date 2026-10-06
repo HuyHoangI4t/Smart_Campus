@@ -2,7 +2,7 @@
  * API Configuration Constants
  */
 
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.5:5000/api';
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 export const API_TIMEOUT = 15000;
 
 export const ENDPOINTS = {

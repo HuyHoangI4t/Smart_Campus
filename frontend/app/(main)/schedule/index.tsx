@@ -284,8 +284,6 @@ export default function ScheduleScreen() {
       <NavHeader
         title="Thời khóa biểu"
         subtitle={subtitle}
-        showBack={true}
-        onBack={() => router.push("/(main)/home")}
       />
 
       <View style={{ paddingVertical: 12, backgroundColor: AppColors.cardBg, borderBottomWidth: 1, borderColor: AppColors.cardBorder }}>

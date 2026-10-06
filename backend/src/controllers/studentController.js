@@ -169,7 +169,32 @@ exports.getGrades = async (req, res) => {
     } catch (e) {}
   }
 
-  // 1. Cào trực tiếp bảng điểm sinh viên từ kqcq.php của trường TTN
+  const forceRefresh = req.query.reload === 'true' || req.query.refresh === 'true' || req.body?.reload === true;
+
+  // 1. Đọc ngay từ Database siêu tốc (1-2ms) nếu không yêu cầu reload cưỡng bức
+  if (!forceRefresh && mssv && !isGuestOrEmail(mssv)) {
+    try {
+      const [dbGrades] = await db.query(
+        `SELECT ten_hp, nam_hoc, ky, diem_dbp, diem_thi1, diem_thi2, diem_1, diem_2, diem_chu, so_tin_chi, hoc_phi, hoc_ky 
+         FROM student_grades WHERE mssv = ? ORDER BY id ASC`,
+        [mssv]
+      );
+      if (dbGrades && dbGrades.length > 0) {
+        const processed = gradeService.processGradesPayload(dbGrades);
+        return res.json({
+          success: true,
+          mssv: mssv,
+          isDbCached: true,
+          ho_ten: studentName || ('Sinh viên ' + mssv),
+          ...processed
+        });
+      }
+    } catch (e) {
+      console.warn('Lỗi query student_grades từ DB:', e.message);
+    }
+  }
+
+  // 2. Chỉ cào trực tiếp bảng điểm sinh viên từ kqcq.php của trường TTN khi DB trống hoặc khi reload
   let liveSubjects = [];
   try {
     const payload = new URLSearchParams({ 'msv': mssv, 'mssv': mssv, 'dk': studentDk });
@@ -412,6 +437,41 @@ exports.getSchedule = async (req, res) => {
     });
   }
 
+  const forceRefresh = req.query.reload === 'true' || req.query.refresh === 'true' || req.body?.reload === true;
+
+  // 1. Kiểm tra ngay trong Database siêu tốc (1-2ms) nếu không yêu cầu reload cưỡng bức
+  if (!forceRefresh && mssv && !isGuestOrEmail(mssv)) {
+    try {
+      const [dbSchedules] = await db.query(
+        'SELECT thu, ten_hp, tiet, phong, giang_vien, hoc_ky FROM student_schedules WHERE mssv = ? ORDER BY id ASC',
+        [mssv]
+      );
+      if (dbSchedules && dbSchedules.length > 0) {
+        const cachedRows = [["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"]];
+        for (const row of dbSchedules) {
+          cachedRows.push([
+            row.thu || "Thứ 2",
+            row.ten_hp || "Môn học",
+            row.tiet || "1-4",
+            row.phong || "Khu giảng đường",
+            row.giang_vien || "Giảng viên bộ môn"
+          ]);
+        }
+        const rawTables = [{ tableIndex: 1, rows: cachedRows }];
+        const processed = scheduleService.processSchedulePayload(rawTables, dbSchedules[0]?.hoc_ky || "Lịch học đã lưu từ cổng đào tạo");
+        return res.json({
+          success: true,
+          mssv: mssv,
+          isDbCached: true,
+          ...processed
+        });
+      }
+    } catch (e) {
+      console.warn('Lỗi đọc student_schedules từ DB:', e.message);
+    }
+  }
+
+  // 2. Chỉ cào từ cổng trường khi DB chưa có hoặc khi người dùng vuốt reload
   try {
     const payload = new URLSearchParams({ 'msv': mssv, 'mssv': mssv, 'dk': studentDk });
 

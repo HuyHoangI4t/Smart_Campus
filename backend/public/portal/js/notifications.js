@@ -11,11 +11,21 @@ const NotificationsModule = {
 
   async loadNotifications() {
     try {
-      // Gọi qua endpoint public hoặc campus/notifications
-      const res = await fetch('/api/campus/notifications');
-      const data = await res.json().catch(() => ({ success: false }));
-      
-      this.notifications = data.data || data.notifications || [];
+      let data = null;
+      try {
+        if (window.AdminAPI && typeof window.AdminAPI.request === 'function') {
+          data = await window.AdminAPI.request('/api/admin/notifications');
+        }
+      } catch (e) {
+        // Fallback fetch
+      }
+
+      if (!data || !data.success) {
+        const res = await fetch('/api/campus/notifications');
+        data = await res.json().catch(() => ({ success: false }));
+      }
+
+      this.notifications = (data && (data.data || data.notifications)) || [];
       this.renderList();
     } catch (err) {
       console.error('Lỗi tải danh sách thông báo:', err);

@@ -12,6 +12,7 @@ router.put('/users/:id', adminController.updateUser);
 router.delete('/users/:id', adminController.deleteUser);
 
 // 3. Quản lý thông báo
+router.get('/notifications', adminController.getNotifications);
 router.post('/notifications', adminController.createNotification);
 router.delete('/notifications/:id', adminController.deleteNotification);
 

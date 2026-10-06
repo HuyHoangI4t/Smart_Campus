@@ -240,8 +240,6 @@ export default function MapScreen() {
       <NavHeader
         title="Bản đồ khuôn viên"
         subtitle="Đại học Tây Nguyên • Sơ đồ trực quan"
-        showBack={true}
-        onBack={() => router.push("/(main)/home")}
       />
 
       {/* ─── Ô TÌM KIẾM Ở TRÊN CÙNG (KHÔNG CÓ DANH MỤC) ───────────────────── */}

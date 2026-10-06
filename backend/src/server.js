@@ -92,7 +92,7 @@ app.use('/api', campusRoutes);
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 LTDDDNT Backend server đang chạy tại cổng ${PORT} (0.0.0.0)`);
   console.log(`💻 Trang Quản Trị Web (Admin Portal): http://localhost:${PORT}/portal`);
-  console.log(`📱 Expo Go / Mobile API: http://192.168.1.5:${PORT}/api`);
+  console.log(`📱 Expo Go / Mobile API: http://192.168.1.22:${PORT}/api`);
   console.log(`📄 Swagger UI sẵn sàng tại http://localhost:${PORT}/api-docs`);
   
   // Khởi động tiến trình đồng bộ dữ liệu tự động 3 lần/ngày
