@@ -38,4 +38,24 @@ router.get('/tintuc', newsController.getNews);
  */
 router.get('/image-proxy', newsController.proxyImage);
 
+/**
+ * @swagger
+ * /api/news/article-detail:
+ *   get:
+ *     summary: Lấy chi tiết toàn văn và tất cả hình ảnh từ bài viết TTN
+ *     tags: [News]
+ */
+router.get('/article-detail', newsController.getArticleDetail);
+
+/**
+ * @swagger
+ * /api/news/download-attachment:
+ *   get:
+ *     summary: Tải trực tiếp tài liệu đính kèm (PDF, DOCX) từ website trường
+ *     tags: [News]
+ */
+router.get('/download-attachment', newsController.downloadAttachment);
+
 module.exports = router;
+
+

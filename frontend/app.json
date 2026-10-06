@@ -8,7 +8,10 @@
     "scheme": "myfirstapp",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Ứng dụng cần quyền truy cập vị trí để định vị bạn trên bản đồ và chỉ đường tới phòng học trong trường."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -18,7 +21,11 @@
         "monochromeImage": ""
       },
       "predictiveBackGestureEnabled": false,
-      "softwareKeyboardLayoutMode": "resize"
+      "softwareKeyboardLayoutMode": "resize",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "output": "static",
@@ -26,6 +33,12 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Ứng dụng cần quyền truy cập vị trí để định vị bạn trên bản đồ và chỉ đường tới phòng học trong trường."
+        }
+      ],
       [
         "expo-splash-screen",
         {

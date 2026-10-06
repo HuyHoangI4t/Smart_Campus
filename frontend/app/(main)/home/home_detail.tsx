@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,13 +8,24 @@ import {
   Share,
   Image,
   StatusBar,
+  ActivityIndicator,
+  Alert,
+  Platform,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Sharing from "expo-sharing";
+import { File, Paths } from "expo-file-system";
 import { AppColors } from "../../../src/constants/appColors";
-import { getNewsImageUrl, CAMPUS_FALLBACK_IMAGES } from "../../../src/services/api";
+import {
+  getNewsImageUrl,
+  CAMPUS_FALLBACK_IMAGES,
+  apiGetArticleDetail,
+  getAttachmentDownloadUrl,
+  ArticleContentBlock,
+} from "../../../src/services/api";
 
 interface ContentParagraph {
   type: "heading" | "bullet" | "text";
@@ -78,8 +89,15 @@ export default function HomeDetailScreen() {
   const rawArticleText = params.content || params.summary || "";
   const parsedContent = parseArticleContent(rawArticleText);
 
+  // Danh sách các khối nội dung theo thứ tự chính xác (văn bản & hình ảnh xen kẽ)
+  const [contentBlocks, setContentBlocks] = useState<ArticleContentBlock[]>([]);
+  const [articleImages, setArticleImages] = useState<string[]>([]);
+  const [detailedParagraphs, setDetailedParagraphs] = useState<string[]>([]);
+  const [scrapedAttachments, setScrapedAttachments] = useState<{ title: string; url: string; size?: string; isPdf?: boolean }[]>([]);
+  const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
+
   // Phân tích danh sách tài liệu đính kèm (nếu có từ RSS)
-  let parsedAttachments: { title: string; url: string; isPdf?: boolean }[] = [];
+  let parsedAttachments: { title: string; url: string; size?: string; isPdf?: boolean }[] = [];
   if (params.attachments) {
     try {
       parsedAttachments = JSON.parse(params.attachments);
@@ -107,9 +125,144 @@ export default function HomeDetailScreen() {
     (isNews
       ? "https://www.ttn.edu.vn/index.php/mthongbao/tintuc"
       : "https://www.ttn.edu.vn/index.php/svthongbao");
-  const hasImage = Boolean(params.imageUrl && params.imageUrl.trim() !== '') || isNews;
-  const initialImageUri = getNewsImageUrl(params.imageUrl);
+
+  const initialImageUri = params.imageUrl ? getNewsImageUrl(params.imageUrl) : "";
   const [heroImageUri, setHeroImageUri] = useState<string>(initialImageUri);
+  const scrollRef = useRef<ScrollView>(null);
+
+  // Luôn cuộn ngay về đỉnh trang mỗi khi màn hình được kích hoạt / hiển thị
+  useFocusEffect(
+    useCallback(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [])
+  );
+
+  // Khi người dùng bấm vào bài viết khác, xóa sạch dữ liệu bài cũ và cuộn lên đỉnh ngay lập tức
+  useEffect(() => {
+    setContentBlocks([]);
+    setArticleImages([]);
+    setDetailedParagraphs([]);
+    setScrapedAttachments([]);
+    setHeroImageUri(params.imageUrl ? getNewsImageUrl(params.imageUrl) : "");
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [params.id, params.link, params.title, params.imageUrl]);
+
+  // Tự động cào toàn bộ ảnh và bài viết chi tiết từ website trường TTN
+  useEffect(() => {
+    let isMounted = true;
+    if (params.link && params.link.startsWith("http") && !isFallback) {
+      setLoadingDetail(true);
+      apiGetArticleDetail(params.link)
+        .then((res) => {
+          if (!isMounted) return;
+          if (res && res.success && res.data) {
+            if (res.data.contentBlocks && res.data.contentBlocks.length > 0) {
+              setContentBlocks(res.data.contentBlocks);
+            }
+            if (res.data.images && res.data.images.length > 0) {
+              setArticleImages(res.data.images);
+              // Luôn lấy ảnh thực tế cào được từ bài viết làm ảnh bìa chi tiết
+              setHeroImageUri(getNewsImageUrl(res.data.images[0]));
+            }
+            if (res.data.paragraphs && res.data.paragraphs.length > 0) {
+              setDetailedParagraphs(res.data.paragraphs);
+            }
+            if (res.data.attachments && res.data.attachments.length > 0) {
+              setScrapedAttachments(res.data.attachments);
+            }
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (isMounted) setLoadingDetail(false);
+        });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [params.link, isFallback]);
+
+  const hasImage = Boolean(heroImageUri && heroImageUri.trim() !== "") || Boolean(params.imageUrl && params.imageUrl.trim() !== "") || isNews || articleImages.length > 0;
+
+  const contentToRender =
+    detailedParagraphs.length > 0
+      ? parseArticleContent(detailedParagraphs.join("\n\n"))
+      : parsedContent;
+
+  const [downloadingUrl, setDownloadingUrl] = useState<string | null>(null);
+
+  const handleDownloadAttachment = async (att: {
+    title: string;
+    url: string;
+    size?: string;
+    isPdf?: boolean;
+  }) => {
+    if (!att.url || downloadingUrl) return;
+
+    setDownloadingUrl(att.url);
+    const downloadEndpoint = getAttachmentDownloadUrl(att.url);
+
+    try {
+      if (Platform.OS === "web") {
+        if (typeof window !== "undefined" && typeof document !== "undefined") {
+          const dlLink = document.createElement("a");
+          dlLink.href = downloadEndpoint;
+          dlLink.download = att.title || "tailieu.pdf";
+          document.body.appendChild(dlLink);
+          dlLink.click();
+          document.body.removeChild(dlLink);
+        } else {
+          Linking.openURL(downloadEndpoint);
+        }
+        setDownloadingUrl(null);
+        return;
+      }
+
+      // Tạo tên tệp an toàn cho hệ thống tệp điện thoại
+      let fileName = (att.title || "tailieu")
+        .replace(/[/\\?%*:|"<>]/g, "_")
+        .trim();
+      if (att.isPdf && !fileName.toLowerCase().endsWith(".pdf")) {
+        fileName += ".pdf";
+      }
+
+      const targetFile = new File(Paths.document, fileName);
+      const downloaded = await File.downloadFileAsync(downloadEndpoint, targetFile, { idempotent: true });
+
+      if (downloaded && downloaded.uri) {
+        const isSharingAvailable = await Sharing.isAvailableAsync();
+        if (isSharingAvailable) {
+          await Sharing.shareAsync(downloaded.uri, {
+            mimeType: att.isPdf ? "application/pdf" : "application/octet-stream",
+            dialogTitle: `Tập tin đã tải về: ${fileName}`,
+            UTI: att.isPdf ? "com.adobe.pdf" : undefined,
+          });
+        } else {
+          Alert.alert(
+            "Tải về thành công",
+            `Tập tin đã được tải về máy của bạn: ${fileName}`
+          );
+        }
+      } else {
+        throw new Error("Không thể tải tệp");
+      }
+    } catch (err: any) {
+      console.warn("Lỗi tải tệp trực tiếp:", err.message);
+      Alert.alert(
+        "Không thể tải trực tiếp",
+        "Máy chủ trường không phản hồi tệp hoặc mạng yếu. Bạn có muốn mở trực tiếp bằng trình duyệt không?",
+        [
+          { text: "Hủy", style: "cancel" },
+          {
+            text: "Mở trình duyệt",
+            onPress: () => Linking.openURL(att.url),
+          },
+        ]
+      );
+    } finally {
+      setDownloadingUrl(null);
+    }
+  };
 
   const handleShare = async () => {
     try {
@@ -133,6 +286,8 @@ export default function HomeDetailScreen() {
     setFontScale((prev) => (prev + 1) % 3);
   };
 
+
+
   return (
     <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
       <StatusBar
@@ -146,7 +301,7 @@ export default function HomeDetailScreen() {
         <View style={{ width: "100%", height: 280, position: "relative" }}>
           <Image
             source={{
-              uri: heroImageUri,
+              uri: heroImageUri || CAMPUS_FALLBACK_IMAGES[0],
               headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
               },
@@ -154,9 +309,10 @@ export default function HomeDetailScreen() {
             style={{ width: "100%", height: "100%", backgroundColor: "#0F172A" }}
             resizeMode="cover"
             onError={() => {
-              const fallback = CAMPUS_FALLBACK_IMAGES[0];
-              if (heroImageUri !== fallback) {
-                setHeroImageUri(fallback);
+              if (articleImages.length > 1 && heroImageUri !== getNewsImageUrl(articleImages[1])) {
+                setHeroImageUri(getNewsImageUrl(articleImages[1]));
+              } else {
+                setHeroImageUri(CAMPUS_FALLBACK_IMAGES[0]);
               }
             }}
           />
@@ -364,6 +520,7 @@ export default function HomeDetailScreen() {
 
       {/* ─── PHẦN CUỘN NỘI DUNG CHI TIẾT ───────────────────────────────── */}
       <ScrollView
+        ref={scrollRef}
         style={{ flex: 1 }}
         contentContainerStyle={{
           paddingHorizontal: 20,
@@ -536,35 +693,173 @@ export default function HomeDetailScreen() {
             style={{
               flexDirection: "row",
               alignItems: "center",
-              gap: 8,
+              justifyContent: "space-between",
               paddingBottom: 12,
               marginBottom: 14,
               borderBottomWidth: 1,
               borderBottomColor: "#F1F5F9",
             }}
           >
-            <Feather
-              name={isNews ? "file-text" : "clipboard"}
-              size={16}
-              color={isNews ? "#2563EB" : "#0F172A"}
-            />
-            <Text
-              style={{
-                fontSize: 13,
-                fontWeight: "900",
-                color: isNews ? "#1E40AF" : "#0F172A",
-                textTransform: "uppercase",
-                letterSpacing: 0.5,
-              }}
-            >
-              {isNews ? "Nội dung bài viết" : "Nội dung chi tiết thông báo"}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Feather
+                name={isNews ? "file-text" : "clipboard"}
+                size={16}
+                color={isNews ? "#2563EB" : "#0F172A"}
+              />
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: "900",
+                  color: isNews ? "#1E40AF" : "#0F172A",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                }}
+              >
+                {isNews ? "Nội dung bài viết" : "Nội dung chi tiết thông báo"}
+              </Text>
+            </View>
+
+            {loadingDetail ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <ActivityIndicator size="small" color={AppColors.primary} />
+                <Text style={{ fontSize: 11, color: AppColors.textMuted }}>Đang tải ảnh & bài viết...</Text>
+              </View>
+            ) : null}
           </View>
 
-          {/* Các đoạn nội dung bài viết thật */}
-          <View style={{ gap: 12 }}>
-            {parsedContent.length > 0 ? (
-              parsedContent.map((item, idx) => {
+          {/* Các đoạn nội dung và hình ảnh bài viết theo đúng vị trí gốc */}
+          <View style={{ gap: 14 }}>
+            {contentBlocks.length > 0 ? (
+              contentBlocks.map((block, idx) => {
+                if (block.type === "image" && block.url) {
+                  return (
+                    <View key={idx} style={{ marginVertical: 8 }}>
+                      <TouchableOpacity
+                        activeOpacity={0.9}
+                        onPress={() => {
+                          if (block.url) Linking.openURL(block.url);
+                        }}
+                        style={{
+                          borderRadius: 14,
+                          overflow: "hidden",
+                          backgroundColor: "#0F172A",
+                          borderWidth: 1,
+                          borderColor: "#E2E8F0",
+                        }}
+                      >
+                        <Image
+                          source={{
+                            uri: getNewsImageUrl(block.url),
+                            headers: {
+                              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                            },
+                          }}
+                          style={{ width: "100%", height: 230 }}
+                          resizeMode="cover"
+                        />
+                      </TouchableOpacity>
+                      {block.caption ? (
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            color: "#64748B",
+                            fontStyle: "italic",
+                            textAlign: "center",
+                            marginTop: 6,
+                            lineHeight: 18,
+                            paddingHorizontal: 8,
+                          }}
+                        >
+                          {block.caption}
+                        </Text>
+                      ) : null}
+                    </View>
+                  );
+                }
+
+                if (block.type === "text" && block.text) {
+                  // Bỏ qua nếu là tiêu đề lặp lại
+                  if (block.text.trim().toLowerCase() === title.trim().toLowerCase()) {
+                    return null;
+                  }
+
+                  const paras = parseArticleContent(block.text);
+                  return (
+                    <View key={idx} style={{ gap: 8 }}>
+                      {paras.map((p, pIdx) => {
+                        if (p.type === "heading") {
+                          return (
+                            <Text
+                              key={pIdx}
+                              style={{
+                                fontSize: baseFontSize + 1,
+                                fontWeight: "800",
+                                color: isNews ? "#1E40AF" : "#0F172A",
+                                lineHeight: baseLineHeight + 3,
+                                marginTop: 4,
+                              }}
+                            >
+                              {p.text}
+                            </Text>
+                          );
+                        }
+                        if (p.type === "bullet") {
+                          return (
+                            <View
+                              key={pIdx}
+                              style={{
+                                flexDirection: "row",
+                                alignItems: "flex-start",
+                                paddingLeft: 4,
+                                gap: 8,
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  fontSize: baseFontSize,
+                                  color: isNews ? "#2563EB" : "#0F172A",
+                                  fontWeight: "900",
+                                  lineHeight: baseLineHeight,
+                                }}
+                              >
+                                •
+                              </Text>
+                              <Text
+                                style={{
+                                  flex: 1,
+                                  fontSize: baseFontSize,
+                                  color: "#1E293B",
+                                  lineHeight: baseLineHeight,
+                                  fontWeight: "500",
+                                }}
+                              >
+                                {p.text}
+                              </Text>
+                            </View>
+                          );
+                        }
+                        return (
+                          <Text
+                            key={pIdx}
+                            style={{
+                              fontSize: baseFontSize,
+                              color: "#1E293B",
+                              lineHeight: baseLineHeight,
+                              fontWeight: "400",
+                            }}
+                          >
+                            {p.text}
+                          </Text>
+                        );
+                      })}
+                    </View>
+                  );
+                }
+
+                return null;
+              })
+            ) : contentToRender.length > 0 ? (
+              contentToRender.map((item, idx) => {
                 if (item.type === "heading") {
                   return (
                     <Text
@@ -644,112 +939,147 @@ export default function HomeDetailScreen() {
           </View>
         </View>
 
-        {/* Khối tài liệu & biểu mẫu đính kèm (nếu có trong RSS) */}
-        {parsedAttachments.length > 0 ? (
-          <View
-            style={{
-              backgroundColor: "#FFFFFF",
-              padding: 16,
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: "#E2E8F0",
-              marginBottom: 20,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.04,
-              shadowRadius: 6,
-              elevation: 1,
-            }}
-          >
+        {/* Khối tài liệu & biểu mẫu đính kèm (từ website hoặc RSS) */}
+        {(() => {
+          const finalAttachments = scrapedAttachments.length > 0 ? scrapedAttachments : parsedAttachments;
+          if (finalAttachments.length === 0) return null;
+
+          return (
             <View
               style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 8,
-                paddingBottom: 10,
-                marginBottom: 12,
-                borderBottomWidth: 1,
-                borderBottomColor: "#F1F5F9",
+                backgroundColor: "#FFFFFF",
+                padding: 16,
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: "#E2E8F0",
+                marginBottom: 20,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.04,
+                shadowRadius: 6,
+                elevation: 1,
               }}
             >
-              <Feather name="paperclip" size={16} color="#0F172A" />
-              <Text
+              <View
                 style={{
-                  fontSize: 13,
-                  fontWeight: "900",
-                  color: "#0F172A",
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  paddingBottom: 10,
+                  marginBottom: 12,
+                  borderBottomWidth: 1,
+                  borderBottomColor: "#F1F5F9",
                 }}
               >
-                Tài liệu & Biểu mẫu đính kèm
-              </Text>
-            </View>
-
-            <View style={{ gap: 10 }}>
-              {parsedAttachments.map((att, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  onPress={() => Linking.openURL(att.url)}
-                  activeOpacity={0.7}
+                <Feather name="paperclip" size={16} color="#0F172A" />
+                <Text
                   style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: 12,
-                    borderRadius: 12,
-                    backgroundColor: "#F8FAFC",
-                    borderWidth: 1,
-                    borderColor: "#E2E8F0",
+                    fontSize: 13,
+                    fontWeight: "900",
+                    color: "#0F172A",
+                    textTransform: "uppercase",
+                    letterSpacing: 0.5,
                   }}
                 >
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1, marginRight: 10 }}>
-                    <View
+                  Tài liệu & Biểu mẫu đính kèm ({finalAttachments.length})
+                </Text>
+              </View>
+
+              <View style={{ gap: 10 }}>
+                {finalAttachments.map((att, idx) => {
+                  const isDownloading = downloadingUrl === att.url;
+                  return (
+                    <TouchableOpacity
+                      key={idx}
+                      onPress={() => handleDownloadAttachment(att)}
+                      disabled={isDownloading}
+                      activeOpacity={0.7}
                       style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: 8,
-                        backgroundColor: att.isPdf ? "#FEE2E2" : "#EFF6FF",
+                        flexDirection: "row",
                         alignItems: "center",
-                        justifyContent: "center",
+                        justifyContent: "space-between",
+                        padding: 12,
+                        borderRadius: 14,
+                        backgroundColor: "#F8FAFC",
+                        borderWidth: 1,
+                        borderColor: isDownloading ? AppColors.primary : "#E2E8F0",
                       }}
                     >
-                      <Feather
-                        name={att.isPdf ? "file-text" : "external-link"}
-                        size={17}
-                        color={att.isPdf ? "#DC2626" : "#2563EB"}
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={{
-                          fontSize: 13,
-                          fontWeight: "700",
-                          color: "#1E293B",
-                        }}
-                        numberOfLines={1}
-                      >
-                        {att.title}
-                      </Text>
-                      <Text
-                        style={{
-                          fontSize: 11,
-                          color: AppColors.textMuted,
-                          marginTop: 2,
-                        }}
-                        numberOfLines={1}
-                      >
-                        {att.isPdf ? "Tập tin PDF • Chạm để mở / tải về" : att.url}
-                      </Text>
-                    </View>
-                  </View>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1, marginRight: 10 }}>
+                        <View
+                          style={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: 10,
+                            backgroundColor: att.isPdf ? "#FEE2E2" : "#EFF6FF",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          {isDownloading ? (
+                            <ActivityIndicator size="small" color={att.isPdf ? "#DC2626" : "#2563EB"} />
+                          ) : (
+                            <Feather
+                              name={att.isPdf ? "file-text" : "download"}
+                              size={18}
+                              color={att.isPdf ? "#DC2626" : "#2563EB"}
+                            />
+                          )}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text
+                            style={{
+                              fontSize: 13,
+                              fontWeight: "700",
+                              color: "#1E293B",
+                            }}
+                            numberOfLines={1}
+                          >
+                            {att.title}
+                          </Text>
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              color: isDownloading ? AppColors.primary : AppColors.textMuted,
+                              marginTop: 2,
+                              fontWeight: isDownloading ? "600" : "400",
+                            }}
+                            numberOfLines={1}
+                          >
+                            {isDownloading
+                              ? "Đang tải tệp về máy..."
+                              : `${att.size ? `${att.size} • ` : ""}Nhấn để tải trực tiếp`}
+                          </Text>
+                        </View>
+                      </View>
 
-                  <Feather name="arrow-up-right" size={16} color="#64748B" />
-                </TouchableOpacity>
-              ))}
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 4,
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 8,
+                          backgroundColor: isDownloading ? "#E2E8F0" : "#EFF6FF",
+                        }}
+                      >
+                        {isDownloading ? (
+                          <ActivityIndicator size="small" color="#2563EB" />
+                        ) : (
+                          <Feather name="download" size={13} color="#2563EB" />
+                        )}
+                        <Text style={{ fontSize: 11, fontWeight: "800", color: "#2563EB" }}>
+                          {isDownloading ? "Đang tải" : "Tải về"}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
-          </View>
-        ) : null}
+          );
+        })()}
 
         {/* Hộp chỉ dẫn sinh viên */}
         <View

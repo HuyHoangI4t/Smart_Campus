@@ -14,7 +14,7 @@ import { useRouter } from "expo-router";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
-import { apiGetSchedule } from "../../../src/services/api";
+import { apiGetSchedule, readLocalCache } from "../../../src/services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface ScheduleItem {
@@ -53,43 +53,57 @@ export function parseRoomDirections(roomRaw: string): RoomDirectionInfo {
   let buildingCode = "Tòa A";
   let floor = "Tầng 1";
   let mapQuery = "Tòa A";
+  let roomDisplay = room || "Phòng học";
 
-  if (
-    upper.includes("LAB") ||
-    upper.includes("NET") ||
-    upper.includes("MÁY TÍNH") ||
-    upper.includes("C")
-  ) {
-    building = "Tòa C - Trung tâm Thực hành CNTT & Labs";
-    buildingCode = "Tòa C";
-    mapQuery = "Tòa C";
-  } else if (upper.includes("B") || upper.includes("ENG-B")) {
-    building = "Tòa B - Khối Giảng đường Kỹ thuật";
-    buildingCode = "Tòa B";
-    mapQuery = "Tòa B";
-  } else if (upper.includes("A") || upper.includes("ENG-A")) {
-    building = "Tòa A - Giảng đường Lý thuyết";
-    buildingCode = "Tòa A";
-    mapQuery = "Tòa A";
-  } else if (upper.includes("D")) {
-    building = "Tòa D - Khu Đào tạo Quốc tế";
-    buildingCode = "Tòa D";
-    mapQuery = "Tòa D";
-  }
-
-  // Tách tầng dựa trên mã phòng (ví dụ B204 -> tầng 2, A102 -> tầng 1, 301 -> tầng 3)
-  const matchThreeOrFour = upper.match(/(\d{3,4})/);
-  if (matchThreeOrFour) {
-    const num = matchThreeOrFour[1];
-    const floorDigit = num.length === 3 ? num[0] : num.slice(0, 2);
-    floor = `Tầng ${floorDigit}`;
+  // 1. Dạng 3 phần: X.Y.Z (vd: 7.3.18 -> Nhà 7, Tầng 3, Phòng 18)
+  const match3 = upper.match(/^(\d+)\s*\.\s*(\d+)\s*\.\s*([0-9A-Z_-]+)(.*)/i);
+  if (match3) {
+    const bNum = match3[1];
+    const fNum = match3[2];
+    const rNum = match3[3];
+    const extra = match3[4] ? match3[4].trim() : "";
+    buildingCode = `Nhà ${bNum}`;
+    building = `Giảng đường ${buildingCode}`;
+    floor = `Tầng ${fNum}`;
+    roomDisplay = `Phòng ${rNum}${extra ? ` ${extra}` : ""}`;
+    mapQuery = buildingCode;
   } else {
-    const matchLabOrSingle =
-      upper.match(/LAB[-_\s]*0?(\d)/i) ||
-      upper.match(/TẦNG\s*(\d+)/i) ||
-      upper.match(/T(\d+)/i);
-    if (matchLabOrSingle) {
-      floor = `Tầng ${matchLabOrSingle[1]}`;
+    // 2. Dạng 2 phần: X.Z (vd: 2.20 -> Nhà 2, Phòng 20; 2.20 (CLC) -> Nhà 2, Phòng 20 (CLC))
+    const match2 = upper.match(/^(\d+)\s*\.\s*([0-9A-Z_-]+)(.*)/i);
+    if (match2) {
+      const bNum = match2[1];
+      const rNum = match2[2];
+      const extra = match2[3] ? match2[3].trim() : "";
+      buildingCode = `Nhà ${bNum}`;
+      floor = "";
+      roomDisplay = `Phòng ${rNum}${extra ? ` ${extra}` : ""}`;
+      mapQuery = buildingCode;
+    } else if (
+      upper.includes("LAB") ||
+      upper.includes("NET") ||
+      upper.includes("MÁY TÍNH") ||
+      (upper.includes("C") && !upper.includes("CLC"))
+    ) {
+      building = "Tòa C - Trung tâm Thực hành CNTT & Labs";
+      buildingCode = "Tòa C";
+      mapQuery = "Tòa C";
+      floor = "Tầng 3";
+    } else if (upper.includes("B") || upper.includes("ENG-B")) {
+      building = "Tòa B - Khối Giảng đường Kỹ thuật";
+      buildingCode = "Tòa B";
+      mapQuery = "Tòa B";
+      const bMatch = upper.match(/B\s*(\d+)/);
+      if (bMatch && bMatch[1]) floor = `Tầng ${bMatch[1][0]}`;
+    } else if (upper.includes("A") || upper.includes("ENG-A")) {
+      building = "Tòa A - Giảng đường Lý thuyết";
+      buildingCode = "Tòa A";
+      mapQuery = "Tòa A";
+      const aMatch = upper.match(/A\s*(\d+)/);
+      if (aMatch && aMatch[1]) floor = `Tầng ${aMatch[1][0]}`;
+    } else if (upper.includes("D")) {
+      building = "Tòa D - Khu Đào tạo Quốc tế";
+      buildingCode = "Tòa D";
+      mapQuery = "Tòa D";
     }
   }
 
@@ -106,28 +120,38 @@ export function parseRoomDirections(roomRaw: string): RoomDirectionInfo {
       desc: `Bước vào sảnh chính ${buildingCode}, có thể tra cứu sơ đồ phân phòng tại bảng thông báo sảnh.`,
       icon: "home",
     },
-    {
+  ];
+
+  if (floor) {
+    steps.push({
       step: 3,
       title: `Lên ${floor}`,
       desc: `Sử dụng thang bộ hoặc thang máy khu vực hành lang chính để di chuyển lên ${floor}.`,
       icon: "arrow-up-circle",
-    },
-    {
+    });
+    steps.push({
       step: 4,
-      title: `Đến phòng ${room || "học"}`,
-      desc: `Rẽ theo biển báo số phòng dọc hành lang ${floor}, phòng ${room || "học"} nằm ở vị trí tương ứng.`,
+      title: `Đến ${roomDisplay}`,
+      desc: `Rẽ theo biển báo số phòng dọc hành lang ${floor}, ${roomDisplay} nằm ở vị trí tương ứng.`,
       icon: "map-pin",
-    },
-  ];
+    });
+  } else {
+    steps.push({
+      step: 3,
+      title: `Đến ${roomDisplay}`,
+      desc: `Đi theo biển chỉ dẫn số phòng tại khu vực ${buildingCode}, ${roomDisplay} nằm ở vị trí tương ứng.`,
+      icon: "map-pin",
+    });
+  }
 
   const tips = [
-    `Cây nước nóng lạnh và nhà vệ sinh nằm ở hai đầu hành lang ${floor}.`,
+    `Cây nước nóng lạnh và nhà vệ sinh nằm ở hai đầu hành lang.`,
     `Thang máy thường đông vào đầu ca học, bạn có thể đi thang bộ để nhanh hơn.`,
     `Nên đến trước giờ vào lớp 5 - 10 phút để ổn định vị trí và điểm danh.`,
   ];
 
   return {
-    room: room || "Phòng học",
+    room: roomDisplay,
     building,
     buildingCode,
     floor,
@@ -156,9 +180,15 @@ const DAYS = [
   { label: "CN", num: 1 },
 ];
 
+const getTodayDayNum = () => {
+  const jsDay = new Date().getDay();
+  return jsDay === 0 ? 1 : jsDay + 1; // 1: CN, 2: T2, 3: T3, 4: T4...
+};
+
 export default function ScheduleScreen() {
   const router = useRouter();
-  const [selectedDay, setSelectedDay] = useState(2);
+  const todayDayNum = getTodayDayNum();
+  const [selectedDay, setSelectedDay] = useState(todayDayNum);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [scheduleList, setScheduleList] = useState<ScheduleItem[]>(FALLBACK_SCHEDULE);
@@ -181,6 +211,16 @@ export default function ScheduleScreen() {
       }
 
       const isRealAccount = mssv && mssv !== "guest";
+      const cacheKey = `@offline_schedule_${isRealAccount ? mssv : 'current'}`;
+      const cached = await readLocalCache<any>(cacheKey);
+      if (cached && cached.data) {
+        if (cached.data.weekRange) setWeekRangeText(cached.data.weekRange);
+        if (cached.data.schedules && cached.data.schedules.length > 0) {
+          setScheduleList(cached.data.schedules);
+          setLoading(false);
+        }
+      }
+
       const res = await apiGetSchedule(isRealAccount ? mssv : undefined);
 
       if (res && res.isOfflineCache) {
@@ -264,10 +304,12 @@ export default function ScheduleScreen() {
     : null;
 
   const handleOpenCampusMap = (query: string) => {
+    const room = selectedScheduleForDirection?.room || "";
+    const subject = selectedScheduleForDirection?.course || "";
     setSelectedScheduleForDirection(null);
     router.push({
       pathname: "/(main)/map",
-      params: { search: query },
+      params: { search: query, room, subject },
     });
   };
 
@@ -290,6 +332,7 @@ export default function ScheduleScreen() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
           {DAYS.map((d) => {
             const isSelected = d.num === selectedDay;
+            const isToday = d.num === todayDayNum;
             return (
               <TouchableOpacity
                 key={d.num}
@@ -299,11 +342,27 @@ export default function ScheduleScreen() {
                   paddingVertical: 8,
                   paddingHorizontal: 16,
                   borderRadius: 20,
-                  backgroundColor: isSelected ? AppColors.primary : AppColors.muted,
+                  backgroundColor: isSelected
+                    ? AppColors.primary
+                    : isToday
+                    ? "#EFF6FF"
+                    : AppColors.muted,
+                  borderWidth: isToday && !isSelected ? 1.5 : 0,
+                  borderColor: isToday && !isSelected ? AppColors.primary : "transparent",
                 }}
               >
-                <Text style={{ fontSize: 13, fontWeight: "700", color: isSelected ? "#FFFFFF" : AppColors.textSecondary }}>
-                  {d.label}
+                <Text
+                  style={{
+                    fontSize: 13,
+                    fontWeight: "700",
+                    color: isSelected
+                      ? "#FFFFFF"
+                      : isToday
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
+                  }}
+                >
+                  {d.label}{isToday ? " • Nay" : ""}
                 </Text>
               </TouchableOpacity>
             );
@@ -502,9 +561,6 @@ export default function ScheduleScreen() {
                 <View>
                   <Text style={{ fontSize: 16, fontWeight: "800", color: AppColors.text }}>
                     Chỉ đường phòng học
-                  </Text>
-                  <Text style={{ fontSize: 12, color: AppColors.textMuted }}>
-                    Hướng dẫn di chuyển & định vị phòng học
                   </Text>
                 </View>
               </View>

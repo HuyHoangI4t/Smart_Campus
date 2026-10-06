@@ -133,7 +133,7 @@ export default function GradesDetailScreen() {
         >
           <Feather name="search" size={18} color={AppColors.textMuted} style={{ marginRight: 8 }} />
           <TextInput
-            placeholder="Tìm theo tên môn hoặc mã học phần..."
+            placeholder="Tìm theo tên môn học..."
             placeholderTextColor={AppColors.textMuted}
             value={search}
             onChangeText={setSearch}

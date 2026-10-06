@@ -11,7 +11,7 @@ import {
   Modal,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+//import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -48,14 +48,6 @@ interface NextClassInfo {
   statusBadgeColor: string;
 }
 
-const DEFAULT_SCHEDULE_FALLBACK = [
-  { course: "Cấu trúc dữ liệu & Giải thuật", room: "ENG-B204", time: "Tiết 1-3 (07:00 – 09:30)", day: "Thứ 2", dayNum: 2, lecturer: "ThS. Nguyễn Văn A" },
-  { course: "Lập trình thiết bị di động", room: "LAB-03", time: "Tiết 4-5 (09:40 – 11:15)", day: "Thứ 2", dayNum: 2, lecturer: "TS. Trần Thị B" },
-  { course: "Hệ cơ sở dữ liệu", room: "ENG-A102", time: "Tiết 7-9 (13:30 – 15:30)", day: "Thứ 3", dayNum: 3, lecturer: "ThS. Lê Hoàng C" },
-  { course: "Mạng máy tính & Truyền thông", room: "NET-LAB", time: "Tiết 1-3 (07:30 – 10:00)", day: "Thứ 4", dayNum: 4, lecturer: "TS. Phạm Văn D" },
-  { course: "An toàn thông tin mạng", room: "ENG-B301", time: "Tiết 4-5 (10:15 – 11:45)", day: "Thứ 5", dayNum: 5, lecturer: "ThS. Vũ Thị E" },
-  { course: "Đồ án chuyên ngành", room: "ENG-B101", time: "Tiết 1-5 (07:30 – 11:30)", day: "Thứ 6", dayNum: 6, lecturer: "Hội đồng bộ môn" },
-];
 
 function getPeriodMinutes(startPeriod: number, endPeriod: number) {
   const periodTimes: Record<number, { start: number; end: number }> = {
@@ -130,12 +122,13 @@ function computeNextClass(rawSchedules: any[]): NextClassInfo | null {
   const now = new Date();
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const jsDay = now.getDay();
-  const todayNum = jsDay === 0 ? 1 : jsDay + 1; // 0 (CN) -> 1, 1 (T2) -> 2, ..., 6 (T7) -> 7
+  const todayNum = jsDay === 0 ? 1 : jsDay + 1; // 1 (CN), 2 (T2), ..., 7 (T7)
+  const tomorrowNum = (todayNum % 7) + 1; // Thứ ngày mai (1..7)
 
   const normalized = rawSchedules.map((item, idx) => {
     let dayNum = item.dayNum;
     if (!dayNum) {
-      const lowerDay = (item.day || item.code || "").toLowerCase();
+      const lowerDay = (item.day || item.code || item.thu || "").toLowerCase();
       if (lowerDay.includes("thứ 3") || lowerDay.includes("thứ ba")) dayNum = 3;
       else if (lowerDay.includes("thứ 4") || lowerDay.includes("thứ tư")) dayNum = 4;
       else if (lowerDay.includes("thứ 5") || lowerDay.includes("thứ năm")) dayNum = 5;
@@ -146,19 +139,40 @@ function computeNextClass(rawSchedules: any[]): NextClassInfo | null {
       else dayNum = 2;
     }
 
-    const timeStr = item.time || "";
+    const timeStr = item.time || (item.tiet ? `Tiết ${item.tiet}` : "");
     const range = parseClassTimeRange(timeStr);
+
+    const rawTiet = item.tiet || item.period || "";
+    let periodText = "";
+    if (rawTiet) {
+      periodText = String(rawTiet).startsWith("Tiết") ? String(rawTiet) : `Tiết ${rawTiet}`;
+    } else if (timeStr) {
+      const match = timeStr.match(/tiết\s*([\d\s*–—-]+)/i);
+      if (match) {
+        periodText = `Tiết ${match[1].replace(/\s+/g, "")}`;
+      } else {
+        const rangeMatch = timeStr.match(/(\d+)\s*[-–—]\s*(\d+)/);
+        if (rangeMatch) {
+          periodText = `Tiết ${rangeMatch[1]}-${rangeMatch[2]}`;
+        } else {
+          periodText = timeStr.startsWith("Tiết") ? timeStr : `Tiết ${timeStr}`;
+        }
+      }
+    } else {
+      periodText = "Tiết 1-4";
+    }
 
     return {
       id: item.id || idx,
-      subject: item.course || item.subject || "Môn học",
-      room: item.room || "Khu giảng đường",
-      time: timeStr || "Ca học tiêu chuẩn",
+      subject: item.course || item.subject || item.ten_hp || "Môn học",
+      room: item.room || item.phong || "Khu giảng đường",
+      time: periodText,
+      period: periodText,
       dayNum,
-      day: item.day || item.code || `Thứ ${dayNum}`,
+      day: item.day || item.code || item.thu || `Thứ ${dayNum}`,
       startMinutes: range.startMinutes,
       endMinutes: range.endMinutes,
-      lecturer: item.lecturer || "",
+      lecturer: item.lecturer || item.giang_vien || "",
     };
   });
 
@@ -201,9 +215,29 @@ function computeNextClass(rawSchedules: any[]): NextClassInfo | null {
     };
   }
 
-  // 2. Nếu đã qua hết giờ học hôm nay (hoặc hôm nay không có lịch):
-  // Lấy thời khóa biểu ngày hôm sau và môn học kế tiếp
-  for (let offset = 1; offset <= 7; offset++) {
+  // 2. NẾU ĐÃ HẾT GIỜ HỌC HÔM NAY HOẶC HÔM NAY KHÔNG CÓ LỊCH:
+  // ƯU TIÊN HIỂN THỊ LỊCH HỌC NGÀY MAI
+  const tomorrowClasses = normalized
+    .filter((c) => c.dayNum === tomorrowNum)
+    .sort((a, b) => a.startMinutes - b.startMinutes);
+
+  if (tomorrowClasses.length > 0) {
+    const firstTomorrowClass = tomorrowClasses[0];
+    const tomorrowDayName = getDayNameFromNum(tomorrowNum);
+    return {
+      subject: firstTomorrowClass.subject,
+      room: firstTomorrowClass.room,
+      time: firstTomorrowClass.time,
+      lecturer: firstTomorrowClass.lecturer,
+      dayText: "Ngày mai",
+      status: "NEXT_DAY",
+      statusLabel: `LỊCH HỌC NGÀY MAI (${tomorrowDayName.toUpperCase()})`,
+      statusBadgeColor: "#A855F7", // Tím
+    };
+  }
+
+  // 3. Nếu ngày mai không có tiết, tìm ngày tiếp theo gần nhất
+  for (let offset = 2; offset <= 7; offset++) {
     const nextDayNum = ((todayNum - 1 + offset) % 7) + 1;
     const nextDayClasses = normalized
       .filter((c) => c.dayNum === nextDayNum)
@@ -211,7 +245,6 @@ function computeNextClass(rawSchedules: any[]): NextClassInfo | null {
 
     if (nextDayClasses.length > 0) {
       const firstClassNextDay = nextDayClasses[0];
-      const isTomorrow = offset === 1;
       const dayName = getDayNameFromNum(nextDayNum);
 
       return {
@@ -219,26 +252,15 @@ function computeNextClass(rawSchedules: any[]): NextClassInfo | null {
         room: firstClassNextDay.room,
         time: firstClassNextDay.time,
         lecturer: firstClassNextDay.lecturer,
-        dayText: isTomorrow ? "Ngày mai" : dayName,
+        dayText: dayName,
         status: "NEXT_DAY",
-        statusLabel: isTomorrow ? "LỊCH HỌC NGÀY MAI" : `MÔN KẾ TIẾP • ${dayName.toUpperCase()}`,
-        statusBadgeColor: "#C084FC", // Tím
+        statusLabel: `LỊCH HỌC ${dayName.toUpperCase()}`,
+        statusBadgeColor: "#8B5CF6", // Tím
       };
     }
   }
 
-  // Fallback nếu không có ngày nào
-  const fallback = normalized[0];
-  return {
-    subject: fallback.subject,
-    room: fallback.room,
-    time: fallback.time,
-    lecturer: fallback.lecturer,
-    dayText: fallback.day,
-    status: "NEXT_DAY",
-    statusLabel: "LỚP HỌC KẾ TIẾP",
-    statusBadgeColor: "#C084FC",
-  };
+  return null;
 }
 
 function NewsCardImage({ imageUrl, index }: { imageUrl?: string; index: number }) {
@@ -278,7 +300,44 @@ export interface NotificationAlertItem {
   actionScreen?: string;
 }
 
-const DEFAULT_NOTIFICATION_ALERTS: NotificationAlertItem[] = [];
+
+const DEFAULT_NOTIFICATION_ALERTS: NotificationAlertItem[] = [
+  {
+    id: "alert-1",
+    type: "feedback",
+    variant: "success",
+    icon: "check",
+    title: "Phản hồi CSVC đã được giải quyết",
+    subtitle: "1 giờ trước • Cơ sở chính",
+    date: "1 giờ trước • Cơ sở chính",
+    status: "Đã giải quyết",
+    content: "Phản hồi về thiết bị phòng học đã được bộ phận kỹ thuật xử lý hoàn tất.",
+    actionScreen: "feedback",
+  },
+  {
+    id: "alert-2",
+    type: "sos",
+    variant: "warning",
+    icon: "alert-triangle",
+    title: "Thay đổi phòng học môn Lập trình di động",
+    subtitle: "Hôm nay • Phòng B204 -> C102",
+    date: "Hôm nay • Phòng B204 -> C102",
+    status: "Cảnh báo",
+    content: "Học phần Lập trình thiết bị di động tiết 1-4 chuyển sang phòng C102.",
+    actionScreen: "schedule",
+  },
+  {
+    id: "alert-3",
+    type: "school_notice",
+    variant: "info",
+    icon: "info",
+    title: "Bảo trì hệ thống thư viện",
+    subtitle: "Hôm qua • P. Quản trị TB",
+    date: "Hôm qua • P. Quản trị TB",
+    status: "Thông báo",
+    content: "Hệ thống tra cứu số và phòng tự học thư viện tạm ngừng để nâng cấp máy chủ từ 22h00.",
+  },
+];
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -304,6 +363,41 @@ export default function HomeScreen() {
   // 3 mục Thông báo & Cảnh báo (Phản hồi CSVC, SOS/Đổi phòng, Thông báo trường)
   const [notificationAlerts, setNotificationAlerts] = useState<NotificationAlertItem[]>(DEFAULT_NOTIFICATION_ALERTS);
   const [selectedAlertForModal, setSelectedAlertForModal] = useState<NotificationAlertItem | null>(null);
+
+  // Chuyển ngày tháng thành timestamp mili-giây để sắp xếp
+  const parseArticleTimestamp = (item: any): number => {
+    if (!item) return 0;
+    if (item.rawDate) {
+      const t = new Date(item.rawDate).getTime();
+      if (!isNaN(t) && t > 0) return t;
+    }
+    if (item.pubDate) {
+      const t = new Date(item.pubDate).getTime();
+      if (!isNaN(t) && t > 0) return t;
+    }
+    if (item.pub_date) {
+      const t = new Date(item.pub_date).getTime();
+      if (!isNaN(t) && t > 0) return t;
+    }
+    if (item.date && typeof item.date === "string") {
+      const dmy = item.date.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (dmy) {
+        return new Date(parseInt(dmy[3], 10), parseInt(dmy[2], 10) - 1, parseInt(dmy[1], 10)).getTime();
+      }
+      const t = new Date(item.date).getTime();
+      if (!isNaN(t) && t > 0) return t;
+    }
+    return 0;
+  };
+
+  // Sắp xếp bài viết ngày mới nhất lên đầu tiên
+  const sortByNewestDate = (items: NewsOrAnnouncementItem[]): NewsOrAnnouncementItem[] => {
+    return [...items].sort((a, b) => {
+      const tA = parseArticleTimestamp(a);
+      const tB = parseArticleTimestamp(b);
+      return tB - tA;
+    });
+  };
 
   // Hàm lọc bài viết trùng tiêu đề hoặc trùng link URL
   const deduplicateArticles = (items: NewsOrAnnouncementItem[]) => {
@@ -331,7 +425,7 @@ export default function HomeScreen() {
       if (normUrl) seenUrls.add(normUrl);
       uniqueItems.push(item);
     }
-    return uniqueItems;
+    return sortByNewestDate(uniqueItems);
   };
 
   const applyData = (dashRes: any, scheduleRes: any, newsRes: any, isRealAccount = true) => {
@@ -340,7 +434,7 @@ export default function HomeScreen() {
       if (dashRes.student && isRealAccount) {
         setStudent((prev) => ({ ...prev, ...dashRes.student }));
       }
-      if (Array.isArray(dashRes.notificationAlerts)) {
+      if (Array.isArray(dashRes.notificationAlerts) && dashRes.notificationAlerts.length > 0) {
         setNotificationAlerts(dashRes.notificationAlerts);
       }
     }
@@ -368,37 +462,53 @@ export default function HomeScreen() {
         }
       }
 
-      if (rawScheduleList.length === 0) {
-        rawScheduleList = DEFAULT_SCHEDULE_FALLBACK;
-      }
-
-      const computed = computeNextClass(rawScheduleList);
-      if (computed) {
-        setNextClass(computed);
+      if (rawScheduleList.length > 0) {
+        const computed = computeNextClass(rawScheduleList);
+        if (computed) {
+          setNextClass(computed);
+        }
+      } else if (scheduleRes.nextClass) {
+        const rawT = scheduleRes.nextClass.time || "";
+        const periodStr = rawT.startsWith("Tiết") ? rawT : (rawT ? `Tiết ${rawT}` : "Tiết 1-4");
+        setNextClass({
+          subject: scheduleRes.nextClass.subject || "Môn học",
+          room: scheduleRes.nextClass.room || "Khu giảng đường",
+          time: periodStr,
+          lecturer: scheduleRes.nextClass.lecturer,
+          dayText: scheduleRes.nextClass.dayText || "Ngày mai",
+          status: scheduleRes.nextClass.status || "NEXT_DAY",
+          statusLabel: scheduleRes.nextClass.statusLabel || "LỊCH HỌC NGÀY MAI",
+          statusBadgeColor:
+            scheduleRes.nextClass.status === "IN_PROGRESS"
+              ? "#10B981"
+              : scheduleRes.nextClass.status === "UPCOMING_TODAY"
+              ? "#3B82F6"
+              : "#A855F7",
+        });
       }
     }
 
-    // 3. Thông báo & Tin tức
+    // 3. Thông báo & Tin tức (Sắp xếp ngày mới nhất lên đầu tiên)
     if (newsRes && newsRes.success) {
       let rawAnnouncements: NewsOrAnnouncementItem[] = [];
-      if (Array.isArray(newsRes.latestAnnouncements) && newsRes.latestAnnouncements.length > 0) {
-        rawAnnouncements = newsRes.latestAnnouncements;
-      } else if (Array.isArray(newsRes.announcements) && newsRes.announcements.length > 0) {
+      if (Array.isArray(newsRes.announcements) && newsRes.announcements.length > 0) {
         rawAnnouncements = newsRes.announcements;
       } else if (Array.isArray(newsRes.data)) {
         rawAnnouncements = newsRes.data.filter((i: any) => i.type === "announcement");
+      } else if (Array.isArray(newsRes.latestAnnouncements) && newsRes.latestAnnouncements.length > 0) {
+        rawAnnouncements = newsRes.latestAnnouncements;
       }
-      setLatestAnnouncements(deduplicateArticles(rawAnnouncements).slice(0, 3));
+      setLatestAnnouncements(sortByNewestDate(deduplicateArticles(rawAnnouncements)).slice(0, 3));
 
       let rawNews: NewsOrAnnouncementItem[] = [];
-      if (Array.isArray(newsRes.latestNews) && newsRes.latestNews.length > 0) {
-        rawNews = newsRes.latestNews;
-      } else if (Array.isArray(newsRes.news) && newsRes.news.length > 0) {
+      if (Array.isArray(newsRes.news) && newsRes.news.length > 0) {
         rawNews = newsRes.news;
       } else if (Array.isArray(newsRes.data)) {
         rawNews = newsRes.data.filter((i: any) => i.type === "news");
+      } else if (Array.isArray(newsRes.latestNews) && newsRes.latestNews.length > 0) {
+        rawNews = newsRes.latestNews;
       }
-      setLatestNews(deduplicateArticles(rawNews).slice(0, 3));
+      setLatestNews(sortByNewestDate(deduplicateArticles(rawNews)).slice(0, 3));
     }
 
     const offline = Boolean(scheduleRes?.isOfflineCache || newsRes?.isOfflineCache || dashRes?.isOfflineCache);
@@ -461,6 +571,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onRefresh = async () => {
@@ -474,9 +585,22 @@ export default function HomeScreen() {
     else router.push(`/(main)/${screen}` as any);
   };
 
+  const handleOpenMapDirections = () => {
+    const room = nextClass?.room || "";
+    const subject = nextClass?.subject || "";
+    router.push({
+      pathname: "/(main)/map",
+      params: {
+        room,
+        subject,
+        search: room,
+      },
+    });
+  };
+
   // Mở màn hình chi tiết bài viết / thông báo
   const openDetail = (item: NewsOrAnnouncementItem, idx = 0) => {
-    const finalImgUrl = getNewsImageUrl(item.imageUrl, idx);
+    const finalImgUrl = item.imageUrl ? getNewsImageUrl(item.imageUrl, idx) : "";
     router.push({
       pathname: "/(main)/home/home_detail",
       params: {
@@ -504,42 +628,43 @@ export default function HomeScreen() {
   };
 
   const quickActions = [
-    { icon: "navigation" as const, label: "Bản đồ", screen: "map", bg: "#EFF6FF", fg: "#2563EB" },
-    { icon: "calendar" as const, label: "Lịch học", screen: "schedule", bg: "#ECFDF5", fg: "#059669" },
-    { icon: "message-square" as const, label: "Phản hồi", screen: "feedback", bg: "#FEF3C7", fg: "#D97706" },
-    { icon: "bar-chart-2" as const, label: "Kết quả", screen: "grades", bg: "#F3E8FF", fg: "#7C3AED" },
+    { icon: "navigation" as const, label: "Bản đồ", screen: "map", bg: "#EEF2FF", border: "#E0E7FF", fg: "#6366F1" },
+    { icon: "calendar" as const, label: "Lịch học", screen: "schedule", bg: "#E0F2FE", border: "#BAE6FD", fg: "#0284C7" },
+    { icon: "message-square" as const, label: "Phản hồi", screen: "feedback", bg: "#FEF3C7", border: "#FDE68A", fg: "#D97706" },
+    { icon: "bar-chart-2" as const, label: "Kết quả", screen: "grades", bg: "#DCFCE7", border: "#BBF7D0", fg: "#16A34A" },
   ];
 
   return (
-    <View style={{ flex: 1, backgroundColor: AppColors.background }}>
-      <StatusBar barStyle="light-content" backgroundColor={AppColors.primary} translucent={Platform.OS === "android"} />
+    <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
+      <StatusBar barStyle="light-content" backgroundColor="#0F2964" translucent={Platform.OS === "android"} />
 
-      {/* ─── FIXED HEADER (BẢO VỆ VÙNG TAI THỎ & STATUS BAR KHÔNG BỊ TRÀN) ─── */}
-      <LinearGradient
-        colors={[AppColors.primary, AppColors.primaryLight]}
+      {/* ─── HEADER NAVY BLUE CHỨA THÔNG TIN SINH VIÊN VÀ LỚP HỌC KẾ TIẾP ─── */}
+      <View
         style={{
+          backgroundColor: "#0F2964",
           paddingTop: topPadding,
-          paddingBottom: 14,
+          paddingBottom: 18,
           paddingHorizontal: 20,
           zIndex: 10,
-          borderBottomLeftRadius: 18,
-          borderBottomRightRadius: 18,
+          borderBottomLeftRadius: 24,
+          borderBottomRightRadius: 24,
           shadowColor: "#000",
-          shadowOffset: { width: 0, height: 3 },
+          shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.12,
-          shadowRadius: 6,
-          elevation: 4,
+          shadowRadius: 10,
+          elevation: 5,
         }}
       >
-        <View style={[s.row, s.between, { alignItems: "center" }]}>
+        {/* Top user row */}
+        <View style={[s.row, s.between, { alignItems: "center", marginBottom: 14 }]}>
           <View style={{ flex: 1, marginRight: 12 }}>
             <Text
               style={{
-                color: "rgba(255,255,255,0.75)",
+                color: "rgba(255,255,255,0.72)",
                 fontSize: 11,
                 fontWeight: "700",
                 textTransform: "uppercase",
-                letterSpacing: 0.5,
+                letterSpacing: 0.6,
               }}
               numberOfLines={1}
             >
@@ -560,25 +685,40 @@ export default function HomeScreen() {
             </Text>
           </View>
 
-          <View style={s.row}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
             <TouchableOpacity
               onPress={() => onNavigate("sos")}
               activeOpacity={0.8}
-              style={[s.iconBtn, { backgroundColor: AppColors.danger, marginRight: 8 }]}
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 19,
+                backgroundColor: "#EF4444",
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#EF4444",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.3,
+                shadowRadius: 4,
+                elevation: 3,
+              }}
             >
               <Feather name="shield" size={17} color="#fff" />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => onNavigate("profile")}
               activeOpacity={0.8}
-              style={[
-                s.iconBtn,
-                {
-                  backgroundColor: "rgba(255,255,255,0.18)",
-                  overflow: "hidden",
-                  padding: student.avatar ? 0 : 8,
-                },
-              ]}
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 19,
+                backgroundColor: "rgba(255,255,255,0.16)",
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.25)",
+                overflow: "hidden",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
               {student.avatar ? (
                 <Image
@@ -591,9 +731,115 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </LinearGradient>
 
-      {/* ─── CUỘN NỘI DUNG BÊN DƯỚI HEADER CỐ ĐỊNH ─────────────────────── */}
+        {/* LỚP HỌC KẾ TIẾP / LỊCH HỌC NGÀY MAI CARD LỒNG BÊN TRONG HEADER */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={handleOpenMapDirections}
+          style={{
+            backgroundColor: "rgba(255, 255, 255, 0.08)",
+            borderWidth: 1,
+            borderColor: "rgba(255, 255, 255, 0.14)",
+            borderRadius: 16,
+            padding: 14,
+          }}
+        >
+          {/* Row 1: dot + statusLabel + Phòng & giờ */}
+          <View style={[s.row, s.between, { alignItems: "center", marginBottom: 6 }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <View
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: 3.5,
+                  backgroundColor: nextClass?.statusBadgeColor || "#A855F7",
+                }}
+              />
+              <Text
+                style={{
+                  color: "#FFFFFF",
+                  fontSize: 11,
+                  fontWeight: "800",
+                  letterSpacing: 0.5,
+                }}
+              >
+                {nextClass?.statusLabel || "NGÀY MAI"}
+              </Text>
+            </View>
+            <Text style={{ color: "rgba(255,255,255,0.75)", fontSize: 11, fontWeight: "600" }}>
+              {nextClass
+                ? `${nextClass.room ? `${nextClass.room} ` : ""}`
+                : "Bản đồ trường"}
+            </Text>
+          </View>
+
+          {/* Row 2: Tên môn học + Badge tiết */}
+          <View style={[s.row, s.between, { alignItems: "center", marginBottom: 8 }]}>
+            <Text
+              style={{
+                color: "#FFFFFF",
+                fontSize: 15.5,
+                fontWeight: "900",
+                flex: 1,
+                marginRight: 10,
+              }}
+              numberOfLines={1}
+            >
+              {nextClass?.subject || "Không có ca học nào trong ngày mai"}
+            </Text>
+            <View
+              style={{
+                backgroundColor: "rgba(255,255,255,0.18)",
+                paddingHorizontal: 8,
+                paddingVertical: 2.5,
+                borderRadius: 8,
+              }}
+            >
+              <Text style={{ color: "#FFFFFF", fontSize: 11, fontWeight: "800" }}>
+                {nextClass ? (nextClass.time.startsWith("Tiết") ? nextClass.time : `Tiết ${nextClass.time}`) : "Nghỉ"}
+              </Text>
+            </View>
+          </View>
+
+          {/* Row 3: Giảng viên + Chỉ đường → */}
+          <View style={[s.row, s.between, { alignItems: "center" }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1, marginRight: 8 }}>
+              <Feather name="user" size={12} color="rgba(255,255,255,0.7)" />
+              <Text
+                style={{
+                  color: "rgba(255,255,255,0.85)",
+                  fontSize: 12,
+                  fontWeight: "600",
+                }}
+                numberOfLines={1}
+              >
+                {nextClass?.lecturer ? nextClass.lecturer : (nextClass ? "Giảng viên bộ môn" : "Mở bản đồ trường")}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={handleOpenMapDirections}
+              activeOpacity={0.7}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+                backgroundColor: "rgba(255,255,255,0.18)",
+                paddingHorizontal: 9,
+                paddingVertical: 3.5,
+                borderRadius: 12,
+              }}
+            >
+              <Feather name="navigation" size={11} color="#93C5FD" />
+              <Text style={{ color: "#93C5FD", fontSize: 12, fontWeight: "800" }}>
+                Chỉ đường →
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      {/* ─── CUỘN NỘI DUNG BÊN DƯỚI HEADER ─────────────────────── */}
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: 120, paddingTop: 16 }}
@@ -602,8 +848,8 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={AppColors.primary}
-            colors={[AppColors.primary]}
+            tintColor="#0F2964"
+            colors={["#0F2964"]}
           />
         }
       >
@@ -624,108 +870,17 @@ export default function HomeScreen() {
             >
               <Feather name="wifi-off" size={15} color="#D97706" style={{ marginRight: 8 }} />
               <Text style={{ fontSize: 12, color: "#92400E", fontWeight: "600", flex: 1 }}>
-                Đang xem bản lưu ngoại tuyến {cachedAt ? `(lưu lúc ${cachedAt})` : ""} • Vuốt xuống để cập nhật lại
+                Đang xem bản lưu ngoại tuyến {cachedAt ? `(lưu lúc ${cachedAt})` : ""}
               </Text>
             </View>
           )}
 
-          {/* Lớp học tiếp theo Preview Card */}
-          <LinearGradient
-            colors={[AppColors.primary, AppColors.primaryLight]}
-            style={{
-              padding: 16,
-              borderRadius: 16,
-              marginBottom: 18,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.08,
-              shadowRadius: 6,
-              elevation: 2,
-            }}
-          >
-            <View style={[s.row, s.between, { marginBottom: 6 }]}>
-              <View style={s.row}>
-                <View
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: nextClass?.statusBadgeColor || AppColors.success,
-                    marginRight: 6,
-                  }}
-                />
-                <Text
-                  style={{
-                    color: "rgba(255,255,255,0.95)",
-                    fontSize: 11,
-                    fontWeight: "900",
-                    letterSpacing: 0.4,
-                  }}
-                >
-                  {nextClass?.statusLabel || "LỚP HỌC KẾ TIẾP"}
-                </Text>
-              </View>
-              <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 11, fontWeight: "600" }}>
-                {nextClass?.dayText ? `${nextClass.dayText} • ` : ""}{nextClass?.time || "Hôm nay"}
-              </Text>
-            </View>
-
-            <Text
-              style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "900", marginBottom: 6 }}
-              numberOfLines={1}
-            >
-              {nextClass?.subject || "Kiểm tra lịch học trong tuần"}
-            </Text>
-
-            <View style={[s.row, s.between, { alignItems: "center" }]}>
-              <View style={s.row}>
-                <Feather
-                  name="map-pin"
-                  size={12}
-                  color="rgba(255,255,255,0.75)"
-                  style={{ marginRight: 4 }}
-                />
-                <Text
-                  style={{
-                    color: "rgba(255,255,255,0.85)",
-                    fontSize: 12,
-                    fontWeight: "600",
-                  }}
-                >
-                  {nextClass?.room || "Khu giảng đường"}
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => {
-                  router.push({
-                    pathname: "/(main)/map",
-                    params: { search: nextClass?.room || "" },
-                  });
-                }}
-                activeOpacity={0.8}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  backgroundColor: "rgba(255,255,255,0.2)",
-                  paddingHorizontal: 10,
-                  paddingVertical: 5,
-                  borderRadius: 10,
-                  gap: 4,
-                }}
-              >
-                <Feather name="navigation" size={12} color="#FFFFFF" />
-                <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "800" }}>
-                  Chỉ đường →
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </LinearGradient>
           {/* TÁC VỤ NHANH */}
           <Text
             style={{
-              fontSize: 15,
+              fontSize: 16,
               fontWeight: "900",
-              color: "#1E293B",
+              color: "#0F172A",
               marginBottom: 12,
               paddingHorizontal: 4,
             }}
@@ -743,15 +898,15 @@ export default function HomeScreen() {
               >
                 <View
                   style={{
-                    width: 54,
-                    height: 54,
+                    width: 58,
+                    height: 58,
                     borderRadius: 16,
                     backgroundColor: qa.bg,
+                    borderWidth: 1,
+                    borderColor: qa.border,
                     alignItems: "center",
                     justifyContent: "center",
                     marginBottom: 6,
-                    borderWidth: 1,
-                    borderColor: "#E2E8F0",
                     shadowColor: "#000",
                     shadowOffset: { width: 0, height: 1 },
                     shadowOpacity: 0.04,
@@ -779,7 +934,7 @@ export default function HomeScreen() {
           {notificationAlerts && notificationAlerts.length > 0 ? (
             <View style={{ marginBottom: 20 }}>
               <View style={[s.row, s.between, { alignItems: "center", marginBottom: 12, paddingHorizontal: 4 }]}>
-                <Text style={{ fontSize: 16, fontWeight: "900", color: "#1E293B" }}>
+                <Text style={{ fontSize: 16, fontWeight: "900", color: "#0F172A" }}>
                   Thông báo & Cảnh báo
                 </Text>
                 <Text style={{ fontSize: 13, fontWeight: "700", color: "#2563EB" }}>
@@ -828,7 +983,7 @@ export default function HomeScreen() {
                           style={{
                             fontSize: 13.5,
                             fontWeight: "700",
-                            color: "#1E293B",
+                            color: "#0F172A",
                             marginBottom: 3,
                           }}
                           numberOfLines={1}
@@ -839,6 +994,7 @@ export default function HomeScreen() {
                           {item.date || item.subtitle || "Hôm nay"}
                         </Text>
                       </View>
+                      <Feather name="chevron-right" size={16} color="#94A3B8" />
                     </TouchableOpacity>
                   );
                 })}
@@ -846,70 +1002,42 @@ export default function HomeScreen() {
             </View>
           ) : null}
 
-          {/* ─── 1. PHẦN THÔNG BÁO TỪ NHÀ TRƯỜNG (3 THÔNG BÁO GẦN NHẤT - RSS THONGBAOSV) ─── */}
-          <View
-            style={{
-              backgroundColor: "#FFFFFF",
-              padding: 18,
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: "#E2E8F0",
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 3 },
-              shadowOpacity: 0.05,
-              shadowRadius: 8,
-              elevation: 2,
-              marginBottom: 20,
-            }}
-          >
-            <View style={[s.row, s.between, { alignItems: "center", marginBottom: 14 }]}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1, marginRight: 8 }}>
-                <View
-                  style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 17,
-                    backgroundColor: "#ECFDF5",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Feather name="bell" size={17} color="#059669" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontWeight: "900", color: "#153242" }}>
-                    Thông báo Sinh viên
-                  </Text>
-                </View>
-              </View>
-              <View
-                style={{
-                  paddingHorizontal: 8,
-                  paddingVertical: 3,
-                  borderRadius: 8,
-                  backgroundColor: "#ECFDF5",
-                  flexShrink: 0,
-                }}
+          {/* ─── THÔNG BÁO SINH VIÊN (RSS THONGBAOSV) ─── */}
+          <View style={{ marginBottom: 20 }}>
+            <View style={[s.row, s.between, { alignItems: "center", marginBottom: 12, paddingHorizontal: 4 }]}>
+              <Text style={{ fontSize: 16, fontWeight: "900", color: "#0F172A" }}>
+                Thông báo Sinh viên
+              </Text>
+              <TouchableOpacity
+                onPress={() => router.push({ pathname: "/(main)/home/all_articles", params: { tab: "announcement" } })}
+                activeOpacity={0.7}
               >
-              </View>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: "#2563EB" }}>
+                  Xem tất cả
+                </Text>
+              </TouchableOpacity>
             </View>
 
-            {/* 3 thông báo gần nhất, chạm vào mở home_detail */}
             <View style={{ gap: 10 }}>
               {latestAnnouncements.slice(0, 3).map((ann, idx) => (
                 <TouchableOpacity
                   key={ann.id || idx}
-                  onPress={() => openDetail(ann)}
+                  onPress={() => openDetail(ann, idx)}
                   activeOpacity={0.7}
                   style={{
-                    padding: 13,
-                    borderRadius: 12,
-                    backgroundColor: "#F8FAFC",
+                    backgroundColor: "#FFFFFF",
+                    borderRadius: 16,
                     borderWidth: 1,
                     borderColor: "#E2E8F0",
+                    padding: 14,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.03,
+                    shadowRadius: 3,
+                    elevation: 1,
                   }}
                 >
-                  <View style={[s.row, s.between, { marginBottom: 4 }]}>
+                  <View style={[s.row, s.between, { alignItems: "center", marginBottom: 6 }]}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                       <View
                         style={{
@@ -922,11 +1050,11 @@ export default function HomeScreen() {
                           gap: 4,
                         }}
                       >
-                        {ann.isFallback || ann.badge?.toLowerCase().includes("mẫu") ? (
-                          <Feather name="alert-triangle" size={10} color="#D97706" />
-                        ) : (
-                          <Feather name="bell" size={10} color="#059669" />
-                        )}
+                        <Feather
+                          name={ann.isFallback || ann.badge?.toLowerCase().includes("mẫu") ? "alert-triangle" : "bell"}
+                          size={10}
+                          color={ann.isFallback || ann.badge?.toLowerCase().includes("mẫu") ? "#D97706" : "#059669"}
+                        />
                         <Text
                           style={{
                             fontSize: 10,
@@ -956,42 +1084,36 @@ export default function HomeScreen() {
                         </View>
                       ) : null}
                     </View>
-                    <Text style={{ fontSize: 10, color: AppColors.textMuted, fontWeight: "600" }}>
+                    <Text style={{ fontSize: 10, color: "#64748B", fontWeight: "600" }}>
                       {ann.date}
                     </Text>
                   </View>
 
                   <Text
                     style={{
-                      fontSize: 13,
+                      fontSize: 13.5,
                       fontWeight: "800",
-                      color: "#1E293B",
+                      color: "#0F172A",
                       lineHeight: 19,
-                      marginBottom: 4,
+                      marginBottom: 8,
                     }}
                     numberOfLines={2}
                   >
                     {ann.title}
                   </Text>
 
-                  <View style={[s.row, s.between, { alignItems: "center", marginTop: 4 }]}>
+                  <View style={[s.row, s.between, { alignItems: "center", borderTopWidth: 1, borderTopColor: "#F1F5F9", paddingTop: 8 }]}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flex: 1, marginRight: 8 }}>
-                      <Feather name="home" size={11} color={AppColors.textMuted} />
-                      <Text style={{ fontSize: 11, color: AppColors.textMuted }} numberOfLines={1}>
+                      <Feather name="home" size={11} color="#64748B" />
+                      <Text style={{ fontSize: 11, color: "#64748B" }} numberOfLines={1}>
                         {ann.author || ann.sender || "Phòng Công tác SV"}
                       </Text>
                     </View>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                      <Text
-                        style={{
-                          fontSize: 11,
-                          fontWeight: "700",
-                          color: AppColors.primary,
-                        }}
-                      >
+                      <Text style={{ fontSize: 11, fontWeight: "700", color: "#2563EB" }}>
                         Chi tiết
                       </Text>
-                      <Feather name="arrow-right" size={11} color={AppColors.primary} />
+                      <Feather name="arrow-right" size={11} color="#2563EB" />
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -999,55 +1121,22 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* ─── 2. PHẦN TIN TỨC & SỰ KIỆN (3 TIN TỨC GẦN NHẤT - RSS TINTUC CÓ ẢNH) ─── */}
-          <View
-            style={{
-              backgroundColor: "#FFFFFF",
-              padding: 18,
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: "#E2E8F0",
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 3 },
-              shadowOpacity: 0.05,
-              shadowRadius: 8,
-              elevation: 2,
-              marginBottom: 24,
-            }}
-          >
-            <View style={[s.row, s.between, { alignItems: "center", marginBottom: 14 }]}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1, marginRight: 8 }}>
-                <View
-                  style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 17,
-                    backgroundColor: "#EFF6FF",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Feather name="file-text" size={17} color="#2563EB" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontWeight: "900", color: "#153242" }}>
-                    Tin tức
-                  </Text>
-                </View>
-              </View>
-              <View
-                style={{
-                  paddingHorizontal: 8,
-                  paddingVertical: 3,
-                  borderRadius: 8,
-                  backgroundColor: "#EFF6FF",
-                  flexShrink: 0,
-                }}
+          {/* ─── TIN TỨC & HOẠT ĐỘNG (RSS TINTUC CÓ ẢNH) ─── */}
+          <View style={{ marginBottom: 20 }}>
+            <View style={[s.row, s.between, { alignItems: "center", marginBottom: 12, paddingHorizontal: 4 }]}>
+              <Text style={{ fontSize: 16, fontWeight: "900", color: "#0F172A" }}>
+                Tin tức & Hoạt động
+              </Text>
+              <TouchableOpacity
+                onPress={() => router.push({ pathname: "/(main)/home/all_articles", params: { tab: "news" } })}
+                activeOpacity={0.7}
               >
-              </View>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: "#2563EB" }}>
+                  Xem tất cả
+                </Text>
+              </TouchableOpacity>
             </View>
 
-            {/* Danh sách 3 tin tức có ảnh thật từ RSS tintuc */}
             <View style={{ gap: 12 }}>
               {latestNews.slice(0, 3).map((item, idx) => (
                 <TouchableOpacity
@@ -1055,16 +1144,21 @@ export default function HomeScreen() {
                   onPress={() => openDetail(item, idx)}
                   activeOpacity={0.7}
                   style={{
-                    borderRadius: 12,
+                    backgroundColor: "#FFFFFF",
+                    borderRadius: 16,
                     borderWidth: 1,
                     borderColor: "#E2E8F0",
-                    backgroundColor: "#F8FAFC",
                     overflow: "hidden",
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.03,
+                    shadowRadius: 3,
+                    elevation: 1,
                   }}
                 >
                   <NewsCardImage imageUrl={item.imageUrl} index={idx} />
 
-                  <View style={{ padding: 12 }}>
+                  <View style={{ padding: 14 }}>
                     <View style={[s.row, s.between, { alignItems: "center", marginBottom: 6 }]}>
                       <View
                         style={{
@@ -1077,11 +1171,11 @@ export default function HomeScreen() {
                           gap: 4,
                         }}
                       >
-                        {item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? (
-                          <Feather name="alert-triangle" size={10} color="#D97706" />
-                        ) : (
-                          <Feather name="book-open" size={10} color="#2563EB" />
-                        )}
+                        <Feather
+                          name={item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? "alert-triangle" : "book-open"}
+                          size={10}
+                          color={item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? "#D97706" : "#2563EB"}
+                        />
                         <Text
                           style={{
                             fontSize: 10,
@@ -1092,20 +1186,20 @@ export default function HomeScreen() {
                           {item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? "Dữ liệu mẫu" : (item.badge || "Tin hoạt động")}
                         </Text>
                       </View>
-                      <Text style={{ fontSize: 10, color: AppColors.textMuted, fontWeight: "600" }}>
+                      <Text style={{ fontSize: 10, color: "#64748B", fontWeight: "600" }}>
                         {item.date}
                       </Text>
                     </View>
 
                     <Text
                       style={{
-                        fontSize: 13,
+                        fontSize: 13.5,
                         fontWeight: "800",
                         color: "#0F172A",
                         lineHeight: 19,
                         marginBottom: 4,
                       }}
-                        numberOfLines={2}
+                      numberOfLines={2}
                     >
                       {item.title}
                     </Text>
@@ -1131,29 +1225,23 @@ export default function HomeScreen() {
                         {
                           alignItems: "center",
                           borderTopWidth: 1,
-                          borderTopColor: "#E2E8F0",
+                          borderTopColor: "#F1F5F9",
                           paddingTop: 8,
                           marginTop: 4,
                         },
                       ]}
                     >
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flex: 1, marginRight: 8 }}>
-                        <Feather name="globe" size={10} color={AppColors.textMuted} />
-                        <Text style={{ fontSize: 10, color: AppColors.textMuted }} numberOfLines={1}>
+                        <Feather name="globe" size={11} color="#64748B" />
+                        <Text style={{ fontSize: 11, color: "#64748B" }} numberOfLines={1}>
                           {item.author || item.sourceName || "Ban Biên tập TTN"}
                         </Text>
                       </View>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                        <Text
-                          style={{
-                            fontSize: 11,
-                            fontWeight: "700",
-                            color: AppColors.primary,
-                          }}
-                        >
+                        <Text style={{ fontSize: 11, fontWeight: "700", color: "#2563EB" }}>
                           Chi tiết bài viết
                         </Text>
-                        <Feather name="arrow-right" size={11} color={AppColors.primary} />
+                        <Feather name="arrow-right" size={11} color="#2563EB" />
                       </View>
                     </View>
                   </View>

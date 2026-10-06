@@ -4,9 +4,9 @@ export const API_BASE_URL = getApiBaseUrl();
 export const CURRENT_IPV4 = getCurrentIPv4();
 const REQUEST_TIMEOUT_MS = 8000;
 
-async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise<Response> {
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = REQUEST_TIMEOUT_MS): Promise<Response> {
   const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const id = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       ...options,
@@ -475,13 +475,63 @@ export function getNewsImageUrl(imageUrl?: string | null, fallbackIndex = 0): st
     return CAMPUS_FALLBACK_IMAGES[Math.abs(fallbackIndex) % CAMPUS_FALLBACK_IMAGES.length];
   }
 
-  // Nếu là ảnh từ ttn.edu.vn, điều hướng qua proxy của backend để vượt tường lửa (tránh lỗi 502 & SSL trên điện thoại thật)
-  if (imageUrl.includes('ttn.edu.vn')) {
-    return `${API_BASE_URL}/news/image-proxy?url=${encodeURIComponent(imageUrl)}`;
+  const trimmed = imageUrl.trim();
+
+  // Nếu đã là link proxy rồi hoặc ảnh unsplash thì giữ nguyên, không bọc proxy thêm lần nữa
+  if (trimmed.includes('/image-proxy') || trimmed.includes('unsplash.com')) {
+    return trimmed;
   }
 
-  return imageUrl;
+  // Nếu là ảnh từ ttn.edu.vn hoặc đường dẫn tương đối từ ttn, điều hướng qua proxy của backend
+  if (trimmed.includes('ttn.edu.vn') || trimmed.startsWith('/images/') || !trimmed.startsWith('http')) {
+    let rawUrl = trimmed;
+    if (!rawUrl.startsWith('http')) {
+      rawUrl = `https://www.ttn.edu.vn${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
+    }
+    return `${API_BASE_URL}/news/image-proxy?url=${encodeURIComponent(rawUrl)}`;
+  }
+
+  return trimmed;
 }
+
+export interface ArticleContentBlock {
+  type: 'text' | 'image';
+  text?: string;
+  url?: string;
+  caption?: string;
+}
+
+export interface ArticleDetailResponse {
+  url: string;
+  images: string[];
+  paragraphs: string[];
+  contentBlocks?: ArticleContentBlock[];
+  attachments?: {
+    title: string;
+    url: string;
+    size?: string;
+    isPdf?: boolean;
+  }[];
+  fullContent: string;
+}
+
+export async function apiGetArticleDetail(url: string): Promise<{ success: boolean; data?: ArticleDetailResponse; message?: string }> {
+  try {
+    if (!url) return { success: false, message: 'Thiếu url bài viết' };
+    const response = await fetchWithTimeout(`${API_BASE_URL}/news/article-detail?url=${encodeURIComponent(url)}`, {}, 12000);
+    return await handleResponse(response);
+  } catch (e: any) {
+    return { success: false, message: e.message || 'Không thể tải chi tiết bài viết' };
+  }
+}
+
+export function getAttachmentDownloadUrl(fileUrl: string): string {
+  if (!fileUrl) return '';
+  if (fileUrl.includes('/download-attachment')) return fileUrl;
+  return `${API_BASE_URL}/news/download-attachment?url=${encodeURIComponent(fileUrl)}`;
+}
+
+
 
 export interface NewsOrAnnouncementItem {
   id: string | number;

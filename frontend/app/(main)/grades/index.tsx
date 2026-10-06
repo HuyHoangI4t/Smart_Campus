@@ -5,7 +5,7 @@ import { useRouter } from "expo-router";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
-import { apiGetGrades } from "../../../src/services/api";
+import { apiGetGrades, readLocalCache } from "../../../src/services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface CourseGrade {
@@ -47,6 +47,21 @@ export default function GradesScreen() {
       }
 
       const isRealAccount = mssv && mssv !== "guest";
+      const cacheKey = `@offline_grades_${isRealAccount ? mssv : 'current'}`;
+      const cached = await readLocalCache<any>(cacheKey);
+      if (cached && cached.data && Array.isArray(cached.data.data) && cached.data.data.length > 0) {
+        const parsed: CourseGrade[] = cached.data.data.map((item: any) => ({
+          code: item.code || "",
+          name: item.ten_hp || item.name || "Học phần",
+          credits: Number(item.so_tin_chi || item.credits || 3),
+          grade10: item.diem_hp !== null && item.diem_hp !== undefined && !isNaN(Number(item.diem_hp)) ? Number(item.diem_hp) : (item.grade10 ? Number(item.grade10) : 0),
+          gradeLetter: item.diem_chu || (item.diem_hp >= 8.5 ? "A" : item.diem_hp >= 7.0 ? "B" : "C"),
+          semester: item.hoc_ky || "HK1 (2026)",
+        }));
+        setGrades(parsed);
+        setLoading(false);
+      }
+
       const res = await apiGetGrades(isRealAccount ? mssv : undefined);
       if (res && res.isOfflineCache) {
         setIsOfflineData(true);

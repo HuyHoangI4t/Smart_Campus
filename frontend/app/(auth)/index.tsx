@@ -110,6 +110,7 @@ export default function AuthScreen() {
             apiGetDashboard(),
             apiGetSchedule(targetMssv),
             apiGetNews(),
+            apiGetNews('all'),
             apiGetGrades(targetMssv),
             apiGetNotifications(),
             apiGetMapLocations(),
