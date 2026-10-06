@@ -216,7 +216,7 @@ function computeNextClass(rawSchedules: any[]): NextClassInfo | null {
   }
 
   // 2. NẾU ĐÃ HẾT GIỜ HỌC HÔM NAY HOẶC HÔM NAY KHÔNG CÓ LỊCH:
-  // ƯU TIÊN HIỂN THỊ LỊCH HỌC NGÀY MAI
+  // ƯU TIÊN HIỂN THỊ NGÀY MAI
   const tomorrowClasses = normalized
     .filter((c) => c.dayNum === tomorrowNum)
     .sort((a, b) => a.startMinutes - b.startMinutes);
@@ -231,7 +231,7 @@ function computeNextClass(rawSchedules: any[]): NextClassInfo | null {
       lecturer: firstTomorrowClass.lecturer,
       dayText: "Ngày mai",
       status: "NEXT_DAY",
-      statusLabel: `LỊCH HỌC NGÀY MAI (${tomorrowDayName.toUpperCase()})`,
+      statusLabel: `NGÀY MAI (${tomorrowDayName.toUpperCase()})`,
       statusBadgeColor: "#A855F7", // Tím
     };
   }
@@ -477,7 +477,7 @@ export default function HomeScreen() {
           lecturer: scheduleRes.nextClass.lecturer,
           dayText: scheduleRes.nextClass.dayText || "Ngày mai",
           status: scheduleRes.nextClass.status || "NEXT_DAY",
-          statusLabel: scheduleRes.nextClass.statusLabel || "LỊCH HỌC NGÀY MAI",
+          statusLabel: scheduleRes.nextClass.statusLabel || "NGÀY MAI",
           statusBadgeColor:
             scheduleRes.nextClass.status === "IN_PROGRESS"
               ? "#10B981"
@@ -732,7 +732,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* LỚP HỌC KẾ TIẾP / LỊCH HỌC NGÀY MAI CARD LỒNG BÊN TRONG HEADER */}
+        {/* LỚP HỌC KẾ TIẾP / NGÀY MAI CARD LỒNG BÊN TRONG HEADER */}
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={handleOpenMapDirections}

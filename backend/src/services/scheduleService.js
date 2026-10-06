@@ -254,7 +254,7 @@ function processSchedulePayload(rawTables, weekRangeText) {
       dayText: 'Hôm nay',
     };
   } else {
-    // 2. Hôm nay đã hết tiết hoặc không có lịch: Ưu tiên tìm LỊCH HỌC NGÀY MAI
+    // 2. Hôm nay đã hết tiết hoặc không có lịch: Ưu tiên tìm NGÀY MAI
     const tomorrowSchedule = groupedByDay[tomorrowDayNum] || [];
     if (tomorrowSchedule.length > 0) {
       nextClass = {
@@ -265,7 +265,7 @@ function processSchedulePayload(rawTables, weekRangeText) {
         day: tomorrowSchedule[0].day,
         direction: tomorrowSchedule[0].direction,
         status: 'NEXT_DAY',
-        statusLabel: 'LỊCH HỌC NGÀY MAI',
+        statusLabel: 'NGÀY MAI',
         dayText: 'Ngày mai',
       };
     } else {
