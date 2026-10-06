@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
+import { useTabBarScrollHandler } from "../../../src/components/MainTabs";
 import {
   apiGetSchedule,
   apiGetDashboard,
@@ -342,6 +343,7 @@ const DEFAULT_NOTIFICATION_ALERTS: NotificationAlertItem[] = [
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { onScroll: onTabBarScroll, bottomPadding } = useTabBarScrollHandler();
   const topPadding =
     Platform.OS === "android"
       ? (StatusBar.currentHeight || 24) + 16
@@ -643,11 +645,11 @@ export default function HomeScreen() {
         style={{
           backgroundColor: "#0F2964",
           paddingTop: topPadding,
-          paddingBottom: 18,
+          paddingBottom: 14,
           paddingHorizontal: 20,
           zIndex: 10,
-          borderBottomLeftRadius: 24,
-          borderBottomRightRadius: 24,
+          // borderBottomLeftRadius: 24,
+          // borderBottomRightRadius: 24,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.12,
@@ -656,7 +658,7 @@ export default function HomeScreen() {
         }}
       >
         {/* Top user row */}
-        <View style={[s.row, s.between, { alignItems: "center", marginBottom: 14 }]}>
+        <View style={[s.row, s.between, { alignItems: "center" }]}>
           <View style={{ flex: 1, marginRight: 12 }}>
             <Text
               style={{
@@ -731,119 +733,15 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* LỚP HỌC KẾ TIẾP / NGÀY MAI CARD LỒNG BÊN TRONG HEADER */}
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={handleOpenMapDirections}
-          style={{
-            backgroundColor: "rgba(255, 255, 255, 0.08)",
-            borderWidth: 1,
-            borderColor: "rgba(255, 255, 255, 0.14)",
-            borderRadius: 16,
-            padding: 14,
-          }}
-        >
-          {/* Row 1: dot + statusLabel + Phòng & giờ */}
-          <View style={[s.row, s.between, { alignItems: "center", marginBottom: 6 }]}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <View
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: 3.5,
-                  backgroundColor: nextClass?.statusBadgeColor || "#A855F7",
-                }}
-              />
-              <Text
-                style={{
-                  color: "#FFFFFF",
-                  fontSize: 11,
-                  fontWeight: "800",
-                  letterSpacing: 0.5,
-                }}
-              >
-                {nextClass?.statusLabel || "NGÀY MAI"}
-              </Text>
-            </View>
-            <Text style={{ color: "rgba(255,255,255,0.75)", fontSize: 11, fontWeight: "600" }}>
-              {nextClass
-                ? `${nextClass.room ? `${nextClass.room} ` : ""}`
-                : "Bản đồ trường"}
-            </Text>
-          </View>
-
-          {/* Row 2: Tên môn học + Badge tiết */}
-          <View style={[s.row, s.between, { alignItems: "center", marginBottom: 8 }]}>
-            <Text
-              style={{
-                color: "#FFFFFF",
-                fontSize: 15.5,
-                fontWeight: "900",
-                flex: 1,
-                marginRight: 10,
-              }}
-              numberOfLines={1}
-            >
-              {nextClass?.subject || "Không có ca học nào trong ngày mai"}
-            </Text>
-            <View
-              style={{
-                backgroundColor: "rgba(255,255,255,0.18)",
-                paddingHorizontal: 8,
-                paddingVertical: 2.5,
-                borderRadius: 8,
-              }}
-            >
-              <Text style={{ color: "#FFFFFF", fontSize: 11, fontWeight: "800" }}>
-                {nextClass ? (nextClass.time.startsWith("Tiết") ? nextClass.time : `Tiết ${nextClass.time}`) : "Nghỉ"}
-              </Text>
-            </View>
-          </View>
-
-          {/* Row 3: Giảng viên + Chỉ đường → */}
-          <View style={[s.row, s.between, { alignItems: "center" }]}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1, marginRight: 8 }}>
-              <Feather name="user" size={12} color="rgba(255,255,255,0.7)" />
-              <Text
-                style={{
-                  color: "rgba(255,255,255,0.85)",
-                  fontSize: 12,
-                  fontWeight: "600",
-                }}
-                numberOfLines={1}
-              >
-                {nextClass?.lecturer ? nextClass.lecturer : (nextClass ? "Giảng viên bộ môn" : "Mở bản đồ trường")}
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              onPress={handleOpenMapDirections}
-              activeOpacity={0.7}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 4,
-                backgroundColor: "rgba(255,255,255,0.18)",
-                paddingHorizontal: 9,
-                paddingVertical: 3.5,
-                borderRadius: 12,
-              }}
-            >
-              <Feather name="navigation" size={11} color="#93C5FD" />
-              <Text style={{ color: "#93C5FD", fontSize: 12, fontWeight: "800" }}>
-                Chỉ đường →
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
       </View>
 
       {/* ─── CUỘN NỘI DUNG BÊN DƯỚI HEADER ─────────────────────── */}
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 120, paddingTop: 16 }}
+        contentContainerStyle={{ paddingBottom: bottomPadding, paddingTop: 12 }}
         showsVerticalScrollIndicator={false}
+        onScroll={onTabBarScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -874,6 +772,116 @@ export default function HomeScreen() {
               </Text>
             </View>
           )}
+
+          {/* ─── LỚP HỌC KẾ TIẾP / NGÀY MAI CARD (ĐẦU TIÊN CỦA PHẦN BODY) ─── */}
+          <TouchableOpacity
+            activeOpacity={0.88}
+            onPress={handleOpenMapDirections}
+            style={{
+              backgroundColor: "#0F2964",
+              borderRadius: 20,
+              padding: 16,
+              marginBottom: 20,
+              shadowColor: "#0F2964",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.18,
+              shadowRadius: 10,
+              elevation: 4,
+            }}
+          >
+            {/* Row 1: dot + statusLabel + Phòng & giờ */}
+            <View style={[s.row, s.between, { alignItems: "center", marginBottom: 8 }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <View
+                  style={{
+                    width: 7.5,
+                    height: 7.5,
+                    borderRadius: 4,
+                    backgroundColor: nextClass?.statusBadgeColor || "#A855F7",
+                  }}
+                />
+                <Text
+                  style={{
+                    color: "#FFFFFF",
+                    fontSize: 11,
+                    fontWeight: "800",
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  {nextClass?.statusLabel || "NGÀY MAI"}
+                </Text>
+              </View>
+              <Text style={{ color: "rgba(255,255,255,0.78)", fontSize: 11.5, fontWeight: "700" }}>
+                {nextClass
+                  ? `${nextClass.room ? `${nextClass.room} ` : ""}`
+                  : "Bản đồ trường"}
+              </Text>
+            </View>
+
+            {/* Row 2: Tên môn học + Badge tiết */}
+            <View style={[s.row, s.between, { alignItems: "center", marginBottom: 10 }]}>
+              <Text
+                style={{
+                  color: "#FFFFFF",
+                  fontSize: 16,
+                  fontWeight: "900",
+                  flex: 1,
+                  marginRight: 10,
+                }}
+                numberOfLines={1}
+              >
+                {nextClass?.subject || "Không có ca học nào trong ngày mai"}
+              </Text>
+              <View
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.18)",
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 8,
+                }}
+              >
+                <Text style={{ color: "#FFFFFF", fontSize: 11, fontWeight: "800" }}>
+                  {nextClass ? (nextClass.time.startsWith("Tiết") ? nextClass.time : `Tiết ${nextClass.time}`) : "Nghỉ"}
+                </Text>
+              </View>
+            </View>
+
+            {/* Row 3: Giảng viên + Chỉ đường → */}
+            <View style={[s.row, s.between, { alignItems: "center" }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1, marginRight: 8 }}>
+                <Feather name="user" size={13} color="rgba(255,255,255,0.7)" />
+                <Text
+                  style={{
+                    color: "rgba(255,255,255,0.85)",
+                    fontSize: 12,
+                    fontWeight: "600",
+                  }}
+                  numberOfLines={1}
+                >
+                  {nextClass?.lecturer ? nextClass.lecturer : (nextClass ? "Giảng viên bộ môn" : "Mở bản đồ trường")}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={handleOpenMapDirections}
+                activeOpacity={0.7}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 4,
+                  backgroundColor: "rgba(255,255,255,0.18)",
+                  paddingHorizontal: 10,
+                  paddingVertical: 4.5,
+                  borderRadius: 12,
+                }}
+              >
+                <Feather name="navigation" size={11.5} color="#93C5FD" />
+                <Text style={{ color: "#93C5FD", fontSize: 12, fontWeight: "800" }}>
+                  Chỉ đường →
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
 
           {/* TÁC VỤ NHANH */}
           <Text

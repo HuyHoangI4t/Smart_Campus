@@ -7,6 +7,7 @@ import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
 import { apiGetGrades, readLocalCache } from "../../../src/services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useTabBarScrollHandler } from "../../../src/components/MainTabs";
 
 interface CourseGrade {
   code: string;
@@ -27,6 +28,7 @@ const FALLBACK_GRADES: CourseGrade[] = [
 
 export default function GradesScreen() {
   const router = useRouter();
+  const { onScroll: onTabBarScroll, bottomPadding } = useTabBarScrollHandler();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [grades, setGrades] = useState<CourseGrade[]>(FALLBACK_GRADES);
@@ -183,7 +185,9 @@ export default function GradesScreen() {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16, paddingBottom: 110 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: bottomPadding }}
+        onScroll={onTabBarScroll}
+        scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {isOfflineData && (

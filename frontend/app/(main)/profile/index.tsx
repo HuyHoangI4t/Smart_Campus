@@ -17,7 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
-import { setTabBarVisible } from "../../../src/components/MainTabs";
+import { setTabBarVisible, useTabBarScrollHandler } from "../../../src/components/MainTabs";
 import { apiGetProfile, apiUpdateProfile, apiLogout, clearAuthAndCache } from "../../../src/services/api";
 
 interface UserProfile {
@@ -42,6 +42,7 @@ const PRESET_AVATARS = [
 export default function ProfileScreen() {
   const router = useRouter();
   const navigation = useNavigation();
+  const { onScroll: onTabBarScroll, bottomPadding } = useTabBarScrollHandler();
   const [profile, setProfile] = useState<UserProfile>({
     mssv: "",
     ho_ten: "Đang tải...",
@@ -335,7 +336,12 @@ export default function ProfileScreen() {
         }
       />
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 110 }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 20, paddingBottom: bottomPadding }}
+        onScroll={onTabBarScroll}
+        scrollEventThrottle={16}
+      >
         {/* Avatar & Header Card */}
         <View
           style={{

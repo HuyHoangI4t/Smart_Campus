@@ -16,6 +16,7 @@ import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
 import { apiGetSchedule, readLocalCache } from "../../../src/services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useTabBarScrollHandler } from "../../../src/components/MainTabs";
 
 interface ScheduleItem {
   id: string | number;
@@ -187,6 +188,7 @@ const getTodayDayNum = () => {
 
 export default function ScheduleScreen() {
   const router = useRouter();
+  const { onScroll: onTabBarScroll, bottomPadding } = useTabBarScrollHandler();
   const todayDayNum = getTodayDayNum();
   const [selectedDay, setSelectedDay] = useState(todayDayNum);
   const [loading, setLoading] = useState(true);
@@ -362,7 +364,7 @@ export default function ScheduleScreen() {
                       : AppColors.textSecondary,
                   }}
                 >
-                  {d.label}{isToday ? " • Nay" : ""}
+                  {d.label}{isToday ? "" : ""}
                 </Text>
               </TouchableOpacity>
             );
@@ -372,7 +374,9 @@ export default function ScheduleScreen() {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16, paddingBottom: 110 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: bottomPadding }}
+        onScroll={onTabBarScroll}
+        scrollEventThrottle={16}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {isOfflineData && (

@@ -9,13 +9,14 @@ import {
   Linking,
   Alert,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import * as Location from "expo-location";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
 import { AppColors } from "../../../src/constants/appColors";
 import { NavHeader } from "../../../src/components/NavHeader";
-import { apiGetMapLocations } from "../../../src/services/api";
+
 
 // Danh sách các tòa nhà trọng điểm trong khuôn viên Đại học Tây Nguyên (567 Lê Duẩn, TP. Buôn Ma Thuột)
 export interface LocationItem {
@@ -44,8 +45,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65195,
     lng: 108.05335,
     icon: "briefcase",
-    x: 50,
-    y: 18,
+    x: 76,
+    y: 35,
     color: "#10B981"
   },
   {
@@ -58,8 +59,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65245,
     lng: 108.05405,
     icon: "book-open",
-    x: 48,
-    y: 38,
+    x: 70,
+    y: 35,
     color: "#8B5CF6"
   },
   {
@@ -72,8 +73,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65230,
     lng: 108.05380,
     icon: "cpu",
-    x: 32,
-    y: 36,
+    x: 67,
+    y: 35,
     color: "#06B6D4"
   },
   {
@@ -86,8 +87,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65180,
     lng: 108.05250,
     icon: "activity",
-    x: 20,
-    y: 22,
+    x: 75,
+    y: 6,
     color: "#EF4444"
   },
   {
@@ -100,8 +101,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65190,
     lng: 108.05270,
     icon: "activity",
-    x: 23,
-    y: 24,
+    x: 69,
+    y: 13,
     color: "#EF4444"
   },
   {
@@ -114,8 +115,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65228,
     lng: 108.05392,
     icon: "book-open",
-    x: 28,
-    y: 34,
+    x: 56,
+    y: 38,
     color: "#6366F1"
   },
   {
@@ -128,8 +129,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65261,
     lng: 108.05371,
     icon: "layers",
-    x: 35,
-    y: 48,
+    x: 86,
+    y: 52,
     color: "#06B6D4"
   },
   {
@@ -142,8 +143,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65285,
     lng: 108.05485,
     icon: "book-open",
-    x: 62,
-    y: 32,
+    x: 88,
+    y: 63,
     color: "#F97316"
   },
   {
@@ -156,8 +157,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65215,
     lng: 108.05365,
     icon: "book-open",
-    x: 38,
-    y: 26,
+    x: 89,
+    y: 76,
     color: "#3B82F6"
   },
   {
@@ -170,8 +171,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65285,
     lng: 108.05425,
     icon: "cpu",
-    x: 42,
-    y: 58,
+    x: 73,
+    y: 61,
     color: "#1E3A8A"
   },
   {
@@ -184,8 +185,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65310,
     lng: 108.05450,
     icon: "award",
-    x: 55,
-    y: 30,
+    x: 78,
+    y: 71,
     color: "#F59E0B"
   },
   {
@@ -198,8 +199,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65090,
     lng: 108.05520,
     icon: "award",
-    x: 58,
-    y: 75,
+    x: 75,
+    y: 90,
     color: "#F59E0B"
   },
   {
@@ -212,8 +213,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65270,
     lng: 108.05460,
     icon: "cpu",
-    x: 60,
-    y: 42,
+    x: 68,
+    y: 56,
     color: "#10B981"
   },
   {
@@ -226,8 +227,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65142,
     lng: 108.05415,
     icon: "book",
-    x: 65,
-    y: 46,
+    x: 33,
+    y: 54,
     color: "#F59E0B"
   },
   {
@@ -240,8 +241,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65200,
     lng: 108.05510,
     icon: "home",
-    x: 72,
-    y: 35,
+    x: 53,
+    y: 88,
     color: "#8B5CF6"
   },
   {
@@ -254,8 +255,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65050,
     lng: 108.05200,
     icon: "layers",
-    x: 18,
-    y: 75,
+    x: 28,
+    y: 69,
     color: "#10B981"
   },
   {
@@ -268,8 +269,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65020,
     lng: 108.05180,
     icon: "award",
-    x: 15,
-    y: 82,
+    x: 39,
+    y: 86,
     color: "#10B981"
   },
   {
@@ -282,8 +283,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65120,
     lng: 108.05150,
     icon: "award",
-    x: 12,
-    y: 60,
+    x: 13,
+    y: 88,
     color: "#EC4899"
   },
   {
@@ -296,8 +297,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65080,
     lng: 108.05120,
     icon: "book-open",
-    x: 10,
-    y: 68,
+    x: 14,
+    y: 34,
     color: "#3B82F6"
   },
   {
@@ -310,8 +311,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.64980,
     lng: 108.05220,
     icon: "award",
-    x: 22,
-    y: 88,
+    x: 27,
+    y: 54,
     color: "#EF4444"
   },
   {
@@ -324,8 +325,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.64950,
     lng: 108.05250,
     icon: "award",
-    x: 25,
-    y: 92,
+    x: 35,
+    y: 35,
     color: "#EF4444"
   },
   {
@@ -338,8 +339,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65350,
     lng: 108.05320,
     icon: "award",
-    x: 40,
-    y: 12,
+    x: 41,
+    y: 24,
     color: "#EF4444"
   },
   {
@@ -352,8 +353,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65400,
     lng: 108.05280,
     icon: "award",
-    x: 35,
-    y: 8,
+    x: 49,
+    y: 19,
     color: "#EF4444"
   },
   {
@@ -366,8 +367,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65420,
     lng: 108.05350,
     icon: "award",
-    x: 42,
-    y: 6,
+    x: 51,
+    y: 70,
     color: "#06B6D4"
   },
   {
@@ -380,8 +381,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65150,
     lng: 108.05480,
     icon: "cpu",
-    x: 68,
-    y: 52,
+    x: 44,
+    y: 70,
     color: "#10B981"
   },
   {
@@ -394,8 +395,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65120,
     lng: 108.05450,
     icon: "home",
-    x: 65,
-    y: 58,
+    x: 43,
+    y: 53,
     color: "#8B5CF6"
   },
   {
@@ -408,8 +409,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65210,
     lng: 108.05310,
     icon: "home",
-    x: 21,
-    y: 60,
+    x: 15,
+    y: 55,
     color: "#8B5CF6"
   },
   {
@@ -422,8 +423,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65220,
     lng: 108.05290,
     icon: "home",
-    x: 19,
-    y: 58,
+    x: 9,
+    y: 53,
     color: "#8B5CF6"
   },
   {
@@ -436,8 +437,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65230,
     lng: 108.05270,
     icon: "home",
-    x: 17,
-    y: 56,
+    x: 51,
+    y: 55,
     color: "#8B5CF6"
   },
   {
@@ -450,8 +451,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65090,
     lng: 108.05380,
     icon: "home",
-    x: 50,
-    y: 65,
+    x: 57,
+    y: 54,
     color: "#F59E0B"
   },
   {
@@ -464,8 +465,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65060,
     lng: 108.05420,
     icon: "award",
-    x: 55,
-    y: 68,
+    x: 67,
+    y: 76,
     color: "#EF4444"
   },
   {
@@ -478,8 +479,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65115,
     lng: 108.05315,
     icon: "coffee",
-    x: 52,
-    y: 70,
+    x: 89,
+    y: 27,
     color: "#6366F1"
   },
   {
@@ -492,8 +493,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65130,
     lng: 108.05350,
     icon: "book",
-    x: 54,
-    y: 48,
+    x: 90,
+    y: 36,
     color: "#3B82F6"
   },
   {
@@ -506,8 +507,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65100,
     lng: 108.05500,
     icon: "briefcase",
-    x: 68,
-    y: 72,
+    x: 23,
+    y: 86,
     color: "#10B981"
   },
   {
@@ -520,8 +521,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65160,
     lng: 108.05340,
     icon: "book-open",
-    x: 45,
-    y: 40,
+    x: 92,
+    y: 86,
     color: "#3B82F6"
   },
   {
@@ -534,8 +535,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65040,
     lng: 108.05300,
     icon: "layers",
-    x: 48,
-    y: 80,
+    x: 85,
+    y: 18,
     color: "#64748B"
   },
   {
@@ -548,8 +549,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     lat: 12.65190,
     lng: 108.05360,
     icon: "briefcase",
-    x: 48,
-    y: 20,
+    x: 81,
+    y: 18,
     color: "#10B981"
   }
 ];
@@ -812,38 +813,10 @@ export default function MapScreen() {
     }
   }, [params.room, params.search, params.subject, locations]);
 
-  useEffect(() => {
-    const fetchLocations = async () => {
-      try {
-        const res = await apiGetMapLocations();
-        if (res && res.success && res.locations && res.locations.length > 0) {
-          const merged: LocationItem[] = res.locations.map((l: any, idx: number) => {
-            const matched = TAY_NGUYEN_CAMPUS_LOCATIONS[idx % TAY_NGUYEN_CAMPUS_LOCATIONS.length];
-            return {
-              id: l.id || matched.id,
-              name: l.name || l.ten_dia_diem || matched.name,
-              category: l.category || l.loai || matched.category,
-              building: l.building || l.toa_nha || matched.building,
-              floor: l.floor || l.tang || matched.floor,
-              description: l.description || l.mo_ta || matched.description,
-              lat: l.lat || matched.lat,
-              lng: l.lng || matched.lng,
-              icon: matched.icon || "map-pin",
-              x: matched.x,
-              y: matched.y,
-              color: matched.color,
-            };
-          });
-          setLocations(merged);
-        }
-      } catch {
-        // keep defaults
-      }
-    };
-    fetchLocations();
-  }, []);
+  // Chỉ sử dụng dữ liệu khuôn viên Đại học Tây Nguyên — không merge với mẫu
+  // (locations state được khởi tạo sẵn từ TAY_NGUYEN_CAMPUS_LOCATIONS)
 
-  // Tìm kiếm theo từ khóa
+
   const searchResults = locations.filter((loc) => {
     if (!search.trim()) return false;
     const q = search.toLowerCase().trim();
@@ -1070,106 +1043,11 @@ export default function MapScreen() {
 
         {/* ─── NỘI DUNG SƠ ĐỒ CAMPUS ────────────────────────────────────────── */}
         <View style={{ flex: 1, width: "100%", height: "100%", position: "relative" }}>
-          {/* Trục hoành (Horizontal Axis) */}
-          <View
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: 16,
-              right: 16,
-              height: 4,
-              backgroundColor: "#CBD5E1",
-              borderRadius: 2,
-            }}
-          />
-
-          {/* Trục tung (Vertical Axis) */}
-          <View
-            style={{
-              position: "absolute",
-              left: "50%",
-              top: 20,
-              bottom: 20,
-              width: 4,
-              backgroundColor: "#CBD5E1",
-              borderRadius: 2,
-              transform: [{ translateX: -2 }],
-            }}
-          />
-
-          {/* Đường chéo nét đứt 45 độ */}
-          <View
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: "10%",
-              right: "10%",
-              height: 1,
-              borderStyle: "dashed",
-              borderWidth: 1,
-              borderColor: "#94A3B8",
-              transform: [{ rotate: "45deg" }],
-            }}
-          />
-
-          {/* Đường chéo nét đứt 135 độ */}
-          <View
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: "10%",
-              right: "10%",
-              height: 1,
-              borderStyle: "dashed",
-              borderWidth: 1,
-              borderColor: "#94A3B8",
-              transform: [{ rotate: "-45deg" }],
-            }}
-          />
-
-          {/* Vùng tròn xanh nhạt ở trung tâm khuôn viên */}
-          <View
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              width: 140,
-              height: 140,
-              borderRadius: 70,
-              backgroundColor: "rgba(187, 247, 208, 0.65)",
-              transform: [{ translateX: -70 }, { translateY: -70 }],
-            }}
-          />
-
-          {/* Khối khuôn viên cỏ / Giảng đường ở góc trên bên trái */}
-          <View
-            style={{
-              position: "absolute",
-              top: "30%",
-              left: "20%",
-              width: 52,
-              height: 52,
-              borderRadius: 16,
-              backgroundColor: "rgba(187, 247, 208, 0.7)",
-            }}
-          />
-
-          {/* Chấm tròn định vị trung tâm trường (màu xanh dương) */}
-          <View
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              width: 18,
-              height: 18,
-              borderRadius: 9,
-              backgroundColor: "#3B82F6",
-              borderWidth: 3,
-              borderColor: "#FFFFFF",
-              transform: [{ translateX: -9 }, { translateY: -9 }],
-              zIndex: 5,
-              elevation: 4,
-            }}
+          {/* Ảnh bản đồ khuôn viên thật */}
+          <Image
+            source={require("../../../assets/images/campus_map.jpg")}
+            style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" }}
+            resizeMode="cover"
           />
 
           {/* Danh sách các Pin tòa nhà phân bổ trên sơ đồ */}
