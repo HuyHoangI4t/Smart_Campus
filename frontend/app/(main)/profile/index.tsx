@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  Linking,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as ImagePicker from "expo-image-picker";
@@ -139,7 +140,24 @@ export default function ProfileScreen() {
 
   const [returnToEditModal, setReturnToEditModal] = useState(false);
 
-  const openAvatarModalFromEdit = () => {
+  const openAvatarModal = async () => {
+    // Chủ động yêu cầu quyền truy cập bộ nhớ / ảnh ngay khi người dùng bấm đổi ảnh
+    try {
+      const { status } = await ImagePicker.getMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      }
+    } catch {}
+    setAvatarModalVisible(true);
+  };
+
+  const openAvatarModalFromEdit = async () => {
+    try {
+      const { status } = await ImagePicker.getMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      }
+    } catch {}
     setReturnToEditModal(true);
     setEditModalVisible(false);
     setTimeout(() => {
@@ -192,14 +210,21 @@ export default function ProfileScreen() {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert("Quyền truy cập", "Cần cấp quyền truy cập thư viện ảnh để chọn ảnh đại diện.");
+        Alert.alert(
+          "Yêu cầu quyền truy cập",
+          "Ứng dụng cần quyền truy cập thư viện ảnh/bộ nhớ để chọn ảnh đại diện. Vui lòng cho phép quyền trong Cài đặt của máy.",
+          [
+            { text: "Hủy", style: "cancel" },
+            { text: "Mở Cài đặt", onPress: () => Linking.openSettings() }
+          ]
+        );
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.7,
+        quality: 0.5,
         base64: true,
       });
 
@@ -217,13 +242,20 @@ export default function ProfileScreen() {
     try {
       const permission = await ImagePicker.requestCameraPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert("Quyền truy cập", "Cần cấp quyền máy ảnh để chụp ảnh đại diện mới.");
+        Alert.alert(
+          "Yêu cầu quyền máy ảnh",
+          "Ứng dụng cần quyền truy cập Máy ảnh (Camera) để chụp ảnh đại diện mới. Vui lòng cho phép quyền trong Cài đặt của máy.",
+          [
+            { text: "Hủy", style: "cancel" },
+            { text: "Mở Cài đặt", onPress: () => Linking.openSettings() }
+          ]
+        );
         return;
       }
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.7,
+        quality: 0.5,
         base64: true,
       });
 
@@ -345,7 +377,7 @@ export default function ProfileScreen() {
           {/* Avatar Container với Badge Camera */}
           <TouchableOpacity
             activeOpacity={0.85}
-            onPress={() => setAvatarModalVisible(true)}
+            onPress={openAvatarModal}
             style={{ position: "relative", marginBottom: 12 }}
           >
             {profile.avatar ? (
@@ -403,7 +435,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => setAvatarModalVisible(true)}
+            onPress={openAvatarModal}
             activeOpacity={0.7}
             style={{
               flexDirection: "row",

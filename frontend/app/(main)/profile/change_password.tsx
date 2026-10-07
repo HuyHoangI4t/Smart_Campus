@@ -55,7 +55,7 @@ export default function ChangePasswordScreen() {
         title="Đổi mật khẩu"
         subtitle="Bảo vệ an toàn tài khoản sinh viên"
         showBack={true}
-        onBack={() => router.back()}
+        onBack={() => router.replace("/(main)/profile")}
       />
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 110 }}>

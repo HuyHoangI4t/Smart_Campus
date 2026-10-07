@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { View, Platform, Linking, ActivityIndicator, Alert } from "react-native";
+import { View, Text, TouchableOpacity, Platform, Linking, ActivityIndicator, Alert } from "react-native";
 import { WebView } from "react-native-webview";
+import { Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { useLocalSearchParams, useFocusEffect } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
 import { NavHeader } from "../../../src/components/NavHeader";
+import { setTabBarVisible } from "../../../src/components/MainTabs";
 import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
 import { apiGetMapLocations } from "../../../src/services/api";
 import {
@@ -35,6 +38,7 @@ export {
 };
 
 export default function MapScreen() {
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
     search?: string;
     room?: string;
@@ -53,6 +57,9 @@ export default function MapScreen() {
 
   // Trạng thái đăng nhập (Khách / chưa đăng nhập không được xem bản đồ)
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+
+  // Trạng thái đang kích hoạt chế độ chỉ đường đi bộ (Ẩn thanh nav & nút phụ trợ để tối đa màn hình)
+  const [isRoutingActive, setIsRoutingActive] = useState<boolean>(false);
 
   const checkAuth = useCallback(async () => {
     try {
@@ -74,6 +81,10 @@ export default function MapScreen() {
   useFocusEffect(
     useCallback(() => {
       checkAuth();
+      return () => {
+        // Khi chuyển tab khác, luôn khôi phục lại thanh điều hướng dưới đáy
+        setTabBarVisible(true);
+      };
     }, [checkAuth])
   );
 
@@ -365,6 +376,8 @@ export default function MapScreen() {
           distanceMeters: data.distanceMeters,
           durationMinutes: data.durationMinutes,
         });
+        setIsRoutingActive(true);
+        setTabBarVisible(false);
       } else if (data.type === "MANUAL_ROTATE") {
         if (compassMode) {
           stopCompassTracking();
@@ -403,6 +416,8 @@ export default function MapScreen() {
 
     setShowSuggestions(false);
     setActiveRoute(null);
+    setIsRoutingActive(false);
+    setTabBarVisible(true);
 
     webViewRef.current?.postMessage(
       JSON.stringify({
@@ -457,6 +472,9 @@ export default function MapScreen() {
 
     const originName = userLocation ? "Vị trí của bạn" : "Cổng chính Lê Duẩn";
 
+    setIsRoutingActive(true);
+    setTabBarVisible(false);
+
     webViewRef.current?.postMessage(
       JSON.stringify({
         type: "DRAW_ROUTE",
@@ -470,7 +488,9 @@ export default function MapScreen() {
 
   // Hủy đường đi bộ đang hiển thị
   const handleClearRoute = () => {
+    setIsRoutingActive(false);
     setActiveRoute(null);
+    setTabBarVisible(true);
     webViewRef.current?.postMessage(JSON.stringify({ type: "CLEAR_ROUTE" }));
   };
 
@@ -567,7 +587,7 @@ export default function MapScreen() {
             flex: 1,
             backgroundColor: "#0F172A",
             position: "relative",
-            marginBottom: 88,
+            marginBottom: isRoutingActive ? 0 : 88,
             overflow: "hidden",
           }}
         >
@@ -588,26 +608,28 @@ export default function MapScreen() {
             )}
           />
 
-          {/* ─── THANH TÌM KIẾM NỔI & BĂNG DANH MỤC LỌC NHANH ─────────────── */}
-          <MapSearchBar
-            search={search}
-            showSuggestions={showSuggestions}
-            searchResults={searchResults}
-            selectedCategory={selectedCategory}
-            totalLocations={locations.length}
-            onSearchChange={(text) => {
-              setSearch(text);
-              setShowSuggestions(true);
-            }}
-            onClearSearch={() => {
-              setSearch("");
-              setShowSuggestions(false);
-            }}
-            onFocus={() => setShowSuggestions(true)}
-            onSelectLocation={handleSelectLocation}
-            onSelectCategory={handleSelectCategory}
-            onSubmitSearch={handleSearchSubmit}
-          />
+          {/* ─── THANH TÌM KIẾM NỔI & BĂNG DANH MỤC LỌC NHANH (ẨN KHI ĐANG CHỈ ĐƯỜNG) ─── */}
+          {!isRoutingActive && (
+            <MapSearchBar
+              search={search}
+              showSuggestions={showSuggestions}
+              searchResults={searchResults}
+              selectedCategory={selectedCategory}
+              totalLocations={locations.length}
+              onSearchChange={(text) => {
+                setSearch(text);
+                setShowSuggestions(true);
+              }}
+              onClearSearch={() => {
+                setSearch("");
+                setShowSuggestions(false);
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              onSelectLocation={handleSelectLocation}
+              onSelectCategory={handleSelectCategory}
+              onSubmitSearch={handleSearchSubmit}
+            />
+          )}
 
           {/* ── CÁC NÚT ĐIỀU KHIỂN NỔI & LA BÀN ──────────────────────────────── */}
           <MapControlsOverlay
@@ -617,6 +639,7 @@ export default function MapScreen() {
             locationLoading={locationLoading}
             hasUserLocation={Boolean(userLocation)}
             activeRoute={activeRoute}
+            isRoutingActive={isRoutingActive}
             onToggleLayer={handleToggleLayer}
             onCompassPress={() => {
               if (bearing !== 0 && !compassMode) {
@@ -634,8 +657,8 @@ export default function MapScreen() {
             onClearRoute={handleClearRoute}
           />
 
-          {/* ── THẺ CHI TIẾT TÒA NHÀ ĐANG CHỌN (GÓC DƯỚI BẢN ĐỒ) ──────────────── */}
-          {selectedLoc && (
+          {/* ── THẺ CHI TIẾT TÒA NHÀ ĐANG CHỌN (ẨN KHI ĐANG CHỈ ĐƯỜNG ĐỂ TỐI ĐA KHÔNG GIAN) ── */}
+          {!isRoutingActive && selectedLoc && (
             <MapLocationDetailCard
               selectedLoc={selectedLoc}
               userLocation={userLocation}
@@ -649,6 +672,105 @@ export default function MapScreen() {
               onStartDirections={handleStartInAppDirections}
               onOpenGoogleMaps={handleOpenExternalGoogleMaps}
             />
+          )}
+
+          {/* ── THANH TRẠNG THÁI DẪN ĐƯỜNG TỐI GIẢN (KHI ĐANG CHỈ ĐƯỜNG) ──────── */}
+          {isRoutingActive && (
+            <View
+              style={{
+                position: "absolute",
+                bottom: Math.max(insets.bottom, 16),
+                left: 14,
+                right: 14,
+                zIndex: 50,
+                backgroundColor: "#FFFFFF",
+                borderRadius: 22,
+                paddingVertical: 14,
+                paddingHorizontal: 16,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.16,
+                shadowRadius: 16,
+                elevation: 10,
+                borderWidth: 1,
+                borderColor: "rgba(226, 232, 240, 0.9)",
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1, marginRight: 10 }}>
+                  <View
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 22,
+                      backgroundColor: "#EFF6FF",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderWidth: 1.5,
+                      borderColor: "#BFDBFE",
+                    }}
+                  >
+                    <Feather name="navigation" size={22} color={AppColors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{
+                        fontSize: 10.5,
+                        fontWeight: "800",
+                        color: "#64748B",
+                        textTransform: "uppercase",
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      Đang chỉ đường đi bộ tới
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 15,
+                        fontWeight: "900",
+                        color: "#0F172A",
+                        marginTop: 1,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {targetRoom && currentParsed ? currentParsed.fullDisplay : selectedLoc?.name || "Điểm đến"}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 12.5,
+                        fontWeight: "800",
+                        color: "#059669",
+                        marginTop: 2,
+                      }}
+                    >
+                      {activeRoute?.distanceMeters ? `~${activeRoute.distanceMeters}m` : "Đang tính..."}
+                      {activeRoute?.durationMinutes ? ` • ~${activeRoute.durationMinutes} phút` : " • Đi bộ"}
+                    </Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  onPress={handleClearRoute}
+                  activeOpacity={0.8}
+                  style={{
+                    backgroundColor: "#FEE2E2",
+                    paddingVertical: 10,
+                    paddingHorizontal: 16,
+                    borderRadius: 14,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                    borderWidth: 1,
+                    borderColor: "#FECACA",
+                  }}
+                >
+                  <Feather name="x-circle" size={16} color="#DC2626" />
+                  <Text style={{ fontSize: 13, fontWeight: "800", color: "#DC2626" }}>
+                    Dừng
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           )}
         </View>
       )}

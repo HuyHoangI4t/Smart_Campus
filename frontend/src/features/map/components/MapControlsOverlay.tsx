@@ -9,6 +9,7 @@ interface MapControlsOverlayProps {
   compassMode: boolean;
   locationLoading: boolean;
   hasUserLocation: boolean;
+  isRoutingActive?: boolean;
   activeRoute: {
     distanceMeters?: number;
     durationMinutes?: number;
@@ -30,6 +31,7 @@ export const MapControlsOverlay: React.FC<MapControlsOverlayProps> = ({
   compassMode,
   locationLoading,
   hasUserLocation,
+  isRoutingActive = false,
   activeRoute,
   onToggleLayer,
   onCompassPress,
@@ -43,8 +45,8 @@ export const MapControlsOverlay: React.FC<MapControlsOverlayProps> = ({
 }) => {
   return (
     <>
-      {/* ── BANNER HIỂN THỊ THÔNG TIN TUYẾN ĐƯỜNG ĐI BỘ ĐANG VẼ ── */}
-      {activeRoute && (
+      {/* ── BANNER HIỂN THỊ THÔNG TIN TUYẾN ĐƯỜNG ĐI BỘ ĐANG VẼ (KHI KHÔNG Ở CHẾ ĐỘ DẪN ĐƯỜNG TỐI GIẢN) ── */}
+      {activeRoute && !isRoutingActive && (
         <View
           style={{
             position: "absolute",
@@ -112,39 +114,41 @@ export const MapControlsOverlay: React.FC<MapControlsOverlayProps> = ({
       <View
         style={{
           position: "absolute",
-          top: 108,
+          top: isRoutingActive ? 14 : 108,
           right: 12,
           zIndex: 35,
           alignItems: "center",
           gap: 8,
         }}
       >
-        {/* Nút chuyển đổi Lớp bản đồ (Vệ tinh / Bản đồ đường sá) */}
-        <TouchableOpacity
-          onPress={onToggleLayer}
-          activeOpacity={0.8}
-          style={{
-            width: 42,
-            height: 42,
-            borderRadius: 21,
-            backgroundColor: "#FFFFFF",
-            alignItems: "center",
-            justifyContent: "center",
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 3 },
-            shadowOpacity: 0.15,
-            shadowRadius: 6,
-            elevation: 5,
-            borderWidth: 1,
-            borderColor: "#E2E8F0",
-          }}
-        >
-          <Feather
-            name={mapLayer === "osm" ? "layers" : "globe"}
-            size={18}
-            color={AppColors.primary}
-          />
-        </TouchableOpacity>
+        {/* Nút chuyển đổi Lớp bản đồ (Ẩn khi đang chỉ đường để tối đa không gian) */}
+        {!isRoutingActive && (
+          <TouchableOpacity
+            onPress={onToggleLayer}
+            activeOpacity={0.8}
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 21,
+              backgroundColor: "#FFFFFF",
+              alignItems: "center",
+              justifyContent: "center",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 3 },
+              shadowOpacity: 0.15,
+              shadowRadius: 6,
+              elevation: 5,
+              borderWidth: 1,
+              borderColor: "#E2E8F0",
+            }}
+          >
+            <Feather
+              name={mapLayer === "osm" ? "layers" : "globe"}
+              size={18}
+              color={AppColors.primary}
+            />
+          </TouchableOpacity>
+        )}
 
         {/* Nút La Bàn Chỉ Hướng Bắc (Compass Widget) */}
         <TouchableOpacity

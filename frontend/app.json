@@ -10,7 +10,9 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Ứng dụng cần quyền truy cập vị trí để định vị bạn trên bản đồ và chỉ đường tới phòng học trong trường."
+        "NSLocationWhenInUseUsageDescription": "Ứng dụng cần quyền truy cập vị trí để định vị bạn trên bản đồ và chỉ đường tới phòng học trong trường.",
+        "NSCameraUsageDescription": "Ứng dụng cần quyền truy cập máy ảnh để chụp ảnh đại diện.",
+        "NSPhotoLibraryUsageDescription": "Ứng dụng cần quyền truy cập thư viện ảnh để chọn ảnh đại diện."
       }
     },
     "android": {
@@ -24,7 +26,11 @@
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES"
       ]
     },
     "web": {
@@ -37,6 +43,13 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "Ứng dụng cần quyền truy cập vị trí để định vị bạn trên bản đồ và chỉ đường tới phòng học trong trường."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Ứng dụng cần quyền truy cập thư viện ảnh để bạn có thể chọn ảnh đại diện.",
+          "cameraPermission": "Ứng dụng cần quyền truy cập máy ảnh để bạn có thể chụp ảnh đại diện mới."
         }
       ],
       [

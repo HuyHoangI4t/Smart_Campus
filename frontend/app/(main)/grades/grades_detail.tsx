@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, BackHandler } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
@@ -110,13 +110,28 @@ export default function GradesDetailScreen() {
     return { bg: "#F3F4F6", text: "#4B5563", border: "#E5E7EB", label: letter || "X" };
   };
 
+  const handleBackToGrades = useCallback(() => {
+    router.replace("/(main)/grades");
+  }, [router]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        handleBackToGrades();
+        return true;
+      };
+      const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+      return () => sub.remove();
+    }, [handleBackToGrades])
+  );
+
   return (
     <View style={{ flex: 1, backgroundColor: AppColors.background }}>
       <NavHeader
         title="Chi tiết bảng điểm"
         subtitle="Điểm quá trình, thực hành và học phần"
         showBack={true}
-        onBack={() => router.back()}
+        onBack={handleBackToGrades}
       />
 
       {/* Search Bar */}
