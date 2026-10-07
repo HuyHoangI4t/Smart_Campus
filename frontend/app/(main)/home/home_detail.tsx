@@ -18,7 +18,9 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Sharing from "expo-sharing";
 import { File, Paths } from "expo-file-system";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
+import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
 import {
   getNewsImageUrl,
   CAMPUS_FALLBACK_IMAGES,
@@ -128,11 +130,28 @@ export default function HomeDetailScreen() {
 
   const initialImageUri = params.imageUrl ? getNewsImageUrl(params.imageUrl) : "";
   const [heroImageUri, setHeroImageUri] = useState<string>(initialImageUri);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
   const scrollRef = useRef<ScrollView>(null);
 
-  // Luôn cuộn ngay về đỉnh trang mỗi khi màn hình được kích hoạt / hiển thị
+  const checkAuth = async () => {
+    try {
+      const userStr = await AsyncStorage.getItem("@auth_user");
+      if (userStr) {
+        const u = JSON.parse(userStr);
+        const mssv = u.mssv || u.masv;
+        setIsLoggedIn(Boolean(mssv && mssv !== "guest"));
+      } else {
+        setIsLoggedIn(false);
+      }
+    } catch {
+      setIsLoggedIn(false);
+    }
+  };
+
+  // Luôn cuộn ngay về đỉnh trang mỗi khi màn hình được kích hoạt / hiển thị và kiểm tra quyền đăng nhập
   useFocusEffect(
     useCallback(() => {
+      checkAuth();
       scrollRef.current?.scrollTo({ y: 0, animated: false });
     }, [])
   );
@@ -287,6 +306,85 @@ export default function HomeDetailScreen() {
   };
 
 
+
+  if (!isLoggedIn) {
+    const topPadding = Platform.OS === "android"
+      ? (StatusBar.currentHeight || 24) + 12
+      : Math.max(insets.top + 8, 44);
+
+    return (
+      <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
+        <StatusBar barStyle="light-content" backgroundColor="#0F2964" translucent={Platform.OS === "android"} />
+
+        {/* ─── HEADER NAVY BLUE ─── */}
+        <View
+          style={{
+            backgroundColor: "#0F2964",
+            paddingTop: topPadding,
+            paddingBottom: 16,
+            paddingHorizontal: 16,
+            borderBottomLeftRadius: 24,
+            borderBottomRightRadius: 24,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.12,
+            shadowRadius: 10,
+            elevation: 5,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              activeOpacity={0.8}
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 19,
+                backgroundColor: "rgba(255,255,255,0.15)",
+                alignItems: "center",
+                justifyContent: "center",
+                marginRight: 12,
+              }}
+            >
+              <Feather name="arrow-left" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  color: "rgba(255,255,255,0.75)",
+                  fontSize: 11,
+                  fontWeight: "700",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.6,
+                }}
+              >
+                CHI TIẾT BÀI VIẾT
+              </Text>
+              <Text
+                style={{
+                  color: "#FFFFFF",
+                  fontSize: 18,
+                  fontWeight: "900",
+                  marginTop: 2,
+                }}
+                numberOfLines={1}
+              >
+                {category}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <LoginRequiredCard
+          mode="fullscreen"
+          icon="file-text"
+          title="Vui lòng đăng nhập để xem"
+          message="Đăng nhập tài khoản sinh viên để đọc toàn bộ nội dung bài viết và tải tài liệu đính kèm."
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,8 +11,10 @@ import {
   Image,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
 //import { AppColors } from "../../../src/constants/appColors";
 import {
   apiGetNews,
@@ -64,6 +66,28 @@ export default function AllArticlesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [articles, setArticles] = useState<NewsOrAnnouncementItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
+
+  const checkAuth = async () => {
+    try {
+      const userStr = await AsyncStorage.getItem("@auth_user");
+      if (userStr) {
+        const u = JSON.parse(userStr);
+        const mssv = u.mssv || u.masv;
+        setIsLoggedIn(Boolean(mssv && mssv !== "guest"));
+      } else {
+        setIsLoggedIn(false);
+      }
+    } catch {
+      setIsLoggedIn(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      checkAuth();
+    }, [])
+  );
 
   const topPadding =
     Platform.OS === "android"
@@ -429,6 +453,80 @@ export default function AllArticlesScreen() {
       </TouchableOpacity>
     );
   };
+
+  if (!isLoggedIn) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
+        <StatusBar barStyle="light-content" backgroundColor="#0F2964" translucent={Platform.OS === "android"} />
+
+        {/* ─── HEADER NAVY BLUE ─── */}
+        <View
+          style={{
+            backgroundColor: "#0F2964",
+            paddingTop: topPadding,
+            paddingBottom: 16,
+            paddingHorizontal: 16,
+            borderBottomLeftRadius: 24,
+            borderBottomRightRadius: 24,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.12,
+            shadowRadius: 10,
+            elevation: 5,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              activeOpacity={0.8}
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 19,
+                backgroundColor: "rgba(255,255,255,0.15)",
+                alignItems: "center",
+                justifyContent: "center",
+                marginRight: 12,
+              }}
+            >
+              <Feather name="arrow-left" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  color: "rgba(255,255,255,0.75)",
+                  fontSize: 11,
+                  fontWeight: "700",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.6,
+                }}
+              >
+                CỔNG THÔNG TIN ĐẠI HỌC TÂY NGUYÊN
+              </Text>
+              <Text
+                style={{
+                  color: "#FFFFFF",
+                  fontSize: 19,
+                  fontWeight: "900",
+                  marginTop: 2,
+                }}
+              >
+                Tin tức & Thông báo
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <LoginRequiredCard
+          mode="fullscreen"
+          icon="book-open"
+          title="Vui lòng đăng nhập để xem"
+          message="Đăng nhập tài khoản sinh viên để truy cập toàn bộ thông báo và tin tức từ Nhà trường."
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>

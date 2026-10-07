@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+ const pool = require('../config/db');
 const migration001 = require('./migrations/001_init_tables');
 const initialSeeder = require('./seeders/initialSeeder');
 

@@ -2,9 +2,11 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { View, Platform, Linking, ActivityIndicator, Alert } from "react-native";
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useFocusEffect } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
 import { NavHeader } from "../../../src/components/NavHeader";
+import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
 import { apiGetMapLocations } from "../../../src/services/api";
 import {
   LocationItem,
@@ -12,6 +14,7 @@ import {
   TNU_CAMPUS_BOUNDARY,
   TNU_CAMPUS_CENTER,
   TNU_OSM_WAY_241971731_BOUNDARY,
+  HOUSE_NUM_TO_ID,
   parseCampusRoom,
   findLocationByRoomOrQuery,
   generateLeafletMapHtml,
@@ -32,30 +35,109 @@ export {
 };
 
 export default function MapScreen() {
-  const params = useLocalSearchParams<{ search?: string; room?: string; subject?: string }>();
+  const params = useLocalSearchParams<{
+    search?: string;
+    room?: string;
+    subject?: string;
+    building?: string;
+    buildingCode?: string;
+    t?: string;
+  }>();
   const webViewRef = useRef<WebView>(null);
+  const isMapReadyRef = useRef<boolean>(false);
   const [, setMapReady] = useState(false);
 
-  const [targetRoom] = useState<string>(params.room ? String(params.room).trim() : "");
-  const [targetSubject] = useState<string>(params.subject ? String(params.subject).trim() : "");
+  const [targetRoom, setTargetRoom] = useState<string>(params.room ? String(params.room).trim() : "");
+  const [targetSubject, setTargetSubject] = useState<string>(params.subject ? String(params.subject).trim() : "");
   const currentParsed = targetRoom ? parseCampusRoom(targetRoom) : null;
+
+  // Trạng thái đăng nhập (Khách / chưa đăng nhập không được xem bản đồ)
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+
+  const checkAuth = useCallback(async () => {
+    try {
+      const userStr = await AsyncStorage.getItem("@auth_user");
+      if (userStr) {
+        const u = JSON.parse(userStr);
+        const mssv = u.mssv || u.masv || "";
+        if (mssv && mssv !== "guest") {
+          setIsLoggedIn(true);
+          return;
+        }
+      }
+      setIsLoggedIn(false);
+    } catch {
+      setIsLoggedIn(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      checkAuth();
+    }, [checkAuth])
+  );
 
   // Giữ ô tìm kiếm trống nếu đi từ Home/Schedule có room
   const [search, setSearch] = useState<string>(() => {
     return params.search ? String(params.search).trim() : "";
   });
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [locations, setLocations] = useState<LocationItem[]>(TAY_NGUYEN_CAMPUS_LOCATIONS);
 
   // Chọn địa điểm ban đầu
   const [selectedLoc, setSelectedLoc] = useState<LocationItem | null>(() => {
-    const initialQuery = params.room || params.search || "";
+    const initialQuery = params.building || params.room || params.search || "";
     if (initialQuery) {
       const matched = findLocationByRoomOrQuery(String(initialQuery), TAY_NGUYEN_CAMPUS_LOCATIONS);
       if (matched) return matched;
     }
     return TAY_NGUYEN_CAMPUS_LOCATIONS[0];
   });
+
+  // Cập nhật và focus đúng tòa giảng đường khi params thay đổi (ví dụ: bấm "Xem trên bản đồ" từ Thời khóa biểu)
+  useEffect(() => {
+    const roomParam = params.room ? String(params.room).trim() : "";
+    const subjectParam = params.subject ? String(params.subject).trim() : "";
+    const buildingParam = params.building ? String(params.building).trim() : "";
+    const buildingCodeParam = params.buildingCode ? String(params.buildingCode).trim() : "";
+    const searchParam = params.search ? String(params.search).trim() : "";
+
+    const query = buildingParam || buildingCodeParam || roomParam || searchParam;
+    if (!query) return;
+
+    if (roomParam) setTargetRoom(roomParam);
+    if (subjectParam) setTargetSubject(subjectParam);
+    if (searchParam) setSearch(searchParam);
+
+    const matched =
+      (buildingParam ? findLocationByRoomOrQuery(buildingParam, locations) : null) ||
+      (buildingCodeParam ? findLocationByRoomOrQuery(buildingCodeParam, locations) : null) ||
+      (roomParam ? findLocationByRoomOrQuery(roomParam, locations) : null) ||
+      (searchParam ? findLocationByRoomOrQuery(searchParam, locations) : null);
+
+    if (matched) {
+      setSelectedLoc(matched);
+      setActiveRoute(null);
+
+      const sendFocus = () => {
+        webViewRef.current?.postMessage(
+          JSON.stringify({
+            type: "FOCUS_LOCATION",
+            id: matched.id,
+            lat: matched.lat,
+            lng: matched.lng,
+          })
+        );
+      };
+
+      if (isMapReadyRef.current) {
+        sendFocus();
+        const t = setTimeout(sendFocus, 200);
+        return () => clearTimeout(t);
+      }
+    }
+  }, [params.room, params.subject, params.building, params.buildingCode, params.search, params.t, locations]);
 
   // Chế độ bản đồ (osm | satellite)
   const [mapLayer, setMapLayer] = useState<"osm" | "satellite">("satellite");
@@ -242,6 +324,7 @@ export default function MapScreen() {
 
   // Khi bản đồ sẵn sàng, focus vào tòa nhà đang chọn
   const handleMapReady = useCallback(() => {
+    isMapReadyRef.current = true;
     setMapReady(true);
     if (selectedLoc) {
       webViewRef.current?.postMessage(
@@ -272,6 +355,7 @@ export default function MapScreen() {
       if (data.type === "MAP_READY") {
         handleMapReady();
       } else if (data.type === "SELECT_LOCATION") {
+        setShowSuggestions(false);
         const found = locations.find((l) => l.id === data.id);
         if (found) {
           setSelectedLoc(found);
@@ -292,10 +376,31 @@ export default function MapScreen() {
     }
   };
 
+  // Chọn danh mục từ băng lọc chip
+  const handleSelectCategory = (catId: string) => {
+    setSelectedCategory(catId);
+    setShowSuggestions(false);
+    webViewRef.current?.postMessage(
+      JSON.stringify({
+        type: "FILTER_CATEGORY",
+        category: catId,
+      })
+    );
+  };
+
   // Focus tòa nhà khi chọn từ danh sách tìm kiếm
   const handleSelectLocation = (loc: LocationItem) => {
     setSelectedLoc(loc);
-    setSearch(loc.name);
+
+    // Nếu query tìm kiếm là mã phòng (2.20, 8.3.4,...), lưu lại để card hiển thị đầy đủ chi tiết phòng
+    const parsed = parseCampusRoom(search);
+    if (parsed.buildingNumber && HOUSE_NUM_TO_ID[parsed.buildingNumber] === loc.id) {
+      setTargetRoom(search.trim());
+      setSearch(parsed.fullDisplay);
+    } else {
+      setSearch(loc.name);
+    }
+
     setShowSuggestions(false);
     setActiveRoute(null);
 
@@ -307,6 +412,15 @@ export default function MapScreen() {
         lng: loc.lng,
       })
     );
+  };
+
+  // Xử lý khi nhấn nút Search / Enter trên bàn phím
+  const handleSearchSubmit = () => {
+    if (!search.trim()) return;
+    const matched = findLocationByRoomOrQuery(search, locations) || searchResults[0];
+    if (matched) {
+      handleSelectLocation(matched);
+    }
   };
 
   // Chuyển đổi lớp bản đồ (Thường vs Vệ tinh)
@@ -386,18 +500,35 @@ export default function MapScreen() {
     });
   };
 
-  // Gợi ý tìm kiếm
-  const searchResults = search.trim()
-    ? locations.filter((loc) => {
-        const q = search.trim().toLowerCase();
-        return (
-          loc.name.toLowerCase().includes(q) ||
-          loc.building.toLowerCase().includes(q) ||
-          loc.category.toLowerCase().includes(q) ||
-          (loc.description && loc.description.toLowerCase().includes(q))
-        );
-      })
-    : [];
+  // Gợi ý tìm kiếm & lọc theo danh mục
+  const searchResults = useMemo(() => {
+    let list = locations;
+    if (selectedCategory && selectedCategory !== "all") {
+      list = list.filter((loc) => loc.category.toLowerCase() === selectedCategory.toLowerCase());
+    }
+    const q = search.trim().toLowerCase();
+    if (!q) return list;
+
+    // 1. Kiểm tra xem query có trỏ tới tòa nhà/phòng học cụ thể nào không (vd: 2.20 -> Nhà 2, 8.3.4 -> Nhà 8, 304.GD3 -> Nhà 3,...)
+    const matchedByRoom = findLocationByRoomOrQuery(q, locations);
+
+    const filtered = list.filter((loc) => {
+      return (
+        loc.name.toLowerCase().includes(q) ||
+        loc.building.toLowerCase().includes(q) ||
+        loc.category.toLowerCase().includes(q) ||
+        (loc.description && loc.description.toLowerCase().includes(q))
+      );
+    });
+
+    // Nếu tìm thấy địa điểm khớp theo phòng học (2.20, 8.3.4,...), đưa nó lên vị trí đầu tiên
+    if (matchedByRoom) {
+      const rest = filtered.filter((l) => l.id !== matchedByRoom.id);
+      return [matchedByRoom, ...rest];
+    }
+
+    return filtered;
+  }, [search, selectedCategory, locations]);
 
   const matchedTargetId = targetRoom ? parseCampusRoom(targetRoom).buildingNumber : null;
 
@@ -410,103 +541,117 @@ export default function MapScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: AppColors.background }}>
-      {/* ─── THANH ĐIỀU HƯỚNG TRÊN CÙNG ───────────────────────────────────── */}
+      {/* ─── THANH ĐIỀU HƯỚNG TRÊN CÙNG (GIỮ NGUYÊN 100%) ──────────────── */}
       <NavHeader
         title="Bản đồ khuôn viên"
         subtitle="Đại học Tây Nguyên • Khuôn viên nội bộ"
       />
 
-      {/* ─── Ô TÌM KIẾM TÒA NHÀ TRÊN CÙNG ─────────────────────────────────── */}
-      <MapSearchBar
-        search={search}
-        showSuggestions={showSuggestions}
-        searchResults={searchResults}
-        onSearchChange={(text) => {
-          setSearch(text);
-          setShowSuggestions(true);
-        }}
-        onClearSearch={() => {
-          setSearch("");
-          setShowSuggestions(false);
-        }}
-        onFocus={() => setShowSuggestions(true)}
-        onSelectLocation={handleSelectLocation}
-      />
-
-      {/* ─── KHUNG BẢN ĐỒ TƯƠNG TÁC (REACT-NATIVE-WEBVIEW + LEAFLET.JS) ────── */}
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "#0F172A",
-          position: "relative",
-          marginHorizontal: 12,
-          marginTop: 6,
-          marginBottom: 95,
-          borderRadius: 24,
-          overflow: "hidden",
-          borderWidth: 1.5,
-          borderColor: "#334155",
-        }}
-      >
-        {/* Leaflet Web View */}
-        <WebView
-          ref={webViewRef}
-          originWhitelist={["*"]}
-          source={mapHtmlSource}
-          onMessage={handleWebViewMessage}
-          style={{ flex: 1, backgroundColor: "#0F172A" }}
-          javaScriptEnabled={true}
-          domStorageEnabled={true}
-          startInLoadingState={true}
-          renderLoading={() => (
-            <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#0F172A" }}>
-              <ActivityIndicator size="large" color={AppColors.primary} />
-            </View>
-          )}
-        />
-
-        {/* ── CÁC NÚT ĐIỀU KHIỂN NỔI & LA BÀN ──────────────────────────────── */}
-        <MapControlsOverlay
-          mapLayer={mapLayer}
-          bearing={bearing}
-          compassMode={compassMode}
-          locationLoading={locationLoading}
-          hasUserLocation={Boolean(userLocation)}
-          activeRoute={activeRoute}
-          onToggleLayer={handleToggleLayer}
-          onCompassPress={() => {
-            if (bearing !== 0 && !compassMode) {
-              handleResetBearing();
-            } else {
-              toggleCompassMode();
-            }
-          }}
-          onResetBearing={handleResetBearing}
-          onUserLocationPress={() => requestUserLocation(true)}
-          onZoomIn={handleZoomIn}
-          onZoomOut={handleZoomOut}
-          onResetView={handleResetView}
-          onRotateStep={handleRotateStep}
-          onClearRoute={handleClearRoute}
-        />
-
-        {/* ── THẺ CHI TIẾT TÒA NHÀ ĐANG CHỌN (GÓC DƯỚI BẢN ĐỒ) ──────────────── */}
-        {selectedLoc && (
-          <MapLocationDetailCard
-            selectedLoc={selectedLoc}
-            userLocation={userLocation}
-            matchedTargetId={matchedTargetId}
-            currentParsed={currentParsed}
-            targetSubject={targetSubject}
-            onClose={() => {
-              setSelectedLoc(null);
-              handleClearRoute();
-            }}
-            onStartDirections={handleStartInAppDirections}
-            onOpenGoogleMaps={handleOpenExternalGoogleMaps}
+      {isLoggedIn === null ? (
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator size="large" color={AppColors.primary} />
+        </View>
+      ) : !isLoggedIn ? (
+        <View style={{ flex: 1, marginBottom: 88 }}>
+          <LoginRequiredCard
+            mode="fullscreen"
+            title="Vui lòng đăng nhập để xem"
+            message="Đăng nhập tài khoản sinh viên để xem và tra cứu bản đồ khuôn viên trường Đại học Tây Nguyên."
+            icon="map-pin"
           />
-        )}
-      </View>
+        </View>
+      ) : (
+        /* ─── KHUNG BẢN ĐỒ TƯƠNG TÁC HIỆN ĐẠI (EDGE-TO-EDGE CANVAS) ────── */
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "#0F172A",
+            position: "relative",
+            marginBottom: 88,
+            overflow: "hidden",
+          }}
+        >
+          {/* Leaflet Web View */}
+          <WebView
+            ref={webViewRef}
+            originWhitelist={["*"]}
+            source={mapHtmlSource}
+            onMessage={handleWebViewMessage}
+            style={{ flex: 1, backgroundColor: "#0F172A" }}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            startInLoadingState={true}
+            renderLoading={() => (
+              <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#0F172A" }}>
+                <ActivityIndicator size="large" color={AppColors.primary} />
+              </View>
+            )}
+          />
+
+          {/* ─── THANH TÌM KIẾM NỔI & BĂNG DANH MỤC LỌC NHANH ─────────────── */}
+          <MapSearchBar
+            search={search}
+            showSuggestions={showSuggestions}
+            searchResults={searchResults}
+            selectedCategory={selectedCategory}
+            totalLocations={locations.length}
+            onSearchChange={(text) => {
+              setSearch(text);
+              setShowSuggestions(true);
+            }}
+            onClearSearch={() => {
+              setSearch("");
+              setShowSuggestions(false);
+            }}
+            onFocus={() => setShowSuggestions(true)}
+            onSelectLocation={handleSelectLocation}
+            onSelectCategory={handleSelectCategory}
+            onSubmitSearch={handleSearchSubmit}
+          />
+
+          {/* ── CÁC NÚT ĐIỀU KHIỂN NỔI & LA BÀN ──────────────────────────────── */}
+          <MapControlsOverlay
+            mapLayer={mapLayer}
+            bearing={bearing}
+            compassMode={compassMode}
+            locationLoading={locationLoading}
+            hasUserLocation={Boolean(userLocation)}
+            activeRoute={activeRoute}
+            onToggleLayer={handleToggleLayer}
+            onCompassPress={() => {
+              if (bearing !== 0 && !compassMode) {
+                handleResetBearing();
+              } else {
+                toggleCompassMode();
+              }
+            }}
+            onResetBearing={handleResetBearing}
+            onUserLocationPress={() => requestUserLocation(true)}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onResetView={handleResetView}
+            onRotateStep={handleRotateStep}
+            onClearRoute={handleClearRoute}
+          />
+
+          {/* ── THẺ CHI TIẾT TÒA NHÀ ĐANG CHỌN (GÓC DƯỚI BẢN ĐỒ) ──────────────── */}
+          {selectedLoc && (
+            <MapLocationDetailCard
+              selectedLoc={selectedLoc}
+              userLocation={userLocation}
+              matchedTargetId={matchedTargetId}
+              currentParsed={currentParsed}
+              targetSubject={targetSubject}
+              onClose={() => {
+                setSelectedLoc(null);
+                handleClearRoute();
+              }}
+              onStartDirections={handleStartInAppDirections}
+              onOpenGoogleMaps={handleOpenExternalGoogleMaps}
+            />
+          )}
+        </View>
+      )}
     </View>
   );
 }

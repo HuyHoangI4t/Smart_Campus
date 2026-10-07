@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -12,12 +12,13 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 //import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { useTabBarScrollHandler } from "../../../src/components/MainTabs";
+import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
 import {
   apiGetSchedule,
   apiGetDashboard,
@@ -326,6 +327,7 @@ export default function HomeScreen() {
   // Thông báo & Cảnh báo từ nhà trường (mặc định để trống, chỉ hiện khi có thông báo thực tế)
   const [notificationAlerts, setNotificationAlerts] = useState<NotificationAlertItem[]>([]);
   const [selectedAlertForModal, setSelectedAlertForModal] = useState<NotificationAlertItem | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
 
   // Chuyển ngày tháng thành timestamp mili-giây để sắp xếp
   const parseArticleTimestamp = (item: any): number => {
@@ -513,7 +515,8 @@ export default function HomeScreen() {
       }
 
       const mssv = currentUser.mssv || currentUser.masv;
-      const isRealAccount = mssv && mssv !== "guest";
+      const isRealAccount = Boolean(mssv && mssv !== "guest");
+      setIsLoggedIn(isRealAccount);
       const scheduleCacheKey = `@offline_schedule_${mssv || 'current'}`;
 
       // BƯỚC 1: Đọc tức thì từ Cache đã nạp trong lúc nhấn Đăng nhập (0ms render ngay)
@@ -538,10 +541,11 @@ export default function HomeScreen() {
     }
   };
 
-  useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -908,14 +912,21 @@ export default function HomeScreen() {
               <Text style={{ fontSize: 16, fontWeight: "900", color: "#0F172A" }}>
                 Thông báo & Cảnh báo
               </Text>
-              {notificationAlerts && notificationAlerts.length > 0 ? (
+              {isLoggedIn && notificationAlerts && notificationAlerts.length > 0 ? (
                 <Text style={{ fontSize: 13, fontWeight: "700", color: "#2563EB" }}>
                   {notificationAlerts.length} tin mới
                 </Text>
               ) : null}
             </View>
 
-            {notificationAlerts && notificationAlerts.length > 0 ? (
+            {!isLoggedIn ? (
+              <LoginRequiredCard
+                mode="card"
+                icon="bell"
+                title="Vui lòng đăng nhập để xem thông báo"
+                message="Đăng nhập tài khoản sinh viên để nhận các thông báo, phản hồi và cảnh báo quan trọng từ nhà trường."
+              />
+            ) : notificationAlerts && notificationAlerts.length > 0 ? (
               <View style={{ gap: 10 }}>
                 {notificationAlerts.map((item) => {
                   let bg = "#F0FDF4";
@@ -1003,186 +1014,94 @@ export default function HomeScreen() {
               <Text style={{ fontSize: 16, fontWeight: "900", color: "#0F172A" }}>
                 Thông báo Sinh viên
               </Text>
-              <TouchableOpacity
-                onPress={() => router.push({ pathname: "/(main)/home/all_articles", params: { tab: "announcement" } })}
-                activeOpacity={0.7}
-              >
-                <Text style={{ fontSize: 13, fontWeight: "700", color: "#2563EB" }}>
-                  Xem tất cả
-                </Text>
-              </TouchableOpacity>
+              {isLoggedIn ? (
+                <TouchableOpacity
+                  onPress={() => router.push({ pathname: "/(main)/home/all_articles", params: { tab: "announcement" } })}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: "#2563EB" }}>
+                    Xem tất cả
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
 
-            <View style={{ gap: 10 }}>
-              {latestAnnouncements.slice(0, 3).map((ann, idx) => (
-                <TouchableOpacity
-                  key={ann.id || idx}
-                  onPress={() => openDetail(ann, idx)}
-                  activeOpacity={0.7}
-                  style={{
-                    backgroundColor: "#FFFFFF",
-                    borderRadius: 16,
-                    borderWidth: 1,
-                    borderColor: "#E2E8F0",
-                    padding: 14,
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.03,
-                    shadowRadius: 3,
-                    elevation: 1,
-                  }}
-                >
-                  <View style={[s.row, s.between, { alignItems: "center", marginBottom: 6 }]}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                      <View
-                        style={{
-                          paddingHorizontal: 7,
-                          paddingVertical: 2,
-                          borderRadius: 6,
-                          backgroundColor: ann.isFallback || ann.badge?.toLowerCase().includes("mẫu") ? "#FEF3C7" : "#ECFDF5",
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 4,
-                        }}
-                      >
-                        <Feather
-                          name={ann.isFallback || ann.badge?.toLowerCase().includes("mẫu") ? "alert-triangle" : "bell"}
-                          size={10}
-                          color={ann.isFallback || ann.badge?.toLowerCase().includes("mẫu") ? "#D97706" : "#059669"}
-                        />
-                        <Text
-                          style={{
-                            fontSize: 10,
-                            fontWeight: "800",
-                            color: ann.isFallback || ann.badge?.toLowerCase().includes("mẫu") ? "#D97706" : "#059669",
-                          }}
-                        >
-                          {ann.isFallback || ann.badge?.toLowerCase().includes("mẫu") ? "Dữ liệu mẫu" : (ann.badge || "Thông báo SV")}
-                        </Text>
-                      </View>
-                      {ann.attachments && ann.attachments.length > 0 ? (
+            {!isLoggedIn ? (
+              <LoginRequiredCard
+                mode="card"
+                icon="file-text"
+                title="Vui lòng đăng nhập để xem thông báo sinh viên"
+                message="Đăng nhập tài khoản sinh viên để xem chi tiết các thông báo học vụ, lịch thi và học bổng."
+              />
+            ) : (
+              <View style={{ gap: 10 }}>
+                {latestAnnouncements.slice(0, 3).map((ann, idx) => (
+                  <TouchableOpacity
+                    key={ann.id || idx}
+                    onPress={() => openDetail(ann, idx)}
+                    activeOpacity={0.7}
+                    style={{
+                      backgroundColor: "#FFFFFF",
+                      borderRadius: 16,
+                      borderWidth: 1,
+                      borderColor: "#E2E8F0",
+                      padding: 14,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.03,
+                      shadowRadius: 3,
+                      elevation: 1,
+                    }}
+                  >
+                    <View style={[s.row, s.between, { alignItems: "center", marginBottom: 6 }]}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                         <View
                           style={{
-                            paddingHorizontal: 6,
+                            paddingHorizontal: 7,
                             paddingVertical: 2,
                             borderRadius: 6,
-                            backgroundColor: "#F1F5F9",
+                            backgroundColor: ann.isFallback || ann.badge?.toLowerCase().includes("mẫu") ? "#FEF3C7" : "#ECFDF5",
                             flexDirection: "row",
                             alignItems: "center",
-                            gap: 3,
+                            gap: 4,
                           }}
                         >
-                          <Feather name="paperclip" size={9} color="#475569" />
-                          <Text style={{ fontSize: 10, fontWeight: "700", color: "#475569" }}>
-                            {ann.attachments.length} file
+                          <Feather
+                            name={ann.isFallback || ann.badge?.toLowerCase().includes("mẫu") ? "alert-triangle" : "bell"}
+                            size={10}
+                            color={ann.isFallback || ann.badge?.toLowerCase().includes("mẫu") ? "#D97706" : "#059669"}
+                          />
+                          <Text
+                            style={{
+                              fontSize: 10,
+                              fontWeight: "800",
+                              color: ann.isFallback || ann.badge?.toLowerCase().includes("mẫu") ? "#D97706" : "#059669",
+                            }}
+                          >
+                            {ann.isFallback || ann.badge?.toLowerCase().includes("mẫu") ? "Dữ liệu mẫu" : (ann.badge || "Thông báo SV")}
                           </Text>
                         </View>
-                      ) : null}
-                    </View>
-                    <Text style={{ fontSize: 10, color: "#64748B", fontWeight: "600" }}>
-                      {ann.date}
-                    </Text>
-                  </View>
-
-                  <Text
-                    style={{
-                      fontSize: 13.5,
-                      fontWeight: "800",
-                      color: "#0F172A",
-                      lineHeight: 19,
-                      marginBottom: 8,
-                    }}
-                    numberOfLines={2}
-                  >
-                    {ann.title}
-                  </Text>
-
-                  <View style={[s.row, s.between, { alignItems: "center", borderTopWidth: 1, borderTopColor: "#F1F5F9", paddingTop: 8 }]}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flex: 1, marginRight: 8 }}>
-                      <Feather name="home" size={11} color="#64748B" />
-                      <Text style={{ fontSize: 11, color: "#64748B" }} numberOfLines={1}>
-                        {ann.author || ann.sender || "Phòng Công tác SV"}
-                      </Text>
-                    </View>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                      <Text style={{ fontSize: 11, fontWeight: "700", color: "#2563EB" }}>
-                        Chi tiết
-                      </Text>
-                      <Feather name="arrow-right" size={11} color="#2563EB" />
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* ─── TIN TỨC & HOẠT ĐỘNG (RSS TINTUC CÓ ẢNH) ─── */}
-          <View style={{ marginBottom: 20 }}>
-            <View style={[s.row, s.between, { alignItems: "center", marginBottom: 12, paddingHorizontal: 4 }]}>
-              <Text style={{ fontSize: 16, fontWeight: "900", color: "#0F172A" }}>
-                Tin tức & Hoạt động
-              </Text>
-              <TouchableOpacity
-                onPress={() => router.push({ pathname: "/(main)/home/all_articles", params: { tab: "news" } })}
-                activeOpacity={0.7}
-              >
-                <Text style={{ fontSize: 13, fontWeight: "700", color: "#2563EB" }}>
-                  Xem tất cả
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={{ gap: 12 }}>
-              {latestNews.slice(0, 3).map((item, idx) => (
-                <TouchableOpacity
-                  key={item.id || idx}
-                  onPress={() => openDetail(item, idx)}
-                  activeOpacity={0.7}
-                  style={{
-                    backgroundColor: "#FFFFFF",
-                    borderRadius: 16,
-                    borderWidth: 1,
-                    borderColor: "#E2E8F0",
-                    overflow: "hidden",
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.03,
-                    shadowRadius: 3,
-                    elevation: 1,
-                  }}
-                >
-                  <NewsCardImage imageUrl={item.imageUrl} index={idx} />
-
-                  <View style={{ padding: 14 }}>
-                    <View style={[s.row, s.between, { alignItems: "center", marginBottom: 6 }]}>
-                      <View
-                        style={{
-                          paddingHorizontal: 7,
-                          paddingVertical: 2,
-                          borderRadius: 6,
-                          backgroundColor: item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? "#FEF3C7" : "#EFF6FF",
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 4,
-                        }}
-                      >
-                        <Feather
-                          name={item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? "alert-triangle" : "book-open"}
-                          size={10}
-                          color={item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? "#D97706" : "#2563EB"}
-                        />
-                        <Text
-                          style={{
-                            fontSize: 10,
-                            fontWeight: "800",
-                            color: item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? "#D97706" : "#2563EB",
-                          }}
-                        >
-                          {item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? "Dữ liệu mẫu" : (item.badge || "Tin hoạt động")}
-                        </Text>
+                        {ann.attachments && ann.attachments.length > 0 ? (
+                          <View
+                            style={{
+                              paddingHorizontal: 6,
+                              paddingVertical: 2,
+                              borderRadius: 6,
+                              backgroundColor: "#F1F5F9",
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 3,
+                            }}
+                          >
+                            <Feather name="paperclip" size={9} color="#475569" />
+                            <Text style={{ fontSize: 10, fontWeight: "700", color: "#475569" }}>
+                              {ann.attachments.length} file
+                            </Text>
+                          </View>
+                        ) : null}
                       </View>
                       <Text style={{ fontSize: 10, color: "#64748B", fontWeight: "600" }}>
-                        {item.date}
+                        {ann.date}
                       </Text>
                     </View>
 
@@ -1192,57 +1111,171 @@ export default function HomeScreen() {
                         fontWeight: "800",
                         color: "#0F172A",
                         lineHeight: 19,
-                        marginBottom: 4,
+                        marginBottom: 8,
                       }}
                       numberOfLines={2}
                     >
-                      {item.title}
+                      {ann.title}
                     </Text>
 
-                    {item.summary ? (
-                      <Text
-                        style={{
-                          fontSize: 11,
-                          color: "#64748B",
-                          lineHeight: 16,
-                          marginBottom: 8,
-                        }}
-                        numberOfLines={2}
-                      >
-                        {item.summary}
-                      </Text>
-                    ) : null}
-
-                    <View
-                      style={[
-                        s.row,
-                        s.between,
-                        {
-                          alignItems: "center",
-                          borderTopWidth: 1,
-                          borderTopColor: "#F1F5F9",
-                          paddingTop: 8,
-                          marginTop: 4,
-                        },
-                      ]}
-                    >
+                    <View style={[s.row, s.between, { alignItems: "center", borderTopWidth: 1, borderTopColor: "#F1F5F9", paddingTop: 8 }]}>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flex: 1, marginRight: 8 }}>
-                        <Feather name="globe" size={11} color="#64748B" />
+                        <Feather name="home" size={11} color="#64748B" />
                         <Text style={{ fontSize: 11, color: "#64748B" }} numberOfLines={1}>
-                          {item.author || item.sourceName || "Ban Biên tập TTN"}
+                          {ann.author || ann.sender || "Phòng Công tác SV"}
                         </Text>
                       </View>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
                         <Text style={{ fontSize: 11, fontWeight: "700", color: "#2563EB" }}>
-                          Chi tiết bài viết
+                          Chi tiết
                         </Text>
                         <Feather name="arrow-right" size={11} color="#2563EB" />
                       </View>
                     </View>
-                  </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+
+          {/* ─── TIN TỨC & HOẠT ĐỘNG (RSS TINTUC CÓ ẢNH) ─── */}
+          <View style={{ marginBottom: 20 }}>
+            <View style={[s.row, s.between, { alignItems: "center", marginBottom: 12, paddingHorizontal: 4 }]}>
+              <Text style={{ fontSize: 16, fontWeight: "900", color: "#0F172A" }}>
+                Tin tức & Hoạt động
+              </Text>
+              {isLoggedIn ? (
+                <TouchableOpacity
+                  onPress={() => router.push({ pathname: "/(main)/home/all_articles", params: { tab: "news" } })}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: "#2563EB" }}>
+                    Xem tất cả
+                  </Text>
                 </TouchableOpacity>
-              ))}
+              ) : null}
             </View>
+
+            {!isLoggedIn ? (
+              <LoginRequiredCard
+                mode="card"
+                icon="globe"
+                title="Vui lòng đăng nhập để xem tin tức"
+                message="Đăng nhập tài khoản sinh viên để theo dõi các sự kiện, tin tức hoạt động Đoàn - Hội và Nhà trường."
+              />
+            ) : (
+              <View style={{ gap: 12 }}>
+                {latestNews.slice(0, 3).map((item, idx) => (
+                  <TouchableOpacity
+                    key={item.id || idx}
+                    onPress={() => openDetail(item, idx)}
+                    activeOpacity={0.7}
+                    style={{
+                      backgroundColor: "#FFFFFF",
+                      borderRadius: 16,
+                      borderWidth: 1,
+                      borderColor: "#E2E8F0",
+                      overflow: "hidden",
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.03,
+                      shadowRadius: 3,
+                      elevation: 1,
+                    }}
+                  >
+                    <NewsCardImage imageUrl={item.imageUrl} index={idx} />
+
+                    <View style={{ padding: 14 }}>
+                      <View style={[s.row, s.between, { alignItems: "center", marginBottom: 6 }]}>
+                        <View
+                          style={{
+                            paddingHorizontal: 7,
+                            paddingVertical: 2,
+                            borderRadius: 6,
+                            backgroundColor: item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? "#FEF3C7" : "#EFF6FF",
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          <Feather
+                            name={item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? "alert-triangle" : "book-open"}
+                            size={10}
+                            color={item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? "#D97706" : "#2563EB"}
+                          />
+                          <Text
+                            style={{
+                              fontSize: 10,
+                              fontWeight: "800",
+                              color: item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? "#D97706" : "#2563EB",
+                            }}
+                          >
+                            {item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? "Dữ liệu mẫu" : (item.badge || "Tin hoạt động")}
+                          </Text>
+                        </View>
+                        <Text style={{ fontSize: 10, color: "#64748B", fontWeight: "600" }}>
+                          {item.date}
+                        </Text>
+                      </View>
+
+                      <Text
+                        style={{
+                          fontSize: 13.5,
+                          fontWeight: "800",
+                          color: "#0F172A",
+                          lineHeight: 19,
+                          marginBottom: 4,
+                        }}
+                        numberOfLines={2}
+                      >
+                        {item.title}
+                      </Text>
+
+                      {item.summary ? (
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            color: "#64748B",
+                            lineHeight: 16,
+                            marginBottom: 8,
+                          }}
+                          numberOfLines={2}
+                        >
+                          {item.summary}
+                        </Text>
+                      ) : null}
+
+                      <View
+                        style={[
+                          s.row,
+                          s.between,
+                          {
+                            alignItems: "center",
+                            borderTopWidth: 1,
+                            borderTopColor: "#F1F5F9",
+                            paddingTop: 8,
+                            marginTop: 4,
+                          },
+                        ]}
+                      >
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flex: 1, marginRight: 8 }}>
+                          <Feather name="globe" size={11} color="#64748B" />
+                          <Text style={{ fontSize: 11, color: "#64748B" }} numberOfLines={1}>
+                            {item.author || item.sourceName || "Ban Biên tập TTN"}
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                          <Text style={{ fontSize: 11, fontWeight: "700", color: "#2563EB" }}>
+                            Chi tiết bài viết
+                          </Text>
+                          <Feather name="arrow-right" size={11} color="#2563EB" />
+                        </View>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
         </View>
       </ScrollView>

@@ -23,7 +23,7 @@ export function generateLeafletMapHtml(
       padding: 0;
       width: 100%;
       height: 100%;
-      background: #F1F5F9;
+      background: #0F172A;
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
@@ -34,21 +34,24 @@ export function generateLeafletMapHtml(
       right: 0;
       bottom: 0;
       overflow: hidden;
+      background: #0F172A;
     }
-    /* Khung xoay 150% x 150% để khi xoay mọi góc (kể cả 45 độ) không bị lộ viền trắng */
+    /* Khung xoay bao phủ toàn bộ màn hình kể cả xoay 360 độ trên màn hình điện thoại dài */
     #map-rotator {
       position: absolute;
-      top: -25%;
-      left: -25%;
-      width: 150%;
-      height: 150%;
+      top: 50%;
+      left: 50%;
+      width: 160vmax;
+      height: 160vmax;
+      margin-left: -80vmax;
+      margin-top: -80vmax;
       transform-origin: 50% 50%;
       will-change: transform;
     }
     #map {
       width: 100%;
       height: 100%;
-      background: #F8FAFC;
+      background: #0F172A;
     }
     /* Marker Styles (Icon-only, no #id) */
     .custom-marker {
@@ -110,6 +113,7 @@ export function generateLeafletMapHtml(
       width: 18px;
       height: 18px;
     }
+
     @keyframes pulseAnim {
       0% { transform: scale(0.7); opacity: 0.9; }
       100% { transform: scale(1.6); opacity: 0; }
@@ -352,6 +356,23 @@ export function generateLeafletMapHtml(
       }
     }
 
+    function filterCategory(cat) {
+      var isAll = !cat || cat === 'all';
+      locationsData.forEach(function(loc) {
+        var m = markerObjects[loc.id];
+        if (!m) return;
+        var el = m.getElement();
+        if (!el) return;
+        if (isAll || (loc.category && loc.category.toLowerCase() === cat.toLowerCase())) {
+          el.style.opacity = '1';
+          el.style.pointerEvents = 'auto';
+        } else {
+          el.style.opacity = '0.22';
+          el.style.pointerEvents = 'none';
+        }
+      });
+    }
+
     // Biến quản lý User Location và Tuyến đường (Routing)
     var userLocationMarker = null;
     var routeLayerGroup = L.layerGroup().addTo(map);
@@ -513,6 +534,10 @@ export function generateLeafletMapHtml(
 
           case 'ZOOM_OUT':
             map.zoomOut();
+            break;
+
+          case 'FILTER_CATEGORY':
+            filterCategory(msg.category);
             break;
 
           case 'RESET_VIEW':

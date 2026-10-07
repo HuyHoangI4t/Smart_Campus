@@ -323,10 +323,18 @@ export default function ScheduleScreen() {
   const handleOpenCampusMap = () => {
     const room = selectedScheduleForDirection?.room || "";
     const subject = selectedScheduleForDirection?.course || "";
+    const building = currentDirection?.building || "";
+    const buildingCode = currentDirection?.buildingCode || "";
     setSelectedScheduleForDirection(null);
     router.push({
       pathname: "/(main)/map",
-      params: { room, subject },
+      params: {
+        room,
+        subject,
+        building,
+        buildingCode,
+        t: Date.now().toString(),
+      },
     });
   };
 

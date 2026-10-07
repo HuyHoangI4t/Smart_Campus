@@ -32,177 +32,201 @@ export const MapLocationDetailCard: React.FC<MapLocationDetailCardProps> = ({
     <View
       style={{
         position: "absolute",
-        bottom: 10,
-        left: 10,
-        right: 10,
-        zIndex: 30,
+        bottom: 12,
+        left: 12,
+        right: 12,
+        zIndex: 50,
         backgroundColor: "rgba(255, 255, 255, 0.98)",
-        borderRadius: 18,
-        padding: 12,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.18,
-        shadowRadius: 8,
-        elevation: 8,
+        borderRadius: 22,
+        padding: 16,
+        shadowColor: AppColors.primary,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.16,
+        shadowRadius: 16,
+        elevation: 10,
         borderWidth: 1,
-        borderColor: "#E2E8F0",
+        borderColor: "rgba(226, 232, 240, 0.9)",
       }}
     >
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <View style={{ flex: 1, marginRight: 10 }}>
-          {/* Huy hiệu danh mục hoặc phòng học */}
+      {/* ── THANH TAY CẦM KÉO NHẸ (SHEET HANDLE) ── */}
+      <View
+        style={{
+          width: 38,
+          height: 4,
+          borderRadius: 2,
+          backgroundColor: "#CBD5E1",
+          alignSelf: "center",
+          marginBottom: 12,
+        }}
+      />
+
+      {/* ── HEADER ĐỊA ĐIỂM: HUY HIỆU & NÚT ĐÓNG ── */}
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6, flex: 1, marginRight: 8 }}>
           {isMatch && currentParsed ? (
-            <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6, marginBottom: 4 }}>
-              <View style={{ backgroundColor: "#2563EB", paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 }}>
-                <Text style={{ fontSize: 10, fontWeight: "900", color: "#FFFFFF" }}>
+            <>
+              <View style={{ backgroundColor: AppColors.primary, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                <Text style={{ fontSize: 10.5, fontWeight: "900", color: "#FFFFFF" }}>
                   {currentParsed.buildingCode.toUpperCase()}
                 </Text>
               </View>
               {currentParsed.floor ? (
-                <View style={{ backgroundColor: "#EEF2FF", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                  <Text style={{ fontSize: 10, fontWeight: "800", color: "#2563EB" }}>
+                <View style={{ backgroundColor: "#EEF2FF", paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 }}>
+                  <Text style={{ fontSize: 10.5, fontWeight: "800", color: AppColors.primary }}>
                     {currentParsed.floor}
                   </Text>
                 </View>
               ) : null}
-              <View style={{ backgroundColor: "#F1F5F9", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                <Text style={{ fontSize: 10, fontWeight: "800", color: "#334155" }}>
+              <View style={{ backgroundColor: "#F1F5F9", paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 }}>
+                <Text style={{ fontSize: 10.5, fontWeight: "800", color: "#334155" }}>
                   {currentParsed.roomNumber}
                 </Text>
               </View>
-              {userLocation && (
-                <View style={{ backgroundColor: "#ECFDF5", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, flexDirection: "row", alignItems: "center", gap: 3 }}>
-                  <Feather name="navigation" size={9} color="#059669" />
-                  <Text style={{ fontSize: 10, fontWeight: "800", color: "#059669" }}>
-                    Cách bạn {formatDistanceText(userLocation.latitude, userLocation.longitude, selectedLoc.lat, selectedLoc.lng)}
-                  </Text>
-                </View>
-              )}
-            </View>
+            </>
           ) : (
-            <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6, marginBottom: 2 }}>
-              <View
-                style={{
-                  backgroundColor: selectedLoc.color || AppColors.primary,
-                  paddingHorizontal: 7,
-                  paddingVertical: 2,
-                  borderRadius: 6,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 4,
-                }}
-              >
-                <Feather name={(selectedLoc.icon as any) || "map-pin"} size={11} color="#FFFFFF" />
-                <Text style={{ fontSize: 10, fontWeight: "800", color: "#FFFFFF" }}>
-                  {selectedLoc.category?.toUpperCase() || "TÒA NHÀ KHUÔN VIÊN"}
-                </Text>
-              </View>
-              {userLocation && (
-                <View style={{ backgroundColor: "#ECFDF5", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, flexDirection: "row", alignItems: "center", gap: 3 }}>
-                  <Feather name="navigation" size={9} color="#059669" />
-                  <Text style={{ fontSize: 10, fontWeight: "800", color: "#059669" }}>
-                    Cách bạn {formatDistanceText(userLocation.latitude, userLocation.longitude, selectedLoc.lat, selectedLoc.lng)}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* Tiêu đề địa điểm */}
-          <Text style={{ fontSize: 15, fontWeight: "900", color: AppColors.text }}>
-            {isMatch && targetSubject ? targetSubject : selectedLoc.name}
-          </Text>
-
-          {/* Tòa nhà & Tầng */}
-          <Text style={{ fontSize: 12, color: AppColors.primary, fontWeight: "700", marginTop: 2 }}>
-            {isMatch && currentParsed
-              ? currentParsed.fullDisplay
-              : `${selectedLoc.building}${selectedLoc.floor ? ` • ${selectedLoc.floor}` : ""}`}
-          </Text>
-
-          {/* Hướng dẫn lối đi hoặc mô tả */}
-          {isMatch && currentParsed ? (
             <View
               style={{
+                backgroundColor: selectedLoc.color || AppColors.primary,
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+                borderRadius: 8,
                 flexDirection: "row",
                 alignItems: "center",
                 gap: 5,
-                backgroundColor: "#F8FAFC",
-                paddingHorizontal: 8,
-                paddingVertical: 5,
-                borderRadius: 8,
-                marginTop: 6,
-                borderWidth: 1,
-                borderColor: "#E2E8F0",
               }}
             >
-              <Feather name="compass" size={12} color="#2563EB" />
-              <Text style={{ fontSize: 11, color: "#475569", fontWeight: "600", flex: 1 }}>
-                {currentParsed.routeGuide}
+              <Feather name={(selectedLoc.icon as any) || "map-pin"} size={11} color="#FFFFFF" />
+              <Text style={{ fontSize: 10.5, fontWeight: "800", color: "#FFFFFF" }}>
+                {selectedLoc.category?.toUpperCase() || "TÒA NHÀ KHUÔN VIÊN"}
               </Text>
             </View>
-          ) : selectedLoc.description ? (
-            <Text style={{ fontSize: 11, color: AppColors.textSecondary, marginTop: 4 }} numberOfLines={2}>
-              {selectedLoc.description}
-            </Text>
-          ) : null}
+          )}
+
+          {userLocation && (
+            <View
+              style={{
+                backgroundColor: "#ECFDF5",
+                paddingHorizontal: 7,
+                paddingVertical: 3,
+                borderRadius: 8,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
+              <Feather name="navigation" size={10} color="#059669" />
+              <Text style={{ fontSize: 10.5, fontWeight: "800", color: "#059669" }}>
+                Cách bạn {formatDistanceText(userLocation.latitude, userLocation.longitude, selectedLoc.lat, selectedLoc.lng)}
+              </Text>
+            </View>
+          )}
         </View>
 
-        {/* Nút Đóng và Các nút Chỉ đường */}
-        <View style={{ gap: 6, alignItems: "flex-end" }}>
-          <TouchableOpacity
-            onPress={onClose}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={{
-              width: 26,
-              height: 26,
-              borderRadius: 13,
-              backgroundColor: "#F1F5F9",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Feather name="x" size={14} color="#64748B" />
-          </TouchableOpacity>
+        {/* Nút Đóng */}
+        <TouchableOpacity
+          onPress={onClose}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 14,
+            backgroundColor: "#F1F5F9",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Feather name="x" size={14} color="#64748B" />
+        </TouchableOpacity>
+      </View>
 
-          {/* Nút chỉ đường trực tiếp ngay trên bản đồ Leaflet */}
-          <TouchableOpacity
-            onPress={onStartDirections}
-            activeOpacity={0.8}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 4,
-              paddingHorizontal: 12,
-              paddingVertical: 7,
-              borderRadius: 10,
-              backgroundColor: AppColors.primary,
-            }}
-          >
-            <Feather name="navigation" size={12} color="#FFFFFF" />
-            <Text style={{ fontSize: 11, fontWeight: "800", color: "#FFFFFF" }}>Chỉ đường</Text>
-          </TouchableOpacity>
+      {/* ── TIÊU ĐỀ ĐỊA ĐIỂM ── */}
+      <Text style={{ fontSize: 16, fontWeight: "900", color: AppColors.text, marginBottom: 2 }}>
+        {isMatch && targetSubject ? targetSubject : selectedLoc.name}
+      </Text>
 
-          {/* Nút phụ: Mở Google Maps bên ngoài */}
-          <TouchableOpacity
-            onPress={onOpenGoogleMaps}
-            activeOpacity={0.7}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 3,
-              paddingHorizontal: 8,
-              paddingVertical: 4,
-              borderRadius: 6,
-              backgroundColor: "#F1F5F9",
-            }}
-          >
-            <Feather name="external-link" size={10} color="#64748B" />
-            <Text style={{ fontSize: 10, fontWeight: "600", color: "#64748B" }}>Google Maps</Text>
-          </TouchableOpacity>
+      {/* ── TÒA NHÀ & TẦNG ── */}
+      <Text style={{ fontSize: 12, color: AppColors.primary, fontWeight: "700", marginBottom: 6 }}>
+        {isMatch && currentParsed
+          ? currentParsed.fullDisplay
+          : `${selectedLoc.building}${selectedLoc.floor ? ` • ${selectedLoc.floor}` : ""}`}
+      </Text>
+
+      {/* ── HƯỚNG DẪN LỐI ĐI / MÔ TẢ ── */}
+      {isMatch && currentParsed ? (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            backgroundColor: "#F8FAFC",
+            paddingHorizontal: 10,
+            paddingVertical: 7,
+            borderRadius: 10,
+            marginBottom: 12,
+            borderWidth: 1,
+            borderColor: "#E2E8F0",
+          }}
+        >
+          <Feather name="compass" size={13} color="#2563EB" />
+          <Text style={{ fontSize: 11.5, color: "#334155", fontWeight: "600", flex: 1 }}>
+            {currentParsed.routeGuide}
+          </Text>
         </View>
+      ) : selectedLoc.description ? (
+        <Text style={{ fontSize: 11.5, color: AppColors.textSecondary, marginBottom: 12, lineHeight: 16 }} numberOfLines={2}>
+          {selectedLoc.description}
+        </Text>
+      ) : (
+        <View style={{ height: 6 }} />
+      )}
+
+      {/* ── CÁC NÚT HÀNH ĐỘNG ── */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        {/* Nút chỉ đường đi bộ trực tiếp ngay trên bản đồ Leaflet */}
+        <TouchableOpacity
+          onPress={onStartDirections}
+          activeOpacity={0.8}
+          style={{
+            flex: 1,
+            height: 42,
+            borderRadius: 12,
+            backgroundColor: AppColors.primary,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            shadowColor: AppColors.primary,
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: 0.25,
+            shadowRadius: 6,
+            elevation: 4,
+          }}
+        >
+          <Feather name="navigation" size={14} color="#FFFFFF" />
+          <Text style={{ fontSize: 13, fontWeight: "800", color: "#FFFFFF" }}>Chỉ đường đi bộ</Text>
+        </TouchableOpacity>
+
+        {/* Nút phụ: Mở Google Maps bên ngoài */}
+        <TouchableOpacity
+          onPress={onOpenGoogleMaps}
+          activeOpacity={0.7}
+          style={{
+            height: 42,
+            paddingHorizontal: 14,
+            borderRadius: 12,
+            backgroundColor: "#F8FAFC",
+            borderWidth: 1,
+            borderColor: "#E2E8F0",
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 5,
+          }}
+        >
+          <Feather name="external-link" size={13} color={AppColors.textSecondary} />
+          <Text style={{ fontSize: 12, fontWeight: "700", color: AppColors.textSecondary }}>Google Maps</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
 };
-
