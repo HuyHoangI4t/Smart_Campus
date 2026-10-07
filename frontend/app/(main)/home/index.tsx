@@ -321,10 +321,10 @@ const DEFAULT_NOTIFICATION_ALERTS: NotificationAlertItem[] = [
     variant: "warning",
     icon: "alert-triangle",
     title: "Thay đổi phòng học môn Lập trình di động",
-    subtitle: "Hôm nay • Phòng B204 -> C102",
-    date: "Hôm nay • Phòng B204 -> C102",
+    subtitle: "Hôm nay • Phòng 9.2.04 -> 9.3.01",
+    date: "Hôm nay • Phòng 9.2.04 -> 9.3.01",
     status: "Cảnh báo",
-    content: "Học phần Lập trình thiết bị di động tiết 1-4 chuyển sang phòng C102.",
+    content: "Học phần Lập trình thiết bị di động tiết 1-4 chuyển sang phòng 9.3.01 (Nhà 9).",
     actionScreen: "schedule",
   },
   {
@@ -484,8 +484,8 @@ export default function HomeScreen() {
             scheduleRes.nextClass.status === "IN_PROGRESS"
               ? "#10B981"
               : scheduleRes.nextClass.status === "UPCOMING_TODAY"
-              ? "#3B82F6"
-              : "#A855F7",
+                ? "#3B82F6"
+                : "#A855F7",
         });
       }
     }
@@ -588,14 +588,13 @@ export default function HomeScreen() {
   };
 
   const handleOpenMapDirections = () => {
-    const room = nextClass?.room || "";
-    const subject = nextClass?.subject || "";
+    const rawRoom = nextClass?.room || ""; // Ví dụ: "9.2.04" hoặc "7.3.18"
+
     router.push({
       pathname: "/(main)/map",
       params: {
-        room,
-        subject,
-        search: room,
+        room: rawRoom,
+        subject: nextClass?.subject || "",
       },
     });
   };
@@ -862,9 +861,7 @@ export default function HomeScreen() {
                 </Text>
               </View>
 
-              <TouchableOpacity
-                onPress={handleOpenMapDirections}
-                activeOpacity={0.7}
+              <View
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
@@ -879,7 +876,7 @@ export default function HomeScreen() {
                 <Text style={{ color: "#93C5FD", fontSize: 12, fontWeight: "800" }}>
                   Chỉ đường →
                 </Text>
-              </TouchableOpacity>
+              </View>
             </View>
           </TouchableOpacity>
 

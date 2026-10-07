@@ -12,9 +12,9 @@ import {
 } from '../../src/services/api';
 
 export default function MainLayout() {
-  // Tải sẵn toàn bộ dữ liệu nền của các stack/màn hình ngay khi vào app
+  // Nạp dữ liệu ngầm sau khi màn hình đầu tiên đã mount mượt mà
   useEffect(() => {
-    (async () => {
+    const timer = setTimeout(async () => {
       try {
         const userStr = await AsyncStorage.getItem('@auth_user');
         let mssv: string | undefined = undefined;
@@ -23,7 +23,7 @@ export default function MainLayout() {
           if (u.mssv && u.mssv !== 'guest') mssv = u.mssv;
         }
 
-        // Kích hoạt nạp đồng thời dữ liệu cho toàn bộ các màn hình
+        // Kích hoạt nạp đồng thời dữ liệu nền
         Promise.allSettled([
           apiGetDashboard(),
           apiGetSchedule(mssv),
@@ -35,14 +35,16 @@ export default function MainLayout() {
           apiGetMapLocations(),
         ]);
       } catch {}
-    })();
+    }, 1200);
+
+    return () => clearTimeout(timer);
   }, []);
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        lazy: false,
+        lazy: true,
       }}
       tabBar={(props) => <CustomBottomNav {...props} />}
     >

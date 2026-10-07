@@ -93,43 +93,34 @@ exports.submitSos = async (req, res) => {
 
 // Get Map Locations (với đầy đủ danh mục và phân tầng)
 exports.getMapLocations = async (req, res) => {
-  const CATEGORIES = ["Tất cả", "Giảng đường", "Học tập", "Phòng máy", "Dịch vụ", "Y tế", "Tiện ích"];
-  const DEFAULT_ENRICHED = [
-    { id: 1, name: "Thư viện Trung tâm", category: "Học tập", building: "Tòa A", floor: "Tầng 2 - 4", description: "Không gian tự học, phòng đọc mở và máy tính tra cứu." },
-    { id: 2, name: "Giảng đường B201 - B204", category: "Giảng đường", building: "Tòa B", floor: "Tầng 2", description: "Khu vực phòng học lý thuyết chuyên ngành." },
-    { id: 3, name: "Phòng Thực hành Máy tính Lab 1 - 3", category: "Phòng máy", building: "Tòa C", floor: "Tầng 3", description: "Hệ thống máy tính cấu hình cao phục vụ lập trình." },
-    { id: 4, name: "Căng tin Sinh viên", category: "Dịch vụ", building: "Khu Dịch vụ", floor: "Tầng trệt", description: "Khu ẩm thực, nước uống và nghỉ ngơi trưa." },
-    { id: 5, name: "Văn phòng Đoàn - Hội Sinh viên", category: "Hành chính", building: "Tòa Nhà Điều Hành", floor: "Tầng 1", description: "Hỗ trợ công tác sinh viên, thủ tục hành chính." },
-    { id: 6, name: "Trạm Y tế Trường", category: "Y tế", building: "Tòa A", floor: "Tầng trệt", description: "Sơ cấp cứu và chăm sóc sức khỏe sinh viên." },
-    { id: 7, name: "Bãi đỗ xe sinh viên Nhà xe số 1", category: "Tiện ích", building: "Khuôn viên Tây", floor: "Mặt đất", description: "Bãi gửi xe máy và xe đạp có mái che bảo vệ." },
-  ];
+  const CATEGORIES = ["Tất cả", "Giảng đường", "Học tập", "Phòng máy", "Dịch vụ", "Y tế", "Tiện ích", "Hành chính", "Ký túc xá"];
 
   try {
-    const [rows] = await db.query('SELECT * FROM map_locations');
-    if (rows.length === 0) {
-      const defaultLocations = [
-        ['Tòa A Kỹ thuật', 21.002, 105.801, 'Khu giảng đường khối kỹ thuật, công nghệ thông tin'],
-        ['Thư viện trung tâm', 21.004, 105.803, 'Khu tự học, tra cứu tài liệu, kho sách điện tử'],
-        ['Căng tin sinh viên', 21.001, 105.805, 'Khu vực dịch vụ ăn uống, giải khát'],
-        ['Tòa nhà Hiệu bộ (Admin)', 21.005, 105.802, 'Phòng Đào tạo, Công tác sinh viên, Tài vụ'],
-        ['Khoa Khoa học Sức khỏe', 21.003, 105.806, 'Phòng thực hành y dược, điều dưỡng'],
-        ['Khu Thể thao & Nhà thi đấu', 21.006, 105.807, 'Sân bóng đá, bóng rổ, cầu lông'],
-        ['Trung tâm CNTT & Labs', 21.002, 105.804, 'Phòng máy thực hành, Trung tâm Dữ liệu Server']
-      ];
-
-      for (const loc of defaultLocations) {
-        await db.query('INSERT INTO map_locations (name, lat, lng, description) VALUES (?, ?, ?, ?)', loc);
-      }
+    const [rows] = await db.query('SELECT * FROM map_locations ORDER BY id ASC');
+    if (rows && rows.length >= 37) {
+      return res.json({
+        success: true,
+        categories: CATEGORIES,
+        locations: rows
+      });
     }
 
-    res.json({
+    // Nếu chưa đủ 37 điểm, chạy seed lại
+    const seeder = require('../database/seed_37_locations');
+    const [freshRows] = await db.query('SELECT * FROM map_locations ORDER BY id ASC');
+    return res.json({
       success: true,
       categories: CATEGORIES,
-      locations: DEFAULT_ENRICHED
+      locations: freshRows
     });
   } catch (error) {
     console.error('Error in getMapLocations:', error);
-    res.json({ success: true, categories: CATEGORIES, locations: DEFAULT_ENRICHED });
+    try {
+      const [rows] = await db.query('SELECT * FROM map_locations ORDER BY id ASC');
+      return res.json({ success: true, categories: CATEGORIES, locations: rows || [] });
+    } catch {
+      return res.status(500).json({ success: false, message: 'Lỗi tải danh sách địa điểm bản đồ' });
+    }
   }
 };
 
@@ -301,10 +292,10 @@ exports.getDashboard = async (req, res) => {
           variant: 'warning',
           icon: 'alert-triangle',
           title: 'Thay đổi phòng học môn Lập trình di động',
-          subtitle: '30/9/2026',
-          date: '30/9/2026',
+          subtitle: 'Hôm nay',
+          date: 'Hôm nay',
           status: 'Cảnh báo',
-          content: 'Học phần Lập trình di động chuyển từ phòng B204 sang phòng Lab C302.',
+          content: 'Học phần Lập trình di động chuyển từ phòng 9.2.04 sang phòng 9.3.01 (Nhà 9).',
           actionScreen: 'schedule'
         });
       }

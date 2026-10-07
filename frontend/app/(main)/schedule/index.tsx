@@ -50,11 +50,11 @@ export function parseRoomDirections(roomRaw: string): RoomDirectionInfo {
   const room = (roomRaw || "").trim();
   const upper = room.toUpperCase();
 
-  let building = "Tòa A - Giảng đường chính";
-  let buildingCode = "Tòa A";
-  let floor = "Tầng 1";
-  let mapQuery = "Tòa A";
-  let roomDisplay = room || "Phòng học";
+  let building = "Nhà học số 2";
+  let buildingCode = "Nhà 2";
+  let floor = "";
+  let mapQuery = "Nhà 2";
+  let roomDisplay = room || "Khu giảng đường";
 
   // 1. Dạng 3 phần: X.Y.Z (vd: 7.3.18 -> Nhà 7, Tầng 3, Phòng 18)
   const match3 = upper.match(/^(\d+)\s*\.\s*(\d+)\s*\.\s*([0-9A-Z_-]+)(.*)/i);
@@ -64,47 +64,63 @@ export function parseRoomDirections(roomRaw: string): RoomDirectionInfo {
     const rNum = match3[3];
     const extra = match3[4] ? match3[4].trim() : "";
     buildingCode = `Nhà ${bNum}`;
-    building = `Giảng đường ${buildingCode}`;
+    building = `Nhà học số ${bNum}`;
     floor = `Tầng ${fNum}`;
     roomDisplay = `Phòng ${rNum}${extra ? ` ${extra}` : ""}`;
     mapQuery = buildingCode;
   } else {
-    // 2. Dạng 2 phần: X.Z (vd: 2.20 -> Nhà 2, Phòng 20; 2.20 (CLC) -> Nhà 2, Phòng 20 (CLC))
+    // 2. Dạng 2 phần: X.Z (vd: 2.20 -> Nhà 2, Phòng 20; 2.21 (CLC) -> Nhà 2, Phòng 21 (CLC))
     const match2 = upper.match(/^(\d+)\s*\.\s*([0-9A-Z_-]+)(.*)/i);
     if (match2) {
       const bNum = match2[1];
       const rNum = match2[2];
       const extra = match2[3] ? match2[3].trim() : "";
       buildingCode = `Nhà ${bNum}`;
+      building = `Nhà học số ${bNum}`;
       floor = "";
       roomDisplay = `Phòng ${rNum}${extra ? ` ${extra}` : ""}`;
       mapQuery = buildingCode;
-    } else if (
-      upper.includes("LAB") ||
-      upper.includes("NET") ||
-      upper.includes("MÁY TÍNH") ||
-      (upper.includes("C") && !upper.includes("CLC"))
-    ) {
-      building = "Tòa C - Trung tâm Thực hành CNTT & Labs";
-      buildingCode = "Tòa C";
-      mapQuery = "Tòa C";
-      floor = "Tầng 3";
-    } else if (upper.includes("B") || upper.includes("ENG-B")) {
-      building = "Tòa B - Khối Giảng đường Kỹ thuật";
-      buildingCode = "Tòa B";
-      mapQuery = "Tòa B";
-      const bMatch = upper.match(/B\s*(\d+)/);
-      if (bMatch && bMatch[1]) floor = `Tầng ${bMatch[1][0]}`;
-    } else if (upper.includes("A") || upper.includes("ENG-A")) {
-      building = "Tòa A - Giảng đường Lý thuyết";
-      buildingCode = "Tòa A";
-      mapQuery = "Tòa A";
-      const aMatch = upper.match(/A\s*(\d+)/);
-      if (aMatch && aMatch[1]) floor = `Tầng ${aMatch[1][0]}`;
-    } else if (upper.includes("D")) {
-      building = "Tòa D - Khu Đào tạo Quốc tế";
-      buildingCode = "Tòa D";
-      mapQuery = "Tòa D";
+    } else if (upper.includes("400")) {
+      building = "Giảng đường 400 chỗ";
+      buildingCode = "GĐ 400";
+      mapQuery = "Giảng đường 400 chỗ";
+      roomDisplay = "Hội trường lớn 400 chỗ";
+    } else if (upper.includes("200")) {
+      building = "Giảng đường 200 chỗ";
+      buildingCode = "GĐ 200";
+      mapQuery = "Giảng đường 200 chỗ";
+      roomDisplay = "Hội trường vừa 200 chỗ";
+    } else if (upper.includes("THƯ VIỆN") || upper.includes("THU VIEN")) {
+      building = "Thư viện Trung tâm";
+      buildingCode = "Thư viện";
+      mapQuery = "Thư viện Trung tâm";
+    } else if (upper.includes("QUỐC PHÒNG") || upper.includes("GDQP") || upper.includes("QP-AN")) {
+      building = "Trung tâm Giáo dục Quốc phòng và An ninh";
+      buildingCode = "TT GDQP";
+      mapQuery = "Trung tâm Giáo dục Quốc phòng và An ninh";
+    } else if (upper.includes("Y DƯỢC") || upper.includes("Y DUOC")) {
+      building = "Nhà học số 5 - Khoa Y Dược";
+      buildingCode = "Nhà 5";
+      mapQuery = "Nhà học số 5";
+    } else if (upper.includes("KINH TẾ") || upper.includes("KINH TE")) {
+      building = "Nhà học số 7 - Khoa Kinh tế";
+      buildingCode = "Nhà 7";
+      mapQuery = "Nhà học số 7";
+    } else if (upper.includes("SƯ PHẠM") || upper.includes("SU PHAM")) {
+      building = "Nhà học số 8 - Khoa Sư phạm";
+      buildingCode = "Nhà 8";
+      mapQuery = "Nhà học số 8";
+    } else if (upper.includes("CÔNG NGHỆ") || upper.includes("CNTT") || upper.includes("TỰ NHIÊN")) {
+      building = "Nhà học số 9 - Khoa KHTN & Công nghệ";
+      buildingCode = "Nhà 9";
+      mapQuery = "Nhà học số 9";
+    } else {
+      const bMatch = upper.match(/NHÀ\s*(\d+)/i);
+      if (bMatch) {
+        buildingCode = `Nhà ${bMatch[1]}`;
+        building = `Nhà học số ${bMatch[1]}`;
+        mapQuery = buildingCode;
+      }
     }
   }
 
@@ -163,12 +179,12 @@ export function parseRoomDirections(roomRaw: string): RoomDirectionInfo {
 }
 
 const FALLBACK_SCHEDULE: ScheduleItem[] = [
-  { id: '1', course: "Cấu trúc dữ liệu & Giải thuật", code: "Thứ 2 28/09", room: "ENG-B204", time: "08:00 – 09:30", day: "Thứ 2", dayNum: 2, lecturer: "ThS. Nguyễn Văn A" },
-  { id: '2', course: "Lập trình thiết bị di động", code: "Thứ 2 28/09", room: "LAB-03", time: "09:45 – 11:15", day: "Thứ 2", dayNum: 2, lecturer: "TS. Trần Thị B" },
-  { id: '3', course: "Hệ cơ sở dữ liệu", code: "Thứ 3 29/09", room: "ENG-A102", time: "13:30 – 15:00", day: "Thứ 3", dayNum: 3, lecturer: "ThS. Lê Hoàng C" },
-  { id: '4', course: "Mạng máy tính & Truyền thông", code: "Thứ 4 30/09", room: "NET-LAB", time: "08:00 – 10:15", day: "Thứ 4", dayNum: 4, lecturer: "TS. Phạm Văn D" },
-  { id: '5', course: "An toàn thông tin mạng", code: "Thứ 5 01/10", room: "ENG-B301", time: "10:30 – 12:00", day: "Thứ 5", dayNum: 5, lecturer: "ThS. Vũ Thị E" },
-  { id: '6', course: "Đồ án chuyên ngành", code: "Thứ 6 02/10", room: "ENG-B101", time: "08:00 – 11:30", day: "Thứ 6", dayNum: 6, lecturer: "Hội đồng bộ môn" },
+  { id: '1', course: "Lập trình thiết bị di động", code: "Thứ 2", room: "9.2.04", time: "Tiết 1-4 (07:00 – 10:40)", day: "Thứ 2", dayNum: 2, lecturer: "TS. Hoàng Minh" },
+  { id: '2', course: "Lịch sử Đảng Cộng sản VN", code: "Thứ 3", room: "2.21 (CLC)", time: "Tiết 1-4 (07:00 – 10:40)", day: "Thứ 3", dayNum: 3, lecturer: "ThS. Đoàn Văn Kỳ" },
+  { id: '3', course: "Cấu trúc dữ liệu & Giải thuật", code: "Thứ 4", room: "9.3.01", time: "Tiết 7-10 (13:50 – 17:30)", day: "Thứ 4", dayNum: 4, lecturer: "ThS. Lê Thị B" },
+  { id: '4', course: "Hệ cơ sở dữ liệu", code: "Thứ 5", room: "7.3.18", time: "Tiết 1-4 (07:00 – 10:40)", day: "Thứ 5", dayNum: 5, lecturer: "TS. Nguyễn C" },
+  { id: '5', course: "Mạng máy tính", code: "Thứ 6", room: "9.1.02", time: "Tiết 7-10 (13:50 – 17:30)", day: "Thứ 6", dayNum: 6, lecturer: "ThS. Phạm D" },
+  { id: '6', course: "Ngoại ngữ chuyên ngành", code: "Thứ 7", room: "2.20", time: "Tiết 1-4 (07:00 – 10:40)", day: "Thứ 7", dayNum: 7, lecturer: "Khoa Ngoại ngữ" },
 ];
 
 const DAYS = [
@@ -305,13 +321,13 @@ export default function ScheduleScreen() {
     ? ((selectedScheduleForDirection as any).direction || parseRoomDirections(selectedScheduleForDirection.room))
     : null;
 
-  const handleOpenCampusMap = (query: string) => {
+  const handleOpenCampusMap = () => {
     const room = selectedScheduleForDirection?.room || "";
     const subject = selectedScheduleForDirection?.course || "";
     setSelectedScheduleForDirection(null);
     router.push({
       pathname: "/(main)/map",
-      params: { search: query, room, subject },
+      params: { room, subject },
     });
   };
 
@@ -750,7 +766,7 @@ export default function ScheduleScreen() {
                   {/* Nút hành động */}
                   <View style={{ gap: 10, marginTop: 4 }}>
                     <TouchableOpacity
-                      onPress={() => handleOpenCampusMap(currentDirection.buildingCode)}
+                      onPress={() => handleOpenCampusMap()}
                       activeOpacity={0.8}
                       style={{
                         flexDirection: "row",

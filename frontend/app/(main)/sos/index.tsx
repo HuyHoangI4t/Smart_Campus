@@ -172,7 +172,7 @@ export default function SosScreen() {
           Vị trí hiện tại của bạn <Text style={{ color: "#DC2626" }}>*</Text>
         </Text>
         <TextInput
-          placeholder="Ví dụ: Tầng 3 Tòa B, trước cửa phòng B302..."
+          placeholder="Ví dụ: Tầng 3 Nhà 7, trước cửa phòng 7.3.18..."
           placeholderTextColor={AppColors.textMuted}
           value={locationText}
           onChangeText={setLocationText}

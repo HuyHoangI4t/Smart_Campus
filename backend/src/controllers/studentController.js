@@ -421,11 +421,11 @@ exports.getSchedule = async (req, res) => {
       tableIndex: 1,
       rows: [
         ["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"],
-        ["Thứ 2", "Lập trình thiết bị di động", "1-4", "B204", "TS. Trần Văn A"],
-        ["Thứ 3 29/09", "LS Đảng CS VN", "1-4", "2.21 (CLC)", "Đoàn Văn Kỳ"],
-        ["Thứ 4", "Cấu trúc dữ liệu & Giải thuật", "7-10", "C302 Lab", "ThS. Lê Thị B"],
-        ["Thứ 5", "Hệ cơ sở dữ liệu", "1-4", "B102", "TS. Nguyễn C"],
-        ["Thứ 6", "Mạng máy tính", "7-10", "C201 Net", "ThS. Phạm D"],
+        ["Thứ 2", "Lập trình thiết bị di động", "1-4", "9.2.04", "TS. Hoàng Minh"],
+        ["Thứ 3", "LS Đảng CS VN", "1-4", "2.21 (CLC)", "Đoàn Văn Kỳ"],
+        ["Thứ 4", "Cấu trúc dữ liệu & Giải thuật", "7-10", "9.3.01", "ThS. Lê Thị B"],
+        ["Thứ 5", "Hệ cơ sở dữ liệu", "1-4", "7.3.18", "TS. Nguyễn C"],
+        ["Thứ 6", "Mạng máy tính", "7-10", "9.1.02", "ThS. Phạm D"],
       ]
     }];
     const processed = scheduleService.processSchedulePayload(defaultTables, "Từ ngày 28/09/2026 đến ngày 04/10/2026");
@@ -644,9 +644,9 @@ exports.getSchedule = async (req, res) => {
     tableIndex: 1,
     rows: [
       ["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"],
-      ["Thứ 2", "Lập trình thiết bị di động", "1-4", "B204", "TS. Trần Văn A"],
-      ["Thứ 3 29/09", "LS Đảng CS VN", "1-4", "2.21 (CLC)", "Đoàn Văn Kỳ"],
-      ["Thứ 4", "Cấu trúc dữ liệu & Giải thuật", "7-10", "C302 Lab", "ThS. Lê Thị B"]
+      ["Thứ 2", "Lập trình thiết bị di động", "1-4", "9.2.04", "TS. Hoàng Minh"],
+      ["Thứ 3", "LS Đảng CS VN", "1-4", "2.21 (CLC)", "Đoàn Văn Kỳ"],
+      ["Thứ 4", "Cấu trúc dữ liệu & Giải thuật", "7-10", "9.3.01", "ThS. Lê Thị B"]
     ]
   }];
   const processedFallback = scheduleService.processSchedulePayload(fallbackTables, "Từ ngày 28/09/2026 đến ngày 04/10/2026");
