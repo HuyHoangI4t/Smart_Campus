@@ -521,6 +521,40 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
   }
 ];
 
+/**
+ * Tọa độ tâm khuôn viên Trường Đại học Tây Nguyên theo OpenStreetMap (way 241971731)
+ * Latitude: 12.65067° N, Longitude: 108.02621° E
+ */
+export const TNU_CAMPUS_CENTER: { lat: number; lng: number } = {
+  lat: 12.65067,
+  lng: 108.02621,
+};
+
+/**
+ * Tọa độ 17 đỉnh ranh giới khuôn viên trường trích xuất trực tiếp từ
+ * OpenStreetMap (way id: 241971731) khép kín.
+ */
+export const TNU_OSM_WAY_241971731_BOUNDARY: [number, number][] = [
+  [12.6504501, 108.0227974],
+  [12.6526686, 108.0249367],
+  [12.6538608, 108.0257948],
+  [12.6536940, 108.0259715],
+  [12.6537760, 108.0260676],
+  [12.6529190, 108.0269044],
+  [12.6512084, 108.0285744],
+  [12.6501324, 108.0296250],
+  [12.6497469, 108.0295173],
+  [12.6497434, 108.0295163],
+  [12.6494911, 108.0292461],
+  [12.6475414, 108.0271490],
+  [12.6474833, 108.0270469],
+  [12.6483353, 108.0261226],
+  [12.6484902, 108.0261226],
+  [12.6486369, 108.0259951],
+  [12.6491210, 108.0241239],
+  [12.6504501, 108.0227974]
+];
+
 export const TNU_CAMPUS_BOUNDARY: [number, number][] = [
   [
     12.64936184489708,

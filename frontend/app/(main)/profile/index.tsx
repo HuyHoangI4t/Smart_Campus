@@ -12,7 +12,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import * as ImagePicker from "expo-image-picker";
 import { Feather } from "@expo/vector-icons";
-import { useRouter, useNavigation } from "expo-router";
+import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
@@ -41,8 +41,10 @@ const PRESET_AVATARS = [
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const navigation = useNavigation();
-  const { onScroll: onTabBarScroll, bottomPadding } = useTabBarScrollHandler();
+  const { onScroll: onTabBarScroll, bottomPadding } = useTabBarScrollHandler({
+    visiblePadding: 130,
+    hiddenPadding: 130,
+  });
   const [profile, setProfile] = useState<UserProfile>({
     mssv: "",
     ho_ten: "Đang tải...",
@@ -69,35 +71,15 @@ export default function ProfileScreen() {
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
-  // Tự động ẩn thanh điều hướng dưới cùng (Bottom Nav) khi mở bất kỳ modal nào
+  // Ẩn thanh điều hướng dưới cùng (Bottom Nav) khi mở bất kỳ modal nào trong Profile
   useEffect(() => {
     const isModalOpen = editModalVisible || avatarModalVisible || logoutModalVisible;
-    setTabBarVisible(!isModalOpen);
-
-    if (navigation && (navigation as any).setOptions) {
-      (navigation as any).setOptions({
-        tabBarStyle: isModalOpen ? { display: "none" } : undefined,
-      });
-    }
-
-    const parent = (navigation as any).getParent?.();
-    if (parent && parent.setOptions) {
-      parent.setOptions({
-        tabBarStyle: isModalOpen ? { display: "none" } : undefined,
-      });
-    }
-
-    return () => {
+    if (isModalOpen) {
+      setTabBarVisible(false);
+    } else {
       setTabBarVisible(true);
-      if (navigation && (navigation as any).setOptions) {
-        (navigation as any).setOptions({ tabBarStyle: undefined });
-      }
-      const p = (navigation as any).getParent?.();
-      if (p && p.setOptions) {
-        p.setOptions({ tabBarStyle: undefined });
-      }
-    };
-  }, [editModalVisible, avatarModalVisible, logoutModalVisible, navigation]);
+    }
+  }, [editModalVisible, avatarModalVisible, logoutModalVisible]);
 
   const loadProfile = async () => {
     try {
@@ -341,6 +323,7 @@ export default function ProfileScreen() {
         contentContainerStyle={{ padding: 20, paddingBottom: bottomPadding }}
         onScroll={onTabBarScroll}
         scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
       >
         {/* Avatar & Header Card */}
         <View

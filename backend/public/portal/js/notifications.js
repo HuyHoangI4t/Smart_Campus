@@ -75,19 +75,70 @@ const NotificationsModule = {
           </td>
           <td class="text-xs text-slate-500 whitespace-nowrap">
             <p class="font-medium text-slate-700">${escapeHtml(n.sender || 'Phòng Đào Tạo')}</p>
-            <p class="text-[11px] text-slate-400">${escapeHtml(n.date || n.created_at || '-')}</p>
+            <p class="text-[11px] text-slate-400">${escapeHtml(formatDateTime(n.created_at || n.date))}</p>
           </td>
           <td class="text-right">
-            <button onclick="NotificationsModule.confirmDelete(${n.id})" title="Xóa thông báo"
-              class="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
-              <i data-lucide="trash-2" class="w-4 h-4"></i>
-            </button>
+            <div class="inline-flex items-center gap-1.5 ml-auto">
+              <button onclick="NotificationsModule.openEditModal(${n.id})" title="Chỉnh sửa thông báo"
+                class="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-slate-100 rounded-lg transition">
+                <i data-lucide="edit-3" class="w-4 h-4"></i>
+              </button>
+              <button onclick="NotificationsModule.confirmDelete(${n.id})" title="Xóa thông báo"
+                class="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
           </td>
         </tr>
       `;
     }).join('');
 
     if (window.lucide) window.lucide.createIcons();
+  },
+
+  openEditModal(id) {
+    const notif = this.notifications.find(n => n.id === id);
+    if (!notif) return;
+
+    document.getElementById('editNotifIdInput').value = notif.id;
+    document.getElementById('editNotifTitleInput').value = notif.title || '';
+    document.getElementById('editNotifTypeSelect').value = notif.type || 'general';
+    document.getElementById('editNotifSenderInput').value = notif.sender || 'Phòng Đào Tạo';
+    document.getElementById('editNotifContentInput').value = notif.content || '';
+    document.getElementById('notifEditModalTitle').textContent = `Chỉnh sửa thông báo #${notif.id}`;
+
+    openModal('notifEditModal');
+  },
+
+  async handleSaveEdit(e) {
+    e.preventDefault();
+    const btn = document.getElementById('saveNotifEditBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="inline-block animate-spin mr-2">⟳</span> Đang lưu...';
+
+    const id = document.getElementById('editNotifIdInput').value;
+    const payload = {
+      title: document.getElementById('editNotifTitleInput').value.trim(),
+      type: document.getElementById('editNotifTypeSelect').value,
+      sender: document.getElementById('editNotifSenderInput').value.trim() || 'Phòng Đào Tạo',
+      content: document.getElementById('editNotifContentInput').value.trim()
+    };
+
+    try {
+      if (!payload.title || !payload.content) throw new Error('Vui lòng điền đầy đủ tiêu đề và nội dung');
+
+      await AdminAPI.updateNotification(id, payload);
+      window.App.showToast('Cập nhật thông báo thành công!', 'success');
+      closeModal('notifEditModal');
+      await this.loadNotifications();
+      if (window.DashboardModule) DashboardModule.loadStats();
+    } catch (err) {
+      window.App.showToast('Lỗi khi cập nhật: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5"></i><span>Lưu thay đổi</span>';
+      if (window.lucide) window.lucide.createIcons();
+    }
   },
 
   async handleCreate(e) {
@@ -112,7 +163,7 @@ const NotificationsModule = {
       
       document.getElementById('notifForm').reset();
       await this.loadNotifications();
-      DashboardModule.loadStats();
+      if (window.DashboardModule) DashboardModule.loadStats();
     } catch (err) {
       window.App.showToast(err.message, 'error');
     } finally {
@@ -130,7 +181,7 @@ const NotificationsModule = {
           await AdminAPI.deleteNotification(id);
           window.App.showToast('Đã xóa thông báo thành công', 'success');
           await this.loadNotifications();
-          DashboardModule.loadStats();
+          if (window.DashboardModule) DashboardModule.loadStats();
         } catch (err) {
           window.App.showToast('Lỗi khi xóa: ' + err.message, 'error');
         }

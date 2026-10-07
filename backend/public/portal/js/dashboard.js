@@ -185,7 +185,7 @@ const DashboardModule = {
           <div class="space-y-0.5 min-w-0">
             <div class="flex items-center gap-2">
               <span class="font-bold text-xs text-slate-800">MSSV: ${escapeHtml(item.mssv || 'N/A')}</span>
-              <span class="text-[10px] text-slate-400">${escapeHtml(item.created_at || 'Mới đây')}</span>
+              <span class="text-[10px] text-slate-400">${escapeHtml(formatDateTime(item.created_at))}</span>
             </div>
             <p class="text-xs text-slate-600 truncate">${escapeHtml(item.message || item.location_name || 'Khẩn cấp!')}</p>
           </div>

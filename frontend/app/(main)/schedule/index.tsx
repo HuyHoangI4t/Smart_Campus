@@ -127,8 +127,8 @@ export function parseRoomDirections(roomRaw: string): RoomDirectionInfo {
   const steps: DirectionStep[] = [
     {
       step: 1,
-      title: "Cổng chính khuôn viên trường",
-      desc: `Từ cổng chính đi thẳng qua trục đường trung tâm hướng về phía ${buildingCode}.`,
+      title: "Cổng trường",
+      desc: `Từ cổng đi thẳng qua trục đường trung tâm hướng về phía ${buildingCode}.`,
       icon: "compass",
     },
     {
@@ -143,7 +143,7 @@ export function parseRoomDirections(roomRaw: string): RoomDirectionInfo {
     steps.push({
       step: 3,
       title: `Lên ${floor}`,
-      desc: `Sử dụng thang bộ hoặc thang máy khu vực hành lang chính để di chuyển lên ${floor}.`,
+      desc: `Sử dụng thang bộ để di chuyển lên ${floor}.`,
       icon: "arrow-up-circle",
     });
     steps.push({
@@ -162,8 +162,7 @@ export function parseRoomDirections(roomRaw: string): RoomDirectionInfo {
   }
 
   const tips = [
-    `Cây nước nóng lạnh và nhà vệ sinh nằm ở hai đầu hành lang.`,
-    `Thang máy thường đông vào đầu ca học, bạn có thể đi thang bộ để nhanh hơn.`,
+    `Nhà xe thường đông vào đầu ca học, bạn có thể thử nhà xe khác để nhanh hơn.`,
     `Nên đến trước giờ vào lớp 5 - 10 phút để ổn định vị trí và điểm danh.`,
   ];
 

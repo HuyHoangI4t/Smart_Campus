@@ -1,8 +1,13 @@
 import { LocationItem } from "./types";
 
-export function generateLeafletMapHtml(locations: LocationItem[], boundary: [number, number][]): string {
+export function generateLeafletMapHtml(
+  locations: LocationItem[],
+  boundary: [number, number][],
+  center: [number, number] = [12.65067, 108.02621]
+): string {
   const locationsJson = JSON.stringify(locations);
   const boundaryJson = JSON.stringify(boundary);
+  const centerJson = JSON.stringify(center);
 
   return `<!DOCTYPE html>
 <html>
@@ -144,6 +149,7 @@ export function generateLeafletMapHtml(locations: LocationItem[], boundary: [num
   <script>
     var locationsData = ${locationsJson};
     var boundaryData = ${boundaryJson};
+    var centerData = ${centerJson};
 
     var currentBearing = 0;
     var mapRotator = document.getElementById('map-rotator');
@@ -163,7 +169,7 @@ export function generateLeafletMapHtml(locations: LocationItem[], boundary: [num
 
     // Khởi tạo bản đồ trung tâm Trường ĐH Tây Nguyên
     var map = L.map('map', {
-      center: [12.6509, 108.0252],
+      center: centerData,
       zoom: 17,
       minZoom: 15.5,
       maxZoom: 19,
@@ -511,7 +517,7 @@ export function generateLeafletMapHtml(locations: LocationItem[], boundary: [num
 
           case 'RESET_VIEW':
             applyBearing(0, true);
-            map.flyTo([12.6509, 108.0252], 17, { animate: true, duration: 1.0 });
+            map.flyTo(centerData, 17, { animate: true, duration: 1.0 });
             break;
         }
       } catch (err) {

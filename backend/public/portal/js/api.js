@@ -139,6 +139,13 @@ const AdminAPI = {
     });
   },
 
+  async updateNotification(id, data) {
+    return this.request(`/api/admin/notifications/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+
   async deleteNotification(id) {
     return this.request(`/api/admin/notifications/${id}`, {
       method: 'DELETE'
@@ -150,6 +157,13 @@ const AdminAPI = {
     return this.request('/api/admin/feedback');
   },
 
+  async updateFeedbackStatus(id, status = 'Đã giải quyết') {
+    return this.request(`/api/admin/feedback/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status })
+    });
+  },
+
   async deleteFeedback(id) {
     return this.request(`/api/admin/feedback/${id}`, {
       method: 'DELETE'
@@ -159,6 +173,13 @@ const AdminAPI = {
   // SOS Alerts
   async getSosAlerts() {
     return this.request('/api/admin/sos');
+  },
+
+  async updateSosStatus(id, status = 'Đã xử lý') {
+    return this.request(`/api/admin/sos/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status })
+    });
   },
 
   async deleteSosAlert(id) {

@@ -49,9 +49,9 @@ export default function MainLayout() {
       tabBar={(props) => <CustomBottomNav {...props} />}
     >
       <Tabs.Screen name="home/index" options={{ title: 'Trang chủ' }} />
-      <Tabs.Screen name="map/index" options={{ title: 'Bản đồ' }} />
       <Tabs.Screen name="schedule/index" options={{ title: 'Lịch học' }} />
-      <Tabs.Screen name="grades/index" options={{ title: 'Kết quả' }} />
+      <Tabs.Screen name="map/index" options={{ title: 'Bản đồ' }} />
+      <Tabs.Screen name="grades/index" options={{ title: 'Điểm' }} />
       <Tabs.Screen name="profile/index" options={{ title: 'Hồ sơ' }} />
       <Tabs.Screen name="feedback/index" options={{ href: null }} />
       <Tabs.Screen name="sos/index" options={{ href: null }} />

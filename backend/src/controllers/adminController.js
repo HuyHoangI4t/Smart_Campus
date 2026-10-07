@@ -220,6 +220,46 @@ exports.createNotification = async (req, res) => {
   }
 };
 
+exports.updateNotification = async (req, res) => {
+  const { id } = req.params;
+  const { title, content, type, sender, date } = req.body;
+
+  if (!title || !content) {
+    return res.status(400).json({ success: false, message: 'Tiêu đề và nội dung thông báo là bắt buộc.' });
+  }
+
+  try {
+    const notifType = type || 'general';
+    const notifSender = sender || 'Phòng Đào Tạo';
+
+    if (date) {
+      await db.query(
+        'UPDATE notifications SET title = ?, content = ?, type = ?, sender = ?, date = ? WHERE id = ?',
+        [title.trim(), content.trim(), notifType, notifSender, date, id]
+      );
+    } else {
+      await db.query(
+        'UPDATE notifications SET title = ?, content = ?, type = ?, sender = ? WHERE id = ?',
+        [title.trim(), content.trim(), notifType, notifSender, id]
+      );
+    }
+
+    res.json({
+      success: true,
+      message: 'Cập nhật thông báo thành công.',
+      notification: {
+        id: Number(id),
+        title: title.trim(),
+        content: content.trim(),
+        type: notifType,
+        sender: notifSender
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi cập nhật thông báo: ' + error.message });
+  }
+};
+
 exports.deleteNotification = async (req, res) => {
   const { id } = req.params;
 
@@ -248,6 +288,19 @@ exports.getAllFeedback = async (req, res) => {
   }
 };
 
+exports.updateFeedbackStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const newStatus = status || 'Đã giải quyết';
+
+  try {
+    await db.query('UPDATE feedback SET status = ? WHERE id = ?', [newStatus, id]);
+    res.json({ success: true, message: `Đã cập nhật trạng thái phản hồi: ${newStatus}`, status: newStatus });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi cập nhật trạng thái phản hồi: ' + error.message });
+  }
+};
+
 exports.deleteFeedback = async (req, res) => {
   const { id } = req.params;
   try {
@@ -272,6 +325,19 @@ exports.getAllSosAlerts = async (req, res) => {
     res.json({ success: true, alerts: rows });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi lấy danh sách cảnh báo SOS: ' + error.message });
+  }
+};
+
+exports.updateSosStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const newStatus = status || 'Đã xử lý';
+
+  try {
+    await db.query('UPDATE sos_alerts SET status = ? WHERE id = ?', [newStatus, id]);
+    res.json({ success: true, message: `Đã cập nhật trạng thái cảnh báo SOS: ${newStatus}`, status: newStatus });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi cập nhật trạng thái SOS: ' + error.message });
   }
 };
 

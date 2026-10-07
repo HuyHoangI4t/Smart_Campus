@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Modal } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { AppColors } from "../../../src/constants/appColors";
@@ -24,6 +24,17 @@ export default function FeedbackScreen() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [popupState, setPopupState] = useState<{
+    visible: boolean;
+    type: "success" | "error";
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    type: "success",
+    title: "",
+    message: "",
+  });
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -39,11 +50,21 @@ export default function FeedbackScreen() {
 
   const handleSubmit = async () => {
     if (!title.trim()) {
-      Alert.alert("Thông báo", "Vui lòng nhập tiêu đề phản ánh.");
+      setPopupState({
+        visible: true,
+        type: "error",
+        title: "Thiếu thông tin",
+        message: "Vui lòng nhập tiêu đề ý kiến đóng góp của bạn.",
+      });
       return;
     }
     if (!content.trim()) {
-      Alert.alert("Thông báo", "Vui lòng nhập nội dung chi tiết ý kiến của bạn.");
+      setPopupState({
+        visible: true,
+        type: "error",
+        title: "Thiếu thông tin",
+        message: "Vui lòng nhập nội dung chi tiết ý kiến phản hồi của bạn.",
+      });
       return;
     }
 
@@ -57,18 +78,29 @@ export default function FeedbackScreen() {
       });
 
       if (res && res.success) {
-        Alert.alert(
-          "Thành công",
-          res.message || "Ý kiến phản ánh của bạn đã được gửi thành công đến ban quản lý.",
-          [{ text: "Đóng", onPress: () => router.push("/(main)/home") }]
-        );
+        setPopupState({
+          visible: true,
+          type: "success",
+          title: "Gửi thành công!",
+          message: res.message || "Ý kiến phản ánh của bạn đã được gửi thành công đến ban quản lý nhà trường.",
+        });
         setTitle("");
         setContent("");
       } else {
-        Alert.alert("Lỗi", res?.message || "Không thể gửi ý kiến lúc này. Vui lòng thử lại sau.");
+        setPopupState({
+          visible: true,
+          type: "error",
+          title: "Gửi thất bại (Fail)",
+          message: res?.message || "Không thể gửi ý kiến lúc này. Vui lòng kiểm tra lại kết nối và thử lại sau.",
+        });
       }
     } catch {
-      Alert.alert("Lỗi", "Đã xảy ra sự cố khi kết nối đến máy chủ.");
+      setPopupState({
+        visible: true,
+        type: "error",
+        title: "Gửi thất bại (Fail)",
+        message: "Đã xảy ra sự cố khi kết nối đến máy chủ. Vui lòng thử lại sau.",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -208,6 +240,147 @@ export default function FeedbackScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
+
+      {/* ─── MODAL POPUP THÔNG BÁO KẾT QUẢ (THÀNH CÔNG / THẤT BẠI) ─── */}
+      <Modal
+        visible={popupState.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPopupState((prev) => ({ ...prev, visible: false }))}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(15, 23, 42, 0.6)",
+            justifyContent: "center",
+            alignItems: "center",
+            paddingHorizontal: 24,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "#FFFFFF",
+              borderRadius: 24,
+              paddingVertical: 26,
+              paddingHorizontal: 22,
+              width: "100%",
+              maxWidth: 340,
+              alignItems: "center",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.15,
+              shadowRadius: 20,
+              elevation: 10,
+            }}
+          >
+            {/* Icon biểu tượng */}
+            <View
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 32,
+                backgroundColor: popupState.type === "success" ? "#DCFCE7" : "#FEE2E2",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 16,
+                borderWidth: 3,
+                borderColor: popupState.type === "success" ? "#BBF7D0" : "#FECACA",
+              }}
+            >
+              <Feather
+                name={popupState.type === "success" ? "check" : "alert-circle"}
+                size={32}
+                color={popupState.type === "success" ? "#16A34A" : "#DC2626"}
+              />
+            </View>
+
+            {/* Tiêu đề popup */}
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "800",
+                color: "#0F172A",
+                textAlign: "center",
+                marginBottom: 8,
+              }}
+            >
+              {popupState.title}
+            </Text>
+
+            {/* Nội dung thông báo */}
+            <Text
+              style={{
+                fontSize: 13.5,
+                color: "#64748B",
+                textAlign: "center",
+                lineHeight: 20,
+                marginBottom: 22,
+              }}
+            >
+              {popupState.message}
+            </Text>
+
+            {/* Các nút bấm hành động */}
+            {popupState.type === "success" ? (
+              <View style={{ flexDirection: "row", gap: 10, width: "100%" }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setPopupState((prev) => ({ ...prev, visible: false }));
+                    router.push("/(main)/home");
+                  }}
+                  activeOpacity={0.8}
+                  style={{
+                    flex: 1,
+                    height: 46,
+                    borderRadius: 14,
+                    backgroundColor: AppColors.primary,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFFFFF" }}>
+                    Về trang chủ
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setPopupState((prev) => ({ ...prev, visible: false }))}
+                  activeOpacity={0.7}
+                  style={{
+                    paddingHorizontal: 16,
+                    height: 46,
+                    borderRadius: 14,
+                    backgroundColor: "#F1F5F9",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#475569" }}>
+                    Ở lại
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={() => setPopupState((prev) => ({ ...prev, visible: false }))}
+                activeOpacity={0.8}
+                style={{
+                  width: "100%",
+                  height: 46,
+                  borderRadius: 14,
+                  backgroundColor: "#DC2626",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFFFFF" }}>
+                  Đóng / Thử lại
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

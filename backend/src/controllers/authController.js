@@ -146,7 +146,7 @@ exports.verifyRegisterOtp = async (req, res) => {
     }
 
     // Insert user into users table
-    const registeredName = regData.ho_ten || regData.full_name;
+    const registeredName = regData.ho_ten || ('Sinh viên ' + regData.mssv);
     await db.query(
       'INSERT INTO users (mssv, ho_ten, email, password) VALUES (?, ?, ?, ?)',
       [regData.mssv, registeredName, regData.email, regData.password]

@@ -48,19 +48,31 @@ const SosModule = {
       const lng = a.longitude || a.kinh_do;
       const hasCoords = lat && lng;
       const phone = a.so_dien_thoai || a.phone;
+      const isResolved = a.status === 'Đã xử lý' || a.status === 'Đã giải quyết';
 
       return `
-        <tr class="hover:bg-red-50/40 transition border-b border-slate-100 bg-red-50/20">
-          <td class="text-center font-bold text-red-600 text-xs">${idx + 1}</td>
+        <tr class="hover:bg-slate-50 transition border-b border-slate-100 ${isResolved ? 'bg-white' : 'bg-red-50/20'}">
+          <td class="text-center font-bold ${isResolved ? 'text-slate-400' : 'text-red-600'} text-xs">${idx + 1}</td>
           <td>
             <div class="space-y-0.5">
               <div class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+                ${!isResolved ? '<span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>' : ''}
                 <p class="font-bold text-xs sm:text-sm text-slate-900">${escapeHtml(a.ho_ten || 'Sinh viên')}</p>
               </div>
               <p class="font-mono text-xs font-bold text-brand-800">MSSV: ${escapeHtml(a.mssv || 'N/A')}</p>
               <p class="text-[11px] text-slate-400">${escapeHtml(a.lop || '')}</p>
             </div>
+          </td>
+          <td>
+            ${isResolved ? `
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold">
+                <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> Đã xử lý
+              </span>
+            ` : `
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-bold">
+                <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span> Cần cứu hộ
+              </span>
+            `}
           </td>
           <td>
             ${phone ? `
@@ -84,14 +96,27 @@ const SosModule = {
             </div>
           </td>
           <td class="text-xs text-slate-500 whitespace-nowrap font-medium">
-            ${escapeHtml(a.created_at || 'Vừa xong')}
+            ${escapeHtml(formatDateTime(a.created_at))}
           </td>
           <td class="text-right">
-            <button onclick="SosModule.confirmResolve(${a.id})"
-              class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5 ml-auto">
-              <i data-lucide="check" class="w-3.5 h-3.5"></i>
-              Đã xử lý
-            </button>
+            <div class="inline-flex items-center gap-1.5 ml-auto">
+              ${!isResolved ? `
+                <button onclick="SosModule.confirmResolve(${a.id})" title="Đánh dấu đã xử lý an toàn"
+                  class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5">
+                  <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                  Xử lý
+                </button>
+              ` : `
+                <span class="px-2 py-1 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-1">
+                  <i data-lucide="check-check" class="w-3.5 h-3.5"></i>
+                  An toàn
+                </span>
+              `}
+              <button onclick="SosModule.confirmDelete(${a.id})" title="Xóa cảnh báo"
+                class="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
           </td>
         </tr>
       `;
@@ -101,22 +126,38 @@ const SosModule = {
   },
 
   viewDetail(id) {
-    // Chuyển trực tiếp sang tab SOS và cuộn tới hàng
     window.App.switchTab('sos');
   },
 
   confirmResolve(id) {
     window.App.showConfirm(
-      'Xác nhận hoàn tất xử lý SOS',
-      'Đánh dấu cảnh báo khẩn cấp này đã được lực lượng an ninh xử lý an toàn?',
+      'Xác nhận xử lý SOS',
+      'Đánh dấu cảnh báo khẩn cấp này là "Đã xử lý an toàn"? Sinh viên sẽ nhận được cập nhật trạng thái hỗ trợ trên ứng dụng.',
+      async () => {
+        try {
+          await AdminAPI.updateSosStatus(id, 'Đã xử lý');
+          window.App.showToast('Đã xử lý cảnh báo SOS an toàn', 'success');
+          await this.loadAlerts();
+          if (window.DashboardModule) DashboardModule.loadStats();
+        } catch (err) {
+          window.App.showToast('Lỗi khi cập nhật trạng thái: ' + err.message, 'error');
+        }
+      }
+    );
+  },
+
+  confirmDelete(id) {
+    window.App.showConfirm(
+      'Xóa cảnh báo SOS',
+      'Bạn có chắc chắn muốn xóa cảnh báo này khỏi lịch sử hệ thống?',
       async () => {
         try {
           await AdminAPI.deleteSosAlert(id);
-          window.App.showToast('Đã đóng cảnh báo SOS thành công', 'success');
+          window.App.showToast('Đã xóa cảnh báo SOS', 'success');
           await this.loadAlerts();
-          DashboardModule.loadStats();
+          if (window.DashboardModule) DashboardModule.loadStats();
         } catch (err) {
-          window.App.showToast('Lỗi khi cập nhật: ' + err.message, 'error');
+          window.App.showToast('Lỗi khi xóa: ' + err.message, 'error');
         }
       }
     );

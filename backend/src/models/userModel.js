@@ -56,7 +56,7 @@ const userModel = {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       user.mssv,
-      user.ho_ten,
+      user.ho_ten || user.fullName || '',
       user.email,
       user.password,
       user.role || 'sinh_vien',

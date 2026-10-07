@@ -32,6 +32,42 @@ function closeModal(modalId) {
   }
 }
 
+// Helper định dạng ngày giờ chuẩn Việt Nam (HH:mm DD/MM/YYYY)
+function formatDateTime(dateStr) {
+  if (!dateStr) return '-';
+  if (typeof dateStr === 'string' && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateStr.trim())) {
+    return dateStr.trim();
+  }
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return String(dateStr);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes} ${day}/${month}/${year}`;
+  } catch (e) {
+    return String(dateStr);
+  }
+}
+
+// Helper chuẩn hóa chuyên mục phản ánh sang tiếng Việt
+function formatCategory(cat) {
+  if (!cat) return 'Góp ý chung';
+  const map = {
+    'facility': 'Cơ sở vật chất',
+    'teaching': 'Chất lượng giảng dạy',
+    'academic': 'Chất lượng giảng dạy',
+    'canteen': 'Căng tin & Dịch vụ',
+    'security': 'An ninh & Gửi xe',
+    'parking': 'An ninh & Gửi xe',
+    'procedure': 'Thủ tục sinh viên',
+    'other': 'Khác'
+  };
+  return map[cat.toLowerCase()] || cat;
+}
+
 const App = {
   currentTab: 'dashboard',
   confirmCallback: null,

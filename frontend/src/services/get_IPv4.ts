@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
 // IP tĩnh hiện tại của máy bạn làm fallback dự phòng
-const CURRENT_IPV4 = '192.168.1.22';
+const CURRENT_IPV4 = '192.168.1.20';
 const PORT = '5000';
 
 export const getApiBaseUrl = (): string => {

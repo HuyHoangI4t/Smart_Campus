@@ -17,13 +17,14 @@ interface TabItemConfig {
   route: string;
   label: string;
   icon: keyof typeof MaterialIcons.glyphMap;
+  isCenter?: boolean;
 }
 
 const TAB_ITEMS: TabItemConfig[] = [
   { route: 'home/index', label: 'Trang chủ', icon: 'home' },
-  { route: 'map/index', label: 'Bản đồ', icon: 'location-on' },
   { route: 'schedule/index', label: 'Lịch học', icon: 'calendar-today' },
-  { route: 'grades/index', label: 'Kết quả', icon: 'assessment' },
+  { route: 'map/index', label: 'Bản đồ', icon: 'map', isCenter: true },
+  { route: 'grades/index', label: 'Điểm', icon: 'assessment' },
   { route: 'profile/index', label: 'Hồ sơ', icon: 'person-outline' },
 ];
 
@@ -43,19 +44,26 @@ export const BOTTOM_NAV_HEIGHT = 115;
  * - Khi kéo ngược lên hoặc về gần đỉnh trang: thanh nav trượt hiện lại vị trí cũ, khôi phục bottomPadding (88px)
  */
 export function useTabBarScrollHandler(options?: { visiblePadding?: number; hiddenPadding?: number }) {
-  const visiblePad = options?.visiblePadding ?? 88;
-  const hiddenPad = options?.hiddenPadding ?? 20;
+  const visiblePad = options?.visiblePadding ?? 115;
+  const hiddenPad = options?.hiddenPadding ?? 115;
 
   const [isNavVisible, setIsNavVisible] = useState(true);
   const lastOffsetY = useRef(0);
   const isTabBarVisibleRef = useRef(true);
 
   const onScroll = useCallback((event: any) => {
-    const currentOffsetY = event?.nativeEvent?.contentOffset?.y ?? 0;
-    const diff = currentOffsetY - lastOffsetY.current;
+    const nativeEvent = event?.nativeEvent;
+    if (!nativeEvent) return;
 
-    // 1. Khi đang ở gần đỉnh trang (<= 25px), luôn luôn giữ/hiện thanh nav
-    if (currentOffsetY <= 25) {
+    const currentOffsetY = nativeEvent.contentOffset?.y ?? 0;
+    const contentHeight = nativeEvent.contentSize?.height ?? 0;
+    const layoutHeight = nativeEvent.layoutMeasurement?.height ?? 0;
+
+    // Chiều cao cuộn tối đa thực tế của nội dung
+    const maxOffsetY = Math.max(0, contentHeight - layoutHeight);
+
+    // 1. Khi đang ở gần đỉnh trang (<= 20px), luôn luôn giữ/hiện thanh nav
+    if (currentOffsetY <= 20) {
       if (!isTabBarVisibleRef.current) {
         isTabBarVisibleRef.current = true;
         setIsNavVisible(true);
@@ -65,16 +73,31 @@ export function useTabBarScrollHandler(options?: { visiblePadding?: number; hidd
       return;
     }
 
-    // 2. Khi cuộn xuống (diff > 10 và đã cuộn qua một đoạn > 40px): ẩn nav chạy xuống dưới
-    if (diff > 10 && currentOffsetY > 40) {
+    // 2. Chặn overscroll ở đỉnh (kéo quá đỉnh trang)
+    if (currentOffsetY < 0) {
+      lastOffsetY.current = 0;
+      return;
+    }
+
+    // 3. Chặn overscroll ở đáy: Khi người dùng kéo kịch trang (hoặc kéo quá đáy rồi thả tay nảy ngược lại)
+    // Cú nảy overscroll rubber-band tạo diff < 0 giả. Ta CHẶN không cho hiện lại nav khi đang ở sát đáy!
+    if (maxOffsetY > 0 && currentOffsetY >= maxOffsetY - 12) {
+      lastOffsetY.current = currentOffsetY;
+      return;
+    }
+
+    const diff = currentOffsetY - lastOffsetY.current;
+
+    // 4. Khi cuộn xuống (diff > 4 và đã cuộn qua đỉnh > 25px): ẩn nav chạy xuống dưới
+    if (diff > 4 && currentOffsetY > 25) {
       if (isTabBarVisibleRef.current) {
         isTabBarVisibleRef.current = false;
         setIsNavVisible(false);
         setTabBarVisible(false);
       }
     }
-    // 3. Khi kéo ngược lên (diff < -10): hiện nav chạy lên vị trí cũ
-    else if (diff < -10) {
+    // 5. Khi chủ động cuộn ngược lên (diff < -6 và không ở vùng sát đáy): hiện nav chạy lên vị trí cũ
+    else if (diff < -6 && (maxOffsetY === 0 || currentOffsetY < maxOffsetY - 28)) {
       if (!isTabBarVisibleRef.current) {
         isTabBarVisibleRef.current = true;
         setIsNavVisible(true);
@@ -190,6 +213,42 @@ export function CustomBottomNav(props: CustomBottomNavProps) {
       <View style={tabBarStyles.navCard}>
         {TAB_ITEMS.map((item, index) => {
           const isSelected = index === activeIndex;
+
+          if (item.isCenter) {
+            return (
+              <TouchableOpacity
+                key={item.route}
+                onPress={() => handleSelect(index)}
+                activeOpacity={0.85}
+                style={tabBarStyles.centerTabItem}
+              >
+                <View
+                  style={[
+                    tabBarStyles.centerIconContainer,
+                    isSelected && tabBarStyles.centerIconSelected,
+                  ]}
+                >
+                  <MaterialIcons
+                    name={item.icon}
+                    size={26}
+                    color="#FFFFFF"
+                  />
+                </View>
+                <Text
+                  style={[
+                    tabBarStyles.centerLabel,
+                    {
+                      color: isSelected ? AppColors.primary : AppColors.textMuted,
+                      fontWeight: isSelected ? '800' : '600',
+                    },
+                  ]}
+                >
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          }
+
           return (
             <TouchableOpacity
               key={item.route}
@@ -213,13 +272,14 @@ export function CustomBottomNav(props: CustomBottomNavProps) {
                 style={[
                   tabBarStyles.label,
                   {
-                    fontWeight: isSelected ? '900' : '800',
+                    fontWeight: isSelected ? '800' : '600',
                     color: isSelected ? AppColors.primary : AppColors.textMuted,
                   },
                 ]}
               >
                 {item.label}
               </Text>
+              {isSelected && <View style={tabBarStyles.activeDot} />}
             </TouchableOpacity>
           );
         })}

@@ -39,8 +39,8 @@ exports.submitFeedback = async (req, res) => {
   try {
     const feedbackTitle = category ? `[${category}] ${title}` : title;
     await db.query(
-      'INSERT INTO feedback (mssv, title, content) VALUES (?, ?, ?)',
-      [mssv, feedbackTitle, content]
+      'INSERT INTO feedback (mssv, title, content, category, rating, status) VALUES (?, ?, ?, ?, ?, ?)',
+      [mssv, feedbackTitle, content, category || 'Cơ sở vật chất', rating || 5, 'Chờ tiếp nhận']
     );
 
     res.json({
@@ -191,21 +191,24 @@ exports.getDashboard = async (req, res) => {
     }
 
     const formatDateStr = (dateObj) => {
-      if (!dateObj) return '30/9/2026';
+      if (!dateObj) return '';
+      if (typeof dateObj === 'string' && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateObj.trim())) {
+        return dateObj.trim();
+      }
       try {
         const d = new Date(dateObj);
         if (isNaN(d.getTime())) return String(dateObj);
         return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
       } catch (e) {
-        return '30/9/2026';
+        return String(dateObj);
       }
     };
 
-    const validNotifs = (notifRows || []).filter(n => n.title && n.title.length > 3 && !['d', 'sadsa', 'dấdadsad'].includes(n.title.trim()));
+    const validNotifs = (notifRows || []).filter(n => n && n.title && n.title.trim().length > 0);
 
     const notificationAlerts = [];
 
-    // 1. THẺ XANH LÁ (Success - Phản hồi CSVC đã giải quyết hoặc thông báo loại success)
+    // 1. Phản hồi CSVC của người dùng (chỉ hiện khi có gửi phản hồi thực tế)
     if (userFeedback) {
       const isResolved = userFeedback.status === 'Đã giải quyết';
       notificationAlerts.push({
@@ -222,115 +225,44 @@ exports.getDashboard = async (req, res) => {
         content: userFeedback.content || 'Nội dung phản hồi của bạn đã được ghi nhận.',
         actionScreen: 'feedback'
       });
-    } else {
-      // Tìm xem có thông báo loại success/resolved từ nhà trường không
-      const successNotif = validNotifs.find(n => n.type === 'success' || n.type === 'resolved');
-      if (successNotif) {
-        notificationAlerts.push({
-          id: `notif-${successNotif.id}`,
-          type: 'feedback',
-          variant: 'success',
-          icon: 'check',
-          title: successNotif.title,
-          subtitle: formatDateStr(successNotif.created_at || successNotif.date),
-          date: formatDateStr(successNotif.created_at || successNotif.date),
-          status: 'Đã giải quyết',
-          content: successNotif.content || successNotif.title,
-          sender: successNotif.sender || 'Phòng Quản trị CSVC'
-        });
-      } else {
-        // Mẫu mặc định chuẩn giao diện
-        notificationAlerts.push({
-          id: 'default-fb',
-          type: 'feedback',
-          variant: 'success',
-          icon: 'check',
-          title: 'Phản hồi CSVC đã được giải quyết',
-          subtitle: '30/9/2026',
-          date: '30/9/2026',
-          status: 'Đã giải quyết',
-          content: 'Ý kiến phản hồi cơ sở vật chất của bạn đã được phòng kỹ thuật xử lý xong.',
-          actionScreen: 'feedback'
-        });
-      }
     }
 
-    // 2. THẺ VÀNG CAM (Warning - Tín hiệu SOS hoặc Cảnh báo đổi phòng / khẩn cấp)
+    // 2. Tín hiệu SOS của người dùng (chỉ hiện khi có gửi SOS thực tế)
     if (userSos) {
+      const isResolved = userSos.status === 'Đã xử lý' || userSos.status === 'Đã giải quyết';
       notificationAlerts.push({
         id: `sos-${userSos.id}`,
         type: 'sos',
-        variant: 'warning',
-        icon: 'alert-triangle',
-        title: `Tín hiệu SOS: ${userSos.status || 'Đã tiếp nhận & hỗ trợ'}`,
+        variant: isResolved ? 'success' : 'warning',
+        icon: isResolved ? 'check' : 'alert-triangle',
+        title: isResolved
+          ? 'Tín hiệu SOS: Đã được lực lượng an ninh xử lý an toàn'
+          : `Tín hiệu SOS: ${userSos.status || 'Đang hỗ trợ'}`,
         subtitle: formatDateStr(userSos.created_at),
         date: formatDateStr(userSos.created_at),
-        status: userSos.status || 'Đã tiếp nhận',
+        status: userSos.status || 'Đang hỗ trợ',
         content: userSos.message || 'Tín hiệu SOS khẩn cấp tại vị trí của bạn.',
         actionScreen: 'sos'
       });
-    } else {
-      const warningNotif = validNotifs.find(n => n.type === 'urgent' || n.type === 'warning');
-      if (warningNotif) {
-        notificationAlerts.push({
-          id: `warn-${warningNotif.id}`,
-          type: 'sos',
-          variant: 'warning',
-          icon: 'alert-triangle',
-          title: warningNotif.title,
-          subtitle: formatDateStr(warningNotif.created_at || warningNotif.date),
-          date: formatDateStr(warningNotif.created_at || warningNotif.date),
-          status: 'Cảnh báo',
-          content: warningNotif.content || warningNotif.title,
-          actionScreen: 'schedule'
-        });
-      } else {
-        // Mẫu mặc định chuẩn giao diện
-        notificationAlerts.push({
-          id: 'default-warning',
-          type: 'sos',
-          variant: 'warning',
-          icon: 'alert-triangle',
-          title: 'Thay đổi phòng học môn Lập trình di động',
-          subtitle: 'Hôm nay',
-          date: 'Hôm nay',
-          status: 'Cảnh báo',
-          content: 'Học phần Lập trình di động chuyển từ phòng 9.2.04 sang phòng 9.3.01 (Nhà 9).',
-          actionScreen: 'schedule'
-        });
-      }
     }
 
-    // 3. THẺ XANH DƯƠNG (Info - Thông báo chung phát từ trường, bảo trì thư viện...)
-    const infoNotif = validNotifs.find(n => n.type !== 'urgent' && n.type !== 'warning' && n.type !== 'success' && n.type !== 'resolved');
-    if (infoNotif) {
+    // 3. Thông báo và cảnh báo phát từ nhà trường (chỉ hiện khi nhà trường có phát thông báo)
+    validNotifs.forEach((notif) => {
+      const isWarning = notif.type === 'urgent' || notif.type === 'warning';
+      const isSuccess = notif.type === 'success' || notif.type === 'resolved';
       notificationAlerts.push({
-        id: `notif-${infoNotif.id}`,
-        type: 'school_notice',
-        variant: 'info',
-        icon: 'info',
-        title: infoNotif.title,
-        subtitle: formatDateStr(infoNotif.created_at || infoNotif.date),
-        date: formatDateStr(infoNotif.created_at || infoNotif.date),
-        status: infoNotif.type === 'academic' ? 'Học vụ' : 'Thông báo',
-        content: infoNotif.content || infoNotif.title,
-        sender: infoNotif.sender || 'Ban Giám hiệu'
+        id: `notif-${notif.id}`,
+        type: isWarning ? 'sos' : (isSuccess ? 'feedback' : 'school_notice'),
+        variant: isWarning ? 'warning' : (isSuccess ? 'success' : 'info'),
+        icon: isWarning ? 'alert-triangle' : (isSuccess ? 'check' : 'info'),
+        title: notif.title,
+        subtitle: formatDateStr(notif.created_at || notif.date),
+        date: formatDateStr(notif.created_at || notif.date),
+        status: isWarning ? 'Cảnh báo' : (isSuccess ? 'Đã giải quyết' : (notif.type === 'academic' ? 'Học vụ' : 'Thông báo')),
+        content: notif.content || notif.title,
+        sender: notif.sender || 'Ban Giám hiệu'
       });
-    } else {
-      // Mẫu mặc định chuẩn giao diện
-      notificationAlerts.push({
-        id: 'default-info',
-        type: 'school_notice',
-        variant: 'info',
-        icon: 'info',
-        title: 'Bảo trì hệ thống thư viện',
-        subtitle: '30/9/2026',
-        date: '30/9/2026',
-        status: 'Thông báo',
-        content: 'Hệ thống thư viện số và tra cứu giáo trình sẽ tạm ngừng để nâng cấp server từ 22h00.',
-        sender: 'Ban Giám hiệu'
-      });
-    }
+    });
 
     const stats = [
       { label: "Ghế Thư viện", value: "34", sub: "Còn trống", icon: "book-open", color: "#10B981" },

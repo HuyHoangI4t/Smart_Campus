@@ -14,6 +14,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const newsRoutes = require('./routes/newsRoutes');
 const cronService = require('./services/cronService');
 const path = require('path');
+const os = require('os');
 
 dotenv.config();
 
@@ -89,10 +90,29 @@ app.use('/api', generalRoutes);
 app.use('/api', studentRoutes);
 app.use('/api', campusRoutes);
 
+const getLocalIPv4 = () => {
+  const interfaces = os.networkInterfaces();
+  const candidates = [];
+  for (const name of Object.keys(interfaces)) {
+    // Bỏ qua mạng ảo (VMware, VirtualBox, vEthernet, loopback)
+    if (/vmware|virtual|vethernet|loopback|pseudo/i.test(name)) continue;
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        if (/wi-fi|wifi|ethernet/i.test(name)) {
+          return iface.address;
+        }
+        candidates.push(iface.address);
+      }
+    }
+  }
+  return candidates[0] || '192.168.1.20';
+};
+
 app.listen(PORT, '0.0.0.0', () => {
+  const localIP = getLocalIPv4();
   console.log(`🚀 LTDDDNT Backend server đang chạy tại cổng ${PORT} (0.0.0.0)`);
   console.log(`💻 Trang Quản Trị Web (Admin Portal): http://localhost:${PORT}/portal`);
-  console.log(`📱 Expo Go / Mobile API: http://192.168.1.22:${PORT}/api`);
+  console.log(`📱 Expo Go / Mobile API: http://${localIP}:${PORT}/api`);
   console.log(`📄 Swagger UI sẵn sàng tại http://localhost:${PORT}/api-docs`);
   
   // Khởi động tiến trình đồng bộ dữ liệu tự động 3 lần/ngày

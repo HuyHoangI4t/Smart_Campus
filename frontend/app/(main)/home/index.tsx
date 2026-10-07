@@ -301,45 +301,6 @@ export interface NotificationAlertItem {
   actionScreen?: string;
 }
 
-
-const DEFAULT_NOTIFICATION_ALERTS: NotificationAlertItem[] = [
-  {
-    id: "alert-1",
-    type: "feedback",
-    variant: "success",
-    icon: "check",
-    title: "Phản hồi CSVC đã được giải quyết",
-    subtitle: "1 giờ trước • Cơ sở chính",
-    date: "1 giờ trước • Cơ sở chính",
-    status: "Đã giải quyết",
-    content: "Phản hồi về thiết bị phòng học đã được bộ phận kỹ thuật xử lý hoàn tất.",
-    actionScreen: "feedback",
-  },
-  {
-    id: "alert-2",
-    type: "sos",
-    variant: "warning",
-    icon: "alert-triangle",
-    title: "Thay đổi phòng học môn Lập trình di động",
-    subtitle: "Hôm nay • Phòng 9.2.04 -> 9.3.01",
-    date: "Hôm nay • Phòng 9.2.04 -> 9.3.01",
-    status: "Cảnh báo",
-    content: "Học phần Lập trình thiết bị di động tiết 1-4 chuyển sang phòng 9.3.01 (Nhà 9).",
-    actionScreen: "schedule",
-  },
-  {
-    id: "alert-3",
-    type: "school_notice",
-    variant: "info",
-    icon: "info",
-    title: "Bảo trì hệ thống thư viện",
-    subtitle: "Hôm qua • P. Quản trị TB",
-    date: "Hôm qua • P. Quản trị TB",
-    status: "Thông báo",
-    content: "Hệ thống tra cứu số và phòng tự học thư viện tạm ngừng để nâng cấp máy chủ từ 22h00.",
-  },
-];
-
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -362,8 +323,8 @@ export default function HomeScreen() {
   const [isOfflineData, setIsOfflineData] = useState(false);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
 
-  // 3 mục Thông báo & Cảnh báo (Phản hồi CSVC, SOS/Đổi phòng, Thông báo trường)
-  const [notificationAlerts, setNotificationAlerts] = useState<NotificationAlertItem[]>(DEFAULT_NOTIFICATION_ALERTS);
+  // Thông báo & Cảnh báo từ nhà trường (mặc định để trống, chỉ hiện khi có thông báo thực tế)
+  const [notificationAlerts, setNotificationAlerts] = useState<NotificationAlertItem[]>([]);
   const [selectedAlertForModal, setSelectedAlertForModal] = useState<NotificationAlertItem | null>(null);
 
   // Chuyển ngày tháng thành timestamp mili-giây để sắp xếp
@@ -431,14 +392,20 @@ export default function HomeScreen() {
   };
 
   const applyData = (dashRes: any, scheduleRes: any, newsRes: any, isRealAccount = true) => {
-    // 1. Dashboard & Thông báo/Cảnh báo
+    // 1. Dashboard & Thông báo/Cảnh báo (Chỉ hiện khi có phát thông báo từ trường)
     if (dashRes && dashRes.success) {
       if (dashRes.student && isRealAccount) {
         setStudent((prev) => ({ ...prev, ...dashRes.student }));
       }
-      if (Array.isArray(dashRes.notificationAlerts) && dashRes.notificationAlerts.length > 0) {
+      if (Array.isArray(dashRes.notificationAlerts)) {
         setNotificationAlerts(dashRes.notificationAlerts);
+      } else if (Array.isArray(dashRes.alerts)) {
+        setNotificationAlerts(dashRes.alerts);
+      } else {
+        setNotificationAlerts([]);
       }
+    } else {
+      setNotificationAlerts([]);
     }
 
     // 2. Lịch học
@@ -936,16 +903,19 @@ export default function HomeScreen() {
           </View>
 
           {/* ─── THÔNG BÁO & CẢNH BÁO (FEEDBACK, SOS, THÔNG BÁO PHÁT TỪ TRƯỜNG) ─── */}
-          {notificationAlerts && notificationAlerts.length > 0 ? (
-            <View style={{ marginBottom: 20 }}>
-              <View style={[s.row, s.between, { alignItems: "center", marginBottom: 12, paddingHorizontal: 4 }]}>
-                <Text style={{ fontSize: 16, fontWeight: "900", color: "#0F172A" }}>
-                  Thông báo & Cảnh báo
-                </Text>
+          <View style={{ marginBottom: 20 }}>
+            <View style={[s.row, s.between, { alignItems: "center", marginBottom: 12, paddingHorizontal: 4 }]}>
+              <Text style={{ fontSize: 16, fontWeight: "900", color: "#0F172A" }}>
+                Thông báo & Cảnh báo
+              </Text>
+              {notificationAlerts && notificationAlerts.length > 0 ? (
                 <Text style={{ fontSize: 13, fontWeight: "700", color: "#2563EB" }}>
                   {notificationAlerts.length} tin mới
                 </Text>
-              </View>
+              ) : null}
+            </View>
+
+            {notificationAlerts && notificationAlerts.length > 0 ? (
               <View style={{ gap: 10 }}>
                 {notificationAlerts.map((item) => {
                   let bg = "#F0FDF4";
@@ -1004,8 +974,28 @@ export default function HomeScreen() {
                   );
                 })}
               </View>
-            </View>
-          ) : null}
+            ) : (
+              <View
+                style={{
+                  backgroundColor: "#F8FAFC",
+                  borderWidth: 1,
+                  borderColor: "#E2E8F0",
+                  borderRadius: 16,
+                  paddingVertical: 14,
+                  paddingHorizontal: 16,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexDirection: "row",
+                  gap: 8,
+                }}
+              >
+                <Feather name="bell-off" size={16} color="#94A3B8" />
+                <Text style={{ fontSize: 13, color: "#64748B", fontWeight: "500" }}>
+                  Chưa có thông báo từ trường
+                </Text>
+              </View>
+            )}
+          </View>
 
           {/* ─── THÔNG BÁO SINH VIÊN (RSS THONGBAOSV) ─── */}
           <View style={{ marginBottom: 20 }}>

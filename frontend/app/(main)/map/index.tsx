@@ -10,6 +10,8 @@ import {
   LocationItem,
   TAY_NGUYEN_CAMPUS_LOCATIONS,
   TNU_CAMPUS_BOUNDARY,
+  TNU_CAMPUS_CENTER,
+  TNU_OSM_WAY_241971731_BOUNDARY,
   parseCampusRoom,
   findLocationByRoomOrQuery,
   generateLeafletMapHtml,
@@ -20,7 +22,14 @@ import {
 
 // Tái xuất các kiểu dữ liệu và hằng số để tương thích ngược nếu có module khác import
 export type { LocationItem };
-export { TAY_NGUYEN_CAMPUS_LOCATIONS, TNU_CAMPUS_BOUNDARY, parseCampusRoom, findLocationByRoomOrQuery };
+export {
+  TAY_NGUYEN_CAMPUS_LOCATIONS,
+  TNU_CAMPUS_BOUNDARY,
+  TNU_CAMPUS_CENTER,
+  TNU_OSM_WAY_241971731_BOUNDARY,
+  parseCampusRoom,
+  findLocationByRoomOrQuery,
+};
 
 export default function MapScreen() {
   const params = useLocalSearchParams<{ search?: string; room?: string; subject?: string }>();
@@ -80,8 +89,8 @@ export default function MapScreen() {
             building: String(l.building || l.name || ""),
             floor: String(l.floor || ""),
             description: String(l.description || ""),
-            lat: Number(l.lat || 12.6509),
-            lng: Number(l.lng || 108.0241),
+            lat: Number(l.lat || TNU_CAMPUS_CENTER.lat),
+            lng: Number(l.lng || TNU_CAMPUS_CENTER.lng),
             icon: String(l.icon || "map-pin"),
             x: Number(l.x ?? 50),
             y: Number(l.y ?? 50),
@@ -395,7 +404,7 @@ export default function MapScreen() {
   // Memoize mã nguồn HTML để WebView KHÔNG bị reload lại mỗi khi bearing hoặc userLocation thay đổi
   const mapHtmlSource = useMemo(() => {
     return {
-      html: generateLeafletMapHtml(locations, TNU_CAMPUS_BOUNDARY),
+      html: generateLeafletMapHtml(locations, TNU_CAMPUS_BOUNDARY, [TNU_CAMPUS_CENTER.lat, TNU_CAMPUS_CENTER.lng]),
     };
   }, [locations]);
 

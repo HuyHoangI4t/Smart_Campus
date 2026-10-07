@@ -68,6 +68,10 @@ const options = {
 const specs = swaggerJsdoc(options);
 
 function setupSwagger(app) {
+  app.get('/api-docs.json', (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(specs);
+  });
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
   console.log('📄 Swagger UI bắt đầu tại http://localhost:5000/api-docs');
 }
