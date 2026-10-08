@@ -28,6 +28,14 @@ export interface CampusPath {
   id: number;
   name: string;
   path_type: 'walkway' | 'main_road' | 'secondary_road' | string;
-  coordinates: [number, number][];
+  coordinates: [number, number][] | [number, number][][] | any;
+}
+
+export interface CampusGate {
+  id: string;
+  name: string;
+  gatePoint: [number, number];
+  insidePoint: [number, number];
+  outsidePoint: [number, number];
 }
 

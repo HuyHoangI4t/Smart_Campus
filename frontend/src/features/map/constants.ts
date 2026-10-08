@@ -1,4 +1,4 @@
-import { LocationItem } from './types';
+import { LocationItem, CampusGate } from './types';
 
 export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
   {
@@ -792,4 +792,21 @@ export const TNU_CAMPUS_BOUNDARY: [number, number][] = [
     12.64936184489708,
     108.023709984411
   ]
+];
+
+export const TNU_CAMPUS_GATES: CampusGate[] = [
+  {
+    id: 'front_gate',
+    name: 'Cổng trước (Lê Duẩn)',
+    gatePoint: [12.651536, 108.023856],
+    insidePoint: [12.65144, 108.02395],
+    outsidePoint: [12.65154752, 108.02385583]
+  },
+  {
+    id: 'back_gate',
+    name: 'Cổng sau (Y Wang)',
+    gatePoint: [12.64837195, 108.02804429],
+    insidePoint: [12.64850, 108.02798],
+    outsidePoint: [12.64837195, 108.02804429]
+  }
 ];

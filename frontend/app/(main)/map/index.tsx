@@ -10,12 +10,15 @@ import { AppColors } from "../../../src/constants/appColors";
 import { NavHeader } from "../../../src/components/NavHeader";
 import { setTabBarVisible } from "../../../src/components/MainTabs";
 import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
-import { apiGetMapLocations } from "../../../src/services/api";
+import { apiGetMapLocations, apiGetCampusPaths } from "../../../src/services/api";
 import {
   LocationItem,
+  CampusPath,
+  CampusGate,
   TAY_NGUYEN_CAMPUS_LOCATIONS,
   TNU_CAMPUS_BOUNDARY,
   TNU_CAMPUS_CENTER,
+  TNU_CAMPUS_GATES,
   TNU_OSM_WAY_241971731_BOUNDARY,
   HOUSE_NUM_TO_ID,
   parseCampusRoom,
@@ -28,11 +31,12 @@ import {
 } from "../../../src/features/map";
 
 // Tái xuất các kiểu dữ liệu và hằng số để tương thích ngược nếu có module khác import
-export type { LocationItem };
+export type { LocationItem, CampusPath, CampusGate };
 export {
   TAY_NGUYEN_CAMPUS_LOCATIONS,
   TNU_CAMPUS_BOUNDARY,
   TNU_CAMPUS_CENTER,
+  TNU_CAMPUS_GATES,
   TNU_OSM_WAY_241971731_BOUNDARY,
   parseCampusRoom,
   findLocationByRoomOrQuery,
@@ -114,6 +118,7 @@ export default function MapScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [locations, setLocations] = useState<LocationItem[]>(TAY_NGUYEN_CAMPUS_LOCATIONS);
+  const [campusPaths, setCampusPaths] = useState<CampusPath[]>([]);
 
   // Chọn địa điểm ban đầu
   const [selectedLoc, setSelectedLoc] = useState<LocationItem | null>(() => {
@@ -187,7 +192,7 @@ export default function MapScreen() {
   const [compassMode, setCompassMode] = useState<boolean>(false);
   const headingSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
 
-  // Tải danh sách địa điểm từ API Backend nếu có
+  // Tải danh sách địa điểm và mạng lưới lối đi nội bộ từ API Backend
   useEffect(() => {
     let isMounted = true;
     (async () => {
@@ -212,6 +217,33 @@ export default function MapScreen() {
         }
       } catch {
         // Dùng danh sách 37 địa điểm chuẩn đã được nạp
+      }
+
+      try {
+        const pathsRes = await apiGetCampusPaths();
+        if (pathsRes && pathsRes.paths && Array.isArray(pathsRes.paths) && isMounted) {
+          const normalizedPaths: CampusPath[] = pathsRes.paths.map((p: any) => ({
+            id: Number(p.id),
+            name: String(p.name || ""),
+            path_type: String(p.path_type || "walkway"),
+            coordinates: Array.isArray(p.coordinates)
+              ? p.coordinates
+              : typeof p.coordinates === "string"
+              ? JSON.parse(p.coordinates)
+              : [],
+          }));
+          setCampusPaths(normalizedPaths);
+          if (isMapReadyRef.current) {
+            webViewRef.current?.postMessage(
+              JSON.stringify({
+                type: "SET_CAMPUS_PATHS",
+                paths: normalizedPaths,
+              })
+            );
+          }
+        }
+      } catch {
+        // Bỏ qua nếu chưa nạp được paths
       }
     })();
     return () => {
@@ -382,8 +414,16 @@ export default function MapScreen() {
         layer: "satellite",
       })
     );
+    if (campusPaths.length > 0) {
+      webViewRef.current?.postMessage(
+        JSON.stringify({
+          type: "SET_CAMPUS_PATHS",
+          paths: campusPaths,
+        })
+      );
+    }
     requestUserLocation(false);
-  }, [selectedLoc, requestUserLocation]);
+  }, [selectedLoc, requestUserLocation, campusPaths]);
 
   // Xử lý thông điệp gửi từ Leaflet WebView
   const handleWebViewMessage = (event: any) => {
@@ -614,9 +654,15 @@ export default function MapScreen() {
   // Memoize mã nguồn HTML để WebView KHÔNG bị reload lại mỗi khi bearing hoặc userLocation thay đổi
   const mapHtmlSource = useMemo(() => {
     return {
-      html: generateLeafletMapHtml(locations, TNU_CAMPUS_BOUNDARY, [TNU_CAMPUS_CENTER.lat, TNU_CAMPUS_CENTER.lng]),
+      html: generateLeafletMapHtml(
+        locations,
+        TNU_CAMPUS_BOUNDARY,
+        [TNU_CAMPUS_CENTER.lat, TNU_CAMPUS_CENTER.lng],
+        campusPaths,
+        TNU_CAMPUS_GATES
+      ),
     };
-  }, [locations]);
+  }, [locations, campusPaths]);
 
   return (
     <View style={{ flex: 1, backgroundColor: AppColors.background }}>

@@ -473,14 +473,20 @@
                 <div>
                   <p class="text-xs font-bold text-white flex items-center gap-1.5">
                     <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                    <span>Đang ở chế độ Vẽ Đường Đi Nội Bộ Trường</span>
+                    <span>Chế độ Vẽ Mạng Lưới Đường Đi (Nhiều nhánh rẽ)</span>
                   </p>
                   <p class="text-[11px] text-slate-300 mt-0.5">
-                    Nhấp các điểm liên tiếp trên đường (<span id="pathDrawingPointCount" class="font-bold text-emerald-300">0</span> điểm, dài khoảng <span id="pathDrawingDistance" class="font-bold text-emerald-300">0m</span>)
+                    Đang vẽ: <span id="pathDrawingBranchLabel" class="font-bold text-amber-300">Nhánh 1</span> (<span id="pathDrawingBranchPoints" class="font-bold text-white">0</span> điểm) • Tổng: <span id="pathDrawingBranchCount" class="font-bold text-emerald-300">1</span> nhánh, <span id="pathDrawingPointCount" class="font-bold text-emerald-300">0</span> mốc, <span id="pathDrawingDistance" class="font-bold text-emerald-300">0m</span>
                   </p>
                 </div>
               </div>
-              <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <div class="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
+                <!-- Nút thêm nhánh rẽ mới -->
+                <button type="button" onclick="LocationsModule.startNewBranch()" title="Kết thúc nhánh hiện tại và bắt đầu vẽ nhánh rẽ mới (nhấp vào điểm mốc cũ để rẽ nhánh)"
+                  class="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition">
+                  <i data-lucide="git-branch" class="w-3.5 h-3.5"></i>
+                  <span>+ Nhánh mới</span>
+                </button>
                 <button type="button" onclick="LocationsModule.undoLastPathPoint()"
                   class="px-3 py-2 bg-white/10 hover:bg-white/20 text-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1">
                   <i data-lucide="undo" class="w-3.5 h-3.5"></i>
@@ -537,7 +543,7 @@
               <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> Bệnh viện & Y tế</span>
             </div>
             <div class="text-slate-400">
-              Tọa độ trung tâm: 12.6509° N, 108.0241° E (567 Lê Duẩn, TP. Buôn Ma Thuột)
+              Tọa độ trung tâm: 12.65053100, 108.02601222 (567 Lê Duẩn, TP. Buôn Ma Thuột)
             </div>
           </div>
         </div>
@@ -565,11 +571,6 @@
 
             <!-- Actions & Counter -->
             <div class="flex items-center gap-3">
-              <button onclick="LocationsModule.confirmResetDefaults()" title="Khôi phục lại danh sách 37 điểm mặc định của trường"
-                class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 whitespace-nowrap">
-                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 text-slate-500"></i>
-                <span class="hidden sm:inline">Khôi phục 37 điểm gốc</span>
-              </button>
               <div id="locationsTableCount" class="text-xs font-semibold text-slate-500 whitespace-nowrap">
                 Đang tải danh sách...
               </div>
@@ -626,11 +627,11 @@
               <div>
                 <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Loại thông báo</label>
                 <select id="notifTypeSelect" class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm font-medium bg-white">
-                  <option value="general">🔵 Thông báo chung / Bảo trì (Thẻ Xanh Dương)</option>
-                  <option value="urgent">🟡 Cảnh báo khẩn / Đổi phòng học (Thẻ Vàng)</option>
-                  <option value="success">🟢 Phản hồi đã xử lý / Hoàn tất (Thẻ Xanh Lá)</option>
-                  <option value="academic">🔵 Học vụ & Đào tạo (Thẻ Xanh Dương)</option>
-                  <option value="event">🔵 Sự kiện & Hoạt động (Thẻ Xanh Dương)</option>
+                  <option value="general">Thông báo chung / Bảo trì (Thẻ Xanh Dương)</option>
+                  <option value="urgent">Cảnh báo khẩn / Đổi phòng học (Thẻ Vàng)</option>
+                  <option value="success">Phản hồi đã xử lý / Hoàn tất (Thẻ Xanh Lá)</option>
+                  <option value="academic">Học vụ & Đào tạo (Thẻ Xanh Dương)</option>
+                  <option value="event">Sự kiện & Hoạt động (Thẻ Xanh Dương)</option>
                 </select>
               </div>
             </div>
@@ -878,11 +879,11 @@
           <div>
             <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Loại thông báo</label>
             <select id="editNotifTypeSelect" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-medium bg-white">
-              <option value="general">🔵 Thông báo chung</option>
-              <option value="urgent">🟡 Cảnh báo khẩn / Đổi phòng</option>
-              <option value="success">🟢 Đã giải quyết / Hoàn tất</option>
-              <option value="academic">🔵 Học vụ & Đào tạo</option>
-              <option value="event">🔵 Sự kiện & Hoạt động</option>
+              <option value="general">Thông báo chung</option>
+              <option value="urgent">Cảnh báo khẩn / Đổi phòng</option>
+              <option value="success">Đã giải quyết / Hoàn tất</option>
+              <option value="academic">Học vụ & Đào tạo</option>
+              <option value="event">Sự kiện & Hoạt động</option>
             </select>
           </div>
           <div>
@@ -1073,7 +1074,7 @@
             </div>
           </div>
           <p class="text-[11px] text-slate-500 italic">
-            💡 Bạn có thể nhấp chuột bất kỳ đâu trên bản đồ chính hoặc kéo chốt ghim đỏ để cập nhật tọa độ tự động.
+            <i data-lucide="info" class="w-4 h-4 text-blue-600 inline mr-1"></i> Bạn có thể nhấp chuột bất kỳ đâu trên bản đồ chính hoặc kéo chốt ghim đỏ để cập nhật tọa độ tự động.
           </p>
         </div>
 
@@ -1133,9 +1134,10 @@
         </div>
 
         <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60 text-xs text-slate-600 space-y-1">
-          <p>📍 Số mốc tọa độ: <span id="savePathModalCount" class="font-bold text-emerald-600">0</span> điểm</p>
-          <p>📏 Chiều dài ước tính: <span id="savePathModalDistance" class="font-bold text-emerald-600">0m</span></p>
-          <p class="text-[11px] text-slate-400 pt-1">Tuyến đường này sẽ lập tức đồng bộ cho ứng dụng Sinh viên để dẫn đường đi bộ chính xác theo khuôn viên trường.</p>
+          <p class="flex items-center gap-1.5"><i data-lucide="git-branch" class="w-4 h-4 text-amber-500"></i> Số nhánh rẽ: <span id="savePathModalBranches" class="font-bold text-amber-600">1</span> nhánh</p>
+          <p class="flex items-center gap-1.5"><i data-lucide="map-pin" class="w-4 h-4 text-emerald-500"></i> Tổng mốc tọa độ: <span id="savePathModalCount" class="font-bold text-emerald-600">0</span> điểm</p>
+          <p class="flex items-center gap-1.5"><i data-lucide="activity" class="w-4 h-4 text-emerald-500"></i> Tổng chiều dài mạng lưới: <span id="savePathModalDistance" class="font-bold text-emerald-600">0m</span></p>
+          <p class="text-[11px] text-slate-400 pt-1">Mạng lưới nhiều nhánh này sẽ lập tức đồng bộ cho ứng dụng Sinh viên để dẫn đường đi bộ qua các ngã rẽ trong khuôn viên.</p>
         </div>
 
         <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
@@ -1168,16 +1170,9 @@
             <p class="text-[11px] text-slate-500">Mạng lưới lối đi phục vụ thuật toán chỉ đường trong khuôn viên</p>
           </div>
         </div>
-        <div class="flex items-center gap-2">
-          <button type="button" onclick="LocationsModule.confirmResetDefaultPaths()" title="Khôi phục các tuyến đường mẫu chuẩn"
-            class="px-3 py-1.5 bg-slate-200/70 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition flex items-center gap-1">
-            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
-            <span>Khôi phục mẫu</span>
-          </button>
-          <button onclick="closeModal('managePathsModal')" class="text-slate-400 hover:text-slate-600 ml-2">
-            <i data-lucide="x" class="w-4 h-4"></i>
-          </button>
-        </div>
+        <button onclick="closeModal('managePathsModal')" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
       </div>
 
       <!-- List -->

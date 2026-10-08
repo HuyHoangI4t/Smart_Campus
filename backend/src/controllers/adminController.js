@@ -545,7 +545,10 @@ exports.getPaths = async (req, res) => {
 exports.createPath = async (req, res) => {
   const { name, path_type, coordinates } = req.body;
 
-  if (!coordinates || !Array.isArray(coordinates) || coordinates.length < 2) {
+  // Hỗ trợ cả 1 nhánh [ [lat, lng], ... ] hoặc nhiều nhánh [ [ [lat, lng], ... ], ... ]
+  const isSingle = Array.isArray(coordinates) && coordinates.length >= 2 && typeof coordinates[0]?.[0] === 'number';
+  const isMulti = Array.isArray(coordinates) && coordinates.length >= 1 && Array.isArray(coordinates[0]) && coordinates[0].length >= 2;
+  if (!coordinates || (!isSingle && !isMulti)) {
     return res.status(400).json({ success: false, message: 'Tuyến đường cần ít nhất 2 điểm tọa độ [lat, lng].' });
   }
 
@@ -575,7 +578,9 @@ exports.updatePath = async (req, res) => {
   const { id } = req.params;
   const { name, path_type, coordinates } = req.body;
 
-  if (!coordinates || !Array.isArray(coordinates) || coordinates.length < 2) {
+  const isSingle = Array.isArray(coordinates) && coordinates.length >= 2 && typeof coordinates[0]?.[0] === 'number';
+  const isMulti = Array.isArray(coordinates) && coordinates.length >= 1 && Array.isArray(coordinates[0]) && coordinates[0].length >= 2;
+  if (!coordinates || (!isSingle && !isMulti)) {
     return res.status(400).json({ success: false, message: 'Tuyến đường cần ít nhất 2 điểm tọa độ.' });
   }
 
