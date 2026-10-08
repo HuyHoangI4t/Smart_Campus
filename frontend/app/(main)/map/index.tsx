@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { View, Text, TouchableOpacity, Platform, Linking, ActivityIndicator, Alert } from "react-native";
+import { View, Text, TouchableOpacity, Platform, Linking, ActivityIndicator, Alert, Keyboard } from "react-native";
 import { WebView } from "react-native-webview";
 import { Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -366,6 +366,7 @@ export default function MapScreen() {
       if (data.type === "MAP_READY") {
         handleMapReady();
       } else if (data.type === "SELECT_LOCATION") {
+        Keyboard.dismiss();
         setShowSuggestions(false);
         const found = locations.find((l) => l.id === data.id);
         if (found) {
@@ -391,6 +392,7 @@ export default function MapScreen() {
 
   // Chọn danh mục từ băng lọc chip
   const handleSelectCategory = (catId: string) => {
+    Keyboard.dismiss();
     setSelectedCategory(catId);
     setShowSuggestions(false);
     webViewRef.current?.postMessage(
@@ -403,6 +405,7 @@ export default function MapScreen() {
 
   // Focus tòa nhà khi chọn từ danh sách tìm kiếm
   const handleSelectLocation = (loc: LocationItem) => {
+    Keyboard.dismiss();
     setSelectedLoc(loc);
 
     // Nếu query tìm kiếm là mã phòng (2.20, 8.3.4,...), lưu lại để card hiển thị đầy đủ chi tiết phòng
@@ -431,6 +434,7 @@ export default function MapScreen() {
 
   // Xử lý khi nhấn nút Search / Enter trên bàn phím
   const handleSearchSubmit = () => {
+    Keyboard.dismiss();
     if (!search.trim()) return;
     const matched = findLocationByRoomOrQuery(search, locations) || searchResults[0];
     if (matched) {
@@ -621,6 +625,7 @@ export default function MapScreen() {
                 setShowSuggestions(true);
               }}
               onClearSearch={() => {
+                Keyboard.dismiss();
                 setSearch("");
                 setShowSuggestions(false);
               }}

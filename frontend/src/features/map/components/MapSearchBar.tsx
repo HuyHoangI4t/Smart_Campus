@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TextInput, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Keyboard } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { AppColors } from "../../../constants/appColors";
 import { LocationItem } from "../types";
@@ -85,11 +85,20 @@ export const MapSearchBar: React.FC<MapSearchBarProps> = ({
           onChangeText={onSearchChange}
           onFocus={onFocus}
           returnKeyType="search"
-          onSubmitEditing={onSubmitSearch}
+          onSubmitEditing={() => {
+            Keyboard.dismiss();
+            onSubmitSearch?.();
+          }}
           style={{ flex: 1, fontSize: 13, color: AppColors.text, height: "100%", fontWeight: "500" }}
         />
         {search ? (
-          <TouchableOpacity onPress={onClearSearch} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <TouchableOpacity
+            onPress={() => {
+              Keyboard.dismiss();
+              onClearSearch();
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <Feather name="x-circle" size={17} color={AppColors.textMuted} />
           </TouchableOpacity>
         ) : (
@@ -124,7 +133,10 @@ export const MapSearchBar: React.FC<MapSearchBarProps> = ({
             return (
               <TouchableOpacity
                 key={cat.id}
-                onPress={() => onSelectCategory(cat.id)}
+                onPress={() => {
+                  Keyboard.dismiss();
+                  onSelectCategory(cat.id);
+                }}
                 activeOpacity={0.8}
                 style={{
                   flexDirection: "row",
@@ -196,11 +208,16 @@ export const MapSearchBar: React.FC<MapSearchBarProps> = ({
             <Text style={{ fontSize: 11, fontWeight: "800", color: AppColors.textSecondary, textTransform: "uppercase" }}>
               Gợi ý ({searchResults.length})
             </Text>
-            <TouchableOpacity onPress={onClearSearch}>
+            <TouchableOpacity
+              onPress={() => {
+                Keyboard.dismiss();
+                onClearSearch();
+              }}
+            >
               <Text style={{ fontSize: 11, color: AppColors.primary, fontWeight: "700" }}>Đóng</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView keyboardShouldPersistTaps="handled">
+          <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
             {searchResults.map((loc) => {
               const parsed = parseCampusRoom(search);
               const isRoomMatch = Boolean(
@@ -210,7 +227,10 @@ export const MapSearchBar: React.FC<MapSearchBarProps> = ({
               return (
                 <TouchableOpacity
                   key={loc.id}
-                  onPress={() => onSelectLocation(loc)}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    onSelectLocation(loc);
+                  }}
                   activeOpacity={0.7}
                   style={{
                     flexDirection: "row",
