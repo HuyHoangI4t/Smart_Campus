@@ -24,3 +24,10 @@ export interface ParsedCampusRoom {
   routeGuide: string;
 }
 
+export interface CampusPath {
+  id: number;
+  name: string;
+  path_type: 'walkway' | 'main_road' | 'secondary_road' | string;
+  coordinates: [number, number][];
+}
+

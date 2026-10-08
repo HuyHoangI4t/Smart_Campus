@@ -347,4 +347,23 @@ router.put('/sos/:id/status', adminController.updateSosStatus);
  */
 router.delete('/sos/:id', adminController.deleteSosAlert);
 
+/**
+ * Quản lý Bản đồ & Địa điểm khuôn viên (Campus Locations CRUD)
+ */
+router.get('/locations', adminController.getLocations);
+router.post('/locations', adminController.createLocation);
+router.put('/locations/:id', adminController.updateLocation);
+router.delete('/locations/:id', adminController.deleteLocation);
+router.post('/locations/reset', adminController.resetLocations);
+
+/**
+ * Quản lý Mạng lưới đường đi nội bộ khuôn viên (Campus Paths CRUD)
+ */
+router.get('/paths', adminController.getPaths);
+router.post('/paths', adminController.createPath);
+router.put('/paths/:id', adminController.updatePath);
+router.delete('/paths/:id', adminController.deletePath);
+router.post('/paths/reset', adminController.resetPaths);
+
 module.exports = router;
+

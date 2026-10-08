@@ -523,8 +523,8 @@ const TAY_NGUYEN_CAMPUS_LOCATIONS = [
   }
 ];
 
-async function seedLocations() {
-  const conn = await mysql.createConnection({
+async function seedLocations(externalConn = null) {
+  const conn = externalConn || await mysql.createConnection({
     host: process.env.DB_HOST || 'localhost',
     port: Number(process.env.DB_PORT) || 3306,
     user: process.env.DB_USER || 'root',
@@ -602,10 +602,20 @@ async function seedLocations() {
   const [countResult] = await conn.query('SELECT count(*) as total FROM map_locations');
   console.log(`Done! Total locations in DB: ${countResult[0].total}`);
 
-  await conn.end();
+  if (!externalConn) {
+    await conn.end();
+  }
+  return countResult[0].total;
 }
 
-seedLocations().catch(err => {
-  console.error('Seeding error:', err);
-  process.exit(1);
-});
+module.exports = {
+  TAY_NGUYEN_CAMPUS_LOCATIONS,
+  seedLocations
+};
+
+if (require.main === module) {
+  seedLocations().catch(err => {
+    console.error('Seeding error:', err);
+    process.exit(1);
+  });
+}

@@ -289,3 +289,17 @@ exports.getDashboard = async (req, res) => {
   }
 };
 
+// Lấy danh sách mạng lưới đường đi nội bộ khuôn viên trường
+exports.getCampusPaths = async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM campus_paths ORDER BY id ASC');
+    const paths = rows.map(r => ({
+      ...r,
+      coordinates: typeof r.coordinates === 'string' ? JSON.parse(r.coordinates) : r.coordinates
+    }));
+    res.json({ success: true, count: paths.length, paths });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi tải mạng lưới đường nội bộ: ' + error.message });
+  }
+};
+

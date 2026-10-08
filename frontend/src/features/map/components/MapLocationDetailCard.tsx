@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { AppColors } from "../../../constants/appColors";
 import { LocationItem, ParsedCampusRoom } from "../types";
-import { formatDistanceText } from "../utils";
+import { formatDistanceText, calculateDistanceKm } from "../utils";
 
 interface MapLocationDetailCardProps {
   selectedLoc: LocationItem;
@@ -11,6 +11,7 @@ interface MapLocationDetailCardProps {
   matchedTargetId: string | null;
   currentParsed: ParsedCampusRoom | null;
   targetSubject?: string;
+  bottomOffset?: number;
   onClose: () => void;
   onStartDirections: () => void;
   onOpenGoogleMaps: () => void;
@@ -22,6 +23,7 @@ export const MapLocationDetailCard: React.FC<MapLocationDetailCardProps> = ({
   matchedTargetId,
   currentParsed,
   targetSubject,
+  bottomOffset = 100,
   onClose,
   onStartDirections,
   onOpenGoogleMaps,
@@ -32,7 +34,7 @@ export const MapLocationDetailCard: React.FC<MapLocationDetailCardProps> = ({
     <View
       style={{
         position: "absolute",
-        bottom: 12,
+        bottom: bottomOffset,
         left: 12,
         right: 12,
         zIndex: 50,
@@ -117,6 +119,8 @@ export const MapLocationDetailCard: React.FC<MapLocationDetailCardProps> = ({
               <Feather name="navigation" size={10} color="#059669" />
               <Text style={{ fontSize: 10.5, fontWeight: "800", color: "#059669" }}>
                 Cách bạn {formatDistanceText(userLocation.latitude, userLocation.longitude, selectedLoc.lat, selectedLoc.lng)}
+                {" • "}
+                ~{Math.max(1, Math.ceil((calculateDistanceKm(userLocation.latitude, userLocation.longitude, selectedLoc.lat, selectedLoc.lng) * 1000) / 80))} phút đi bộ
               </Text>
             </View>
           )}
@@ -212,7 +216,7 @@ export const MapLocationDetailCard: React.FC<MapLocationDetailCardProps> = ({
           activeOpacity={0.7}
           style={{
             height: 42,
-            paddingHorizontal: 14,
+            paddingHorizontal: 12,
             borderRadius: 12,
             backgroundColor: "#F8FAFC",
             borderWidth: 1,
@@ -224,7 +228,7 @@ export const MapLocationDetailCard: React.FC<MapLocationDetailCardProps> = ({
           }}
         >
           <Feather name="external-link" size={13} color={AppColors.textSecondary} />
-          <Text style={{ fontSize: 12, fontWeight: "700", color: AppColors.textSecondary }}>Google Maps</Text>
+          <Text style={{ fontSize: 11.5, fontWeight: "700", color: AppColors.textSecondary }}>Mở App ngoài</Text>
         </TouchableOpacity>
       </View>
     </View>

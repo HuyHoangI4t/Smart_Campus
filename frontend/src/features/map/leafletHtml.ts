@@ -23,7 +23,7 @@ export function generateLeafletMapHtml(
       padding: 0;
       width: 100%;
       height: 100%;
-      background: #0F172A;
+      background: #F8FAFC;
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
@@ -34,7 +34,7 @@ export function generateLeafletMapHtml(
       right: 0;
       bottom: 0;
       overflow: hidden;
-      background: #0F172A;
+      background: #F8FAFC;
     }
     /* Khung xoay bao phủ toàn bộ màn hình kể cả xoay 360 độ trên màn hình điện thoại dài */
     #map-rotator {
@@ -51,7 +51,7 @@ export function generateLeafletMapHtml(
     #map {
       width: 100%;
       height: 100%;
-      background: #0F172A;
+      background: #F8FAFC;
     }
     /* Marker Styles (Icon-only, no #id) */
     .custom-marker {
@@ -171,18 +171,20 @@ export function generateLeafletMapHtml(
       document.documentElement.style.setProperty('--counter-rot', currentBearing + 'deg');
     }
 
-    // Khởi tạo bản đồ trung tâm Trường ĐH Tây Nguyên
+    // Đảm bảo lúc mới mở bản đồ luôn theo đúng chuẩn hướng Bắc - Nam (0 độ)
+    applyBearing(0, false);
+
+    // Khởi tạo bản đồ trung tâm Trường ĐH Tây Nguyên (Không giới hạn vùng di chuyển, mở lên luôn căn giữa trường)
     var map = L.map('map', {
       center: centerData,
       zoom: 17,
-      minZoom: 15.5,
+      minZoom: 3,
       maxZoom: 19,
-      zoomControl: false,
-      maxBounds: [
-        [12.6460, 108.0210],
-        [12.6555, 108.0310]
-      ],
-      maxBoundsViscosity: 0.95
+      zoomControl: false
+    });
+
+    map.whenReady(function() {
+      applyBearing(0, false);
     });
 
     // ── XỬ LÝ KÉO DI CHUYỂN BẢN ĐỒ KHI BẢN ĐỒ ĐANG XOAY ──────────────────
@@ -257,40 +259,49 @@ export function generateLeafletMapHtml(
       }
     }, { passive: true });
 
-    // Lớp Bản đồ OpenStreetMap chuẩn
-    var osmLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: 'OpenStreetMap'
+    // ── LỚP BẢN ĐỒ 2D GOOGLE MAPS (ẨN TOÀN BỘ TÊN ĐỊA DANH / CÔNG TRÌNH / POI) ──
+    var googleRoadLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&apistyle=s.t:3|p.v:off|s.t:4|p.v:off&x={x}&y={y}&z={z}', {
+      subdomains: ['0', '1', '2', '3'],
+      maxZoom: 20,
+      attribution: '&copy; Google Maps'
     }).addTo(map);
 
-    // Lớp Vệ tinh Esri World Imagery
-    var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 19,
-      attribution: 'Esri Satellite'
+    // ── PANE RIÊNG CHO LỚP VỆ TINH GOOGLE MAPS CỦA KHUÔN VIÊN TRƯỜNG ──
+    map.createPane('satelliteCampusPane');
+    var satellitePane = map.getPane('satelliteCampusPane');
+    satellitePane.style.zIndex = '250';
+
+    // Lớp Vệ tinh Google Maps nguyên bản (lyrs=s: ảnh chụp vệ tinh sắc nét, hoàn toàn không có tên địa danh / công trình)
+    var googleSatLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+      subdomains: ['0', '1', '2', '3'],
+      maxZoom: 20,
+      pane: 'satelliteCampusPane',
+      attribution: '&copy; Google Maps'
     });
 
-    var currentLayer = 'osm';
+    var currentLayer = 'satellite';
 
-    // ── CẮT HẾT CÁC VÙNG BÊN NGOÀI BẰNG LỚP MẶT NẠ (INVERTED POLYGON MASK) ──
-    // Vòng ngoài bao phủ rộng lớn toàn cầu
-    var outerWorldCoords = [
-      [90, -180],
-      [90, 180],
-      [-90, 180],
-      [-90, -180]
-    ];
-    // Đa giác rỗng ở giữa (hole) chính là boundaryData của trường ĐH Tây Nguyên
-    var maskPolygon = L.polygon([outerWorldCoords, boundaryData], {
-      color: 'transparent',
-      fillColor: '#0F172A',
-      fillOpacity: 0.94,
-      interactive: false,
-      zIndex: 400
-    }).addTo(map);
+    // Hàm cắt lớp vệ tinh theo đúng ranh giới khuôn viên trường:
+    // Bên trong khuôn viên là ảnh vệ tinh, xung quanh khuôn viên là bản đồ 2D đường phố
+    function updateSatelliteClip() {
+      if (!satellitePane) return;
+      var points = boundaryData.map(function(coord) {
+        var pt = map.latLngToLayerPoint(coord);
+        return Math.round(pt.x) + 'px ' + Math.round(pt.y) + 'px';
+      });
+      var polyStr = 'polygon(' + points.join(', ') + ')';
+      satellitePane.style.clipPath = polyStr;
+      satellitePane.style.webkitClipPath = polyStr;
+    }
+
+    // Kích hoạt lớp vệ tinh khuôn viên và đồng bộ clip-path khi bản đồ di chuyển/zoom
+    googleSatLayer.addTo(map);
+    map.on('zoom viewreset moveend resize move', updateSatelliteClip);
+    setTimeout(updateSatelliteClip, 100);
 
     // Đường viền rực rỡ bám sát ranh giới trường
     var boundaryOutline = L.polyline(boundaryData.concat([boundaryData[0]]), {
-      color: '#3B82F6',
+      color: '#2563EB',
       weight: 3.5,
       opacity: 0.95
     }).addTo(map);
@@ -469,6 +480,24 @@ export function generateLeafletMapHtml(
       }).addTo(routeLayerGroup);
 
       map.fitBounds(poly.getBounds(), { padding: [50, 50], animate: true });
+
+      var R = 6371000;
+      var dLat = (destLat - origLat) * Math.PI / 180;
+      var dLon = (destLng - origLng) * Math.PI / 180;
+      var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(origLat * Math.PI / 180) * Math.cos(destLat * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+      var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      var dist = Math.round(R * c);
+      var dur = Math.max(1, Math.round(dist / 80));
+
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'ROUTE_INFO',
+          distanceMeters: dist,
+          durationMinutes: dur
+        }));
+      }
     }
 
     function clearRoute() {
@@ -518,12 +547,15 @@ export function generateLeafletMapHtml(
 
           case 'SWITCH_LAYER':
             if (msg.layer === 'satellite') {
-              map.removeLayer(osmLayer);
-              satelliteLayer.addTo(map);
+              if (!map.hasLayer(googleSatLayer)) {
+                googleSatLayer.addTo(map);
+              }
+              updateSatelliteClip();
               currentLayer = 'satellite';
             } else {
-              map.removeLayer(satelliteLayer);
-              osmLayer.addTo(map);
+              if (map.hasLayer(googleSatLayer)) {
+                map.removeLayer(googleSatLayer);
+              }
               currentLayer = 'osm';
             }
             break;

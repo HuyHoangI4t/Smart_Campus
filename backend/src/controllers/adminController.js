@@ -11,6 +11,7 @@ exports.getDashboardStats = async (req, res) => {
     const [[notificationsCount]] = await db.query('SELECT COUNT(*) AS total FROM notifications');
     const [[feedbackCount]] = await db.query('SELECT COUNT(*) AS total FROM feedback');
     const [[sosCount]] = await db.query('SELECT COUNT(*) AS total FROM sos_alerts');
+    const [[locationsCount]] = await db.query('SELECT COUNT(*) AS total FROM map_locations');
 
     const [recentFeedback] = await db.query('SELECT * FROM feedback ORDER BY id DESC LIMIT 5');
     const [recentSos] = await db.query('SELECT * FROM sos_alerts ORDER BY id DESC LIMIT 5');
@@ -23,6 +24,7 @@ exports.getDashboardStats = async (req, res) => {
         totalNotifications: notificationsCount.total,
         totalFeedback: feedbackCount.total,
         totalSosAlerts: sosCount.total,
+        totalLocations: locationsCount.total,
       },
       recentFeedback,
       recentSos
@@ -350,3 +352,277 @@ exports.deleteSosAlert = async (req, res) => {
     res.status(500).json({ success: false, message: 'Lỗi xóa cảnh báo SOS: ' + error.message });
   }
 };
+
+/**
+ * 6. Quản lý bản đồ & địa điểm (Campus Map & Locations CRUD)
+ */
+exports.getLocations = async (req, res) => {
+  const search = req.query.search ? `%${req.query.search.trim()}%` : null;
+  const category = req.query.category && req.query.category !== 'Tất cả' ? req.query.category.trim() : null;
+
+  try {
+    let sql = 'SELECT * FROM map_locations';
+    const params = [];
+    const conditions = [];
+
+    if (search) {
+      conditions.push('(name LIKE ? OR building LIKE ? OR description LIKE ? OR category LIKE ?)');
+      params.push(search, search, search, search);
+    }
+
+    if (category) {
+      conditions.push('category = ?');
+      params.push(category);
+    }
+
+    if (conditions.length > 0) {
+      sql += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    sql += ' ORDER BY id ASC';
+
+    const [rows] = await db.query(sql, params);
+    res.json({ success: true, count: rows.length, locations: rows });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi lấy danh sách địa điểm: ' + error.message });
+  }
+};
+
+exports.createLocation = async (req, res) => {
+  const { name, category, building, floor, description, lat, lng, icon, color } = req.body;
+
+  if (!name || lat === undefined || lat === null || lng === undefined || lng === null) {
+    return res.status(400).json({ success: false, message: 'Tên địa điểm và tọa độ (Vĩ độ lat, Kinh độ lng) là bắt buộc.' });
+  }
+
+  const numLat = parseFloat(lat);
+  const numLng = parseFloat(lng);
+  if (isNaN(numLat) || isNaN(numLng)) {
+    return res.status(400).json({ success: false, message: 'Tọa độ lat, lng phải là số thực hợp lệ.' });
+  }
+
+  try {
+    const [result] = await db.query(`
+      INSERT INTO map_locations (name, category, building, floor, description, lat, lng, icon, color, x, y)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 50, 50)
+    `, [
+      name.trim(),
+      category ? category.trim() : 'Khác',
+      building ? building.trim() : '',
+      floor ? floor.trim() : 'Tầng 1',
+      description ? description.trim() : '',
+      numLat,
+      numLng,
+      icon || 'map-pin',
+      color || '#3B82F6'
+    ]);
+
+    const [rows] = await db.query('SELECT * FROM map_locations WHERE id = ?', [result.insertId]);
+
+    res.status(201).json({
+      success: true,
+      message: 'Thêm địa điểm thành công.',
+      location: rows[0] || { id: result.insertId, name, lat: numLat, lng: numLng }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi thêm địa điểm: ' + error.message });
+  }
+};
+
+exports.updateLocation = async (req, res) => {
+  const { id } = req.params;
+  const { name, category, building, floor, description, lat, lng, icon, color } = req.body;
+
+  if (!name || lat === undefined || lat === null || lng === undefined || lng === null) {
+    return res.status(400).json({ success: false, message: 'Tên địa điểm và tọa độ (lat, lng) là bắt buộc.' });
+  }
+
+  const numLat = parseFloat(lat);
+  const numLng = parseFloat(lng);
+  if (isNaN(numLat) || isNaN(numLng)) {
+    return res.status(400).json({ success: false, message: 'Tọa độ lat, lng phải là số hợp lệ.' });
+  }
+
+  try {
+    await db.query(`
+      UPDATE map_locations 
+      SET name = ?, category = ?, building = ?, floor = ?, description = ?, lat = ?, lng = ?, icon = ?, color = ?
+      WHERE id = ?
+    `, [
+      name.trim(),
+      category ? category.trim() : 'Khác',
+      building ? building.trim() : '',
+      floor ? floor.trim() : 'Tầng 1',
+      description ? description.trim() : '',
+      numLat,
+      numLng,
+      icon || 'map-pin',
+      color || '#3B82F6',
+      id
+    ]);
+
+    const [rows] = await db.query('SELECT * FROM map_locations WHERE id = ?', [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy địa điểm cần cập nhật.' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Cập nhật địa điểm thành công.',
+      location: rows[0]
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi cập nhật địa điểm: ' + error.message });
+  }
+};
+
+exports.deleteLocation = async (req, res) => {
+  const { id } = req.params;
+  try {
+    await db.query('DELETE FROM map_locations WHERE id = ?', [id]);
+    res.json({ success: true, message: 'Đã xóa địa điểm thành công.' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi xóa địa điểm: ' + error.message });
+  }
+};
+
+exports.resetLocations = async (req, res) => {
+  try {
+    const { TAY_NGUYEN_CAMPUS_LOCATIONS } = require('../database/seed_37_locations');
+    
+    // Xóa toàn bộ dữ liệu hiện có
+    await db.query('DELETE FROM map_locations');
+
+    // Chèn lại 37 địa điểm gốc
+    for (const loc of TAY_NGUYEN_CAMPUS_LOCATIONS) {
+      await db.query(`
+        INSERT INTO map_locations (id, name, category, building, floor, description, lat, lng, icon, x, y, color)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        loc.id,
+        loc.name,
+        loc.category,
+        loc.building || '',
+        loc.floor || '',
+        loc.description || '',
+        loc.lat,
+        loc.lng,
+        loc.icon || 'map-pin',
+        loc.x || 50,
+        loc.y || 50,
+        loc.color || '#10B981'
+      ]);
+    }
+
+    const [count] = await db.query('SELECT COUNT(*) as total FROM map_locations');
+    res.json({
+      success: true,
+      message: `Đã khôi phục thành công ${count[0].total} địa điểm mặc định của Trường ĐH Tây Nguyên!`,
+      total: count[0].total
+    });
+  } catch (error) {
+    console.error('Lỗi reset địa điểm:', error);
+    res.status(500).json({ success: false, message: 'Lỗi khôi phục địa điểm mặc định: ' + error.message });
+  }
+};
+
+/**
+ * 7. Quản lý Mạng lưới đường đi nội bộ khuôn viên (Campus Paths / Walkways)
+ */
+exports.getPaths = async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM campus_paths ORDER BY id ASC');
+    const paths = rows.map(r => ({
+      ...r,
+      coordinates: typeof r.coordinates === 'string' ? JSON.parse(r.coordinates) : r.coordinates
+    }));
+    res.json({ success: true, count: paths.length, paths });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi lấy danh sách đường nội bộ: ' + error.message });
+  }
+};
+
+exports.createPath = async (req, res) => {
+  const { name, path_type, coordinates } = req.body;
+
+  if (!coordinates || !Array.isArray(coordinates) || coordinates.length < 2) {
+    return res.status(400).json({ success: false, message: 'Tuyến đường cần ít nhất 2 điểm tọa độ [lat, lng].' });
+  }
+
+  try {
+    const pathName = name ? name.trim() : `Lối đi bộ #${Date.now().toString().slice(-4)}`;
+    const [result] = await db.query(
+      'INSERT INTO campus_paths (name, path_type, coordinates) VALUES (?, ?, ?)',
+      [pathName, path_type || 'walkway', JSON.stringify(coordinates)]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Lưu tuyến đường nội bộ mới thành công.',
+      path: {
+        id: result.insertId,
+        name: pathName,
+        path_type: path_type || 'walkway',
+        coordinates
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi tạo tuyến đường: ' + error.message });
+  }
+};
+
+exports.updatePath = async (req, res) => {
+  const { id } = req.params;
+  const { name, path_type, coordinates } = req.body;
+
+  if (!coordinates || !Array.isArray(coordinates) || coordinates.length < 2) {
+    return res.status(400).json({ success: false, message: 'Tuyến đường cần ít nhất 2 điểm tọa độ.' });
+  }
+
+  try {
+    await db.query(
+      'UPDATE campus_paths SET name = ?, path_type = ?, coordinates = ? WHERE id = ?',
+      [name ? name.trim() : 'Lối đi nội bộ', path_type || 'walkway', JSON.stringify(coordinates), id]
+    );
+
+    res.json({
+      success: true,
+      message: 'Cập nhật tuyến đường thành công.',
+      path: { id: Number(id), name, path_type, coordinates }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi cập nhật tuyến đường: ' + error.message });
+  }
+};
+
+exports.deletePath = async (req, res) => {
+  const { id } = req.params;
+  try {
+    await db.query('DELETE FROM campus_paths WHERE id = ?', [id]);
+    res.json({ success: true, message: 'Đã xóa tuyến đường nội bộ thành công.' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi xóa tuyến đường: ' + error.message });
+  }
+};
+
+exports.resetPaths = async (req, res) => {
+  try {
+    const { DEFAULT_CAMPUS_PATHS } = require('../database/init_campus_paths');
+    await db.query('DELETE FROM campus_paths');
+    for (const p of DEFAULT_CAMPUS_PATHS) {
+      await db.query(
+        'INSERT INTO campus_paths (name, path_type, coordinates) VALUES (?, ?, ?)',
+        [p.name, p.path_type, JSON.stringify(p.coordinates)]
+      );
+    }
+    const [count] = await db.query('SELECT COUNT(*) as total FROM campus_paths');
+    res.json({
+      success: true,
+      message: `Đã khôi phục ${count[0].total} tuyến đường nội bộ mặc định của trường!`,
+      total: count[0].total
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi khôi phục đường nội bộ: ' + error.message });
+  }
+};
+

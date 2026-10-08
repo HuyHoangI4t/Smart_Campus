@@ -371,6 +371,15 @@ export async function apiGetMapLocations() {
   }
 }
 
+export async function apiGetCampusPaths() {
+  try {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/paths`);
+    return await handleResponse(response);
+  } catch {
+    return { success: false, message: 'Lỗi tải mạng lưới lối đi nội bộ.', paths: [] };
+  }
+}
+
 export async function apiSubmitFeedback(payload: {
   title: string;
   content: string;

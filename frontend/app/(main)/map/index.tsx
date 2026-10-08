@@ -20,6 +20,7 @@ import {
   HOUSE_NUM_TO_ID,
   parseCampusRoom,
   findLocationByRoomOrQuery,
+  calculateDistanceKm,
   generateLeafletMapHtml,
   MapSearchBar,
   MapControlsOverlay,
@@ -81,9 +82,27 @@ export default function MapScreen() {
   useFocusEffect(
     useCallback(() => {
       checkAuth();
+      // Lúc mới mở luôn luôn căn đúng chuẩn hướng Bắc - Nam (bearing = 0)
+      setBearing(0);
+      setCompassMode(false);
+      if (headingSubscriptionRef.current) {
+        headingSubscriptionRef.current.remove();
+        headingSubscriptionRef.current = null;
+      }
+      webViewRef.current?.postMessage(
+        JSON.stringify({
+          type: "SET_BEARING",
+          bearing: 0,
+          animated: false,
+        })
+      );
       return () => {
         // Khi chuyển tab khác, luôn khôi phục lại thanh điều hướng dưới đáy
         setTabBarVisible(true);
+        if (headingSubscriptionRef.current) {
+          headingSubscriptionRef.current.remove();
+          headingSubscriptionRef.current = null;
+        }
       };
     }, [checkAuth])
   );
@@ -333,10 +352,19 @@ export default function MapScreen() {
     };
   }, []);
 
-  // Khi bản đồ sẵn sàng, focus vào tòa nhà đang chọn
+  // Khi bản đồ sẵn sàng, focus vào tòa nhà đang chọn và đảm bảo luôn chuẩn hướng Bắc - Nam
   const handleMapReady = useCallback(() => {
     isMapReadyRef.current = true;
     setMapReady(true);
+    setBearing(0);
+    setCompassMode(false);
+    webViewRef.current?.postMessage(
+      JSON.stringify({
+        type: "SET_BEARING",
+        bearing: 0,
+        animated: false,
+      })
+    );
     if (selectedLoc) {
       webViewRef.current?.postMessage(
         JSON.stringify({
@@ -466,25 +494,52 @@ export default function MapScreen() {
     webViewRef.current?.postMessage(JSON.stringify({ type: "RESET_VIEW" }));
   };
 
-  // Kích hoạt chỉ đường đi bộ trực tiếp ngay trên bản đồ Leaflet
-  const handleStartInAppDirections = () => {
+  const computedDistanceKm = useMemo(() => {
+    if (!selectedLoc || !userLocation) return null;
+    return calculateDistanceKm(userLocation.latitude, userLocation.longitude, selectedLoc.lat, selectedLoc.lng);
+  }, [selectedLoc, userLocation]);
+
+  const computedDistanceText = useMemo(() => {
+    if (computedDistanceKm === null) return "";
+    return computedDistanceKm < 1
+      ? `~${Math.round(computedDistanceKm * 1000)}m`
+      : `~${computedDistanceKm.toFixed(1)}km`;
+  }, [computedDistanceKm]);
+
+  const computedWalkingMinutes = useMemo(() => {
+    if (computedDistanceKm === null) return null;
+    return Math.max(1, Math.ceil((computedDistanceKm * 1000) / 80));
+  }, [computedDistanceKm]);
+
+  // Kích hoạt chỉ đường đi bộ trực tiếp ngay trên bản đồ khuôn viên
+  const handleStartInAppDirections = async () => {
     if (!selectedLoc) return;
 
-    const origin = userLocation
+    if (!userLocation) {
+      await requestUserLocation(false);
+    }
+
+    const orig = userLocation
       ? { lat: userLocation.latitude, lng: userLocation.longitude }
       : { lat: 12.651380, lng: 108.023660 };
 
-    const originName = userLocation ? "Vị trí của bạn" : "Cổng chính Lê Duẩn";
+    if (computedDistanceKm !== null) {
+      setActiveRoute({
+        distanceMeters: Math.round(computedDistanceKm * 1000),
+        durationMinutes: computedWalkingMinutes || 1,
+      });
+    }
 
     setIsRoutingActive(true);
     setTabBarVisible(false);
 
+    // Gửi lệnh DRAW_ROUTE cho Leaflet WebView vẽ cung đường đi bộ trực tiếp trên bản đồ
     webViewRef.current?.postMessage(
       JSON.stringify({
         type: "DRAW_ROUTE",
-        origin: origin,
-        originName: originName,
+        origin: orig,
         destination: { lat: selectedLoc.lat, lng: selectedLoc.lng },
+        originName: "Vị trí của bạn",
         destinationName: selectedLoc.name,
       })
     );
@@ -589,28 +644,96 @@ export default function MapScreen() {
         <View
           style={{
             flex: 1,
-            backgroundColor: "#0F172A",
+            backgroundColor: "#F8FAFC",
             position: "relative",
-            marginBottom: isRoutingActive ? 0 : 88,
+            marginBottom: 0,
             overflow: "hidden",
           }}
         >
-          {/* Leaflet Web View */}
+          {/* WebView: Bản đồ khuôn viên với Google Maps tiles & vẽ cung đường đi bộ trực tiếp */}
           <WebView
             ref={webViewRef}
             originWhitelist={["*"]}
             source={mapHtmlSource}
             onMessage={handleWebViewMessage}
-            style={{ flex: 1, backgroundColor: "#0F172A" }}
+            style={{ flex: 1, backgroundColor: "#F8FAFC" }}
             javaScriptEnabled={true}
             domStorageEnabled={true}
+            geolocationEnabled={true}
             startInLoadingState={true}
             renderLoading={() => (
-              <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#0F172A" }}>
+              <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#F8FAFC" }}>
                 <ActivityIndicator size="large" color={AppColors.primary} />
               </View>
             )}
           />
+
+          {/* ── THANH TIÊU ĐỀ NỔI KHI ĐANG NHÚNG CHỈ ĐƯỜNG GOOGLE MAPS ── */}
+          {isRoutingActive && selectedLoc && (
+            <View
+              style={{
+                position: "absolute",
+                top: 10,
+                left: 12,
+                right: 12,
+                zIndex: 60,
+                backgroundColor: "#FFFFFF",
+                borderRadius: 20,
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.16,
+                shadowRadius: 10,
+                elevation: 8,
+                borderWidth: 1,
+                borderColor: "#E2E8F0",
+              }}
+            >
+              <TouchableOpacity
+                onPress={handleClearRoute}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  paddingVertical: 4,
+                  paddingRight: 8,
+                }}
+              >
+                <Feather name="arrow-left" size={18} color={AppColors.primary} />
+                <Text style={{ fontSize: 12.5, fontWeight: "800", color: AppColors.primary }}>
+                  Bản đồ trường
+                </Text>
+              </TouchableOpacity>
+
+              <View style={{ flex: 1, marginHorizontal: 8, alignItems: "flex-end" }}>
+                <Text style={{ fontSize: 12.5, fontWeight: "800", color: AppColors.text }} numberOfLines={1}>
+                  {selectedLoc.name}
+                </Text>
+                <Text style={{ fontSize: 11, color: "#059669", fontWeight: "700" }}>
+                  {computedDistanceText ? `${computedDistanceText} • ~${computedWalkingMinutes} phút đi bộ` : "Chỉ đường đi bộ Google Maps"}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={handleClearRoute}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: 13,
+                  backgroundColor: "#F1F5F9",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Feather name="x" size={14} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* ─── THANH TÌM KIẾM NỔI & BĂNG DANH MỤC LỌC NHANH (ẨN KHI ĐANG CHỈ ĐƯỜNG) ─── */}
           {!isRoutingActive && (
@@ -748,8 +871,14 @@ export default function MapScreen() {
                         marginTop: 2,
                       }}
                     >
-                      {activeRoute?.distanceMeters ? `~${activeRoute.distanceMeters}m` : "Đang tính..."}
-                      {activeRoute?.durationMinutes ? ` • ~${activeRoute.durationMinutes} phút` : " • Đi bộ"}
+                      {activeRoute?.distanceMeters
+                        ? `~${activeRoute.distanceMeters}m`
+                        : computedDistanceText || "Đang tính..."}
+                      {activeRoute?.durationMinutes
+                        ? ` • ~${activeRoute.durationMinutes} phút đi bộ`
+                        : computedWalkingMinutes
+                        ? ` • ~${computedWalkingMinutes} phút đi bộ`
+                        : " • Đi bộ"}
                     </Text>
                   </View>
                 </View>
