@@ -33,8 +33,9 @@ setupSwagger(app);
  * @swagger
  * /api/health:
  *   get:
- *     summary: Health check endpoint
- *     description: Kiểm tra trạng thái server và kết nối MySQL (smartcampus).
+ *     summary: Kiểm tra trạng thái hoạt động của máy chủ (Health Check)
+ *     tags: [System]
+ *     description: Kiểm tra trạng thái server, kết nối MySQL (smartcampus) và trạng thái Cron Job.
  *     responses:
  *       200:
  *         description: Server và Database hoạt động bình thường.
@@ -53,12 +54,29 @@ app.get('/api/health', async (req, res) => {
 });
 
 /**
- * Endpoint kiểm tra trạng thái và đồng bộ dữ liệu thủ công từ cổng trường
+ * @swagger
+ * /api/cron/status:
+ *   get:
+ *     summary: Kiểm tra trạng thái tiến trình đồng bộ dữ liệu tự động
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: Trả về thời điểm đồng bộ gần nhất và trạng thái
  */
 app.get('/api/cron/status', (req, res) => {
   res.json({ success: true, ...cronService.getSyncStatus() });
 });
 
+/**
+ * @swagger
+ * /api/cron/sync:
+ *   post:
+ *     summary: Kích hoạt đồng bộ dữ liệu đào tạo ngay lập tức (Manual Trigger)
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: Đồng bộ thành công
+ */
 app.post('/api/cron/sync', async (req, res) => {
   try {
     const result = await cronService.runFullSync('MANUAL_API_TRIGGER');

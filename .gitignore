@@ -1,3 +1,8 @@
+# Admin
+admin/node_modules/
+admin/.env
+admin/.env.local
+
 # Backend
 backend/node_modules/
 backend/.env

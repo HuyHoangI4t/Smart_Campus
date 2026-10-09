@@ -177,61 +177,159 @@ cd Smart_Campus
 
 ---
 
+### Bước 4: Thiết lập và khởi chạy Trang Quản trị viên (Admin Portal)
+
+1. Mở một cửa sổ Terminal mới:
+   ```bash
+   cd admin
+   npm install
+   npm start
+   ```
+2. Truy cập cổng quản trị trên trình duyệt:
+   - Địa chỉ: `http://localhost:3000`
+   - Quản lý tin tức, duyệt danh sách địa điểm bản đồ, thống kê cảnh báo SOS, phản hồi và tài khoản sinh viên.
+
+---
+
 ## 📁 6. Cấu trúc thư mục (Project Structure)
 
 ```text
 Smart_Campus/
-├── backend/                        # Mã nguồn REST API Server (Node.js/Express)
+├── admin/                              # Web Portal Quản trị viên (HTML/CSS/JS + Node.js)
+│   ├── public/                         # Giao diện trang quản trị tĩnh
+│   │   ├── css/
+│   │   │   └── style.css               # Phong cách giao diện Admin Portal
+│   │   ├── js/
+│   │   │   ├── api.js                  # Gọi API kết nối backend
+│   │   │   ├── app.js                  # Khởi tạo và điều phối các module
+│   │   │   ├── dashboard.js            # Thống kê tổng quan hệ thống
+│   │   │   ├── feedback.js             # Quản lý & duyệt ý kiến phản hồi
+│   │   │   ├── locations.js            # Quản lý tọa độ & địa điểm bản đồ
+│   │   │   ├── notifications.js        # Đăng & phát thông báo toàn trường
+│   │   │   ├── sos.js                  # Giám sát cảnh báo khẩn cấp SOS
+│   │   │   └── users.js                # Quản lý tài khoản sinh viên & phân quyền
+│   │   └── index.html                  # Giao diện chính của Dashboard Admin
+│   ├── .env                            # Biến môi trường Admin (được gitignore)
+│   ├── .env.example
+│   ├── .gitignore                      # Quy tắc bỏ qua file của Admin
+│   ├── package.json                    # Cấu hình gói & script Admin
+│   ├── package-lock.json
+│   └── server.js                       # HTTP Server phục vụ Admin Portal (Port 3000)
+│
+├── backend/                            # REST API Server & Xử lý nghiệp vụ (Node.js/Express)
 │   ├── src/
-│   │   ├── config/                 # Cấu hình hệ thống
-│   │   │   ├── db.js               # Kết nối MySQL Pool (smartcampus)
-│   │   │   ├── initDb.js           # Khởi tạo bảng dữ liệu và hạt giống (Seed)
-│   │   │   └── swagger.js          # Cấu hình OpenAPI / Swagger UI
-│   │   ├── controllers/            # Tầng xử lý logic nghiệp vụ
-│   │   │   ├── authController.js   # Đăng nhập, đăng ký, OTP, đổi mật khẩu
-│   │   │   ├── studentController.js# Xử lý hồ sơ, điểm, TKB, tính GPA
-│   │   │   ├── campusController.js # Phản hồi, báo động SOS, bản đồ
-│   │   │   └── generalController.js# Thông báo, khảo sát, hỗ trợ kỹ thuật
-│   │   ├── routes/                 # Định tuyến API
-│   │   │   ├── authRoutes.js       # /api/auth
-│   │   │   ├── studentRoutes.js    # /api/student
-│   │   │   ├── campusRoutes.js     # /api/campus
-│   │   │   └── generalRoutes.js    # /api/general
-│   │   ├── services/               # Dịch vụ phụ trợ
-│   │   │   ├── emailService.js     # Gửi email mã OTP
-│   │   │   ├── gradeService.js     # Tính toán bảng điểm & GPA thang 4 / thang 10
-│   │   │   └── scraperService.js   # Thu thập dữ liệu cổng trường
-│   │   └── server.js               # Điểm khởi chạy chính của Backend
+│   │   ├── config/                     # Cấu hình hệ thống & kết nối
+│   │   │   ├── db.js                   # Kết nối MySQL Pool (smartcampus)
+│   │   │   ├── initDb.js               # Khởi tạo bảng dữ liệu & seed mặc định
+│   │   │   └── swagger.js              # Cấu hình tài liệu OpenAPI / Swagger UI
+│   │   ├── controllers/                # Tầng điều khiển nghiệp vụ (Controllers)
+│   │   │   ├── adminController.js      # API dành cho Admin (QL user, SOS, tin tức, map)
+│   │   │   ├── authController.js       # Đăng nhập, đăng ký, OTP email, đổi mật khẩu
+│   │   │   ├── campusController.js     # Bản đồ khuôn viên, phản hồi, cảnh báo SOS
+│   │   │   ├── generalController.js    # Thông báo, khảo sát, hỗ trợ sinh viên
+│   │   │   ├── newsController.js       # Tin tức, sự kiện nhà trường
+│   │   │   └── studentController.js    # Điểm số, GPA, thời khóa biểu, CRUD lịch học
+│   │   ├── database/                   # Cơ sở dữ liệu, di trú & nạp dữ liệu
+│   │   │   ├── migrations/
+│   │   │   │   └── 001_init_tables.js  # Script di trú tạo bảng CSDL
+│   │   │   ├── seeders/
+│   │   │   │   └── initialSeeder.js    # Dữ liệu mẫu khởi tạo
+│   │   │   ├── init_campus_paths.js    # Tọa độ đường đi nội bộ khuôn viên trường
+│   │   │   ├── seed_37_locations.js    # Tọa độ 37 địa điểm tòa nhà Đại học Tây Nguyên
+│   │   │   └── index.js                # Kết nối trung tâm CSDL
+│   │   ├── middlewares/                # Bộ lọc & kiểm tra trung gian
+│   │   │   └── authMiddleware.js       # Xác thực JWT Token & kiểm tra quyền
+│   │   ├── models/                     # Mô hình dữ liệu
+│   │   │   └── userModel.js            # Thao tác dữ liệu người dùng
+│   │   ├── routes/                     # Định tuyến API endpoints
+│   │   │   ├── adminRoutes.js          # /api/admin/*
+│   │   │   ├── authRoutes.js           # /api/auth/*
+│   │   │   ├── campusRoutes.js         # /api/campus/*
+│   │   │   ├── generalRoutes.js        # /api/general/*
+│   │   │   ├── newsRoutes.js           # /api/news/*
+│   │   │   └── studentRoutes.js        # /api/student/* (Lịch học, điểm, hồ sơ)
+│   │   ├── services/                   # Tầng dịch vụ chuyên sâu
+│   │   │   ├── cronService.js          # Lập lịch tác vụ nền tự động
+│   │   │   ├── gradeService.js         # Tính toán bảng điểm, GPA thang 4 & thang 10
+│   │   │   ├── newsService.js          # Thu thập & xử lý tin tức trường
+│   │   │   ├── scheduleService.js      # Phân tích TKB, chỉ đường phòng học, gom nhóm
+│   │   │   └── studentSyncService.js   # Đồng bộ dữ liệu đào tạo & bảo lưu lịch tự tạo
+│   │   └── server.js                   # Điểm khởi chạy chính Backend Server (Port 5000)
+│   ├── env.example                     # Mẫu biến môi trường backend
 │   ├── package.json
+│   ├── package-lock.json
 │   └── README.md
 │
-├── frontend/                       # Mã nguồn Ứng dụng di động (Expo/React Native)
-│   ├── app/                        # Điều hướng màn hình (Expo Router)
-│   │   ├── _layout.tsx             # Root layout cấu hình giao diện & theme
-│   │   ├── index.tsx               # Màn hình Splash / Điều hướng ban đầu
-│   │   ├── (auth)/                 # Nhóm màn hình Xác thực
-│   │   │   ├── index.tsx           # Đăng nhập
-│   │   │   ├── register.tsx        # Đăng ký tài khoản
-│   │   │   └── forgot_password.tsx # Quên mật khẩu & xác nhận mã OTP
-│   │   └── (main)/                 # Nhóm màn hình Ứng dụng chính (Bottom Tabs)
-│   │       ├── home/index.tsx      # Trang chủ Dashboard
-│   │       ├── grades/             # Tra cứu điểm & chi tiết học kỳ
-│   │       ├── schedule/           # Thời khóa biểu
-│   │       ├── map/                # Bản đồ khuôn viên trường
-│   │       ├── profile/            # Hồ sơ sinh viên, đổi ảnh đại diện & đổi MK
-│   │       ├── feedback/           # Gửi ý kiến phản hồi
-│   │       └── sos/                # Cảnh báo khẩn cấp SOS
-│   ├── assets/                     # Tài nguyên hình ảnh, logo, icon, phông chữ
+├── frontend/                           # Ứng dụng di động (React Native / Expo SDK 54 / TS)
+│   ├── app/                            # Điều hướng & các màn hình (Expo Router)
+│   │   ├── (auth)/                     # Phân hệ Xác thực tài khoản
+│   │   │   ├── _layout.tsx             # Layout nhóm xác thực
+│   │   │   ├── index.tsx               # Màn hình Đăng nhập
+│   │   │   └── forgot-password.tsx     # Quên mật khẩu & xác thực OTP qua Email
+│   │   ├── (main)/                     # Phân hệ Ứng dụng chính (Bottom Tabs Navigation)
+│   │   │   ├── _layout.tsx             # Cấu hình thanh điều hướng Bottom Tab
+│   │   │   ├── feedback/
+│   │   │   │   └── index.tsx           # Gửi ý kiến phản hồi & góp ý
+│   │   │   ├── grades/
+│   │   │   │   ├── index.tsx           # Bảng điểm tổng quan & GPA các kỳ
+│   │   │   │   └── grades_detail.tsx   # Chi tiết môn học & điểm thành phần
+│   │   │   ├── home/
+│   │   │   │   ├── index.tsx           # Trang chủ Dashboard sinh viên
+│   │   │   │   ├── home_detail.tsx     # Chi tiết bài viết / tin tức
+│   │   │   │   └── all_articles.tsx    # Danh sách tất cả bài viết & thông báo
+│   │   │   ├── map/
+│   │   │   │   └── index.tsx           # Bản đồ số khuôn viên trường tương tác
+│   │   │   ├── profile/
+│   │   │   │   ├── index.tsx           # Hồ sơ cá nhân, thông tin liên hệ, avatar
+│   │   │   │   └── change_password.tsx # Đổi mật khẩu tài khoản
+│   │   │   ├── schedule/
+│   │   │   │   └── index.tsx           # Thời khóa biểu thông minh & CRUD lịch học
+│   │   │   └── sos/
+│   │   │       └── index.tsx           # Cảnh báo khẩn cấp SOS tới an ninh trường
+│   │   ├── _layout.tsx                 # Root layout toàn ứng dụng & Theme Provider
+│   │   └── index.tsx                   # Màn hình Splash / Điều phối phiên đăng nhập
+│   ├── assets/                         # Tài nguyên tĩnh
+│   │   └── images/
+│   │       ├── favicon.png             # Icon ứng dụng
+│   │       └── images.jpg              # Ảnh bìa khuôn viên trường Đại học Tây Nguyên
 │   ├── src/
-│   │   ├── components/             # Các Component tái sử dụng (NavHeader, MainTabs,...)
-│   │   ├── constants/              # Bảng màu sắc (AppColors), kiểu dáng chung (globalStyles)
-│   │   └── services/
-│   │       └── api.ts              # Quản lý gọi API và xử lý token
-│   ├── package.json
-│   └── tsconfig.json
+│   │   ├── components/                 # Thành phần giao diện tái sử dụng
+│   │   │   ├── AuthHeader.tsx          # Tiêu đề form đăng nhập / đăng ký
+│   │   │   ├── LoginRequiredCard.tsx   # Thẻ nhắc đăng nhập khi chưa có phiên
+│   │   │   ├── MainTabs.tsx            # Thanh tab điều hướng tùy biến
+│   │   │   └── NavHeader.tsx           # Header điều hướng trang con
+│   │   ├── constants/                  # Hằng số toàn cục
+│   │   │   ├── appColors.ts            # Bảng màu chủ đạo của ứng dụng
+│   │   │   └── globalStyles.ts         # Kiểu dáng dùng chung toàn hệ thống
+│   │   ├── features/                   # Tính năng chuyên biệt
+│   │   │   └── map/                    # Module Bản đồ số Leaflet tích hợp WebView
+│   │   │       ├── components/
+│   │   │       │   ├── MapControlsOverlay.tsx     # Nút điều khiển phóng to/thu nhỏ/GPS
+│   │   │       │   ├── MapLocationDetailCard.tsx  # Thẻ thông tin chi tiết địa điểm
+│   │   │       │   └── MapSearchBar.tsx           # Thanh tìm kiếm địa điểm có gợi ý
+│   │   │       ├── constants.ts        # Hằng số bản đồ & tọa độ mặc định
+│   │   │       ├── index.ts            # Entry point xuất module bản đồ
+│   │   │       ├── leafletBundle.ts    # Bundle thư viện Leaflet offline
+│   │   │       ├── leafletHtml.ts      # Template HTML render bản đồ trong WebView
+│   │   │       ├── types.ts            # Kiểu dữ liệu TypeScript cho địa điểm bản đồ
+│   │   │       └── utils.ts            # Tiện ích tính khoảng cách & góc chỉ đường
+│   │   ├── services/                   # Tầng gọi API kết nối máy chủ
+│   │   │   ├── api.ts                  # Axios client, tự động nhận diện IP, token
+│   │   │   └── get_IPv4.ts             # Tiện ích phát hiện IP LAN máy chủ
+│   │   └── styles/                     # Định nghĩa giao diện & chủ đề
+│   │       ├── common.styles.ts        # Styles chung
+│   │       ├── index.ts                # Tổng hợp styles
+│   │       ├── screen.styles.ts        # Styles các màn hình
+│   │       └── theme.ts                # Theme màu sắc, typography
+│   ├── app.json                        # Cấu hình dự án Expo
+│   ├── package.json                    # Danh sách thư viện & scripts Expo
+│   ├── package-lock.json
+│   ├── tsconfig.json                   # Cấu hình TypeScript
+│   ├── eslint.config.js                # Cấu hình ESLint
+│   └── README.md
 │
-├── .gitignore
-└── README.md                       # Tài liệu tổng quan dự án
+├── .gitignore                          # Cấu hình bỏ qua tệp tin Git
+└── README.md                           # Tài liệu hướng dẫn & tổng quan dự án
 ```
 
 ---

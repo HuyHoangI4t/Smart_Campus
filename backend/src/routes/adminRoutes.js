@@ -348,21 +348,155 @@ router.put('/sos/:id/status', adminController.updateSosStatus);
 router.delete('/sos/:id', adminController.deleteSosAlert);
 
 /**
- * Quản lý Bản đồ & Địa điểm khuôn viên (Campus Locations CRUD)
+ * @swagger
+ * /api/admin/locations:
+ *   get:
+ *     summary: Lấy danh sách địa điểm khuôn viên trường dành cho Admin
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Danh sách địa điểm
+ *   post:
+ *     summary: Thêm mới địa điểm khuôn viên trường
+ *     tags: [Admin]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/LocationRequest'
+ *     responses:
+ *       201:
+ *         description: Thêm địa điểm thành công
  */
 router.get('/locations', adminController.getLocations);
 router.post('/locations', adminController.createLocation);
+
+/**
+ * @swagger
+ * /api/admin/locations/{id}:
+ *   put:
+ *     summary: Cập nhật thông tin địa điểm khuôn viên
+ *     tags: [Admin]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/LocationRequest'
+ *     responses:
+ *       200:
+ *         description: Cập nhật thành công
+ *   delete:
+ *     summary: Xóa một địa điểm khuôn viên
+ *     tags: [Admin]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Xóa địa điểm thành công
+ */
 router.put('/locations/:id', adminController.updateLocation);
 router.delete('/locations/:id', adminController.deleteLocation);
+
+/**
+ * @swagger
+ * /api/admin/locations/reset:
+ *   post:
+ *     summary: Khôi phục danh sách 37 địa điểm tòa nhà chuẩn mặc định của Đại học Tây Nguyên
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Khôi phục thành công
+ */
 router.post('/locations/reset', adminController.resetLocations);
 
 /**
- * Quản lý Mạng lưới đường đi nội bộ khuôn viên (Campus Paths CRUD)
+ * @swagger
+ * /api/admin/paths:
+ *   get:
+ *     summary: Lấy danh sách mạng lưới đường đi nội bộ khuôn viên
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Danh sách các đoạn đường
+ *   post:
+ *     summary: Thêm mới đoạn đường nội bộ
+ *     tags: [Admin]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - coordinates
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: 'Đường nối Nhà 2 và Nhà 9'
+ *               coordinates:
+ *                 type: string
+ *                 example: '[[12.6568, 108.0267], [12.6570, 108.0270]]'
+ *     responses:
+ *       201:
+ *         description: Thêm đoạn đường thành công
  */
 router.get('/paths', adminController.getPaths);
 router.post('/paths', adminController.createPath);
+
+/**
+ * @swagger
+ * /api/admin/paths/{id}:
+ *   put:
+ *     summary: Cập nhật đoạn đường đi
+ *     tags: [Admin]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Cập nhật thành công
+ *   delete:
+ *     summary: Xóa đoạn đường đi
+ *     tags: [Admin]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Xóa thành công
+ */
 router.put('/paths/:id', adminController.updatePath);
 router.delete('/paths/:id', adminController.deletePath);
+
+/**
+ * @swagger
+ * /api/admin/paths/reset:
+ *   post:
+ *     summary: Khôi phục mạng lưới đường đi chuẩn mặc định của khuôn viên trường
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Khôi phục thành công
+ */
 router.post('/paths/reset', adminController.resetPaths);
 
 module.exports = router;
