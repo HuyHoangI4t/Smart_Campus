@@ -808,5 +808,61 @@ export const TNU_CAMPUS_GATES: CampusGate[] = [
     gatePoint: [12.64837195, 108.02804429],
     insidePoint: [12.64850, 108.02798],
     outsidePoint: [12.64837195, 108.02804429]
+  },
+  {
+    id: 'hospital_gate',
+    name: 'Cổng bệnh viện',
+    gatePoint: [12.650645, 108.022990],
+    insidePoint: [12.65050, 108.02308],
+    outsidePoint: [12.650645, 108.022990]
   }
 ];
+
+export const TNU_SAMPLE_TEST_LOCATIONS = [
+  {
+    id: 'hospital_gate',
+    name: 'Cổng bệnh viện (Lê Duẩn)',
+    desc: 'Điểm đón/cổng mới trên đường Lê Duẩn',
+    latitude: 12.650645,
+    longitude: 108.022990,
+    icon: 'local-hospital',
+    badge: 'Mới'
+  },
+  {
+    id: 'front_gate',
+    name: 'Cổng trước (Lê Duẩn)',
+    desc: 'Cổng chính Trường ĐH Tây Nguyên',
+    latitude: 12.651536,
+    longitude: 108.023856,
+    icon: 'door-front',
+    badge: 'Cổng chính'
+  },
+  {
+    id: 'back_gate',
+    name: 'Cổng sau (Y Wang)',
+    desc: 'Cổng phụ kết nối đường Y Wang',
+    latitude: 12.648372,
+    longitude: 108.028044,
+    icon: 'door-sliding',
+    badge: 'Cổng sau'
+  },
+  {
+    id: 'admin_building',
+    name: 'Tòa nhà Điều hành (Khu Hiệu bộ)',
+    desc: 'Trung tâm hành chính trường',
+    latitude: 12.650900,
+    longitude: 108.024100,
+    icon: 'business',
+    badge: 'Nội bộ'
+  },
+  {
+    id: 'central_library',
+    name: 'Thư viện trung tâm',
+    desc: 'Khu vực tự học & thư viện trường',
+    latitude: 12.651030,
+    longitude: 108.025340,
+    icon: 'local-library',
+    badge: 'Học tập'
+  }
+];
+

@@ -27,6 +27,13 @@ router.post('/grades/:mssv', studentController.getGrades);
  *     summary: Lấy thời khóa biểu sinh viên (POST kèm mssv)
  *     tags: [Student]
  */
+/**
+ * CRUD lịch học thủ công / thực hành đột xuất (Đặt trước :mssv để tránh nuốt param)
+ */
+router.post('/schedule/custom', studentController.createCustomSchedule);
+router.put('/schedule/custom/:id', studentController.updateCustomSchedule);
+router.delete('/schedule/custom/:id', studentController.deleteCustomSchedule);
+
 router.get('/schedule', studentController.getSchedule);
 router.post('/schedule', studentController.getSchedule);
 router.get('/schedule/:mssv', studentController.getSchedule);

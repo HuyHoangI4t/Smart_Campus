@@ -41,6 +41,13 @@ const LocationsModule = {
       gatePoint: [12.64837195, 108.02804429],
       insidePoint: [12.64850, 108.02798],
       outsidePoint: [12.64837195, 108.02804429]
+    },
+    {
+      id: 'hospital_gate',
+      name: 'Cổng bệnh viện',
+      gatePoint: [12.650645, 108.022990],
+      insidePoint: [12.65050, 108.02308],
+      outsidePoint: [12.650645, 108.022990]
     }
   ],
   boundary: [
@@ -538,7 +545,7 @@ const LocationsModule = {
             font-size: 11px;
             padding: 4px 8px;
             border-radius: 12px;
-            border: 2px solid ${g.id === 'back_gate' ? '#3B82F6' : '#10B981'};
+            border: 2px solid ${g.id === 'back_gate' ? '#3B82F6' : (g.id === 'hospital_gate' ? '#EF4444' : '#10B981')};
             box-shadow: 0 3px 8px rgba(0,0,0,0.4);
             display: inline-flex;
             align-items: center;
@@ -1476,7 +1483,7 @@ const LocationsModule = {
       const lastPt = currentBranch[currentBranch.length - 1];
       if (this.checkCrossesWall(lastPt, pt)) {
         if (window.App) {
-          window.App.showToast('Nhắc nhở: Ranh giới trường là tường bao kiên cố không thể đi xuyên qua! Lối đi chỉ được kết nối ra ngoài qua Cổng trước (Lê Duẩn) hoặc Cổng sau (Y Wang).', 'warning');
+          window.App.showToast('Nhắc nhở: Ranh giới trường là tường bao kiên cố không thể đi xuyên qua! Lối đi chỉ được kết nối ra ngoài qua các cổng chính thức (Cổng trước, Cổng sau hoặc Cổng bệnh viện).', 'warning');
         }
       }
     }
@@ -1500,6 +1507,7 @@ const LocationsModule = {
     }
 
     marker.branchIndex = this.currentBranchIndex;
+    this.attachBranchMarkerEvents(marker, this.currentBranchIndex);
     this.drawingMarkers.push(marker);
 
     // Bảng màu cho từng nhánh để phân biệt trực quan
@@ -1511,16 +1519,110 @@ const LocationsModule = {
     if (!poly) {
       poly = L.polyline(currentBranch, {
         color: branchColor,
-        weight: 5,
-        dashArray: '6, 8',
-        opacity: 0.95
+        weight: 7,
+        opacity: 1.0
       }).addTo(this.map);
+      this.attachBranchPolylineEvents(poly, this.currentBranchIndex);
       this.drawingBranchPolylines[this.currentBranchIndex] = poly;
     } else {
       poly.setLatLngs(currentBranch);
     }
 
+    this.refreshDrawingVisuals();
     this.updateDrawingStats();
+  },
+
+  // Gắn sự kiện nhấp chuột vào polyline nhánh để chọn nhánh & mở popup thao tác
+  attachBranchPolylineEvents(poly, bIdx) {
+    if (!poly) return;
+    poly.on('click', (e) => {
+      if (L && L.DomEvent) L.DomEvent.stopPropagation(e);
+      this.switchDrawingBranch(bIdx);
+      if (this.map) {
+        const curBranch = this.drawingBranches[bIdx] || [];
+        const dist = this.calculateBranchDistance(curBranch);
+        const branchColors = ['#10B981', '#06B6D4', '#8B5CF6', '#F59E0B', '#EC4899', '#3B82F6'];
+        const color = branchColors[bIdx % branchColors.length];
+        L.popup({ offset: [0, -10] })
+          .setLatLng(e.latlng)
+          .setContent(`
+            <div class="p-1.5 font-sans text-xs min-w-[190px]">
+              <div class="flex items-center gap-1.5 font-bold text-slate-900 mb-1.5">
+                <span class="w-3 h-3 rounded-full inline-block shrink-0 shadow-sm" style="background:${color}"></span>
+                <span class="text-sm">Nhánh ${bIdx + 1}</span>
+                <span class="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded font-bold ml-auto">Đang chọn</span>
+              </div>
+              <p class="text-slate-500 text-[11px] mb-2.5">
+                Gồm <b>${curBranch.length}</b> mốc • Dài: <b class="text-slate-800">${dist}m</b>
+              </p>
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="LocationsModule.confirmDeleteCurrentBranch(${bIdx})"
+                  class="w-full px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  <span>Xóa Nhánh ${bIdx + 1}</span>
+                </button>
+              </div>
+            </div>
+          `)
+          .openOn(this.map);
+      }
+    });
+  },
+
+  // Gắn sự kiện nhấp chuột vào mốc tròn của nhánh
+  attachBranchMarkerEvents(marker, bIdx) {
+    if (!marker) return;
+    marker.on('click', (e) => {
+      if (L && L.DomEvent) L.DomEvent.stopPropagation(e);
+      // Nếu nhánh hiện tại đang rỗng (vừa bấm [+ Nhánh mới]), bắt điểm vào mốc này để bắt đầu nhánh rẽ mới
+      const curBranch = this.drawingBranches[this.currentBranchIndex];
+      if (curBranch && curBranch.length === 0) {
+        this.handleDrawPathMapClick({ latlng: marker.getLatLng() });
+        return;
+      }
+      // Ngược lại, chuyển sang chọn nhánh chứa mốc này
+      this.switchDrawingBranch(marker.branchIndex);
+    });
+  },
+
+  // Cập nhật giao diện trực quan: nhánh đang chọn sẽ sáng rõ & dày hơn, các nhánh khác mờ đi
+  refreshDrawingVisuals() {
+    const branchColors = ['#10B981', '#06B6D4', '#8B5CF6', '#F59E0B', '#EC4899', '#3B82F6'];
+
+    this.drawingBranchPolylines.forEach((poly, idx) => {
+      if (!poly) return;
+      const isCurrent = (idx === this.currentBranchIndex);
+      const color = branchColors[idx % branchColors.length];
+
+      poly.setStyle({
+        color: color,
+        weight: isCurrent ? 7 : 3.5,
+        opacity: isCurrent ? 1.0 : 0.45,
+        dashArray: isCurrent ? null : '6, 8'
+      });
+
+      if (isCurrent && poly.bringToFront) {
+        poly.bringToFront();
+      }
+    });
+
+    this.drawingMarkers.forEach(m => {
+      if (!m) return;
+      const bIdx = m.branchIndex;
+      const isCurrent = (bIdx === this.currentBranchIndex);
+      const color = branchColors[bIdx % branchColors.length];
+
+      m.setStyle({
+        radius: isCurrent ? 7 : 4.5,
+        fillColor: color,
+        color: isCurrent ? '#FFFFFF' : '#E2E8F0',
+        weight: isCurrent ? 2.5 : 1.5,
+        fillOpacity: isCurrent ? 1.0 : 0.5
+      });
+      if (m.setZIndexOffset) {
+        m.setZIndexOffset(isCurrent ? 900 : 100);
+      }
+    });
   },
 
   // Ngắt nhánh hiện tại và bắt đầu vẽ một nhánh rẽ mới
@@ -1536,10 +1638,116 @@ const LocationsModule = {
     this.currentBranchIndex++;
     this.drawingBranches[this.currentBranchIndex] = [];
 
+    this.refreshDrawingVisuals();
     this.updateDrawingStats();
 
     if (window.App) {
       window.App.showToast(`Đã chốt Nhánh ${this.currentBranchIndex}! Hãy nhấp để vẽ Nhánh ${this.currentBranchIndex + 1} (bạn có thể nhấp vào mốc cũ trên bản đồ để rẽ nhánh từ đó).`, 'info');
+    }
+  },
+
+  // Chuyển đổi chọn nhánh đang vẽ
+  switchDrawingBranch(branchIndex) {
+    if (branchIndex < 0 || branchIndex >= this.drawingBranches.length) return;
+    this.currentBranchIndex = branchIndex;
+    this.refreshDrawingVisuals();
+    this.updateDrawingStats();
+    if (window.App) {
+      window.App.showToast(`Đang chọn Nhánh ${branchIndex + 1} (${(this.drawingBranches[branchIndex] || []).length} mốc)`, 'info');
+    }
+  },
+
+  // Xác nhận trước khi xóa nhánh đang chọn
+  confirmDeleteCurrentBranch(targetIdx) {
+    if (targetIdx === undefined || targetIdx === null) {
+      targetIdx = this.currentBranchIndex;
+    }
+    if (targetIdx < 0 || targetIdx >= this.drawingBranches.length) return;
+
+    const bNum = targetIdx + 1;
+    const branchPts = (this.drawingBranches[targetIdx] || []).length;
+
+    if (window.App && window.App.showConfirm) {
+      window.App.showConfirm(
+        'Xác nhận xóa nhánh',
+        `Bạn có chắc chắn muốn xóa Nhánh ${bNum} (${branchPts} mốc)? Hành động này sẽ loại bỏ hoàn toàn nhánh này khỏi mạng lưới đường đi.`,
+        () => this.deleteCurrentBranch(targetIdx)
+      );
+    } else {
+      if (confirm(`Bạn có chắc muốn xóa Nhánh ${bNum} (${branchPts} mốc)?`)) {
+        this.deleteCurrentBranch(targetIdx);
+      }
+    }
+  },
+
+  // Xóa toàn bộ nhánh đang chọn (hoặc nhánh chỉ định)
+  deleteCurrentBranch(targetIdx) {
+    if (targetIdx === undefined || targetIdx === null) {
+      targetIdx = this.currentBranchIndex;
+    }
+    if (targetIdx < 0 || targetIdx >= this.drawingBranches.length) return;
+
+    const curBranch = this.drawingBranches[targetIdx];
+    const branchPts = (curBranch || []).length;
+
+    // Xóa polyline của nhánh khỏi Leaflet map
+    const poly = this.drawingBranchPolylines[targetIdx];
+    if (poly && this.map) {
+      this.map.removeLayer(poly);
+    }
+
+    // Xóa các marker của nhánh khỏi Leaflet map
+    this.drawingMarkers = this.drawingMarkers.filter(m => {
+      if (m.branchIndex === targetIdx) {
+        if (this.map) this.map.removeLayer(m);
+        return false;
+      }
+      return true;
+    });
+
+    if (this.map) {
+      this.map.closePopup();
+    }
+
+    // Nếu chỉ có 1 nhánh duy nhất: xóa sạch mốc của nhánh đó
+    if (this.drawingBranches.length <= 1) {
+      this.drawingBranches = [[]];
+      this.currentBranchIndex = 0;
+      this.drawingBranchPolylines = [];
+      this.refreshDrawingVisuals();
+      this.updateDrawingStats();
+      if (window.App) {
+        window.App.showToast('Đã xóa toàn bộ điểm mốc của Nhánh 1.', 'info');
+      }
+      return;
+    }
+
+    // Nếu có nhiều nhánh: xóa nhánh này ra khỏi danh sách
+    this.drawingBranches.splice(targetIdx, 1);
+    this.drawingBranchPolylines.splice(targetIdx, 1);
+
+    // Cập nhật lại branchIndex cho các marker còn lại
+    this.drawingMarkers.forEach(m => {
+      if (m.branchIndex > targetIdx) {
+        m.branchIndex--;
+      }
+    });
+
+    // Cập nhật lại sự kiện click cho các polyline còn lại
+    this.drawingBranchPolylines.forEach((p, idx) => {
+      if (p) {
+        p.off('click');
+        this.attachBranchPolylineEvents(p, idx);
+      }
+    });
+
+    // Chọn nhánh kế tiếp
+    this.currentBranchIndex = Math.min(targetIdx, this.drawingBranches.length - 1);
+    this.refreshDrawingVisuals();
+    this.updateDrawingStats();
+
+    if (window.App) {
+      window.App.showToast(`Đã xóa Nhánh ${targetIdx + 1} (${branchPts} mốc)! Hiện còn ${this.drawingBranches.length} nhánh.`, 'info');
     }
   },
 
@@ -1559,12 +1767,21 @@ const LocationsModule = {
     const totalBranchesEl = document.getElementById('pathDrawingBranchCount');
     const pointCountEl = document.getElementById('pathDrawingPointCount');
     const distEl = document.getElementById('pathDrawingDistance');
+    const branchSelectEl = document.getElementById('pathDrawingBranchSelect');
 
     if (branchLabelEl) branchLabelEl.textContent = `Nhánh ${this.currentBranchIndex + 1}`;
     if (branchPtsEl) branchPtsEl.textContent = curPoints;
     if (totalBranchesEl) totalBranchesEl.textContent = Math.max(1, this.drawingBranches.length);
     if (pointCountEl) pointCountEl.textContent = totalPoints;
     if (distEl) distEl.textContent = `${totalDist}m`;
+
+    if (branchSelectEl) {
+      branchSelectEl.innerHTML = this.drawingBranches.map((b, idx) => {
+        const count = (b || []).length;
+        const bDist = this.calculateBranchDistance(b);
+        return `<option value="${idx}" ${idx === this.currentBranchIndex ? 'selected' : ''}>Nhánh ${idx + 1} (${count} mốc${bDist > 0 ? `, ${bDist}m` : ''})</option>`;
+      }).join('');
+    }
   },
 
   // Lùi lại 1 điểm mốc vừa chấm (hỗ trợ lùi xuyên qua các nhánh)
@@ -1595,11 +1812,12 @@ const LocationsModule = {
       return;
     }
 
+    this.refreshDrawingVisuals();
     this.updateDrawingStats();
   },
 
   // Sửa tuyến đường trực tiếp trên bản đồ (tải các nhánh vào công cụ vẽ để chỉnh sửa và vẽ tiếp)
-  editPathOnMap(pathId) {
+  editPathOnMap(pathId, targetBranchIndex = 0) {
     const p = this.paths.find(item => item.id === pathId);
     if (!p) return;
 
@@ -1608,6 +1826,13 @@ const LocationsModule = {
     this.isDrawingPathMode = true;
     this.editingPathId = p.id;
     this.showPathsOnMap = true;
+
+    // Tạm ẩn polyline tĩnh của tuyến này trong lúc sửa để không bị trùng lặp / cản trở nhấp chuột
+    this.pathLayers.forEach(l => {
+      if (l.pathId === p.id && this.map) {
+        this.map.removeLayer(l);
+      }
+    });
 
     // Xóa các mốc vẽ dở cũ
     this.drawingBranchPolylines.forEach(poly => {
@@ -1622,7 +1847,7 @@ const LocationsModule = {
     // Tải các nhánh của tuyến này
     const branches = this.getPathBranches(p.coordinates);
     this.drawingBranches = branches.length > 0 ? branches.map(b => b.map(pt => [pt[0], pt[1]])) : [[]];
-    this.currentBranchIndex = Math.max(0, this.drawingBranches.length - 1);
+    this.currentBranchIndex = Math.min(Math.max(0, targetBranchIndex), this.drawingBranches.length - 1);
 
     const banner = document.getElementById('pathDrawingBanner');
     if (banner) banner.classList.remove('hidden');
@@ -1649,6 +1874,7 @@ const LocationsModule = {
           fillOpacity: 1
         }).addTo(this.map);
         marker.branchIndex = bIdx;
+        this.attachBranchMarkerEvents(marker, bIdx);
         this.drawingMarkers.push(marker);
       });
 
@@ -1659,10 +1885,12 @@ const LocationsModule = {
           dashArray: '6, 8',
           opacity: 0.95
         }).addTo(this.map);
+        this.attachBranchPolylineEvents(poly, bIdx);
         this.drawingBranchPolylines[bIdx] = poly;
       }
     });
 
+    this.refreshDrawingVisuals();
     this.updateDrawingStats();
 
     if (allBounds.length > 0 && this.map) {
@@ -1670,7 +1898,7 @@ const LocationsModule = {
     }
 
     if (window.App) {
-      window.App.showToast(`Đang chỉnh sửa: "${p.name}" (${this.drawingBranches.length} nhánh). Bạn có thể bấm để vẽ thêm điểm, rẽ nhánh mới hoặc xóa mốc.`, 'info');
+      window.App.showToast(`Đang chỉnh sửa: "${p.name}" (${this.drawingBranches.length} nhánh). Nhấp trực tiếp vào nhánh bất kỳ trên bản đồ để chọn hoặc xóa nhánh đó.`, 'info');
     }
   },
 
@@ -1843,36 +2071,68 @@ const LocationsModule = {
         };
         const typeInfo = typeLabels[p.path_type] || { text: 'Đường đi', color: 'bg-slate-100 text-slate-800' };
 
-        return `
-          <div class="py-3 flex items-center justify-between gap-3">
-            <div class="flex items-center gap-3">
-              <span class="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 font-black text-xs flex items-center justify-center shrink-0">
-                ${idx + 1}
-              </span>
-              <div>
-                <div class="flex items-center gap-2">
-                  <h5 class="text-xs font-bold text-slate-900">${escapeHtml(p.name)}</h5>
-                  <span class="px-2 py-0.5 rounded text-[10px] font-bold ${typeInfo.color}">${typeInfo.text}</span>
+        const branchColors = ['#10B981', '#06B6D4', '#8B5CF6', '#F59E0B', '#EC4899', '#3B82F6'];
+        const branchListHtml = branches.length > 1 ? `
+          <div class="mt-2.5 ml-10 space-y-1.5 border-l-2 border-slate-200 pl-3">
+            ${branches.map((b, bIdx) => {
+              const bDist = this.calculateBranchDistance(b);
+              const bColor = branchColors[bIdx % branchColors.length];
+              return `
+                <div class="flex items-center justify-between bg-slate-50 hover:bg-slate-100/80 px-2.5 py-1.5 rounded-lg border border-slate-200/60 transition">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" style="background: ${bColor};"></span>
+                    <span class="text-xs font-semibold text-slate-800">Nhánh ${bIdx + 1}</span>
+                    <span class="text-[11px] text-slate-500">(${b.length} mốc • ${bDist}m)</span>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <button onclick="LocationsModule.editPathOnMap(${p.id}, ${bIdx})"
+                      class="px-2 py-0.5 text-[11px] font-bold text-brand-700 hover:bg-brand-50 rounded transition flex items-center gap-0.5" title="Chọn và sửa nhánh này trên bản đồ">
+                      <i data-lucide="edit-3" class="w-3 h-3"></i> Sửa
+                    </button>
+                    <button onclick="LocationsModule.deleteBranchFromSavedPath(${p.id}, ${bIdx})"
+                      class="px-2 py-0.5 text-[11px] font-bold text-rose-600 hover:bg-rose-50 rounded transition flex items-center gap-0.5" title="Xóa nhánh này khỏi tuyến">
+                      <i data-lucide="trash-2" class="w-3 h-3"></i> Xóa
+                    </button>
+                  </div>
                 </div>
-                <p class="text-[11px] text-slate-500 mt-0.5">
-                  ${branches.length > 1 ? `<b>${branches.length}</b> nhánh • ` : ''}<b>${totalPoints}</b> mốc • Dài: <span class="font-bold text-slate-700">${dist}m</span>
-                </p>
+              `;
+            }).join('')}
+          </div>
+        ` : '';
+
+        return `
+          <div class="py-3 border-b border-slate-100 last:border-b-0">
+            <div class="flex items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <span class="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 font-black text-xs flex items-center justify-center shrink-0">
+                  ${idx + 1}
+                </span>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h5 class="text-xs font-bold text-slate-900">${escapeHtml(p.name)}</h5>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold ${typeInfo.color}">${typeInfo.text}</span>
+                  </div>
+                  <p class="text-[11px] text-slate-500 mt-0.5">
+                    ${branches.length > 1 ? `<b>${branches.length}</b> nhánh • ` : ''}<b>${totalPoints}</b> mốc • Dài: <span class="font-bold text-slate-700">${dist}m</span>
+                  </p>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <button onclick="LocationsModule.focusPathOnMap(${p.id})"
+                  class="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1" title="Xem vị trí trên bản đồ">
+                  <i data-lucide="eye" class="w-3.5 h-3.5 text-slate-500"></i> Xem
+                </button>
+                <button onclick="LocationsModule.editPathOnMap(${p.id}, 0)"
+                  class="px-2.5 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-800 rounded-lg text-xs font-bold transition flex items-center gap-1" title="Chỉnh sửa tọa độ và vẽ tiếp nhánh">
+                  <i data-lucide="edit-3" class="w-3.5 h-3.5 text-brand-700"></i> Sửa
+                </button>
+                <button onclick="LocationsModule.confirmDeletePath(${p.id}, '${escapeHtml(p.name).replace(/'/g, "\\'")}')"
+                  class="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs transition" title="Xóa toàn bộ tuyến này">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
               </div>
             </div>
-            <div class="flex items-center gap-1.5 shrink-0">
-              <button onclick="LocationsModule.focusPathOnMap(${p.id})"
-                class="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1" title="Xem vị trí trên bản đồ">
-                <i data-lucide="eye" class="w-3.5 h-3.5 text-slate-500"></i> Xem
-              </button>
-              <button onclick="LocationsModule.editPathOnMap(${p.id})"
-                class="px-2.5 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-800 rounded-lg text-xs font-bold transition flex items-center gap-1" title="Chỉnh sửa tọa độ và vẽ tiếp nhánh">
-                <i data-lucide="edit-3" class="w-3.5 h-3.5 text-brand-700"></i> Sửa
-              </button>
-              <button onclick="LocationsModule.confirmDeletePath(${p.id}, '${escapeHtml(p.name).replace(/'/g, "\\'")}')"
-                class="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs transition" title="Xóa tuyến này">
-                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-              </button>
-            </div>
+            ${branchListHtml}
           </div>
         `;
       }).join('');
@@ -1880,6 +2140,52 @@ const LocationsModule = {
 
     openModal('managePathsModal');
     if (window.lucide) window.lucide.createIcons();
+  },
+
+  // Xóa riêng 1 nhánh khỏi tuyến đường đã lưu trong database
+  async deleteBranchFromSavedPath(pathId, branchIndex) {
+    const p = this.paths.find(x => x.id === pathId);
+    if (!p) return;
+    const branches = this.getPathBranches(p.coordinates);
+    if (branchIndex < 0 || branchIndex >= branches.length) return;
+
+    const bDist = this.calculateBranchDistance(branches[branchIndex]);
+    const bPts = branches[branchIndex].length;
+
+    const doDelete = async () => {
+      try {
+        branches.splice(branchIndex, 1);
+        if (branches.length === 0) {
+          await AdminAPI.deletePath(pathId);
+          window.App.showToast('Tuyến đường không còn nhánh nào nên đã được xóa', 'info');
+        } else {
+          const newCoords = branches.length === 1 ? branches[0] : branches;
+          await AdminAPI.updatePath(pathId, {
+            name: p.name,
+            path_type: p.path_type,
+            coordinates: newCoords
+          });
+          window.App.showToast(`Đã xóa Nhánh ${branchIndex + 1} của "${p.name}"!`, 'success');
+        }
+        await this.loadCampusPaths();
+        const modal = document.getElementById('managePathsModal');
+        if (modal && !modal.classList.contains('hidden')) {
+          this.openManagePathsModal();
+        }
+      } catch (err) {
+        window.App.showToast('Lỗi khi xóa nhánh: ' + err.message, 'error');
+      }
+    };
+
+    if (window.App && window.App.showConfirm) {
+      window.App.showConfirm(
+        'Xóa một nhánh của tuyến đường',
+        `Bạn có chắc chắn muốn xóa Nhánh ${branchIndex + 1} (${bPts} mốc, ${bDist}m) khỏi tuyến "${p.name}"?`,
+        doDelete
+      );
+    } else {
+      await doDelete();
+    }
   },
 
   focusPathOnMap(id) {

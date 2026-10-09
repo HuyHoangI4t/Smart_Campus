@@ -1,5 +1,6 @@
 import { LocationItem, CampusPath, CampusGate } from "./types";
 import { TNU_CAMPUS_GATES } from "./constants";
+import { LEAFLET_CSS, LEAFLET_JS } from "./leafletBundle";
 
 export function generateLeafletMapHtml(
   locations: LocationItem[],
@@ -19,8 +20,12 @@ export function generateLeafletMapHtml(
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+${LEAFLET_CSS}
+  </style>
+  <script>
+${LEAFLET_JS}
+  </script>
   <style>
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html, body {
@@ -41,15 +46,15 @@ export function generateLeafletMapHtml(
       overflow: hidden;
       background: #F8FAFC;
     }
-    /* Khung xoay bao phủ toàn bộ màn hình kể cả xoay 360 độ trên màn hình điện thoại dài */
+    /* Khung xoay bao phủ màn hình tối ưu hiệu năng và GPU */
     #map-rotator {
       position: absolute;
       top: 50%;
       left: 50%;
-      width: 160vmax;
-      height: 160vmax;
-      margin-left: -80vmax;
-      margin-top: -80vmax;
+      width: 142vmax;
+      height: 142vmax;
+      margin-left: -71vmax;
+      margin-top: -71vmax;
       transform-origin: 50% 50%;
       will-change: transform;
     }
@@ -165,6 +170,9 @@ export function generateLeafletMapHtml(
     .gate-badge-marker.back-gate {
       border-color: #3B82F6;
     }
+    .gate-badge-marker.hospital-gate {
+      border-color: #EF4444;
+    }
     /* Điểm đón ngoài đường phố */
     .outside-point-marker {
       width: 22px;
@@ -245,13 +253,14 @@ export function generateLeafletMapHtml(
     // Đảm bảo lúc mới mở bản đồ luôn theo đúng chuẩn hướng Bắc - Nam (0 độ)
     applyBearing(0, false);
 
-    // Khởi tạo bản đồ trung tâm Trường ĐH Tây Nguyên (Không giới hạn vùng di chuyển, mở lên luôn căn giữa trường)
+    // Khởi tạo bản đồ trung tâm Trường ĐH Tây Nguyên (Tối ưu Canvas 2D phần cứng cực nhanh)
     var map = L.map('map', {
       center: centerData,
       zoom: 17,
       minZoom: 3,
       maxZoom: 19,
-      zoomControl: false
+      zoomControl: false,
+      preferCanvas: true
     });
 
     map.whenReady(function() {
@@ -334,6 +343,9 @@ export function generateLeafletMapHtml(
     var googleRoadLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&apistyle=s.t:3|p.v:off|s.t:4|p.v:off&x={x}&y={y}&z={z}', {
       subdomains: ['0', '1', '2', '3'],
       maxZoom: 20,
+      keepBuffer: 2,
+      updateWhenIdle: true,
+      updateWhenZooming: false,
       attribution: '&copy; Google Maps'
     }).addTo(map);
 
@@ -346,6 +358,9 @@ export function generateLeafletMapHtml(
     var googleSatLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
       subdomains: ['0', '1', '2', '3'],
       maxZoom: 20,
+      keepBuffer: 2,
+      updateWhenIdle: true,
+      updateWhenZooming: false,
       pane: 'satelliteCampusPane',
       attribution: '&copy; Google Maps'
     });
@@ -395,9 +410,10 @@ export function generateLeafletMapHtml(
 
       gatesData.forEach(function(g) {
         // 1. Điểm cổng chính thức tại tường bao
+        var gateBadgeClass = 'gate-badge-marker' + (g.id === 'back_gate' ? ' back-gate' : (g.id === 'hospital_gate' ? ' hospital-gate' : ''));
         var gateIcon = L.divIcon({
           className: 'custom-marker',
-          html: '<div class="gate-badge-marker ' + (g.id === 'back_gate' ? 'back-gate' : '') + '">' +
+          html: '<div class="' + gateBadgeClass + '">' +
             '<svg style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;display:inline-block;vertical-align:middle;margin-right:2px;" viewBox="0 0 24 24"><path d="M3 21h18M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16M9 9h.01M9 15h.01"/></svg>' +
             '<span>' + g.name + '</span>' +
           '</div>',
@@ -456,40 +472,48 @@ export function generateLeafletMapHtml(
       'map-pin': '<svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>'
     };
 
+    var locationsLayerGroup = L.layerGroup().addTo(map);
     var markerObjects = {};
     var currentActiveMarkerId = null;
 
-    // Render 37 markers địa điểm
-    locationsData.forEach(function(loc) {
-      var iconHtml = svgIcons[loc.icon] || svgIcons['map-pin'];
-      var markerHtml = '<div class="marker-pin-wrapper">' +
-        '<div class="marker-pulse-ring"></div>' +
-        '<div class="marker-pin-badge" style="background-color: ' + (loc.color || '#2563EB') + ';">' +
-          iconHtml +
-        '</div>' +
-      '</div>';
+    function renderLocationMarkers(data) {
+      locationsLayerGroup.clearLayers();
+      markerObjects = {};
+      locationsData = data || [];
 
-      var customIcon = L.divIcon({
-        className: 'custom-marker',
-        html: markerHtml,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
+      locationsData.forEach(function(loc) {
+        var iconHtml = svgIcons[loc.icon] || svgIcons['map-pin'];
+        var markerHtml = '<div class="marker-pin-wrapper">' +
+          '<div class="marker-pulse-ring"></div>' +
+          '<div class="marker-pin-badge" style="background-color: ' + (loc.color || '#2563EB') + ';">' +
+            iconHtml +
+          '</div>' +
+        '</div>';
+
+        var customIcon = L.divIcon({
+          className: 'custom-marker',
+          html: markerHtml,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16]
+        });
+
+        var marker = L.marker([loc.lat, loc.lng], { icon: customIcon }).addTo(locationsLayerGroup);
+
+        marker.on('click', function() {
+          setActiveMarker(loc.id);
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'SELECT_LOCATION',
+              id: loc.id
+            }));
+          }
+        });
+
+        markerObjects[loc.id] = marker;
       });
+    }
 
-      var marker = L.marker([loc.lat, loc.lng], { icon: customIcon }).addTo(map);
-
-      marker.on('click', function() {
-        setActiveMarker(loc.id);
-        if (window.ReactNativeWebView) {
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'SELECT_LOCATION',
-            id: loc.id
-          }));
-        }
-      });
-
-      markerObjects[loc.id] = marker;
-    });
+    renderLocationMarkers(locationsData);
 
     function setActiveMarker(locId) {
       if (currentActiveMarkerId && markerObjects[currentActiveMarkerId]) {
@@ -522,22 +546,42 @@ export function generateLeafletMapHtml(
 
     // Biến quản lý User Location và Tuyến đường (Routing)
     var userLocationMarker = null;
+    var userAccuracyCircle = null;
     var routeLayerGroup = L.layerGroup().addTo(map);
 
-    function updateUserLocation(lat, lng) {
+    function updateUserLocation(lat, lng, accuracy) {
       if (userLocationMarker) {
         userLocationMarker.setLatLng([lat, lng]);
       } else {
         var userIcon = L.divIcon({
           className: 'custom-marker',
           html: '<div style="position:relative;display:flex;align-items:center;justify-content:center;width:24px;height:24px;">' +
-            '<div style="position:absolute;width:28px;height:28px;border-radius:50%;background:rgba(16,185,129,0.3);animation:pulseAnim 2s infinite;"></div>' +
-            '<div style="width:14px;height:14px;border-radius:50%;background:#10B981;border:2.5px solid #FFFFFF;box-shadow:0 2px 5px rgba(0,0,0,0.4);"></div>' +
+            '<div style="position:absolute;width:28px;height:28px;border-radius:50%;background:rgba(37,99,235,0.3);animation:pulseAnim 2s infinite;"></div>' +
+            '<div style="width:14px;height:14px;border-radius:50%;background:#2563EB;border:2.5px solid #FFFFFF;box-shadow:0 2px 5px rgba(0,0,0,0.4);"></div>' +
           '</div>',
           iconSize: [24, 24],
           iconAnchor: [12, 12]
         });
         userLocationMarker = L.marker([lat, lng], { icon: userIcon, zIndexOffset: 1000 }).addTo(map);
+      }
+
+      if (accuracy && accuracy > 0 && accuracy <= 250) {
+        if (userAccuracyCircle) {
+          userAccuracyCircle.setLatLng([lat, lng]);
+          userAccuracyCircle.setRadius(accuracy);
+        } else {
+          userAccuracyCircle = L.circle([lat, lng], {
+            radius: accuracy,
+            color: '#3B82F6',
+            fillColor: '#3B82F6',
+            fillOpacity: 0.12,
+            weight: 1.5,
+            dashArray: '3, 4'
+          }).addTo(map);
+        }
+      } else if (userAccuracyCircle) {
+        map.removeLayer(userAccuracyCircle);
+        userAccuracyCircle = null;
       }
     }
 
@@ -976,7 +1020,7 @@ export function generateLeafletMapHtml(
             break;
 
           case 'UPDATE_USER_LOCATION':
-            updateUserLocation(msg.lat, msg.lng);
+            updateUserLocation(msg.lat, msg.lng, msg.accuracy);
             break;
 
           case 'SET_BEARING':
@@ -1014,6 +1058,12 @@ export function generateLeafletMapHtml(
             if (msg.paths && Array.isArray(msg.paths)) {
               campusPathsData = msg.paths;
               renderCampusPathsNetwork(campusPathsData);
+            }
+            break;
+
+          case 'UPDATE_LOCATIONS':
+            if (msg.locations && Array.isArray(msg.locations)) {
+              renderLocationMarkers(msg.locations);
             }
             break;
 

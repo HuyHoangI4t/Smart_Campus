@@ -321,6 +321,57 @@ export async function apiGetSchedule(mssv?: string, reload = false) {
   }
 }
 
+export interface CustomSchedulePayload {
+  ten_hp: string;
+  thu: string;
+  tiet: string;
+  phong: string;
+  giang_vien?: string;
+  ghi_chu?: string;
+  loai_lich?: string;
+}
+
+export async function apiCreateCustomSchedule(payload: CustomSchedulePayload) {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${API_BASE_URL}/student/schedule/custom`, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    return await handleResponse(response);
+  } catch (err: any) {
+    return { success: false, message: 'Lỗi mạng khi thêm lịch học: ' + (err?.message || '') };
+  }
+}
+
+export async function apiUpdateCustomSchedule(id: string | number, payload: Partial<CustomSchedulePayload>) {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${API_BASE_URL}/student/schedule/custom/${id}`, {
+      method: 'PUT',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    return await handleResponse(response);
+  } catch (err: any) {
+    return { success: false, message: 'Lỗi mạng khi cập nhật lịch học: ' + (err?.message || '') };
+  }
+}
+
+export async function apiDeleteCustomSchedule(id: string | number) {
+  try {
+    const headers = await getAuthHeaders();
+    const response = await fetchWithTimeout(`${API_BASE_URL}/student/schedule/custom/${id}`, {
+      method: 'DELETE',
+      headers,
+    });
+    return await handleResponse(response);
+  } catch (err: any) {
+    return { success: false, message: 'Lỗi mạng khi xóa lịch học: ' + (err?.message || '') };
+  }
+}
+
 export async function apiGetGrades(mssv?: string, reload = false) {
   const cacheKey = `@offline_grades_${mssv || 'current'}`;
   try {

@@ -345,7 +345,7 @@ async function syncScheduleForStudent(mssv, dk = '10') {
     }
 
     if (parsedRows.length > 1) {
-      await db.query('DELETE FROM student_schedules WHERE mssv = ?', [mssv]);
+      await db.query('DELETE FROM student_schedules WHERE mssv = ? AND (is_custom = 0 OR is_custom IS NULL)', [mssv]);
       for (let i = 1; i < parsedRows.length; i++) {
         const r = parsedRows[i];
         await db.query(

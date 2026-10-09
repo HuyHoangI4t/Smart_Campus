@@ -244,7 +244,7 @@
             </div>
             <div>
               <p class="text-xs text-slate-500 font-semibold">Địa điểm ĐH</p>
-              <h3 id="statTotalLocations" class="text-xl sm:text-2xl font-black text-emerald-600 mt-0.5">37</h3>
+              <h3 id="statTotalLocations" class="text-xl sm:text-2xl font-black text-emerald-600 mt-0.5"></h3>
             </div>
           </div>
 
@@ -413,7 +413,7 @@
               </div>
               <span class="text-xs px-2.5 py-1 bg-blue-50 text-brand-800 rounded-full font-semibold hidden md:inline-flex items-center gap-1">
                 <i data-lucide="mouse-pointer" class="w-3 h-3"></i>
-                Nhấp chuột vào bản đồ để chọn tọa độ GPS
+                Nhấp chuột vào bản đồ để chọn tọa độ GPS tức thì
               </span>
             </div>
 
@@ -475,9 +475,17 @@
                     <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
                     <span>Chế độ Vẽ Mạng Lưới Đường Đi (Nhiều nhánh rẽ)</span>
                   </p>
-                  <p class="text-[11px] text-slate-300 mt-0.5">
-                    Đang vẽ: <span id="pathDrawingBranchLabel" class="font-bold text-amber-300">Nhánh 1</span> (<span id="pathDrawingBranchPoints" class="font-bold text-white">0</span> điểm) • Tổng: <span id="pathDrawingBranchCount" class="font-bold text-emerald-300">1</span> nhánh, <span id="pathDrawingPointCount" class="font-bold text-emerald-300">0</span> mốc, <span id="pathDrawingDistance" class="font-bold text-emerald-300">0m</span>
-                  </p>
+                  <div class="flex items-center gap-2 mt-0.5 text-[11px] text-slate-300 flex-wrap">
+                    <span class="flex items-center gap-1.5">
+                      <span>Đang chọn:</span>
+                      <select id="pathDrawingBranchSelect" onchange="LocationsModule.switchDrawingBranch(parseInt(this.value, 10))"
+                        class="bg-slate-800 text-amber-300 text-[11px] font-bold rounded-lg px-2 py-0.5 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-amber-400 cursor-pointer">
+                        <option value="0">Nhánh 1</option>
+                      </select>
+                    </span>
+                    <span>•</span>
+                    <span>Tổng: <span id="pathDrawingBranchCount" class="font-bold text-emerald-300">1</span> nhánh, <span id="pathDrawingPointCount" class="font-bold text-emerald-300">0</span> mốc, <span id="pathDrawingDistance" class="font-bold text-emerald-300">0m</span></span>
+                  </div>
                 </div>
               </div>
               <div class="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
@@ -486,6 +494,12 @@
                   class="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition">
                   <i data-lucide="git-branch" class="w-3.5 h-3.5"></i>
                   <span>+ Nhánh mới</span>
+                </button>
+                <!-- Nút Xóa nhánh -->
+                <button type="button" onclick="LocationsModule.confirmDeleteCurrentBranch()" title="Xóa toàn bộ các mốc của nhánh đang chọn"
+                  class="px-3 py-2 bg-rose-500/20 hover:bg-rose-500/40 text-rose-200 border border-rose-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5 text-rose-300"></i>
+                  <span>Xóa nhánh</span>
                 </button>
                 <button type="button" onclick="LocationsModule.undoLastPathPoint()"
                   class="px-3 py-2 bg-white/10 hover:bg-white/20 text-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1">
@@ -543,7 +557,7 @@
               <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> Bệnh viện & Y tế</span>
             </div>
             <div class="text-slate-400">
-              (567 Lê Duẩn, TP. Buôn Ma Thuột)
+              Tọa độ trung tâm: 12.65053100, 108.02601222 (567 Lê Duẩn, TP. Buôn Ma Thuột)
             </div>
           </div>
         </div>

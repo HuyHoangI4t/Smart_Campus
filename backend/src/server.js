@@ -25,19 +25,9 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Serve static assets for Web Portal
-app.use(express.static(path.join(__dirname, '../public')));
-
 // Initialize DB tables & Swagger UI on startup
 initializeTables();
 setupSwagger(app);
-
-/**
- * Web Portal Route (Trang Quản trị Hệ thống dành riêng cho Admin - Không qua app mobile)
- */
-app.get(['/portal', '/admin'], (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/portal/index.html'));
-});
 
 /**
  * @swagger
@@ -111,7 +101,6 @@ const getLocalIPv4 = () => {
 app.listen(PORT, '0.0.0.0', () => {
   const localIP = getLocalIPv4();
   console.log(`🚀 LTDDDNT Backend server đang chạy tại cổng ${PORT} (0.0.0.0)`);
-  console.log(`💻 Trang Quản Trị Web (Admin Portal): http://localhost:${PORT}/portal`);
   console.log(`📱 Expo Go / Mobile API: http://${localIP}:${PORT}/api`);
   console.log(`📄 Swagger UI sẵn sàng tại http://localhost:${PORT}/api-docs`);
   

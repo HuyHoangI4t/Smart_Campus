@@ -166,7 +166,7 @@ const DAYS_OF_WEEK = [
  * - Trích xuất tiết học tiếp theo (nextClass)
  * - Tự động gắn hướng dẫn chỉ đường cho từng phòng học
  */
-function processSchedulePayload(rawTables, weekRangeText) {
+function processSchedulePayload(rawTables, weekRangeText, customItems = []) {
   const parsed = [];
   const groupedByDay = {
     1: [],
@@ -186,7 +186,7 @@ function processSchedulePayload(rawTables, weekRangeText) {
           const dayStr = r[0] || 'Thứ 2';
           const dayNum = getDayNumber(dayStr);
           const course = r[1] || 'Môn học';
-          const time = r[2] ? `Tiết ${r[2]}` : 'Ca học tiêu chuẩn';
+          const time = r[2] ? (String(r[2]).startsWith('Tiết') ? r[2] : `Tiết ${r[2]}`) : 'Ca học tiêu chuẩn';
           const room = r[3] || 'Khu giảng đường';
           const lecturer = r[4] || 'Giảng viên bộ môn';
 
@@ -202,6 +202,7 @@ function processSchedulePayload(rawTables, weekRangeText) {
             dayNum,
             lecturer,
             direction,
+            isCustom: false,
           };
 
           parsed.push(item);
@@ -213,15 +214,53 @@ function processSchedulePayload(rawTables, weekRangeText) {
     }
   }
 
-  // Xác định tiết học hôm nay và tiết học kế tiếp (bao gồm logic ngày mai)
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const todayJsDay = now.getDay(); // 0 là CN, 1 là T2, ...
-  const currentDayNum = todayJsDay === 0 ? 1 : todayJsDay + 1; // 1: CN, 2: T2, 3: T3, ...
-  const tomorrowDayNum = (currentDayNum % 7) + 1;
+  // Tích hợp danh sách lịch học thủ công / thực hành đột xuất
+  if (Array.isArray(customItems) && customItems.length > 0) {
+    customItems.forEach((c) => {
+      const dayStr = c.thu || c.day || 'Thứ 2';
+      const dayNum = c.dayNum || getDayNumber(dayStr);
+      const course = c.ten_hp || c.course || 'Lịch thực hành đột xuất';
+      let rawTime = String(c.tiet || c.time || 'Ca thực hành').trim();
+      while (/^tiết\s+tiết/i.test(rawTime)) {
+        rawTime = rawTime.replace(/^tiết\s+/i, '');
+      }
+      const time = rawTime.startsWith('Tiết') || rawTime.includes(':') ? rawTime : `Tiết ${rawTime}`;
+      const room = c.phong || c.room || 'Phòng thực hành';
+      const lecturer = c.giang_vien || c.lecturer || 'Giảng viên hướng dẫn';
+      const direction = c.direction || parseRoomDirections(room);
+
+      const item = {
+        id: c.id,
+        course,
+        code: dayStr,
+        time,
+        room,
+        day: dayStr,
+        dayNum,
+        lecturer,
+        direction,
+        isCustom: true,
+        note: c.ghi_chu || c.note || '',
+        type: c.loai_lich || c.type || 'thuc_hanh',
+      };
+
+      parsed.push(item);
+      if (groupedByDay[dayNum]) {
+        groupedByDay[dayNum].push(item);
+      }
+    });
+  }
 
   const parseTimeRange = (timeStr) => {
-    const range = (timeStr || '').match(/(\d+)\s*[-–—]\s*(\d+)/);
+    const str = timeStr || '';
+    const timeMatch = str.match(/(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{1,2}):(\d{2})/);
+    if (timeMatch) {
+      return {
+        startMin: parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10),
+        endMin: parseInt(timeMatch[3], 10) * 60 + parseInt(timeMatch[4], 10),
+      };
+    }
+    const range = str.match(/(\d+)\s*[-–—]\s*(\d+)/);
     if (range) {
       const s = parseInt(range[1], 10);
       const e = parseInt(range[2], 10);
@@ -232,6 +271,22 @@ function processSchedulePayload(rawTables, weekRangeText) {
     }
     return { startMin: 6 * 60 + 45 , endMin: 11 * 60 + 30 };
   };
+
+  // Sắp xếp các tiết học trong ngày theo thứ tự thời gian
+  for (let d = 1; d <= 7; d++) {
+    groupedByDay[d].sort((a, b) => {
+      const ta = parseTimeRange(a.time);
+      const tb = parseTimeRange(b.time);
+      return ta.startMin - tb.startMin;
+    });
+  }
+
+  // Xác định tiết học hôm nay và tiết học kế tiếp (bao gồm logic ngày mai)
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const todayJsDay = now.getDay(); // 0 là CN, 1 là T2, ...
+  const currentDayNum = todayJsDay === 0 ? 1 : todayJsDay + 1; // 1: CN, 2: T2, 3: T3, ...
+  const tomorrowDayNum = (currentDayNum % 7) + 1;
 
   const todaySchedule = groupedByDay[currentDayNum] || [];
   const inProgress = todaySchedule.find((c) => {
@@ -255,6 +310,9 @@ function processSchedulePayload(rawTables, weekRangeText) {
       status: 'IN_PROGRESS',
       statusLabel: 'ĐANG TRONG GIỜ HỌC',
       dayText: 'Hôm nay',
+      isCustom: inProgress.isCustom || false,
+      note: inProgress.note || '',
+      type: inProgress.type || 'chinh_khoa',
     };
   } else if (upcomingToday) {
     nextClass = {
@@ -267,6 +325,9 @@ function processSchedulePayload(rawTables, weekRangeText) {
       status: 'UPCOMING_TODAY',
       statusLabel: 'LỚP HỌC KẾ TIẾP',
       dayText: 'Hôm nay',
+      isCustom: upcomingToday.isCustom || false,
+      note: upcomingToday.note || '',
+      type: upcomingToday.type || 'chinh_khoa',
     };
   } else {
     // 2. Hôm nay đã hết tiết hoặc không có lịch: Ưu tiên tìm NGÀY MAI
@@ -282,6 +343,9 @@ function processSchedulePayload(rawTables, weekRangeText) {
         status: 'NEXT_DAY',
         statusLabel: 'NGÀY MAI',
         dayText: 'Ngày mai',
+        isCustom: tomorrowSchedule[0].isCustom || false,
+        note: tomorrowSchedule[0].note || '',
+        type: tomorrowSchedule[0].type || 'chinh_khoa',
       };
     } else {
       // 3. Nếu ngày mai không có tiết, tìm ngày tiếp theo gần nhất
@@ -299,6 +363,9 @@ function processSchedulePayload(rawTables, weekRangeText) {
             status: 'NEXT_DAY',
             statusLabel: `LỊCH HỌC ${upcomingClasses[0].day?.toUpperCase() || ''}`,
             dayText: upcomingClasses[0].day,
+            isCustom: upcomingClasses[0].isCustom || false,
+            note: upcomingClasses[0].note || '',
+            type: upcomingClasses[0].type || 'chinh_khoa',
           };
           break;
         }

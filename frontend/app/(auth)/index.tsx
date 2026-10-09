@@ -25,7 +25,7 @@ export default function AuthScreen() {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
-  const [loadingButtonText, setLoadingButtonText] = useState('Đang đăng nhập...');
+  const [loadingButtonText, setLoadingButtonText] = useState('Đang chờ...');
   
   // Login State
   const [email, setEmail] = useState('');
@@ -77,7 +77,7 @@ export default function AuthScreen() {
         return;
       }
       setLoading(true);
-      setLoadingButtonText('Đang đăng nhập...');
+      setLoadingButtonText('Đang chờ...');
       try {
         const res = await apiLogin(email.trim(), password);
         if (res.success) {
@@ -87,7 +87,7 @@ export default function AuthScreen() {
             return;
           }
 
-          setLoadingButtonText('Đang đăng nhập...');
+          setLoadingButtonText('Đang chờ...');
 
           await clearAuthAndCache();
           if (res.token) {

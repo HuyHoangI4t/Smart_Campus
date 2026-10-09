@@ -10,9 +10,9 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Ứng dụng cần quyền truy cập vị trí để định vị bạn trên bản đồ và chỉ đường tới phòng học trong trường.",
-        "NSCameraUsageDescription": "Ứng dụng cần quyền truy cập máy ảnh để chụp ảnh đại diện.",
-        "NSPhotoLibraryUsageDescription": "Ứng dụng cần quyền truy cập thư viện ảnh để chọn ảnh đại diện."
+        "NSLocationWhenInUseUsageDescription": "Ứng dụng cần quyền truy cập vị trí để định vị bạn trên bản đồ.",
+        "NSCameraUsageDescription": "Ứng dụng cần quyền truy cập máy ảnh.",
+        "NSPhotoLibraryUsageDescription": "Ứng dụng cần quyền truy cập thư viện ảnh."
       }
     },
     "android": {

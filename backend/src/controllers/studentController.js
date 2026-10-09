@@ -417,6 +417,15 @@ exports.getSchedule = async (req, res) => {
   const studentDk = dk || (req.query ? req.query.dk : null) || '10';
 
   if (isGuestOrEmail(mssv)) {
+    let customItems = [];
+    try {
+      const [customRows] = await db.query(
+        'SELECT id, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich FROM student_schedules WHERE (mssv = ? OR mssv = "guest") AND is_custom = 1 ORDER BY id ASC',
+        [mssv]
+      );
+      customItems = customRows || [];
+    } catch (e) {}
+
     const defaultTables = [{
       tableIndex: 1,
       rows: [
@@ -428,7 +437,7 @@ exports.getSchedule = async (req, res) => {
         ["Thứ 6", "Mạng máy tính", "7-10", "9.1.02", "ThS. Phạm D"],
       ]
     }];
-    const processed = scheduleService.processSchedulePayload(defaultTables, "Từ ngày 28/09/2026 đến ngày 04/10/2026");
+    const processed = scheduleService.processSchedulePayload(defaultTables, "Từ ngày 28/09/2026 đến ngày 04/10/2026", customItems);
     return res.json({
       success: true,
       mssv: mssv,
@@ -443,22 +452,27 @@ exports.getSchedule = async (req, res) => {
   if (!forceRefresh && mssv && !isGuestOrEmail(mssv)) {
     try {
       const [dbSchedules] = await db.query(
-        'SELECT thu, ten_hp, tiet, phong, giang_vien, hoc_ky FROM student_schedules WHERE mssv = ? ORDER BY id ASC',
+        'SELECT id, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich FROM student_schedules WHERE mssv = ? ORDER BY id ASC',
         [mssv]
       );
       if (dbSchedules && dbSchedules.length > 0) {
         const cachedRows = [["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"]];
+        const customItems = [];
         for (const row of dbSchedules) {
-          cachedRows.push([
-            row.thu || "Thứ 2",
-            row.ten_hp || "Môn học",
-            row.tiet || "1-4",
-            row.phong || "Khu giảng đường",
-            row.giang_vien || "Giảng viên bộ môn"
-          ]);
+          if (row.is_custom) {
+            customItems.push(row);
+          } else {
+            cachedRows.push([
+              row.thu || "Thứ 2",
+              row.ten_hp || "Môn học",
+              row.tiet || "1-4",
+              row.phong || "Khu giảng đường",
+              row.giang_vien || "Giảng viên bộ môn"
+            ]);
+          }
         }
         const rawTables = [{ tableIndex: 1, rows: cachedRows }];
-        const processed = scheduleService.processSchedulePayload(rawTables, dbSchedules[0]?.hoc_ky || "Lịch học đã lưu từ cổng đào tạo");
+        const processed = scheduleService.processSchedulePayload(rawTables, dbSchedules[0]?.hoc_ky || "Lịch học đã lưu từ cổng đào tạo", customItems);
         return res.json({
           success: true,
           mssv: mssv,
@@ -581,22 +595,33 @@ exports.getSchedule = async (req, res) => {
       }
     }
 
-    // 3. Lưu cache vào bảng student_schedules trong DB
+    // 3. Lưu cache vào bảng student_schedules trong DB (chỉ xóa và cập nhật lịch chính khóa, giữ nguyên lịch thủ công/đột xuất)
     if (parsedRows.length > 1 && mssv && !isGuestOrEmail(mssv)) {
       try {
-        await db.query('DELETE FROM student_schedules WHERE mssv = ?', [mssv]);
+        await db.query('DELETE FROM student_schedules WHERE mssv = ? AND (is_custom = 0 OR is_custom IS NULL)', [mssv]);
         for (let i = 1; i < parsedRows.length; i++) {
           const r = parsedRows[i];
           await db.query(
-            'INSERT INTO student_schedules (mssv, ma_hp, ten_hp, thu, tiet, phong, giang_vien, hoc_ky) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO student_schedules (mssv, ma_hp, ten_hp, thu, tiet, phong, giang_vien, hoc_ky, is_custom) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)',
             [mssv, `HP-${i}`, r[1], r[0], r[2], r[3], r[4], 'HK1 (2025-2026)']
           );
         }
       } catch (e) {}
     }
 
+    let customItems = [];
+    if (mssv) {
+      try {
+        const [customRows] = await db.query(
+          'SELECT id, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich FROM student_schedules WHERE (mssv = ? OR mssv = "guest") AND is_custom = 1 ORDER BY id ASC',
+          [mssv]
+        );
+        customItems = customRows || [];
+      } catch (e) {}
+    }
+
     const rawTables = [{ tableIndex: 1, rows: parsedRows }];
-    const processed = scheduleService.processSchedulePayload(rawTables, targetWeekRangeText || "Lịch học tuần hiện tại");
+    const processed = scheduleService.processSchedulePayload(rawTables, targetWeekRangeText || "Lịch học tuần hiện tại", customItems);
     return res.json({
       success: true,
       mssv: mssv,
@@ -611,22 +636,27 @@ exports.getSchedule = async (req, res) => {
   if (mssv && !isGuestOrEmail(mssv)) {
     try {
       const [dbSchedules] = await db.query(
-        'SELECT thu, ten_hp, tiet, phong, giang_vien, hoc_ky FROM student_schedules WHERE mssv = ? ORDER BY id ASC',
+        'SELECT id, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich FROM student_schedules WHERE mssv = ? ORDER BY id ASC',
         [mssv]
       );
       if (dbSchedules && dbSchedules.length > 0) {
         const cachedRows = [["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"]];
+        const customItems = [];
         for (const row of dbSchedules) {
-          cachedRows.push([
-            row.thu || "Thứ 2",
-            row.ten_hp || "Môn học",
-            row.tiet || "1-4",
-            row.phong || "Khu giảng đường",
-            row.giang_vien || "Giảng viên bộ môn"
-          ]);
+          if (row.is_custom) {
+            customItems.push(row);
+          } else {
+            cachedRows.push([
+              row.thu || "Thứ 2",
+              row.ten_hp || "Môn học",
+              row.tiet || "1-4",
+              row.phong || "Khu giảng đường",
+              row.giang_vien || "Giảng viên bộ môn"
+            ]);
+          }
         }
         const rawTables = [{ tableIndex: 1, rows: cachedRows }];
-        const processed = scheduleService.processSchedulePayload(rawTables, "Lịch học đã lưu từ cổng đào tạo");
+        const processed = scheduleService.processSchedulePayload(rawTables, "Lịch học đã lưu từ cổng đào tạo", customItems);
         return res.json({
           success: true,
           mssv: mssv,
@@ -640,6 +670,17 @@ exports.getSchedule = async (req, res) => {
   }
 
   // Dữ liệu dự phòng nếu cào lỗi
+  let fallbackCustom = [];
+  if (mssv) {
+    try {
+      const [cRows] = await db.query(
+        'SELECT id, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich FROM student_schedules WHERE (mssv = ? OR mssv = "guest") AND is_custom = 1 ORDER BY id ASC',
+        [mssv]
+      );
+      fallbackCustom = cRows || [];
+    } catch (e) {}
+  }
+
   const fallbackTables = [{
     tableIndex: 1,
     rows: [
@@ -649,7 +690,7 @@ exports.getSchedule = async (req, res) => {
       ["Thứ 4", "Cấu trúc dữ liệu & Giải thuật", "7-10", "9.3.01", "ThS. Lê Thị B"]
     ]
   }];
-  const processedFallback = scheduleService.processSchedulePayload(fallbackTables, "Từ ngày 28/09/2026 đến ngày 04/10/2026");
+  const processedFallback = scheduleService.processSchedulePayload(fallbackTables, "Từ ngày 28/09/2026 đến ngày 04/10/2026", fallbackCustom);
   res.json({
     success: true,
     mssv: mssv,
@@ -770,5 +811,193 @@ exports.updateProfile = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi cập nhật hồ sơ: ' + error.message });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CRUD LỊCH HỌC THỦ CÔNG / THỰC HÀNH ĐỘT XUẤT (Custom Schedules)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Thêm lịch học thủ công (ví dụ: Lịch thực hành đột xuất, học bù, kiểm tra)
+ */
+exports.createCustomSchedule = async (req, res) => {
+  try {
+    const mssv = await getMssvFromReq(req);
+    const { ten_hp, thu, tiet, phong, giang_vien, ghi_chu, loai_lich } = req.body || {};
+
+    if (!ten_hp || !thu || !phong) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng cung cấp đầy đủ tên môn/hoạt động, thứ trong tuần và phòng học.'
+      });
+    }
+
+    const [result] = await db.query(
+      `INSERT INTO student_schedules (mssv, ma_hp, ten_hp, thu, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+      [
+        mssv || 'guest',
+        'TH-CUSTOM',
+        ten_hp.trim(),
+        thu.trim(),
+        (tiet || 'Ca học').trim(),
+        phong.trim(),
+        (giang_vien || '').trim(),
+        'HK1 (2025-2026)',
+        (ghi_chu || '').trim(),
+        (loai_lich || 'dot_xuat').trim()
+      ]
+    );
+
+    const newId = result.insertId;
+    const direction = scheduleService.parseRoomDirections(phong);
+    const dayNum = scheduleService.getDayNumber(thu);
+    const cleanTime = (raw) => {
+      let s = String(raw || 'Ca học').trim();
+      while (/^tiết\s+tiết/i.test(s)) {
+        s = s.replace(/^tiết\s+/i, '');
+      }
+      return s.startsWith('Tiết') || s.includes(':') ? s : `Tiết ${s}`;
+    };
+
+    return res.json({
+      success: true,
+      message: 'Thêm lịch học đột xuất/thủ công thành công!',
+      data: {
+        id: newId,
+        course: ten_hp.trim(),
+        code: thu.trim(),
+        time: cleanTime(tiet),
+        room: phong.trim(),
+        day: thu.trim(),
+        dayNum,
+        lecturer: (giang_vien || '').trim(),
+        direction,
+        isCustom: true,
+        note: (ghi_chu || '').trim(),
+        type: (loai_lich || 'dot_xuat').trim()
+      }
+    });
+  } catch (error) {
+    console.error('Lỗi thêm lịch học thủ công:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Không thể thêm lịch học: ' + error.message
+    });
+  }
+};
+
+/**
+ * Cập nhật lịch học thủ công
+ */
+exports.updateCustomSchedule = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const mssv = await getMssvFromReq(req);
+    const { ten_hp, thu, tiet, phong, giang_vien, ghi_chu, loai_lich } = req.body || {};
+
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'Thiếu ID lịch học cần cập nhật' });
+    }
+
+    let query = `UPDATE student_schedules SET 
+      ten_hp = COALESCE(?, ten_hp),
+      thu = COALESCE(?, thu),
+      tiet = COALESCE(?, tiet),
+      phong = COALESCE(?, phong),
+      giang_vien = COALESCE(?, giang_vien),
+      ghi_chu = COALESCE(?, ghi_chu),
+      loai_lich = COALESCE(?, loai_lich)
+      WHERE id = ? AND is_custom = 1`;
+    let params = [
+      ten_hp !== undefined ? ten_hp.trim() : null,
+      thu !== undefined ? thu.trim() : null,
+      tiet !== undefined ? tiet.trim() : null,
+      phong !== undefined ? phong.trim() : null,
+      giang_vien !== undefined ? giang_vien.trim() : null,
+      ghi_chu !== undefined ? ghi_chu.trim() : null,
+      loai_lich !== undefined ? loai_lich.trim() : null,
+      id
+    ];
+
+    if (mssv && mssv !== 'guest') {
+      query += ' AND (mssv = ? OR mssv = "guest")';
+      params.push(mssv);
+    }
+
+    const [result] = await db.query(query, params);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch học cần sửa hoặc không có quyền thao tác' });
+    }
+
+    const [rows] = await db.query('SELECT * FROM student_schedules WHERE id = ?', [id]);
+    const updated = rows[0];
+    const direction = scheduleService.parseRoomDirections(updated.phong);
+    const dayNum = scheduleService.getDayNumber(updated.thu);
+
+    const cleanTime = (raw) => {
+      let s = String(raw || 'Ca học').trim();
+      while (/^tiết\s+tiết/i.test(s)) {
+        s = s.replace(/^tiết\s+/i, '');
+      }
+      return s.startsWith('Tiết') || s.includes(':') ? s : `Tiết ${s}`;
+    };
+
+    return res.json({
+      success: true,
+      message: 'Cập nhật lịch học thành công!',
+      data: {
+        id: updated.id,
+        course: updated.ten_hp,
+        code: updated.thu,
+        time: cleanTime(updated.tiet),
+        room: updated.phong,
+        day: updated.thu,
+        dayNum,
+        lecturer: updated.giang_vien || '',
+        direction,
+        isCustom: true,
+        note: updated.ghi_chu || '',
+        type: updated.loai_lich || 'dot_xuat'
+      }
+    });
+  } catch (error) {
+    console.error('Lỗi cập nhật lịch học thủ công:', error);
+    return res.status(500).json({ success: false, message: 'Lỗi cập nhật lịch học: ' + error.message });
+  }
+};
+
+/**
+ * Xóa lịch học thủ công
+ */
+exports.deleteCustomSchedule = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const mssv = await getMssvFromReq(req);
+
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'Thiếu ID lịch học cần xóa' });
+    }
+
+    let query = 'DELETE FROM student_schedules WHERE id = ? AND is_custom = 1';
+    let params = [id];
+    if (mssv && mssv !== 'guest') {
+      query += ' AND (mssv = ? OR mssv = "guest")';
+      params.push(mssv);
+    }
+
+    const [result] = await db.query(query, params);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy lịch học cần xóa hoặc không có quyền' });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Đã xóa lịch học thành công!'
+    });
+  } catch (error) {
+    console.error('Lỗi xóa lịch học:', error);
+    return res.status(500).json({ success: false, message: 'Lỗi xóa lịch học: ' + error.message });
   }
 };

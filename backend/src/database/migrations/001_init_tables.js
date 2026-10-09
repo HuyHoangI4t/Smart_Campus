@@ -153,6 +153,9 @@ async function up(connection) {
       phong VARCHAR(50) NOT NULL,
       giang_vien VARCHAR(100),
       hoc_ky VARCHAR(50) DEFAULT NULL,
+      is_custom TINYINT(1) DEFAULT 0,
+      ghi_chu VARCHAR(255) DEFAULT '',
+      loai_lich VARCHAR(50) DEFAULT 'chinh_khoa',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       INDEX(mssv)
     )
@@ -198,6 +201,17 @@ async function up(connection) {
   await safeAddIndex('student_grades', 'mssv', 'idx_student_grades_mssv');
   await safeAddIndex('student_schedules', 'mssv', 'idx_student_schedules_mssv');
   await safeAddIndex('news_cache', 'type', 'idx_news_cache_type');
+
+  const safeAddColumn = async (table, col, colDef) => {
+    try {
+      await connection.query(`ALTER TABLE ${table} ADD COLUMN ${col} ${colDef}`);
+    } catch (e) {
+      // column already exists
+    }
+  };
+  await safeAddColumn('student_schedules', 'is_custom', 'TINYINT(1) DEFAULT 0');
+  await safeAddColumn('student_schedules', 'ghi_chu', 'VARCHAR(255) DEFAULT ""');
+  await safeAddColumn('student_schedules', 'loai_lich', 'VARCHAR(50) DEFAULT "chinh_khoa"');
 }
 
 module.exports = { up };

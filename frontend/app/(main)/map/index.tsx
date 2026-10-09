@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { View, Text, TouchableOpacity, Platform, Linking, ActivityIndicator, Alert, Keyboard } from "react-native";
+import { View, Text, TouchableOpacity, Platform, Linking, ActivityIndicator, Alert, Keyboard, Modal, ScrollView } from "react-native";
 import { WebView } from "react-native-webview";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialIcons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,6 +19,7 @@ import {
   TNU_CAMPUS_BOUNDARY,
   TNU_CAMPUS_CENTER,
   TNU_CAMPUS_GATES,
+  TNU_SAMPLE_TEST_LOCATIONS,
   TNU_OSM_WAY_241971731_BOUNDARY,
   HOUSE_NUM_TO_ID,
   parseCampusRoom,
@@ -83,33 +84,7 @@ export default function MapScreen() {
     }
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      checkAuth();
-      // Lúc mới mở luôn luôn căn đúng chuẩn hướng Bắc - Nam (bearing = 0)
-      setBearing(0);
-      setCompassMode(false);
-      if (headingSubscriptionRef.current) {
-        headingSubscriptionRef.current.remove();
-        headingSubscriptionRef.current = null;
-      }
-      webViewRef.current?.postMessage(
-        JSON.stringify({
-          type: "SET_BEARING",
-          bearing: 0,
-          animated: false,
-        })
-      );
-      return () => {
-        // Khi chuyển tab khác, luôn khôi phục lại thanh điều hướng dưới đáy
-        setTabBarVisible(true);
-        if (headingSubscriptionRef.current) {
-          headingSubscriptionRef.current.remove();
-          headingSubscriptionRef.current = null;
-        }
-      };
-    }, [checkAuth])
-  );
+
 
   // Giữ ô tìm kiếm trống nếu đi từ Home/Schedule có room
   const [search, setSearch] = useState<string>(() => {
@@ -180,6 +155,8 @@ export default function MapScreen() {
   // Vị trí người dùng
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationLoading, setLocationLoading] = useState<boolean>(false);
+  const [showLocationPicker, setShowLocationPicker] = useState<boolean>(false);
+  const [currentLocationName, setCurrentLocationName] = useState<string>("GPS của bạn");
 
   // Trạng thái tuyến đường đi bộ đang vẽ
   const [activeRoute, setActiveRoute] = useState<{
@@ -191,11 +168,200 @@ export default function MapScreen() {
   const [bearing, setBearing] = useState<number>(0);
   const [compassMode, setCompassMode] = useState<boolean>(false);
   const headingSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
+  const isTabFocusedRef = useRef<boolean>(true);
 
-  // Tải danh sách địa điểm và mạng lưới lối đi nội bộ từ API Backend
+  // 1. Lấy vị trí GPS thật từ điện thoại (Chỉ quét 1 lần khi người dùng bấm nút trong tab bản đồ, KHÔNG chạy ngầm khi đổi tab)
+  const fetchRealGpsLocation = useCallback(async (centerOnUser = true) => {
+    if (!isTabFocusedRef.current) return;
+    setShowLocationPicker(false);
+    setLocationLoading(true);
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (!isTabFocusedRef.current) return;
+
+      if (permission.status !== "granted") {
+        setLocationLoading(false);
+        Alert.alert(
+          "Quyền vị trí GPS",
+          "Vui lòng cấp quyền truy cập vị trí trong Cài đặt để ứng dụng định vị."
+        );
+        return;
+      }
+
+      // Phát hiện nếu Android cấp quyền Vị trí tương đối (Approximate)
+      if (Platform.OS === "android" && (permission as any).android?.accuracy === "coarse") {
+        Alert.alert(
+          "Đang dùng vị trí ước lượng",
+          "Expo Go hiện chỉ có quyền 'Vị trí tương đối'. Hệ điều hành Android làm lệch tọa độ từ 1km - 3km để bảo mật.\n\nCách sửa:\nVào Cài đặt máy > Ứng dụng > Expo Go > Quyền vị trí > Bật 'Dùng vị trí chính xác' (Use precise location)."
+        );
+      }
+
+      // Thử lấy vị trí đệm trước để phản hồi tức thì
+      try {
+        const lastLoc = await Location.getLastKnownPositionAsync({ maxAge: 60000 });
+        if (!isTabFocusedRef.current) return;
+        if (lastLoc && lastLoc.coords) {
+          const cached = { latitude: lastLoc.coords.latitude, longitude: lastLoc.coords.longitude };
+          setUserLocation(cached);
+          setCurrentLocationName("GPS thực tế");
+          webViewRef.current?.postMessage(
+            JSON.stringify({
+              type: "UPDATE_USER_LOCATION",
+              lat: cached.latitude,
+              lng: cached.longitude,
+              accuracy: lastLoc.coords.accuracy || 15,
+            })
+          );
+          if (centerOnUser) {
+            webViewRef.current?.postMessage(
+              JSON.stringify({
+                type: "FOCUS_LOCATION",
+                lat: cached.latitude,
+                lng: cached.longitude,
+              })
+            );
+          }
+        }
+      } catch {
+        // bỏ qua
+      }
+
+      // Quét GPS vệ tinh thực tế một lần (Accuracy.High: chuẩn xác, phản hồi nhanh dưới 2s, không làm nóng máy)
+      const freshLoc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+        mayShowUserSettingsDialog: true,
+      });
+
+      if (!isTabFocusedRef.current) return;
+
+      if (freshLoc && freshLoc.coords) {
+        const freshCoords = { latitude: freshLoc.coords.latitude, longitude: freshLoc.coords.longitude };
+        setUserLocation(freshCoords);
+        setCurrentLocationName("GPS thực tế");
+        webViewRef.current?.postMessage(
+          JSON.stringify({
+            type: "UPDATE_USER_LOCATION",
+            lat: freshCoords.latitude,
+            lng: freshCoords.longitude,
+            accuracy: freshLoc.coords.accuracy || 10,
+          })
+        );
+
+        if (centerOnUser) {
+          webViewRef.current?.postMessage(
+            JSON.stringify({
+              type: "FOCUS_LOCATION",
+              lat: freshCoords.latitude,
+              lng: freshCoords.longitude,
+            })
+          );
+        }
+
+        // Tính khoảng cách tới trường ĐH Tây Nguyên
+        const distKm = calculateDistanceKm(
+          freshCoords.latitude,
+          freshCoords.longitude,
+          TNU_CAMPUS_CENTER.lat,
+          TNU_CAMPUS_CENTER.lng
+        );
+        if (distKm > 2) {
+          Alert.alert(
+            "Đang ở ngoài trường",
+            `GPS xác định bạn đang cách trường ĐH Tây Nguyên ~${distKm.toFixed(1)}km.\n\nNếu muốn test vẽ đường đi bộ nội bộ trường, bạn có thể chọn một trong các 'Vị trí mẫu' tại cổng trường!`
+          );
+        }
+      }
+    } catch (err) {
+      console.warn("Lỗi vị trí GPS:", err);
+      Alert.alert(
+        "Chưa lấy được GPS",
+        "Hãy bật định vị trong Cài đặt máy hoặc chọn một 'Vị trí mẫu' tại trường để test bản đồ."
+      );
+    } finally {
+      setLocationLoading(false);
+    }
+  }, []);
+
+  // 2. Chọn vị trí mẫu tại trường ĐH Tây Nguyên (Cổng trước, Cổng BV, Cổng sau, Tòa nhà điều hành...)
+  const handleSelectSampleLocation = useCallback((sample: typeof TNU_SAMPLE_TEST_LOCATIONS[0]) => {
+    setShowLocationPicker(false);
+    const coords = { latitude: sample.latitude, longitude: sample.longitude };
+    setUserLocation(coords);
+    setCurrentLocationName(sample.name);
+    webViewRef.current?.postMessage(
+      JSON.stringify({
+        type: "UPDATE_USER_LOCATION",
+        lat: coords.latitude,
+        lng: coords.longitude,
+        accuracy: 8,
+      })
+    );
+    webViewRef.current?.postMessage(
+      JSON.stringify({
+        type: "FOCUS_LOCATION",
+        lat: coords.latitude,
+        lng: coords.longitude,
+      })
+    );
+  }, []);
+
+  // 3. Khi bấm nút GPS: Mở bảng chọn Vị trí mẫu / GPS thực tế
+  const requestUserLocation = useCallback(async () => {
+    setShowLocationPicker(true);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      isTabFocusedRef.current = true;
+      checkAuth();
+      // Lúc mới mở luôn luôn căn đúng chuẩn hướng Bắc - Nam (bearing = 0)
+      setBearing(0);
+      setCompassMode(false);
+      if (headingSubscriptionRef.current) {
+        headingSubscriptionRef.current.remove();
+        headingSubscriptionRef.current = null;
+      }
+      webViewRef.current?.postMessage(
+        JSON.stringify({
+          type: "SET_BEARING",
+          bearing: 0,
+          animated: false,
+        })
+      );
+
+      return () => {
+        // KHI CHUYỂN SANG TAB KHÁC: TẮT HOÀN TOÀN TẤT CẢ DỊCH VỤ GPS & CẢM BIẾN
+        isTabFocusedRef.current = false;
+        setLocationLoading(false);
+        setShowLocationPicker(false);
+        if (headingSubscriptionRef.current) {
+          headingSubscriptionRef.current.remove();
+          headingSubscriptionRef.current = null;
+        }
+        setCompassMode(false);
+        setTabBarVisible(true);
+      };
+    }, [checkAuth])
+  );
+
+  // Tải danh sách địa điểm và mạng lưới lối đi nội bộ (Hỗ trợ Offline Cache qua AsyncStorage)
   useEffect(() => {
     let isMounted = true;
     (async () => {
+      // 1. Nạp cache offline từ AsyncStorage nếu có
+      try {
+        const cachedPathsStr = await AsyncStorage.getItem("@offline_campus_paths");
+        if (cachedPathsStr && isMounted) {
+          const cachedPaths = JSON.parse(cachedPathsStr);
+          if (Array.isArray(cachedPaths) && cachedPaths.length > 0) {
+            setCampusPaths(cachedPaths);
+          }
+        }
+      } catch {
+        // bỏ qua lỗi cache
+      }
+
+      // 2. Tải địa điểm từ API Backend và lưu cache offline
       try {
         const res = await apiGetMapLocations();
         if (res && res.locations && Array.isArray(res.locations) && res.locations.length > 0 && isMounted) {
@@ -214,11 +380,13 @@ export default function MapScreen() {
             color: String(l.color || "#2563EB"),
           }));
           setLocations(normalized);
+          AsyncStorage.setItem("@offline_map_locations", JSON.stringify(normalized)).catch(() => {});
         }
       } catch {
         // Dùng danh sách 37 địa điểm chuẩn đã được nạp
       }
 
+      // 3. Tải mạng lưới đường đi từ API Backend và lưu cache offline
       try {
         const pathsRes = await apiGetCampusPaths();
         if (pathsRes && pathsRes.paths && Array.isArray(pathsRes.paths) && isMounted) {
@@ -233,6 +401,7 @@ export default function MapScreen() {
               : [],
           }));
           setCampusPaths(normalizedPaths);
+          AsyncStorage.setItem("@offline_campus_paths", JSON.stringify(normalizedPaths)).catch(() => {});
           if (isMapReadyRef.current) {
             webViewRef.current?.postMessage(
               JSON.stringify({
@@ -251,52 +420,17 @@ export default function MapScreen() {
     };
   }, []);
 
-  // Lấy vị trí GPS của người dùng
-  const requestUserLocation = useCallback(async (centerOnUser = false) => {
-    setLocationLoading(true);
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        setLocationLoading(false);
-        return;
-      }
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
-      setUserLocation(coords);
-
-      webViewRef.current?.postMessage(
-        JSON.stringify({
-          type: "UPDATE_USER_LOCATION",
-          lat: coords.latitude,
-          lng: coords.longitude,
-        })
-      );
-
-      if (centerOnUser) {
-        webViewRef.current?.postMessage(
-          JSON.stringify({
-            type: "FOCUS_LOCATION",
-            lat: coords.latitude,
-            lng: coords.longitude,
-          })
-        );
-      }
-    } catch (err) {
-      console.warn("Lỗi vị trí:", err);
-    } finally {
-      setLocationLoading(false);
-    }
-  }, []);
-
   // ─── THEO DÕI HƯỚNG LA BÀN THIẾT BỊ (COMPASS HEADING) ĐÃ TỐI ƯU HÓA ────────
   const lastSentBearingRef = useRef<number>(0);
   const lastHeadingTimeRef = useRef<number>(0);
 
   const startCompassTracking = async () => {
+    if (!isTabFocusedRef.current) return;
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
+      if (!isTabFocusedRef.current) return;
       if (status !== "granted") {
-        Alert.alert("Quyền vị trí", "Vui lòng cấp quyền vị trí để kích hoạt tính năng xoay theo la bàn.");
+        Alert.alert("Quyền vị trí", "Vui lòng cấp quyền vị trí.");
         return;
       }
 
@@ -305,6 +439,7 @@ export default function MapScreen() {
       }
 
       const sub = await Location.watchHeadingAsync((headingData) => {
+        if (!isTabFocusedRef.current) return;
         const h = headingData.trueHeading >= 0 ? headingData.trueHeading : headingData.magHeading;
         if (h !== undefined && h !== null && !isNaN(h) && h >= 0) {
           const rounded = Math.round(h);
@@ -414,6 +549,14 @@ export default function MapScreen() {
         layer: "satellite",
       })
     );
+    if (locations && locations.length > 0) {
+      webViewRef.current?.postMessage(
+        JSON.stringify({
+          type: "UPDATE_LOCATIONS",
+          locations: locations,
+        })
+      );
+    }
     if (campusPaths.length > 0) {
       webViewRef.current?.postMessage(
         JSON.stringify({
@@ -422,8 +565,7 @@ export default function MapScreen() {
         })
       );
     }
-    requestUserLocation(false);
-  }, [selectedLoc, requestUserLocation, campusPaths]);
+  }, [selectedLoc, locations, campusPaths]);
 
   // Xử lý thông điệp gửi từ Leaflet WebView
   const handleWebViewMessage = (event: any) => {
@@ -556,7 +698,7 @@ export default function MapScreen() {
     if (!selectedLoc) return;
 
     if (!userLocation) {
-      await requestUserLocation(false);
+      await fetchRealGpsLocation(false);
     }
 
     const orig = userLocation
@@ -579,7 +721,7 @@ export default function MapScreen() {
         type: "DRAW_ROUTE",
         origin: orig,
         destination: { lat: selectedLoc.lat, lng: selectedLoc.lng },
-        originName: "Vị trí của bạn",
+        originName: currentLocationName || "Vị trí của bạn",
         destinationName: selectedLoc.name,
       })
     );
@@ -651,18 +793,18 @@ export default function MapScreen() {
 
   const matchedTargetId = targetRoom ? parseCampusRoom(targetRoom).buildingNumber : null;
 
-  // Memoize mã nguồn HTML để WebView KHÔNG bị reload lại mỗi khi bearing hoặc userLocation thay đổi
+  // Khởi tạo mã HTML 1 lần duy nhất: WebView KHÔNG BAO GIỜ bị reload lại, triệt tiêu lag và nóng máy
   const mapHtmlSource = useMemo(() => {
     return {
       html: generateLeafletMapHtml(
-        locations,
+        TAY_NGUYEN_CAMPUS_LOCATIONS,
         TNU_CAMPUS_BOUNDARY,
         [TNU_CAMPUS_CENTER.lat, TNU_CAMPUS_CENTER.lng],
-        campusPaths,
+        [],
         TNU_CAMPUS_GATES
       ),
     };
-  }, [locations, campusPaths]);
+  }, []);
 
   return (
     <View style={{ flex: 1, backgroundColor: AppColors.background }}>
@@ -706,6 +848,11 @@ export default function MapScreen() {
             javaScriptEnabled={true}
             domStorageEnabled={true}
             geolocationEnabled={true}
+            cacheEnabled={true}
+            cacheMode="LOAD_CACHE_ELSE_NETWORK"
+            androidLayerType="hardware"
+            mixedContentMode="always"
+            allowsInlineMediaPlayback={true}
             startInLoadingState={true}
             renderLoading={() => (
               <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#F8FAFC" }}>
@@ -823,7 +970,7 @@ export default function MapScreen() {
               }
             }}
             onResetBearing={handleResetBearing}
-            onUserLocationPress={() => requestUserLocation(true)}
+            onUserLocationPress={() => requestUserLocation()}
             onZoomIn={handleZoomIn}
             onZoomOut={handleZoomOut}
             onResetView={handleResetView}
@@ -952,6 +1099,190 @@ export default function MapScreen() {
               </View>
             </View>
           )}
+          {/* ── MODAL CHỌN ĐIỂM ĐỊNH VỊ (GPS THỰC TẾ HOẶC VỊ TRÍ MẪU ĐỂ TEST) ── */}
+          <Modal
+            visible={showLocationPicker}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={() => setShowLocationPicker(false)}
+          >
+            <TouchableOpacity
+              activeOpacity={1}
+              onPress={() => setShowLocationPicker(false)}
+              style={{
+                flex: 1,
+                backgroundColor: "rgba(15, 23, 42, 0.55)",
+                justifyContent: "flex-end",
+              }}
+            >
+              <TouchableOpacity
+                activeOpacity={1}
+                style={{
+                  backgroundColor: "#FFFFFF",
+                  borderTopLeftRadius: 28,
+                  borderTopRightRadius: 28,
+                  paddingHorizontal: 20,
+                  paddingTop: 16,
+                  paddingBottom: Math.max(insets.bottom, 20),
+                  maxHeight: "82%",
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: -4 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 12,
+                  elevation: 16,
+                }}
+              >
+                {/* Thanh kéo nhỏ phía trên */}
+                <View style={{ alignItems: "center", marginBottom: 14 }}>
+                  <View style={{ width: 40, height: 4.5, borderRadius: 3, backgroundColor: "#E2E8F0" }} />
+                </View>
+
+                {/* Tiêu đề Modal */}
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                  <View>
+                    <Text style={{ fontSize: 17, fontWeight: "800", color: "#0F172A" }}>
+                      Chọn điểm định vị của bạn
+                    </Text>
+                    <Text style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
+                      Dùng GPS điện thoại hoặc vị trí mẫu để test tính năng trong trường
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => setShowLocationPicker(false)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      backgroundColor: "#F1F5F9",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Feather name="x" size={16} color="#64748B" />
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
+                  {/* Tùy chọn 1: Bắt GPS thực tế của điện thoại */}
+                  <TouchableOpacity
+                    onPress={() => fetchRealGpsLocation(true)}
+                    activeOpacity={0.8}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      backgroundColor: "#EFF6FF",
+                      borderRadius: 18,
+                      padding: 14,
+                      marginBottom: 14,
+                      borderWidth: 1.5,
+                      borderColor: "#93C5FD",
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 22,
+                        backgroundColor: "#2563EB",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginRight: 14,
+                      }}
+                    >
+                      <MaterialIcons name="my-location" size={24} color="#FFFFFF" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <Text style={{ fontSize: 14.5, fontWeight: "800", color: "#1E40AF" }}>
+                          Vị trí GPS thực tế của máy
+                        </Text>
+                        <View style={{ backgroundColor: "#DBEAFE", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                          <Text style={{ fontSize: 10, fontWeight: "800", color: "#2563EB" }}>Vệ tinh</Text>
+                        </View>
+                      </View>
+                      <Text style={{ fontSize: 11.5, color: "#3B82F6", marginTop: 2 }}>
+                        Bắt tọa độ thật từ chip GPS điện thoại (quét 1 lần, không nóng máy)
+                      </Text>
+                    </View>
+                    <Feather name="chevron-right" size={20} color="#3B82F6" />
+                  </TouchableOpacity>
+
+                  {/* Phân cách danh sách vị trí mẫu */}
+                  <Text style={{ fontSize: 12, fontWeight: "800", color: "#94A3B8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10, marginLeft: 2 }}>
+                    Vị trí mẫu tại trường ĐH Tây Nguyên (Dùng test nhanh)
+                  </Text>
+
+                  {TNU_SAMPLE_TEST_LOCATIONS.map((sample) => (
+                    <TouchableOpacity
+                      key={sample.id}
+                      onPress={() => handleSelectSampleLocation(sample)}
+                      activeOpacity={0.7}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        backgroundColor: "#F8FAFC",
+                        borderRadius: 16,
+                        padding: 12,
+                        marginBottom: 9,
+                        borderWidth: 1,
+                        borderColor: "#E2E8F0",
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 20,
+                          backgroundColor: sample.id === "hospital_gate" ? "#FEE2E2" : "#F1F5F9",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          marginRight: 12,
+                        }}
+                      >
+                        <MaterialIcons
+                          name={sample.icon as any}
+                          size={20}
+                          color={sample.id === "hospital_gate" ? "#EF4444" : "#2563EB"}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          <Text style={{ fontSize: 14, fontWeight: "800", color: "#1E293B" }}>
+                            {sample.name}
+                          </Text>
+                          {sample.badge && (
+                            <View
+                              style={{
+                                backgroundColor: sample.id === "hospital_gate" ? "#FEE2E2" : "#E2E8F0",
+                                paddingHorizontal: 6,
+                                paddingVertical: 1.5,
+                                borderRadius: 6,
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: "800",
+                                  color: sample.id === "hospital_gate" ? "#DC2626" : "#475569",
+                                }}
+                              >
+                                {sample.badge}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={{ fontSize: 11.5, color: "#64748B", marginTop: 2 }}>
+                          {sample.desc}
+                        </Text>
+                      </View>
+                      <Feather name="arrow-right" size={16} color="#94A3B8" />
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </Modal>
         </View>
       )}
     </View>
