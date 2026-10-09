@@ -8,7 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   Image,
-  Linking,
+  RefreshControl,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as ImagePicker from "expo-image-picker";
@@ -19,6 +19,8 @@ import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
 import { setTabBarVisible, useTabBarScrollHandler } from "../../../src/components/MainTabs";
+import { ProfileSkeleton } from "../../../src/components/Skeleton";
+import { requestPhotoLibraryPermission, requestCameraPermission } from "../../../src/services/permissionService";
 import { apiGetProfile, apiUpdateProfile, apiLogout, clearAuthAndCache } from "../../../src/services/api";
 
 interface UserProfile {
@@ -55,6 +57,8 @@ export default function ProfileScreen() {
     khoa: "",
     avatar: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
   });
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
   const [customAvatarUrl, setCustomAvatarUrl] = useState("");
@@ -119,12 +123,20 @@ export default function ProfileScreen() {
       }
     } catch {
       // Keep cached
+    } finally {
+      setLoadingProfile(false);
     }
   };
 
   useEffect(() => {
     loadProfile();
   }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadProfile();
+    setRefreshing(false);
+  };
 
   const openEditModal = () => {
     setEditForm({
@@ -140,24 +152,11 @@ export default function ProfileScreen() {
 
   const [returnToEditModal, setReturnToEditModal] = useState(false);
 
-  const openAvatarModal = async () => {
-    // Chủ động yêu cầu quyền truy cập bộ nhớ / ảnh ngay khi người dùng bấm đổi ảnh
-    try {
-      const { status } = await ImagePicker.getMediaLibraryPermissionsAsync();
-      if (status !== "granted") {
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-      }
-    } catch {}
+  const openAvatarModal = () => {
     setAvatarModalVisible(true);
   };
 
-  const openAvatarModalFromEdit = async () => {
-    try {
-      const { status } = await ImagePicker.getMediaLibraryPermissionsAsync();
-      if (status !== "granted") {
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-      }
-    } catch {}
+  const openAvatarModalFromEdit = () => {
     setReturnToEditModal(true);
     setEditModalVisible(false);
     setTimeout(() => {
@@ -208,18 +207,9 @@ export default function ProfileScreen() {
 
   const handlePickFromLibrary = async () => {
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert(
-          "Yêu cầu quyền truy cập",
-          "Ứng dụng cần quyền truy cập thư viện ảnh/bộ nhớ để chọn ảnh đại diện. Vui lòng cho phép quyền trong Cài đặt của máy.",
-          [
-            { text: "Hủy", style: "cancel" },
-            { text: "Mở Cài đặt", onPress: () => Linking.openSettings() }
-          ]
-        );
-        return;
-      }
+      const hasPermission = await requestPhotoLibraryPermission();
+      if (!hasPermission) return;
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
@@ -240,18 +230,9 @@ export default function ProfileScreen() {
 
   const handlePickFromCamera = async () => {
     try {
-      const permission = await ImagePicker.requestCameraPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert(
-          "Yêu cầu quyền máy ảnh",
-          "Ứng dụng cần quyền truy cập Máy ảnh (Camera) để chụp ảnh đại diện mới. Vui lòng cho phép quyền trong Cài đặt của máy.",
-          [
-            { text: "Hủy", style: "cancel" },
-            { text: "Mở Cài đặt", onPress: () => Linking.openSettings() }
-          ]
-        );
-        return;
-      }
+      const hasPermission = await requestCameraPermission();
+      if (!hasPermission) return;
+
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
         aspect: [1, 1],
@@ -356,9 +337,14 @@ export default function ProfileScreen() {
         onScroll={onTabBarScroll}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Avatar & Header Card */}
-        <View
+        {(loadingProfile && !profile.mssv) || refreshing ? (
+          <ProfileSkeleton />
+        ) : (
+          <>
+            {/* Avatar & Header Card */}
+            <View
           style={{
             padding: 24,
             borderRadius: 24,
@@ -600,6 +586,8 @@ export default function ProfileScreen() {
           <Feather name="log-out" size={18} color="#DC2626" />
           <Text style={{ fontSize: 14, fontWeight: "800", color: "#DC2626" }}>Đăng xuất khỏi thiết bị</Text>
         </TouchableOpacity>
+        </>
+        )}
       </ScrollView>
 
       {/* Edit Profile Modal */}

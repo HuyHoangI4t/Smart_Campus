@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useMemo } from "react";
-import { View, Text, TouchableOpacity, Platform, Linking, ActivityIndicator, Keyboard } from "react-native";
+import { View, Text, TouchableOpacity, Platform, Linking, Keyboard } from "react-native";
 import { WebView } from "react-native-webview";
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useFocusEffect } from "expo-router";
@@ -9,6 +9,7 @@ import { AppColors } from "../../../src/constants/appColors";
 import { NavHeader } from "../../../src/components/NavHeader";
 import { setTabBarVisible } from "../../../src/components/MainTabs";
 import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
+import { MapSkeleton } from "../../../src/components/Skeleton";
 import {
   LocationItem,
   CampusPath,
@@ -17,7 +18,6 @@ import {
   TNU_CAMPUS_BOUNDARY,
   TNU_CAMPUS_CENTER,
   TNU_CAMPUS_GATES,
-  TNU_SAMPLE_TEST_LOCATIONS,
   TNU_OSM_WAY_241971731_BOUNDARY,
   HOUSE_NUM_TO_ID,
   parseCampusRoom,
@@ -337,15 +337,7 @@ export default function MapScreen() {
     );
   }, [mapLayer]);
 
-  // Điều khiển phóng to / thu nhỏ / reset góc nhìn
-  const handleZoomIn = useCallback(() => {
-    webViewRef.current?.postMessage(JSON.stringify({ type: "ZOOM_IN" }));
-  }, []);
-
-  const handleZoomOut = useCallback(() => {
-    webViewRef.current?.postMessage(JSON.stringify({ type: "ZOOM_OUT" }));
-  }, []);
-
+  // Đặt lại góc nhìn toàn cảnh trường
   const handleResetView = useCallback(() => {
     resetBearing();
     webViewRef.current?.postMessage(JSON.stringify({ type: "RESET_VIEW" }));
@@ -423,7 +415,7 @@ export default function MapScreen() {
     return {
       html: generateLeafletMapHtml(
         TAY_NGUYEN_CAMPUS_LOCATIONS,
-        TNU_CAMPUS_BOUNDARY,
+        TNU_OSM_WAY_241971731_BOUNDARY,
         [TNU_CAMPUS_CENTER.lat, TNU_CAMPUS_CENTER.lng],
         [],
         TNU_CAMPUS_GATES
@@ -437,9 +429,7 @@ export default function MapScreen() {
       <NavHeader title="Bản đồ khuôn viên" subtitle="Đại học Tây Nguyên • Khuôn viên nội bộ" />
 
       {isLoggedIn === null ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator size="large" color={AppColors.primary} />
-        </View>
+        <MapSkeleton />
       ) : !isLoggedIn ? (
         <View style={{ flex: 1, marginBottom: 88 }}>
           <LoginRequiredCard
@@ -481,79 +471,8 @@ export default function MapScreen() {
             showsVerticalScrollIndicator={false}
             overScrollMode="never"
             bounces={false}
-            renderLoading={() => (
-              <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#F8FAFC" }}>
-                <ActivityIndicator size="large" color={AppColors.primary} />
-              </View>
-            )}
+            renderLoading={() => <MapSkeleton />}
           />
-
-          {/* ── THANH TIÊU ĐỀ NỔI KHI ĐANG NHÚNG CHỈ ĐƯỜNG GOOGLE MAPS ── */}
-          {isRoutingActive && selectedLoc && (
-            <View
-              style={{
-                position: "absolute",
-                top: 10,
-                left: 12,
-                right: 12,
-                zIndex: 60,
-                backgroundColor: "#FFFFFF",
-                borderRadius: 20,
-                paddingHorizontal: 14,
-                paddingVertical: 10,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.16,
-                shadowRadius: 10,
-                elevation: 8,
-                borderWidth: 1,
-                borderColor: "#E2E8F0",
-              }}
-            >
-              <TouchableOpacity
-                onPress={handleClearRoute}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 6,
-                  paddingVertical: 4,
-                  paddingRight: 8,
-                }}
-              >
-                <Feather name="arrow-left" size={18} color={AppColors.primary} />
-                <Text style={{ fontSize: 12.5, fontWeight: "800", color: AppColors.primary }}>
-                  Bản đồ trường
-                </Text>
-              </TouchableOpacity>
-
-              <View style={{ flex: 1, marginHorizontal: 8, alignItems: "flex-end" }}>
-                <Text style={{ fontSize: 12.5, fontWeight: "800", color: AppColors.text }} numberOfLines={1}>
-                  {selectedLoc.name}
-                </Text>
-                <Text style={{ fontSize: 11, color: "#059669", fontWeight: "700" }}>
-                  {computedDistanceText ? `${computedDistanceText} • ~${computedWalkingMinutes} phút đi bộ` : "Chỉ đường đi bộ Google Maps"}
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                onPress={handleClearRoute}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                style={{
-                  width: 26,
-                  height: 26,
-                  borderRadius: 13,
-                  backgroundColor: "#F1F5F9",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Feather name="x" size={14} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-          )}
 
           {/* ─── THANH TÌM KIẾM NỔI & DANH MỤC LỌC NHANH (Memoized) ─────── */}
           {!isRoutingActive && (
@@ -598,8 +517,6 @@ export default function MapScreen() {
             }}
             onResetBearing={resetBearing}
             onUserLocationPress={() => setShowLocationPicker(true)}
-            onZoomIn={handleZoomIn}
-            onZoomOut={handleZoomOut}
             onResetView={handleResetView}
             onRotateStep={rotateStep}
             onClearRoute={handleClearRoute}

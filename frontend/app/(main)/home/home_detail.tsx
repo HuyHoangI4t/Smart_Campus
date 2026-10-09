@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
 import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
+import { SkeletonBox } from "../../../src/components/Skeleton";
 import {
   getNewsImageUrl,
   CAMPUS_FALLBACK_IMAGES,
@@ -798,8 +799,7 @@ export default function HomeDetailScreen() {
 
             {loadingDetail ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <ActivityIndicator size="small" color={AppColors.primary} />
-                <Text style={{ fontSize: 11, color: AppColors.textMuted }}>Đang tải ảnh & bài viết...</Text>
+                <SkeletonBox width={120} height={14} borderRadius={4} />
               </View>
             ) : null}
           </View>
@@ -1002,6 +1002,15 @@ export default function HomeDetailScreen() {
                   </Text>
                 );
               })
+            ) : loadingDetail ? (
+              <View style={{ gap: 10, paddingVertical: 4 }}>
+                <SkeletonBox width="100%" height={14} borderRadius={3} />
+                <SkeletonBox width="94%" height={14} borderRadius={3} />
+                <SkeletonBox width="98%" height={14} borderRadius={3} />
+                <SkeletonBox width="85%" height={14} borderRadius={3} />
+                <SkeletonBox width="100%" height={14} borderRadius={3} />
+                <SkeletonBox width="70%" height={14} borderRadius={3} />
+              </View>
             ) : (
               <Text
                 style={{

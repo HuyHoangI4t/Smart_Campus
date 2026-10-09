@@ -30,6 +30,7 @@ const CAMPUS_CATEGORIES = [
   "Dịch vụ",
   "Y tế",
   "Tiện ích",
+  "WC",
   "Hành chính",
   "Ký túc xá"
 ];
@@ -563,6 +564,76 @@ const TAY_NGUYEN_CAMPUS_LOCATIONS = [
     x: 80,
     y: 20,
     color: "#10B981"
+  },
+  {
+    id: 38,
+    name: "Nhà vệ sinh (WC) - Giảng đường 400 chỗ",
+    category: "WC",
+    building: "Khu WC GĐ 400",
+    floor: "Tầng trệt",
+    description: "Khu vệ sinh nam nữ công cộng phía sau Giảng đường 400 chỗ, gần Thư viện và Hồ nước.",
+    lat: 12.65142,
+    lng: 108.02535,
+    icon: "droplet",
+    x: 68,
+    y: 59,
+    color: "#0284C7"
+  },
+  {
+    id: 39,
+    name: "Nhà vệ sinh (WC) - Nhà học số 2",
+    category: "WC",
+    building: "Khu WC Nhà học số 2",
+    floor: "Tầng 1 - 3",
+    description: "Khu vệ sinh nam nữ phục vụ giảng đường Nhà học số 2 và khu Hiệu bộ.",
+    lat: 12.65065,
+    lng: 108.02425,
+    icon: "droplet",
+    x: 72,
+    y: 32,
+    color: "#0284C7"
+  },
+  {
+    id: 40,
+    name: "Nhà vệ sinh (WC) - Dãy Nhà học 7, 8, 9",
+    category: "WC",
+    building: "Khu WC Dãy Nhà 7-8-9",
+    floor: "Tầng 1 - 4",
+    description: "Khu vệ sinh công cộng phục vụ sinh viên khối Khoa Kinh tế, Sư phạm, CNTT & KHTN.",
+    lat: 12.65185,
+    lng: 108.02465,
+    icon: "droplet",
+    x: 81,
+    y: 58,
+    color: "#0284C7"
+  },
+  {
+    id: 41,
+    name: "Nhà vệ sinh (WC) - Khu Thể thao & Nhà thi đấu",
+    category: "WC",
+    building: "Khu WC Thể thao",
+    floor: "Tầng trệt",
+    description: "Khu vệ sinh và phòng thay đồ phục vụ sinh viên học Giáo dục thể chất, sân bóng, nhà thi đấu.",
+    lat: 12.64955,
+    lng: 108.02525,
+    icon: "droplet",
+    x: 42,
+    y: 25,
+    color: "#0284C7"
+  },
+  {
+    id: 42,
+    name: "Nhà vệ sinh (WC) - Căn tin & Đảo sinh viên",
+    category: "WC",
+    building: "Khu WC Căn tin",
+    floor: "Tầng trệt",
+    description: "Khu vệ sinh công cộng khu vực ăn uống, giải khát và sinh hoạt Đảo sinh viên.",
+    lat: 12.65198,
+    lng: 108.02582,
+    icon: "droplet",
+    x: 69,
+    y: 76,
+    color: "#0284C7"
   }
 ];
 

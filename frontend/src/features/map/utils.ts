@@ -215,11 +215,17 @@ export function findLocationByRoomOrQuery(rawQuery: string, locs: LocationItem[]
     if (byId) return byId;
   }
 
-  // 2. Nếu người dùng nhập thuần túy số ID (1 - 37) không chứa dấu chấm
+  // 2. Nếu người dùng nhập thuần túy số ID (1 - 42) không chứa dấu chấm
   const idNum = parseInt(q, 10);
-  if (!isNaN(idNum) && idNum >= 1 && idNum <= 37 && !q.includes(".") && !q.includes("-") && !q.includes("/")) {
+  if (!isNaN(idNum) && idNum >= 1 && idNum <= 42 && !q.includes(".") && !q.includes("-") && !q.includes("/")) {
     const byId = locs.find((l) => l.id === idNum);
     if (byId) return byId;
+  }
+
+  // 2.1 Tìm kiếm Nhà vệ sinh / WC
+  if (upper.includes("WC") || upper.includes("VỆ SINH") || upper.includes("VE SINH") || upper.includes("TOILET")) {
+    const wcLoc = locs.find((l) => l.category.toLowerCase() === "wc");
+    if (wcLoc) return wcLoc;
   }
 
   // 3. Giảng đường 400 và 200

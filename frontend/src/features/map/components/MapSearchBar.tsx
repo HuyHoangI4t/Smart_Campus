@@ -14,6 +14,7 @@ export interface CampusCategory {
 export const CAMPUS_CATEGORIES: CampusCategory[] = [
   { id: "all", label: "Tất cả", icon: "grid" },
   { id: "Giảng đường", label: "Giảng đường", icon: "book-open" },
+  { id: "WC", label: "WC", icon: "droplet" },
   { id: "Hành chính", label: "Hành chính", icon: "briefcase" },
   { id: "Ký túc xá", label: "Ký túc xá", icon: "home" },
   { id: "Học tập", label: "Thư viện", icon: "book" },
@@ -41,7 +42,7 @@ const MapSearchBarComponent: React.FC<MapSearchBarProps> = ({
   showSuggestions,
   searchResults,
   selectedCategory = "all",
-  totalLocations = 37,
+  totalLocations = 42,
   onSearchChange,
   onClearSearch,
   onFocus,

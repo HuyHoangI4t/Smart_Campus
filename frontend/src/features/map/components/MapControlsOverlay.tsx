@@ -18,9 +18,9 @@ interface MapControlsOverlayProps {
   onCompassPress: () => void;
   onResetBearing: () => void;
   onUserLocationPress: () => void;
-  onZoomIn: () => void;
-  onZoomOut: () => void;
-  onResetView: () => void;
+  onZoomIn?: () => void;
+  onZoomOut?: () => void;
+  onResetView?: () => void;
   onRotateStep: (delta: number) => void;
   onClearRoute: () => void;
 }
@@ -114,41 +114,39 @@ const MapControlsOverlayComponent: React.FC<MapControlsOverlayProps> = ({
       <View
         style={{
           position: "absolute",
-          top: isRoutingActive ? 14 : 108,
+          top: isRoutingActive ? 76 : 108,
           right: 12,
-          zIndex: 35,
+          zIndex: 45,
           alignItems: "center",
           gap: 8,
         }}
       >
-        {/* Nút chuyển đổi Lớp bản đồ (Ẩn khi đang chỉ đường để tối đa không gian) */}
-        {!isRoutingActive && (
-          <TouchableOpacity
-            onPress={onToggleLayer}
-            activeOpacity={0.8}
-            style={{
-              width: 42,
-              height: 42,
-              borderRadius: 21,
-              backgroundColor: "#FFFFFF",
-              alignItems: "center",
-              justifyContent: "center",
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 3 },
-              shadowOpacity: 0.15,
-              shadowRadius: 6,
-              elevation: 5,
-              borderWidth: 1,
-              borderColor: "#E2E8F0",
-            }}
-          >
-            <Feather
-              name={mapLayer === "osm" ? "layers" : "globe"}
-              size={18}
-              color={AppColors.primary}
-            />
-          </TouchableOpacity>
-        )}
+        {/* Nút chuyển đổi Lớp bản đồ (2D vs Vệ tinh) - Luôn hiển thị kể cả khi chỉ đường */}
+        <TouchableOpacity
+          onPress={onToggleLayer}
+          activeOpacity={0.8}
+          style={{
+            width: 42,
+            height: 42,
+            borderRadius: 21,
+            backgroundColor: "#FFFFFF",
+            alignItems: "center",
+            justifyContent: "center",
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: 0.15,
+            shadowRadius: 6,
+            elevation: 5,
+            borderWidth: 1,
+            borderColor: "#E2E8F0",
+          }}
+        >
+          <Feather
+            name={mapLayer === "osm" ? "layers" : "globe"}
+            size={18}
+            color={AppColors.primary}
+          />
+        </TouchableOpacity>
 
         {/* Nút La Bàn Chỉ Hướng Bắc (Compass Widget) */}
         <TouchableOpacity
@@ -233,50 +231,30 @@ const MapControlsOverlayComponent: React.FC<MapControlsOverlayProps> = ({
           )}
         </TouchableOpacity>
 
-        {/* Cụm Zoom (+ / Reset / -) */}
-        <View
-          style={{
-            backgroundColor: "#FFFFFF",
-            borderRadius: 16,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 3 },
-            shadowOpacity: 0.15,
-            shadowRadius: 6,
-            elevation: 5,
-            borderWidth: 1,
-            borderColor: "#E2E8F0",
-            overflow: "hidden",
-            alignItems: "center",
-          }}
-        >
-          <TouchableOpacity
-            onPress={onZoomIn}
-            activeOpacity={0.7}
-            style={{ width: 42, height: 38, alignItems: "center", justifyContent: "center" }}
-          >
-            <Feather name="plus" size={18} color="#1E293B" />
-          </TouchableOpacity>
-
-          <View style={{ width: 24, height: 1, backgroundColor: "#E2E8F0" }} />
-
+        {/* Nút Đặt lại góc nhìn toàn cảnh trường */}
+        {onResetView && (
           <TouchableOpacity
             onPress={onResetView}
-            activeOpacity={0.7}
-            style={{ width: 42, height: 36, alignItems: "center", justifyContent: "center" }}
+            activeOpacity={0.8}
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 21,
+              backgroundColor: "#FFFFFF",
+              alignItems: "center",
+              justifyContent: "center",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 3 },
+              shadowOpacity: 0.15,
+              shadowRadius: 6,
+              elevation: 5,
+              borderWidth: 1,
+              borderColor: "#E2E8F0",
+            }}
           >
-            <Feather name="maximize-2" size={15} color="#64748B" />
+            <Feather name="maximize-2" size={17} color="#475569" />
           </TouchableOpacity>
-
-          <View style={{ width: 24, height: 1, backgroundColor: "#E2E8F0" }} />
-
-          <TouchableOpacity
-            onPress={onZoomOut}
-            activeOpacity={0.7}
-            style={{ width: 42, height: 38, alignItems: "center", justifyContent: "center" }}
-          >
-            <Feather name="minus" size={18} color="#1E293B" />
-          </TouchableOpacity>
-        </View>
+        )}
       </View>
     </>
   );

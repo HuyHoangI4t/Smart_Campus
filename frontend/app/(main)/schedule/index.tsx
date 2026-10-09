@@ -27,6 +27,7 @@ import {
 } from "../../../src/services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTabBarScrollHandler } from "../../../src/components/MainTabs";
+import { SkeletonBox } from "../../../src/components/Skeleton";
 
 interface DirectionStep {
   step: number;
@@ -626,10 +627,35 @@ export default function ScheduleScreen() {
           </View>
         )}
 
-        {loading ? (
-          <View style={{ paddingVertical: 40, alignItems: "center" }}>
-            <ActivityIndicator size="large" color={AppColors.primary} />
-            <Text style={{ marginTop: 12, color: AppColors.textMuted, fontSize: 13 }}>Đang đồng bộ lịch học...</Text>
+        {loading || refreshing ? (
+          <View style={{ gap: 12 }}>
+            {[1, 2, 3].map((i) => (
+              <View
+                key={i}
+                style={{
+                  backgroundColor: AppColors.cardBg,
+                  borderRadius: 14,
+                  padding: 16,
+                  borderWidth: 1,
+                  borderColor: AppColors.cardBorder,
+                }}
+              >
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <SkeletonBox width={90} height={22} borderRadius={6} backgroundColor="#CBD5E1" />
+                  <SkeletonBox width={65} height={22} borderRadius={6} />
+                </View>
+                <SkeletonBox width="85%" height={18} borderRadius={4} style={{ marginBottom: 10 }} />
+                <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
+                  <SkeletonBox width={80} height={16} borderRadius={4} />
+                  <SkeletonBox width={120} height={16} borderRadius={4} />
+                </View>
+                <SkeletonBox width={140} height={14} borderRadius={4} style={{ marginBottom: 14 }} />
+                <View style={{ borderTopWidth: 1, borderTopColor: "#EEF2F6", paddingTop: 10, flexDirection: "row", justifyContent: "space-between" }}>
+                  <SkeletonBox width={110} height={30} borderRadius={6} />
+                  <SkeletonBox width={90} height={30} borderRadius={6} />
+                </View>
+              </View>
+            ))}
           </View>
         ) : filtered.length === 0 ? (
           <View style={{ paddingVertical: 50, alignItems: "center" }}>

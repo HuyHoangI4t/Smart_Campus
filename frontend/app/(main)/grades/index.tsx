@@ -8,6 +8,7 @@ import { NavHeader } from "../../../src/components/NavHeader";
 import { apiGetGrades, readLocalCache } from "../../../src/services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTabBarScrollHandler } from "../../../src/components/MainTabs";
+import { SkeletonBox } from "../../../src/components/Skeleton";
 
 interface CourseGrade {
   code: string;
@@ -325,10 +326,32 @@ export default function GradesScreen() {
           <Text style={{ fontSize: 12, color: AppColors.textMuted }}>Kéo xuống để cập nhật</Text>
         </View>
 
-        {loading ? (
-          <View style={{ paddingVertical: 40, alignItems: "center" }}>
-            <ActivityIndicator size="large" color={AppColors.primary} />
-            <Text style={{ marginTop: 12, color: AppColors.textMuted, fontSize: 13 }}>Đang tải bảng điểm...</Text>
+        {loading || refreshing ? (
+          <View style={{ gap: 10 }}>
+            {[1, 2, 3, 4].map((i) => (
+              <View
+                key={i}
+                style={{
+                  padding: 16,
+                  borderRadius: 16,
+                  backgroundColor: AppColors.cardBg,
+                  borderWidth: 1,
+                  borderColor: AppColors.cardBorder,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <View style={{ flex: 1, gap: 8, marginRight: 12 }}>
+                  <SkeletonBox width="85%" height={16} borderRadius={4} />
+                  <View style={{ flexDirection: "row", gap: 10 }}>
+                    <SkeletonBox width={70} height={14} borderRadius={4} />
+                    <SkeletonBox width={60} height={14} borderRadius={4} />
+                  </View>
+                </View>
+                <SkeletonBox width={46} height={36} borderRadius={8} />
+              </View>
+            ))}
           </View>
         ) : displayedGrades.length === 0 ? (
           <View style={{ paddingVertical: 40, alignItems: "center" }}>

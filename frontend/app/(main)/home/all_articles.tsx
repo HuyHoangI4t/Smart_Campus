@@ -15,6 +15,7 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
+import { AllArticlesSkeleton } from "../../../src/components/Skeleton";
 //import { AppColors } from "../../../src/constants/appColors";
 import {
   apiGetNews,
@@ -768,10 +769,13 @@ export default function AllArticlesScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* ─── DANH SÁCH TOÀN BỘ BÀI VIẾT (FLATLIST) ─── */}
-      <FlatList
-        data={filteredArticles}
-        keyExtractor={(item, index) => String(item.id || index)}
+      {/* ─── DANH SÁCH TOÀN BỘ BÀI VIẾT (FLATLIST HOẶC SKELETON) ─── */}
+      {(isLoading && articles.length === 0) || refreshing ? (
+        <AllArticlesSkeleton />
+      ) : (
+        <FlatList
+          data={filteredArticles}
+          keyExtractor={(item, index) => String(item.id || index)}
         renderItem={renderItem}
         contentContainerStyle={{
           paddingHorizontal: 16,
@@ -837,6 +841,7 @@ export default function AllArticlesScreen() {
           </View>
         }
       />
+      )}
     </View>
   );
 }

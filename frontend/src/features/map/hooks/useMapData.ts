@@ -31,7 +31,7 @@ export function useMapData(params: UseMapDataParams = {}) {
       const matched = findLocationByRoomOrQuery(String(query), TAY_NGUYEN_CAMPUS_LOCATIONS);
       if (matched) return matched;
     }
-    return TAY_NGUYEN_CAMPUS_LOCATIONS[0];
+    return null;
   });
 
   // Tải dữ liệu siêu tốc qua Cache & AsyncStorage

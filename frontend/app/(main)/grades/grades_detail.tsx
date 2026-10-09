@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, BackHandler } from "react-native";
+import { View, Text, ScrollView, TextInput, TouchableOpacity, BackHandler, RefreshControl } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useRouter, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
+import { SkeletonBox } from "../../../src/components/Skeleton";
 import { apiGetGrades } from "../../../src/services/api";
 
 interface DetailedGrade {
@@ -39,53 +40,60 @@ export default function GradesDetailScreen() {
   const [search, setSearch] = useState("");
   const [selectedSemester, setSelectedSemester] = useState("Tất cả");
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [list, setList] = useState<DetailedGrade[]>(FALLBACK_DETAILED_GRADES);
   const [backendSemesters, setBackendSemesters] = useState<string[]>([]);
 
-  useEffect(() => {
-    const fetchDetailedGrades = async () => {
-      try {
-        const userStr = await AsyncStorage.getItem("@auth_user");
-        let mssv = "";
-        if (userStr) {
-          const u = JSON.parse(userStr);
-          mssv = u.mssv || u.masv || "";
-        }
-        const isRealAccount = mssv && mssv !== "guest";
-        const res = await apiGetGrades(isRealAccount ? mssv : undefined);
-        if (res && res.success && res.data && res.data.length > 0) {
-          if (res.semesters && Array.isArray(res.semesters)) {
-            setBackendSemesters(res.semesters);
-          }
-
-          const mapped: DetailedGrade[] = res.data.map((item: any) => ({
-            code: item.code || "",
-            name: item.ten_hp || item.name || "Học phần",
-            credits: Number(item.so_tin_chi || 3),
-            namHoc: item.nam_hoc || "",
-            ky: item.ky || "",
-            dbp: item.diem_dbp !== null && item.diem_dbp !== undefined ? Number(item.diem_dbp) : null,
-            thi1: item.diem_thi1 !== null && item.diem_thi1 !== undefined ? Number(item.diem_thi1) : null,
-            thi2: item.diem_thi2 !== null && item.diem_thi2 !== undefined ? Number(item.diem_thi2) : null,
-            d1: item.diem_1 !== null && item.diem_1 !== undefined ? Number(item.diem_1) : null,
-            d2: item.diem_2 !== null && item.diem_2 !== undefined ? Number(item.diem_2) : null,
-            total: item.diem_hp !== null && item.diem_hp !== undefined ? Number(item.diem_hp) : null,
-            letter: item.diem_chu || "X",
-            semester: item.hoc_ky || (item.ky ? `HK${item.ky} (${item.nam_hoc || "2026"})` : "HK1 (2026)"),
-            hocPhi: item.hoc_phi || "",
-            badge: item.badge,
-          }));
-          setList(mapped);
-        }
-      } catch {
-        // Fallback
-      } finally {
-        setLoading(false);
+  const fetchDetailedGrades = async () => {
+    try {
+      const userStr = await AsyncStorage.getItem("@auth_user");
+      let mssv = "";
+      if (userStr) {
+        const u = JSON.parse(userStr);
+        mssv = u.mssv || u.masv || "";
       }
-    };
+      const isRealAccount = mssv && mssv !== "guest";
+      const res = await apiGetGrades(isRealAccount ? mssv : undefined);
+      if (res && res.success && res.data && res.data.length > 0) {
+        if (res.semesters && Array.isArray(res.semesters)) {
+          setBackendSemesters(res.semesters);
+        }
 
+        const mapped: DetailedGrade[] = res.data.map((item: any) => ({
+          code: item.code || "",
+          name: item.ten_hp || item.name || "Học phần",
+          credits: Number(item.so_tin_chi || 3),
+          namHoc: item.nam_hoc || "",
+          ky: item.ky || "",
+          dbp: item.diem_dbp !== null && item.diem_dbp !== undefined ? Number(item.diem_dbp) : null,
+          thi1: item.diem_thi1 !== null && item.diem_thi1 !== undefined ? Number(item.diem_thi1) : null,
+          thi2: item.diem_thi2 !== null && item.diem_thi2 !== undefined ? Number(item.diem_thi2) : null,
+          d1: item.diem_1 !== null && item.diem_1 !== undefined ? Number(item.diem_1) : null,
+          d2: item.diem_2 !== null && item.diem_2 !== undefined ? Number(item.diem_2) : null,
+          total: item.diem_hp !== null && item.diem_hp !== undefined ? Number(item.diem_hp) : null,
+          letter: item.diem_chu || "X",
+          semester: item.hoc_ky || (item.ky ? `HK${item.ky} (${item.nam_hoc || "2026"})` : "HK1 (2026)"),
+          hocPhi: item.hoc_phi || "",
+          badge: item.badge,
+        }));
+        setList(mapped);
+      }
+    } catch {
+      // Fallback
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchDetailedGrades();
   }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchDetailedGrades();
+    setRefreshing(false);
+  };
 
   const semesters = backendSemesters.length > 0 ? backendSemesters : ["Tất cả", ...Array.from(new Set(list.map((i) => i.semester)))];
 
@@ -185,11 +193,39 @@ export default function GradesDetailScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 110 }}>
-        {loading ? (
-          <View style={{ paddingVertical: 40, alignItems: "center" }}>
-            <ActivityIndicator size="large" color={AppColors.primary} />
-            <Text style={{ marginTop: 12, color: AppColors.textMuted, fontSize: 13 }}>Đang tải chi tiết điểm...</Text>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 110 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        {loading || refreshing ? (
+          <View style={{ gap: 12 }}>
+            {[1, 2, 3, 4].map((i) => (
+              <View
+                key={i}
+                style={{
+                  padding: 16,
+                  borderRadius: 16,
+                  backgroundColor: AppColors.cardBg,
+                  borderWidth: 1,
+                  borderColor: AppColors.cardBorder,
+                }}
+              >
+                <View style={[s.row, s.between, { marginBottom: 8 }]}>
+                  <View style={[s.row, { gap: 6, alignItems: "center" }]}>
+                    <SkeletonBox width={60} height={14} borderRadius={4} />
+                    <SkeletonBox width={70} height={14} borderRadius={4} />
+                  </View>
+                  <SkeletonBox width={36} height={20} borderRadius={6} />
+                </View>
+                <SkeletonBox width="85%" height={16} borderRadius={4} style={{ marginBottom: 12 }} />
+                <View style={{ flexDirection: "row", gap: 16, borderTopWidth: 1, borderTopColor: "#F1F5F9", paddingTop: 10 }}>
+                  <SkeletonBox width={65} height={28} borderRadius={6} />
+                  <SkeletonBox width={65} height={28} borderRadius={6} />
+                  <SkeletonBox width={65} height={28} borderRadius={6} />
+                </View>
+              </View>
+            ))}
           </View>
         ) : filtered.length === 0 ? (
           <View style={{ paddingVertical: 50, alignItems: "center" }}>

@@ -19,10 +19,12 @@ import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { useTabBarScrollHandler } from "../../../src/components/MainTabs";
 import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
+import { HomeSkeleton } from "../../../src/components/Skeleton";
 import {
   apiGetSchedule,
   apiGetDashboard,
   apiGetNews,
+  apiGetGrades,
   readLocalCache,
   NewsOrAnnouncementItem,
   getNewsImageUrl,
@@ -50,6 +52,91 @@ interface NextClassInfo {
   statusBadgeColor: string;
 }
 
+interface GpaSummary {
+  gpa4: string;
+  gpa10: string;
+  totalCredits: number;
+  rank: string;
+  rankColor: string;
+}
+
+const convertTo4Scale = (score10: number): number => {
+  if (score10 >= 8.5) return 4.0;
+  if (score10 >= 7.0) return 3.0;
+  if (score10 >= 5.5) return 2.0;
+  if (score10 >= 4.0) return 1.0;
+  return 0.0;
+};
+
+const getAcademicRank = (gpa4Value: number) => {
+  if (gpa4Value >= 3.6) return { label: "Xuất sắc", color: "#10B981" };
+  if (gpa4Value >= 3.2) return { label: "Giỏi", color: "#3B82F6" };
+  if (gpa4Value >= 2.5) return { label: "Khá", color: "#F59E0B" };
+  if (gpa4Value >= 2.0) return { label: "Trung bình", color: "#6B7280" };
+  return { label: "Yếu", color: "#EF4444" };
+};
+
+const parseGpaSummary = (gradeItems: any[]): GpaSummary | null => {
+  if (!Array.isArray(gradeItems) || gradeItems.length === 0) return null;
+  const graded = gradeItems.filter((item: any) => {
+    const letter = (item.diem_chu || item.gradeLetter || "").toUpperCase();
+    const score10 =
+      item.diem_hp !== null && item.diem_hp !== undefined && !isNaN(Number(item.diem_hp))
+        ? Number(item.diem_hp)
+        : (item.grade10 ? Number(item.grade10) : 0);
+    return letter !== "X" && letter !== "P" && score10 > 0;
+  });
+
+  const accumulated = gradeItems.filter((item: any) => {
+    const letter = (item.diem_chu || item.gradeLetter || "").toUpperCase();
+    const score10 =
+      item.diem_hp !== null && item.diem_hp !== undefined && !isNaN(Number(item.diem_hp))
+        ? Number(item.diem_hp)
+        : (item.grade10 ? Number(item.grade10) : 0);
+    return letter !== "X" && letter !== "F" && (letter || score10 > 0);
+  });
+
+  const totalCredits = accumulated.reduce(
+    (acc, c) => acc + Number(c.so_tin_chi || c.credits || 0),
+    0
+  );
+  const totalGradedCredits = graded.reduce(
+    (acc, c) => acc + Number(c.so_tin_chi || c.credits || 0),
+    0
+  );
+
+  if (totalGradedCredits === 0) return null;
+
+  const sum10 = graded.reduce((acc, c) => {
+    const score10 =
+      c.diem_hp !== null && c.diem_hp !== undefined && !isNaN(Number(c.diem_hp))
+        ? Number(c.diem_hp)
+        : (c.grade10 ? Number(c.grade10) : 0);
+    const cred = Number(c.so_tin_chi || c.credits || 0);
+    return acc + score10 * cred;
+  }, 0);
+
+  const sum4 = graded.reduce((acc, c) => {
+    const score10 =
+      c.diem_hp !== null && c.diem_hp !== undefined && !isNaN(Number(c.diem_hp))
+        ? Number(c.diem_hp)
+        : (c.grade10 ? Number(c.grade10) : 0);
+    const cred = Number(c.so_tin_chi || c.credits || 0);
+    return acc + convertTo4Scale(score10) * cred;
+  }, 0);
+
+  const gpa10Val = (sum10 / totalGradedCredits).toFixed(2);
+  const gpa4Val = (sum4 / totalGradedCredits).toFixed(2);
+  const rankObj = getAcademicRank(Number(gpa4Val));
+
+  return {
+    gpa4: gpa4Val,
+    gpa10: gpa10Val,
+    totalCredits,
+    rank: rankObj.label,
+    rankColor: rankObj.color,
+  };
+};
 
 function getPeriodMinutes(startPeriod: number, endPeriod: number) {
   const periodTimes: Record<number, { start: number; end: number }> = {
@@ -316,7 +403,15 @@ export default function HomeScreen() {
     mssv: "",
   });
   const [nextClass, setNextClass] = useState<NextClassInfo | null>(null);
+  const [gpaSummary, setGpaSummary] = useState<GpaSummary>({
+    gpa4: "3.46",
+    gpa10: "8.18",
+    totalCredits: 13,
+    rank: "Giỏi",
+    rankColor: "#3B82F6",
+  });
   const [refreshing, setRefreshing] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // 3 Thông báo (từ RSS thongbaosv) & 3 Tin tức (từ RSS tintuc)
   const [latestAnnouncements, setLatestAnnouncements] = useState<NewsOrAnnouncementItem[]>([]);
@@ -518,26 +613,49 @@ export default function HomeScreen() {
       const isRealAccount = Boolean(mssv && mssv !== "guest");
       setIsLoggedIn(isRealAccount);
       const scheduleCacheKey = `@offline_schedule_${mssv || 'current'}`;
+      const gradesCacheKey = `@offline_grades_${isRealAccount ? mssv : 'current'}`;
 
       // BƯỚC 1: Đọc tức thì từ Cache đã nạp trong lúc nhấn Đăng nhập (0ms render ngay)
-      const [cachedDash, cachedSchedule, cachedNews] = await Promise.all([
+      const [cachedDash, cachedSchedule, cachedNews, cachedGrades] = await Promise.all([
         readLocalCache('@offline_dashboard'),
         readLocalCache(scheduleCacheKey),
         readLocalCache('@offline_news_all'),
+        readLocalCache<any>(gradesCacheKey),
       ]);
+      if (cachedGrades?.data) {
+        const rawGrades = Array.isArray(cachedGrades.data.data)
+          ? cachedGrades.data.data
+          : Array.isArray(cachedGrades.data)
+          ? cachedGrades.data
+          : [];
+        const parsedSummary = parseGpaSummary(rawGrades);
+        if (parsedSummary) {
+          setGpaSummary(parsedSummary);
+        }
+      }
       if (cachedDash?.data || cachedSchedule?.data || cachedNews?.data) {
         applyData(cachedDash?.data, cachedSchedule?.data, cachedNews?.data, isRealAccount);
+        setIsInitialLoading(false);
       }
 
-      // BƯỚC 2: Đồng bộ song song cả 3 API từ server để cập nhật dữ liệu mới nhất
-      const [dashRes, scheduleRes, newsRes] = await Promise.all([
+      // BƯỚC 2: Đồng bộ song song cả 4 API từ server để cập nhật dữ liệu mới nhất
+      const [dashRes, scheduleRes, newsRes, gradesRes] = await Promise.all([
         apiGetDashboard(),
         apiGetSchedule(isRealAccount ? mssv : undefined),
         apiGetNews(),
+        apiGetGrades(isRealAccount ? mssv : undefined),
       ]);
       applyData(dashRes, scheduleRes, newsRes, isRealAccount);
+      if (gradesRes?.success && Array.isArray(gradesRes.data) && gradesRes.data.length > 0) {
+        const parsedSummary = parseGpaSummary(gradesRes.data);
+        if (parsedSummary) {
+          setGpaSummary(parsedSummary);
+        }
+      }
     } catch {
       setIsOfflineData(true);
+    } finally {
+      setIsInitialLoading(false);
     }
   };
 
@@ -722,7 +840,10 @@ export default function HomeScreen() {
           />
         }
       >
-        <View style={{ paddingHorizontal: 16 }}>
+        {(isInitialLoading && latestNews.length === 0) || refreshing ? (
+          <HomeSkeleton />
+        ) : (
+          <View style={{ paddingHorizontal: 16 }}>
           {isOfflineData && (
             <View
               style={{
@@ -848,6 +969,146 @@ export default function HomeScreen() {
                 <Text style={{ color: "#93C5FD", fontSize: 12, fontWeight: "800" }}>
                   Chỉ đường →
                 </Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+
+          {/* TỔNG KẾT GPA HỆ 4 & HỆ 10 */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => router.push("/(main)/grades")}
+            style={{
+              backgroundColor: "#FFFFFF",
+              borderRadius: 20,
+              padding: 16,
+              marginBottom: 20,
+              borderWidth: 1,
+              borderColor: "#E2E8F0",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.05,
+              shadowRadius: 6,
+              elevation: 2,
+            }}
+          >
+            {/* Header: Title + Rank Badge + Link */}
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 14,
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <View
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 10,
+                    backgroundColor: "#EEF2FF",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Feather name="award" size={17} color="#4F46E5" />
+                </View>
+                <View>
+                  <Text style={{ fontSize: 14, fontWeight: "800", color: "#0F172A" }}>
+                    Kết quả học tập
+                  </Text>
+                  <Text style={{ fontSize: 11, fontWeight: "500", color: "#64748B" }}>
+                    Tích lũy toàn khóa
+                  </Text>
+                </View>
+              </View>
+
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <View
+                  style={{
+                    backgroundColor: `${gpaSummary.rankColor}15`,
+                    paddingHorizontal: 9,
+                    paddingVertical: 3.5,
+                    borderRadius: 10,
+                    borderWidth: 1,
+                    borderColor: `${gpaSummary.rankColor}40`,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      fontWeight: "800",
+                      color: gpaSummary.rankColor,
+                    }}
+                  >
+                    {gpaSummary.rank}
+                  </Text>
+                </View>
+                <Feather name="chevron-right" size={16} color="#94A3B8" />
+              </View>
+            </View>
+
+            {/* Stats Row: GPA Hệ 4 | GPA Hệ 10 | Tín chỉ */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                backgroundColor: "#F8FAFC",
+                borderRadius: 14,
+                paddingVertical: 12,
+                paddingHorizontal: 10,
+              }}
+            >
+              {/* GPA Hệ 4 */}
+              <View style={{ flex: 1, alignItems: "center" }}>
+                <Text style={{ fontSize: 11, fontWeight: "600", color: "#64748B", marginBottom: 3 }}>
+                  GPA Hệ 4
+                </Text>
+                <View style={{ flexDirection: "row", alignItems: "baseline" }}>
+                  <Text style={{ fontSize: 19, fontWeight: "900", color: "#0284C7" }}>
+                    {gpaSummary.gpa4}
+                  </Text>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: "#94A3B8", marginLeft: 2 }}>
+                    /4.0
+                  </Text>
+                </View>
+              </View>
+
+              {/* Divider */}
+              <View style={{ width: 1, height: 26, backgroundColor: "#E2E8F0" }} />
+
+              {/* GPA Hệ 10 */}
+              <View style={{ flex: 1, alignItems: "center" }}>
+                <Text style={{ fontSize: 11, fontWeight: "600", color: "#64748B", marginBottom: 3 }}>
+                  GPA Hệ 10
+                </Text>
+                <View style={{ flexDirection: "row", alignItems: "baseline" }}>
+                  <Text style={{ fontSize: 19, fontWeight: "900", color: "#4F46E5" }}>
+                    {gpaSummary.gpa10}
+                  </Text>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: "#94A3B8", marginLeft: 2 }}>
+                    /10
+                  </Text>
+                </View>
+              </View>
+
+              {/* Divider */}
+              <View style={{ width: 1, height: 26, backgroundColor: "#E2E8F0" }} />
+
+              {/* Tín chỉ tích lũy */}
+              <View style={{ flex: 1, alignItems: "center" }}>
+                <Text style={{ fontSize: 11, fontWeight: "600", color: "#64748B", marginBottom: 3 }}>
+                  Tín chỉ tích lũy
+                </Text>
+                <View style={{ flexDirection: "row", alignItems: "baseline" }}>
+                  <Text style={{ fontSize: 19, fontWeight: "900", color: "#10B981" }}>
+                    {gpaSummary.totalCredits}
+                  </Text>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: "#94A3B8", marginLeft: 2 }}>
+                    TC
+                  </Text>
+                </View>
               </View>
             </View>
           </TouchableOpacity>
@@ -1279,6 +1540,7 @@ export default function HomeScreen() {
             )}
           </View>
         </View>
+        )}
       </ScrollView>
 
       {/* ─── MODAL CHI TIẾT THÔNG BÁO / PHẢN HỒI / CẢNH BÁO ─── */}
