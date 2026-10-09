@@ -105,8 +105,9 @@ exports.getMapLocations = async (req, res) => {
       });
     }
 
-    // Nếu chưa đủ 37 điểm, chạy seed lại
-    const seeder = require('../database/seed_37_locations');
+    // Nếu chưa đủ 37 điểm, nạp lại tự động
+    const { seedMapLocations } = require('../database/seeders');
+    await seedMapLocations(db);
     const [freshRows] = await db.query('SELECT * FROM map_locations ORDER BY id ASC');
     return res.json({
       success: true,

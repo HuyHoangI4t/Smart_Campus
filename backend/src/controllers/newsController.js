@@ -214,9 +214,8 @@ exports.downloadAttachment = async (req, res) => {
       }
     });
 
-    const contentType = response.headers['content-type'] || 'application/pdf';
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(decodedFilename)}"`);
+    const safeAsciiFilename = decodedFilename.replace(/[^\x20-\x7E]/g, '_').replace(/"/g, '');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeAsciiFilename}"; filename*=UTF-8''${encodeURIComponent(decodedFilename)}`);
     if (response.headers['content-length']) {
       res.setHeader('Content-Length', response.headers['content-length']);
     }

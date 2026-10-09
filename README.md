@@ -229,14 +229,11 @@ Smart_Campus/
 │   │   │   ├── generalController.js    # Thông báo, khảo sát, hỗ trợ sinh viên
 │   │   │   ├── newsController.js       # Tin tức, sự kiện nhà trường
 │   │   │   └── studentController.js    # Điểm số, GPA, thời khóa biểu, CRUD lịch học
-│   │   ├── database/                   # Cơ sở dữ liệu, di trú & nạp dữ liệu
-│   │   │   ├── migrations/
-│   │   │   │   └── 001_init_tables.js  # Script di trú tạo bảng CSDL
-│   │   │   ├── seeders/
-│   │   │   │   └── initialSeeder.js    # Dữ liệu mẫu khởi tạo
-│   │   │   ├── init_campus_paths.js    # Tọa độ đường đi nội bộ khuôn viên trường
-│   │   │   ├── seed_37_locations.js    # Tọa độ 37 địa điểm tòa nhà Đại học Tây Nguyên
-│   │   │   └── index.js                # Kết nối trung tâm CSDL
+│   │   ├── database/                   # Quản lý CSDL tập trung & chuẩn hóa
+│   │   │   ├── tables.js               # 1 file duy nhất chứa toàn bộ DDL 13 bảng & migrations
+│   │   │   ├── seedData.js             # Dữ liệu sẵn tách biệt (Admin, 37 địa điểm, paths...)
+│   │   │   ├── seeders.js              # Các hàm cập nhật, nạp dữ liệu ban đầu & bảo trì
+│   │   │   └── index.js                # Điều phối trung tâm khởi tạo Database
 │   │   ├── middlewares/                # Bộ lọc & kiểm tra trung gian
 │   │   │   └── authMiddleware.js       # Xác thực JWT Token & kiểm tra quyền
 │   │   ├── models/                     # Mô hình dữ liệu
@@ -303,16 +300,22 @@ Smart_Campus/
 │   │   │   └── globalStyles.ts         # Kiểu dáng dùng chung toàn hệ thống
 │   │   ├── features/                   # Tính năng chuyên biệt
 │   │   │   └── map/                    # Module Bản đồ số Leaflet tích hợp WebView
-│   │   │       ├── components/
-│   │   │       │   ├── MapControlsOverlay.tsx     # Nút điều khiển phóng to/thu nhỏ/GPS
-│   │   │       │   ├── MapLocationDetailCard.tsx  # Thẻ thông tin chi tiết địa điểm
-│   │   │       │   └── MapSearchBar.tsx           # Thanh tìm kiếm địa điểm có gợi ý
-│   │   │       ├── constants.ts        # Hằng số bản đồ & tọa độ mặc định
+│   │   │       ├── components/         # Giao diện bản đồ đã Memoized tránh re-render
+│   │   │       │   ├── MapControlsOverlay.tsx     # Nút điều khiển xoay la bàn, layer, zoom
+│   │   │       │   ├── MapLocationDetailCard.tsx  # Thẻ thông tin chi tiết địa điểm & chỉ đường
+│   │   │       │   ├── MapLocationPickerModal.tsx # Modal chọn GPS thực tế hoặc vị trí test
+│   │   │       │   └── MapSearchBar.tsx           # Thanh tìm kiếm địa điểm có gợi ý tức thì
+│   │   │       ├── hooks/              # Custom Hooks tối ưu CPU, RAM & chu kỳ GPS
+│   │   │       │   ├── useMapData.ts              # Quản lý nạp dữ liệu, tìm kiếm & khoảng cách
+│   │   │       │   └── useMapGps.ts               # Xử lý GPS 1-lần, la bàn throttle & hủy khi blur
+│   │   │       ├── services/           # Dịch vụ đệm dữ liệu siêu tốc & tải ngầm
+│   │   │       │   └── mapCache.ts                # Cache bộ nhớ 5 phút + Offline AsyncStorage
+│   │   │       ├── constants.ts        # Hằng số bản đồ, ranh giới khuôn viên & 37 địa điểm
 │   │   │       ├── index.ts            # Entry point xuất module bản đồ
 │   │   │       ├── leafletBundle.ts    # Bundle thư viện Leaflet offline
-│   │   │       ├── leafletHtml.ts      # Template HTML render bản đồ trong WebView
-│   │   │       ├── types.ts            # Kiểu dữ liệu TypeScript cho địa điểm bản đồ
-│   │   │       └── utils.ts            # Tiện ích tính khoảng cách & góc chỉ đường
+│   │   │       ├── leafletHtml.ts      # Template HTML render bản đồ, requestAnimationFrame clip
+│   │   │       ├── types.ts            # Kiểu dữ liệu TypeScript cho địa điểm & đường đi
+│   │   │       └── utils.ts            # Tiện ích tính khoảng cách Haversine & phân tích phòng học
 │   │   ├── services/                   # Tầng gọi API kết nối máy chủ
 │   │   │   ├── api.ts                  # Axios client, tự động nhận diện IP, token
 │   │   │   └── get_IPv4.ts             # Tiện ích phát hiện IP LAN máy chủ

@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { View, Text, TouchableOpacity, Platform, Linking, ActivityIndicator, Alert, Keyboard, Modal, ScrollView } from "react-native";
+import React, { useState, useRef, useCallback, useMemo } from "react";
+import { View, Text, TouchableOpacity, Platform, Linking, ActivityIndicator, Keyboard } from "react-native";
 import { WebView } from "react-native-webview";
-import { Feather, MaterialIcons } from "@expo/vector-icons";
-import * as Location from "expo-location";
+import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -10,7 +9,6 @@ import { AppColors } from "../../../src/constants/appColors";
 import { NavHeader } from "../../../src/components/NavHeader";
 import { setTabBarVisible } from "../../../src/components/MainTabs";
 import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
-import { apiGetMapLocations, apiGetCampusPaths } from "../../../src/services/api";
 import {
   LocationItem,
   CampusPath,
@@ -24,14 +22,16 @@ import {
   HOUSE_NUM_TO_ID,
   parseCampusRoom,
   findLocationByRoomOrQuery,
-  calculateDistanceKm,
   generateLeafletMapHtml,
   MapSearchBar,
   MapControlsOverlay,
   MapLocationDetailCard,
+  MapLocationPickerModal,
+  useMapGps,
+  useMapData,
 } from "../../../src/features/map";
 
-// Tái xuất các kiểu dữ liệu và hằng số để tương thích ngược nếu có module khác import
+// Tái xuất các kiểu dữ liệu và hằng số để tương thích ngược 100% với các màn hình khác
 export type { LocationItem, CampusPath, CampusGate };
 export {
   TAY_NGUYEN_CAMPUS_LOCATIONS,
@@ -53,20 +53,24 @@ export default function MapScreen() {
     buildingCode?: string;
     t?: string;
   }>();
+
   const webViewRef = useRef<WebView>(null);
   const isMapReadyRef = useRef<boolean>(false);
-  const [, setMapReady] = useState(false);
 
-  const [targetRoom, setTargetRoom] = useState<string>(params.room ? String(params.room).trim() : "");
-  const [targetSubject, setTargetSubject] = useState<string>(params.subject ? String(params.subject).trim() : "");
-  const currentParsed = targetRoom ? parseCampusRoom(targetRoom) : null;
-
-  // Trạng thái đăng nhập (Khách / chưa đăng nhập không được xem bản đồ)
+  // Trạng thái xác thực tài khoản sinh viên
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
   // Trạng thái đang kích hoạt chế độ chỉ đường đi bộ (Ẩn thanh nav & nút phụ trợ để tối đa màn hình)
   const [isRoutingActive, setIsRoutingActive] = useState<boolean>(false);
+  const [activeRoute, setActiveRoute] = useState<{
+    distanceMeters?: number;
+    durationMinutes?: number;
+  } | null>(null);
 
+  // Lớp bản đồ đang hiển thị ("satellite" | "osm")
+  const [mapLayer, setMapLayer] = useState<"osm" | "satellite">("satellite");
+
+  // Kiểm tra đăng nhập
   const checkAuth = useCallback(async () => {
     try {
       const userStr = await AsyncStorage.getItem("@auth_user");
@@ -84,52 +88,84 @@ export default function MapScreen() {
     }
   }, []);
 
-
-
-  // Giữ ô tìm kiếm trống nếu đi từ Home/Schedule có room
-  const [search, setSearch] = useState<string>(() => {
-    return params.search ? String(params.search).trim() : "";
+  // Hook quản lý cảm biến GPS và La bàn (Tiết kiệm CPU & RAM trên điện thoại)
+  const {
+    userLocation,
+    locationLoading,
+    showLocationPicker,
+    setShowLocationPicker,
+    currentLocationName,
+    bearing,
+    compassMode,
+    fetchRealGpsLocation,
+    handleSelectSampleLocation,
+    toggleCompassMode,
+    resetBearing,
+    rotateStep,
+    setBearing,
+    stopCompassTracking,
+  } = useMapGps({
+    onLocationUpdated: (coords, accuracy, centerOnUser) => {
+      webViewRef.current?.postMessage(
+        JSON.stringify({
+          type: "UPDATE_USER_LOCATION",
+          lat: coords.latitude,
+          lng: coords.longitude,
+          accuracy: accuracy || 10,
+        })
+      );
+      if (centerOnUser) {
+        webViewRef.current?.postMessage(
+          JSON.stringify({
+            type: "FOCUS_LOCATION",
+            lat: coords.latitude,
+            lng: coords.longitude,
+          })
+        );
+      }
+    },
+    onBearingUpdated: (b, animated) => {
+      webViewRef.current?.postMessage(
+        JSON.stringify({
+          type: "SET_BEARING",
+          bearing: b,
+          animated: animated,
+        })
+      );
+    },
   });
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [locations, setLocations] = useState<LocationItem[]>(TAY_NGUYEN_CAMPUS_LOCATIONS);
-  const [campusPaths, setCampusPaths] = useState<CampusPath[]>([]);
 
-  // Chọn địa điểm ban đầu
-  const [selectedLoc, setSelectedLoc] = useState<LocationItem | null>(() => {
-    const initialQuery = params.building || params.room || params.search || "";
-    if (initialQuery) {
-      const matched = findLocationByRoomOrQuery(String(initialQuery), TAY_NGUYEN_CAMPUS_LOCATIONS);
-      if (matched) return matched;
-    }
-    return TAY_NGUYEN_CAMPUS_LOCATIONS[0];
-  });
-
-  // Cập nhật và focus đúng tòa giảng đường khi params thay đổi (ví dụ: bấm "Xem trên bản đồ" từ Thời khóa biểu)
-  useEffect(() => {
-    const roomParam = params.room ? String(params.room).trim() : "";
-    const subjectParam = params.subject ? String(params.subject).trim() : "";
-    const buildingParam = params.building ? String(params.building).trim() : "";
-    const buildingCodeParam = params.buildingCode ? String(params.buildingCode).trim() : "";
-    const searchParam = params.search ? String(params.search).trim() : "";
-
-    const query = buildingParam || buildingCodeParam || roomParam || searchParam;
-    if (!query) return;
-
-    if (roomParam) setTargetRoom(roomParam);
-    if (subjectParam) setTargetSubject(subjectParam);
-    if (searchParam) setSearch(searchParam);
-
-    const matched =
-      (buildingParam ? findLocationByRoomOrQuery(buildingParam, locations) : null) ||
-      (buildingCodeParam ? findLocationByRoomOrQuery(buildingCodeParam, locations) : null) ||
-      (roomParam ? findLocationByRoomOrQuery(roomParam, locations) : null) ||
-      (searchParam ? findLocationByRoomOrQuery(searchParam, locations) : null);
-
-    if (matched) {
-      setSelectedLoc(matched);
+  // Hook quản lý dữ liệu bản đồ, đường đi bộ, tìm kiếm & khoảng cách (Có Memory Cache + Storage)
+  const {
+    locations,
+    campusPaths,
+    search,
+    setSearch,
+    targetRoom,
+    setTargetRoom,
+    targetSubject,
+    selectedCategory,
+    setSelectedCategory,
+    showSuggestions,
+    setShowSuggestions,
+    selectedLoc,
+    setSelectedLoc,
+    searchResults,
+    currentParsed,
+    matchedTargetId,
+    computedDistanceText,
+    computedWalkingMinutes,
+    computedDistanceKm,
+  } = useMapData({
+    search: params.search,
+    room: params.room,
+    subject: params.subject,
+    building: params.building,
+    buildingCode: params.buildingCode,
+    t: params.t,
+    userLocation,
+    onFocusLocation: (matched) => {
       setActiveRoute(null);
-
       const sendFocus = () => {
         webViewRef.current?.postMessage(
           JSON.stringify({
@@ -140,398 +176,28 @@ export default function MapScreen() {
           })
         );
       };
-
       if (isMapReadyRef.current) {
         sendFocus();
-        const t = setTimeout(sendFocus, 200);
-        return () => clearTimeout(t);
+        const timer = setTimeout(sendFocus, 200);
+        return () => clearTimeout(timer);
       }
-    }
-  }, [params.room, params.subject, params.building, params.buildingCode, params.search, params.t, locations]);
+    },
+  });
 
-  // Chế độ bản đồ (osm | satellite)
-  const [mapLayer, setMapLayer] = useState<"osm" | "satellite">("satellite");
-
-  // Vị trí người dùng
-  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [locationLoading, setLocationLoading] = useState<boolean>(false);
-  const [showLocationPicker, setShowLocationPicker] = useState<boolean>(false);
-  const [currentLocationName, setCurrentLocationName] = useState<string>("GPS của bạn");
-
-  // Trạng thái tuyến đường đi bộ đang vẽ
-  const [activeRoute, setActiveRoute] = useState<{
-    distanceMeters?: number;
-    durationMinutes?: number;
-  } | null>(null);
-
-  // ─── TÍNH NĂNG XOAY MAP THEO LA BÀN & XOAY THỦ CÔNG ───────────────────────────
-  const [bearing, setBearing] = useState<number>(0);
-  const [compassMode, setCompassMode] = useState<boolean>(false);
-  const headingSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
-  const isTabFocusedRef = useRef<boolean>(true);
-
-  // 1. Lấy vị trí GPS thật từ điện thoại (Chỉ quét 1 lần khi người dùng bấm nút trong tab bản đồ, KHÔNG chạy ngầm khi đổi tab)
-  const fetchRealGpsLocation = useCallback(async (centerOnUser = true) => {
-    if (!isTabFocusedRef.current) return;
-    setShowLocationPicker(false);
-    setLocationLoading(true);
-    try {
-      const permission = await Location.requestForegroundPermissionsAsync();
-      if (!isTabFocusedRef.current) return;
-
-      if (permission.status !== "granted") {
-        setLocationLoading(false);
-        Alert.alert(
-          "Quyền vị trí GPS",
-          "Vui lòng cấp quyền truy cập vị trí trong Cài đặt để ứng dụng định vị."
-        );
-        return;
-      }
-
-      // Phát hiện nếu Android cấp quyền Vị trí tương đối (Approximate)
-      if (Platform.OS === "android" && (permission as any).android?.accuracy === "coarse") {
-        Alert.alert(
-          "Đang dùng vị trí ước lượng",
-          "Expo Go hiện chỉ có quyền 'Vị trí tương đối'. Hệ điều hành Android làm lệch tọa độ từ 1km - 3km để bảo mật.\n\nCách sửa:\nVào Cài đặt máy > Ứng dụng > Expo Go > Quyền vị trí > Bật 'Dùng vị trí chính xác' (Use precise location)."
-        );
-      }
-
-      // Thử lấy vị trí đệm trước để phản hồi tức thì
-      try {
-        const lastLoc = await Location.getLastKnownPositionAsync({ maxAge: 60000 });
-        if (!isTabFocusedRef.current) return;
-        if (lastLoc && lastLoc.coords) {
-          const cached = { latitude: lastLoc.coords.latitude, longitude: lastLoc.coords.longitude };
-          setUserLocation(cached);
-          setCurrentLocationName("GPS thực tế");
-          webViewRef.current?.postMessage(
-            JSON.stringify({
-              type: "UPDATE_USER_LOCATION",
-              lat: cached.latitude,
-              lng: cached.longitude,
-              accuracy: lastLoc.coords.accuracy || 15,
-            })
-          );
-          if (centerOnUser) {
-            webViewRef.current?.postMessage(
-              JSON.stringify({
-                type: "FOCUS_LOCATION",
-                lat: cached.latitude,
-                lng: cached.longitude,
-              })
-            );
-          }
-        }
-      } catch {
-        // bỏ qua
-      }
-
-      // Quét GPS vệ tinh thực tế một lần (Accuracy.High: chuẩn xác, phản hồi nhanh dưới 2s, không làm nóng máy)
-      const freshLoc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-        mayShowUserSettingsDialog: true,
-      });
-
-      if (!isTabFocusedRef.current) return;
-
-      if (freshLoc && freshLoc.coords) {
-        const freshCoords = { latitude: freshLoc.coords.latitude, longitude: freshLoc.coords.longitude };
-        setUserLocation(freshCoords);
-        setCurrentLocationName("GPS thực tế");
-        webViewRef.current?.postMessage(
-          JSON.stringify({
-            type: "UPDATE_USER_LOCATION",
-            lat: freshCoords.latitude,
-            lng: freshCoords.longitude,
-            accuracy: freshLoc.coords.accuracy || 10,
-          })
-        );
-
-        if (centerOnUser) {
-          webViewRef.current?.postMessage(
-            JSON.stringify({
-              type: "FOCUS_LOCATION",
-              lat: freshCoords.latitude,
-              lng: freshCoords.longitude,
-            })
-          );
-        }
-
-        // Tính khoảng cách tới trường ĐH Tây Nguyên
-        const distKm = calculateDistanceKm(
-          freshCoords.latitude,
-          freshCoords.longitude,
-          TNU_CAMPUS_CENTER.lat,
-          TNU_CAMPUS_CENTER.lng
-        );
-        if (distKm > 2) {
-          Alert.alert(
-            "Đang ở ngoài trường",
-            `GPS xác định bạn đang cách trường ĐH Tây Nguyên ~${distKm.toFixed(1)}km.\n\nNếu muốn test vẽ đường đi bộ nội bộ trường, bạn có thể chọn một trong các 'Vị trí mẫu' tại cổng trường!`
-          );
-        }
-      }
-    } catch (err) {
-      console.warn("Lỗi vị trí GPS:", err);
-      Alert.alert(
-        "Chưa lấy được GPS",
-        "Hãy bật định vị trong Cài đặt máy hoặc chọn một 'Vị trí mẫu' tại trường để test bản đồ."
-      );
-    } finally {
-      setLocationLoading(false);
-    }
-  }, []);
-
-  // 2. Chọn vị trí mẫu tại trường ĐH Tây Nguyên (Cổng trước, Cổng BV, Cổng sau, Tòa nhà điều hành...)
-  const handleSelectSampleLocation = useCallback((sample: typeof TNU_SAMPLE_TEST_LOCATIONS[0]) => {
-    setShowLocationPicker(false);
-    const coords = { latitude: sample.latitude, longitude: sample.longitude };
-    setUserLocation(coords);
-    setCurrentLocationName(sample.name);
-    webViewRef.current?.postMessage(
-      JSON.stringify({
-        type: "UPDATE_USER_LOCATION",
-        lat: coords.latitude,
-        lng: coords.longitude,
-        accuracy: 8,
-      })
-    );
-    webViewRef.current?.postMessage(
-      JSON.stringify({
-        type: "FOCUS_LOCATION",
-        lat: coords.latitude,
-        lng: coords.longitude,
-      })
-    );
-  }, []);
-
-  // 3. Khi bấm nút GPS: Mở bảng chọn Vị trí mẫu / GPS thực tế
-  const requestUserLocation = useCallback(async () => {
-    setShowLocationPicker(true);
-  }, []);
-
+  // Tự động kiểm tra quyền & khôi phục tab bar khi đổi tab
   useFocusEffect(
     useCallback(() => {
-      isTabFocusedRef.current = true;
       checkAuth();
-      // Lúc mới mở luôn luôn căn đúng chuẩn hướng Bắc - Nam (bearing = 0)
-      setBearing(0);
-      setCompassMode(false);
-      if (headingSubscriptionRef.current) {
-        headingSubscriptionRef.current.remove();
-        headingSubscriptionRef.current = null;
-      }
-      webViewRef.current?.postMessage(
-        JSON.stringify({
-          type: "SET_BEARING",
-          bearing: 0,
-          animated: false,
-        })
-      );
-
       return () => {
-        // KHI CHUYỂN SANG TAB KHÁC: TẮT HOÀN TOÀN TẤT CẢ DỊCH VỤ GPS & CẢM BIẾN
-        isTabFocusedRef.current = false;
-        setLocationLoading(false);
-        setShowLocationPicker(false);
-        if (headingSubscriptionRef.current) {
-          headingSubscriptionRef.current.remove();
-          headingSubscriptionRef.current = null;
-        }
-        setCompassMode(false);
         setTabBarVisible(true);
       };
     }, [checkAuth])
   );
 
-  // Tải danh sách địa điểm và mạng lưới lối đi nội bộ (Hỗ trợ Offline Cache qua AsyncStorage)
-  useEffect(() => {
-    let isMounted = true;
-    (async () => {
-      // 1. Nạp cache offline từ AsyncStorage nếu có
-      try {
-        const cachedPathsStr = await AsyncStorage.getItem("@offline_campus_paths");
-        if (cachedPathsStr && isMounted) {
-          const cachedPaths = JSON.parse(cachedPathsStr);
-          if (Array.isArray(cachedPaths) && cachedPaths.length > 0) {
-            setCampusPaths(cachedPaths);
-          }
-        }
-      } catch {
-        // bỏ qua lỗi cache
-      }
-
-      // 2. Tải địa điểm từ API Backend và lưu cache offline
-      try {
-        const res = await apiGetMapLocations();
-        if (res && res.locations && Array.isArray(res.locations) && res.locations.length > 0 && isMounted) {
-          const normalized: LocationItem[] = res.locations.map((l: any) => ({
-            id: Number(l.id),
-            name: String(l.name || ""),
-            category: String(l.category || "Địa điểm"),
-            building: String(l.building || l.name || ""),
-            floor: String(l.floor || ""),
-            description: String(l.description || ""),
-            lat: Number(l.lat || TNU_CAMPUS_CENTER.lat),
-            lng: Number(l.lng || TNU_CAMPUS_CENTER.lng),
-            icon: String(l.icon || "map-pin"),
-            x: Number(l.x ?? 50),
-            y: Number(l.y ?? 50),
-            color: String(l.color || "#2563EB"),
-          }));
-          setLocations(normalized);
-          AsyncStorage.setItem("@offline_map_locations", JSON.stringify(normalized)).catch(() => {});
-        }
-      } catch {
-        // Dùng danh sách 37 địa điểm chuẩn đã được nạp
-      }
-
-      // 3. Tải mạng lưới đường đi từ API Backend và lưu cache offline
-      try {
-        const pathsRes = await apiGetCampusPaths();
-        if (pathsRes && pathsRes.paths && Array.isArray(pathsRes.paths) && isMounted) {
-          const normalizedPaths: CampusPath[] = pathsRes.paths.map((p: any) => ({
-            id: Number(p.id),
-            name: String(p.name || ""),
-            path_type: String(p.path_type || "walkway"),
-            coordinates: Array.isArray(p.coordinates)
-              ? p.coordinates
-              : typeof p.coordinates === "string"
-              ? JSON.parse(p.coordinates)
-              : [],
-          }));
-          setCampusPaths(normalizedPaths);
-          AsyncStorage.setItem("@offline_campus_paths", JSON.stringify(normalizedPaths)).catch(() => {});
-          if (isMapReadyRef.current) {
-            webViewRef.current?.postMessage(
-              JSON.stringify({
-                type: "SET_CAMPUS_PATHS",
-                paths: normalizedPaths,
-              })
-            );
-          }
-        }
-      } catch {
-        // Bỏ qua nếu chưa nạp được paths
-      }
-    })();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  // ─── THEO DÕI HƯỚNG LA BÀN THIẾT BỊ (COMPASS HEADING) ĐÃ TỐI ƯU HÓA ────────
-  const lastSentBearingRef = useRef<number>(0);
-  const lastHeadingTimeRef = useRef<number>(0);
-
-  const startCompassTracking = async () => {
-    if (!isTabFocusedRef.current) return;
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (!isTabFocusedRef.current) return;
-      if (status !== "granted") {
-        Alert.alert("Quyền vị trí", "Vui lòng cấp quyền vị trí.");
-        return;
-      }
-
-      if (headingSubscriptionRef.current) {
-        headingSubscriptionRef.current.remove();
-      }
-
-      const sub = await Location.watchHeadingAsync((headingData) => {
-        if (!isTabFocusedRef.current) return;
-        const h = headingData.trueHeading >= 0 ? headingData.trueHeading : headingData.magHeading;
-        if (h !== undefined && h !== null && !isNaN(h) && h >= 0) {
-          const rounded = Math.round(h);
-          const now = Date.now();
-          const diff = Math.abs(rounded - lastSentBearingRef.current);
-          if ((diff >= 3 || diff >= 357) && (now - lastHeadingTimeRef.current >= 120)) {
-            lastSentBearingRef.current = rounded;
-            lastHeadingTimeRef.current = now;
-            setBearing(rounded);
-            webViewRef.current?.postMessage(
-              JSON.stringify({
-                type: "SET_BEARING",
-                bearing: rounded,
-                animated: true,
-              })
-            );
-          }
-        }
-      });
-
-      headingSubscriptionRef.current = sub;
-      setCompassMode(true);
-    } catch (err) {
-      console.warn("Lỗi cảm biến la bàn:", err);
-    }
-  };
-
-  const stopCompassTracking = () => {
-    if (headingSubscriptionRef.current) {
-      headingSubscriptionRef.current.remove();
-      headingSubscriptionRef.current = null;
-    }
-    setCompassMode(false);
-  };
-
-  const toggleCompassMode = () => {
-    if (compassMode) {
-      stopCompassTracking();
-    } else {
-      startCompassTracking();
-    }
-  };
-
-  // Đặt lại hướng Bắc (0 độ)
-  const handleResetBearing = () => {
-    stopCompassTracking();
-    setBearing(0);
-    webViewRef.current?.postMessage(
-      JSON.stringify({
-        type: "SET_BEARING",
-        bearing: 0,
-        animated: true,
-      })
-    );
-  };
-
-  // Xoay nhanh thủ công theo nấc (+30 độ hoặc -30 độ)
-  const handleRotateStep = (delta: number) => {
-    stopCompassTracking();
-    const next = ((bearing + delta) % 360 + 360) % 360;
-    setBearing(next);
-    webViewRef.current?.postMessage(
-      JSON.stringify({
-        type: "SET_BEARING",
-        bearing: next,
-        animated: true,
-      })
-    );
-  };
-
-  // Dọn dẹp đăng ký cảm biến khi rời màn hình
-  useEffect(() => {
-    return () => {
-      if (headingSubscriptionRef.current) {
-        headingSubscriptionRef.current.remove();
-      }
-    };
-  }, []);
-
-  // Khi bản đồ sẵn sàng, focus vào tòa nhà đang chọn và đảm bảo luôn chuẩn hướng Bắc - Nam
+  // Khi bản đồ sẵn sàng trong WebView
   const handleMapReady = useCallback(() => {
     isMapReadyRef.current = true;
-    setMapReady(true);
-    setBearing(0);
-    setCompassMode(false);
-    webViewRef.current?.postMessage(
-      JSON.stringify({
-        type: "SET_BEARING",
-        bearing: 0,
-        animated: false,
-      })
-    );
+    resetBearing();
     if (selectedLoc) {
       webViewRef.current?.postMessage(
         JSON.stringify({
@@ -542,7 +208,7 @@ export default function MapScreen() {
         })
       );
     }
-    // Chuyển sang lớp vệ tinh mặc định
+    // Lớp mặc định là vệ tinh sắc nét
     webViewRef.current?.postMessage(
       JSON.stringify({
         type: "SWITCH_LAYER",
@@ -557,7 +223,7 @@ export default function MapScreen() {
         })
       );
     }
-    if (campusPaths.length > 0) {
+    if (campusPaths && campusPaths.length > 0) {
       webViewRef.current?.postMessage(
         JSON.stringify({
           type: "SET_CAMPUS_PATHS",
@@ -565,95 +231,102 @@ export default function MapScreen() {
         })
       );
     }
-  }, [selectedLoc, locations, campusPaths]);
+  }, [selectedLoc, locations, campusPaths, resetBearing]);
 
-  // Xử lý thông điệp gửi từ Leaflet WebView
-  const handleWebViewMessage = (event: any) => {
-    try {
-      const data = JSON.parse(event.nativeEvent.data);
-      if (!data) return;
+  // Xử lý thông điệp từ Leaflet WebView
+  const handleWebViewMessage = useCallback(
+    (event: any) => {
+      try {
+        const data = JSON.parse(event.nativeEvent.data);
+        if (!data) return;
 
-      if (data.type === "MAP_READY") {
-        handleMapReady();
-      } else if (data.type === "SELECT_LOCATION") {
-        Keyboard.dismiss();
-        setShowSuggestions(false);
-        const found = locations.find((l) => l.id === data.id);
-        if (found) {
-          setSelectedLoc(found);
-        }
-      } else if (data.type === "ROUTE_INFO") {
-        setActiveRoute({
-          distanceMeters: data.distanceMeters,
-          durationMinutes: data.durationMinutes,
-        });
-        setIsRoutingActive(true);
-        setTabBarVisible(false);
-      } else if (data.type === "MANUAL_ROTATE") {
-        if (compassMode) {
+        if (data.type === "MAP_READY") {
+          handleMapReady();
+        } else if (data.type === "SELECT_LOCATION") {
+          Keyboard.dismiss();
+          setShowSuggestions(false);
+          const found = locations.find((l) => l.id === data.id);
+          if (found) {
+            setSelectedLoc(found);
+          }
+        } else if (data.type === "ROUTE_INFO") {
+          setActiveRoute({
+            distanceMeters: data.distanceMeters,
+            durationMinutes: data.durationMinutes,
+          });
+          setIsRoutingActive(true);
+          setTabBarVisible(false);
+        } else if (data.type === "MANUAL_ROTATE") {
           stopCompassTracking();
+          setBearing(data.bearing);
         }
-        setBearing(data.bearing);
+      } catch (err) {
+        console.error("Lỗi parse message từ webview:", err);
       }
-    } catch (err) {
-      console.error("Lỗi parse message từ webview:", err);
-    }
-  };
+    },
+    [handleMapReady, locations, setSelectedLoc, setShowSuggestions, stopCompassTracking, setBearing]
+  );
 
-  // Chọn danh mục từ băng lọc chip
-  const handleSelectCategory = (catId: string) => {
-    Keyboard.dismiss();
-    setSelectedCategory(catId);
-    setShowSuggestions(false);
-    webViewRef.current?.postMessage(
-      JSON.stringify({
-        type: "FILTER_CATEGORY",
-        category: catId,
-      })
-    );
-  };
+  // Chọn danh mục bộ lọc
+  const handleSelectCategory = useCallback(
+    (catId: string) => {
+      Keyboard.dismiss();
+      setSelectedCategory(catId);
+      setShowSuggestions(false);
+      webViewRef.current?.postMessage(
+        JSON.stringify({
+          type: "FILTER_CATEGORY",
+          category: catId,
+        })
+      );
+    },
+    [setSelectedCategory, setShowSuggestions]
+  );
 
-  // Focus tòa nhà khi chọn từ danh sách tìm kiếm
-  const handleSelectLocation = (loc: LocationItem) => {
-    Keyboard.dismiss();
-    setSelectedLoc(loc);
+  // Chọn một địa điểm cụ thể
+  const handleSelectLocation = useCallback(
+    (loc: LocationItem) => {
+      Keyboard.dismiss();
+      setSelectedLoc(loc);
 
-    // Nếu query tìm kiếm là mã phòng (2.20, 8.3.4,...), lưu lại để card hiển thị đầy đủ chi tiết phòng
-    const parsed = parseCampusRoom(search);
-    if (parsed.buildingNumber && HOUSE_NUM_TO_ID[parsed.buildingNumber] === loc.id) {
-      setTargetRoom(search.trim());
-      setSearch(parsed.fullDisplay);
-    } else {
-      setSearch(loc.name);
-    }
+      // Nếu query tìm kiếm là mã phòng (2.20, 8.3.4,...), lưu lại để card hiển thị chi tiết phòng
+      const parsed = parseCampusRoom(search);
+      if (parsed.buildingNumber && HOUSE_NUM_TO_ID[parsed.buildingNumber] === loc.id) {
+        setTargetRoom(search.trim());
+        setSearch(parsed.fullDisplay);
+      } else {
+        setSearch(loc.name);
+      }
 
-    setShowSuggestions(false);
-    setActiveRoute(null);
-    setIsRoutingActive(false);
-    setTabBarVisible(true);
+      setShowSuggestions(false);
+      setActiveRoute(null);
+      setIsRoutingActive(false);
+      setTabBarVisible(true);
 
-    webViewRef.current?.postMessage(
-      JSON.stringify({
-        type: "FOCUS_LOCATION",
-        id: loc.id,
-        lat: loc.lat,
-        lng: loc.lng,
-      })
-    );
-  };
+      webViewRef.current?.postMessage(
+        JSON.stringify({
+          type: "FOCUS_LOCATION",
+          id: loc.id,
+          lat: loc.lat,
+          lng: loc.lng,
+        })
+      );
+    },
+    [search, setSelectedLoc, setTargetRoom, setSearch, setShowSuggestions]
+  );
 
-  // Xử lý khi nhấn nút Search / Enter trên bàn phím
-  const handleSearchSubmit = () => {
+  // Xử lý submit tìm kiếm
+  const handleSearchSubmit = useCallback(() => {
     Keyboard.dismiss();
     if (!search.trim()) return;
     const matched = findLocationByRoomOrQuery(search, locations) || searchResults[0];
     if (matched) {
       handleSelectLocation(matched);
     }
-  };
+  }, [search, locations, searchResults, handleSelectLocation]);
 
-  // Chuyển đổi lớp bản đồ (Thường vs Vệ tinh)
-  const handleToggleLayer = () => {
+  // Đổi lớp bản đồ (osm / satellite)
+  const handleToggleLayer = useCallback(() => {
     const next = mapLayer === "osm" ? "satellite" : "osm";
     setMapLayer(next);
     webViewRef.current?.postMessage(
@@ -662,39 +335,24 @@ export default function MapScreen() {
         layer: next,
       })
     );
-  };
+  }, [mapLayer]);
 
-  // Điều khiển Zoom
-  const handleZoomIn = () => {
+  // Điều khiển phóng to / thu nhỏ / reset góc nhìn
+  const handleZoomIn = useCallback(() => {
     webViewRef.current?.postMessage(JSON.stringify({ type: "ZOOM_IN" }));
-  };
-  const handleZoomOut = () => {
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
     webViewRef.current?.postMessage(JSON.stringify({ type: "ZOOM_OUT" }));
-  };
-  const handleResetView = () => {
-    handleResetBearing();
+  }, []);
+
+  const handleResetView = useCallback(() => {
+    resetBearing();
     webViewRef.current?.postMessage(JSON.stringify({ type: "RESET_VIEW" }));
-  };
-
-  const computedDistanceKm = useMemo(() => {
-    if (!selectedLoc || !userLocation) return null;
-    return calculateDistanceKm(userLocation.latitude, userLocation.longitude, selectedLoc.lat, selectedLoc.lng);
-  }, [selectedLoc, userLocation]);
-
-  const computedDistanceText = useMemo(() => {
-    if (computedDistanceKm === null) return "";
-    return computedDistanceKm < 1
-      ? `~${Math.round(computedDistanceKm * 1000)}m`
-      : `~${computedDistanceKm.toFixed(1)}km`;
-  }, [computedDistanceKm]);
-
-  const computedWalkingMinutes = useMemo(() => {
-    if (computedDistanceKm === null) return null;
-    return Math.max(1, Math.ceil((computedDistanceKm * 1000) / 80));
-  }, [computedDistanceKm]);
+  }, [resetBearing]);
 
   // Kích hoạt chỉ đường đi bộ trực tiếp ngay trên bản đồ khuôn viên
-  const handleStartInAppDirections = async () => {
+  const handleStartInAppDirections = useCallback(async () => {
     if (!selectedLoc) return;
 
     if (!userLocation) {
@@ -703,7 +361,7 @@ export default function MapScreen() {
 
     const orig = userLocation
       ? { lat: userLocation.latitude, lng: userLocation.longitude }
-      : { lat: 12.651380, lng: 108.023660 };
+      : { lat: 12.65138, lng: 108.02366 };
 
     if (computedDistanceKm !== null) {
       setActiveRoute({
@@ -715,7 +373,6 @@ export default function MapScreen() {
     setIsRoutingActive(true);
     setTabBarVisible(false);
 
-    // Gửi lệnh DRAW_ROUTE cho Leaflet WebView vẽ cung đường đi bộ trực tiếp trên bản đồ
     webViewRef.current?.postMessage(
       JSON.stringify({
         type: "DRAW_ROUTE",
@@ -725,18 +382,18 @@ export default function MapScreen() {
         destinationName: selectedLoc.name,
       })
     );
-  };
+  }, [selectedLoc, userLocation, fetchRealGpsLocation, computedDistanceKm, computedWalkingMinutes, currentLocationName]);
 
-  // Hủy đường đi bộ đang hiển thị
-  const handleClearRoute = () => {
+  // Hủy đường đi bộ đang vẽ
+  const handleClearRoute = useCallback(() => {
     setIsRoutingActive(false);
     setActiveRoute(null);
     setTabBarVisible(true);
     webViewRef.current?.postMessage(JSON.stringify({ type: "CLEAR_ROUTE" }));
-  };
+  }, []);
 
-  // Mở ứng dụng Google Maps ngoài
-  const handleOpenExternalGoogleMaps = () => {
+  // Mở app Google Maps bên ngoài
+  const handleOpenExternalGoogleMaps = useCallback(() => {
     if (!selectedLoc) return;
     const { lat, lng, name } = selectedLoc;
 
@@ -759,39 +416,7 @@ export default function MapScreen() {
     Linking.openURL(scheme).catch(() => {
       Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`);
     });
-  };
-
-  // Gợi ý tìm kiếm & lọc theo danh mục
-  const searchResults = useMemo(() => {
-    let list = locations;
-    if (selectedCategory && selectedCategory !== "all") {
-      list = list.filter((loc) => loc.category.toLowerCase() === selectedCategory.toLowerCase());
-    }
-    const q = search.trim().toLowerCase();
-    if (!q) return list;
-
-    // 1. Kiểm tra xem query có trỏ tới tòa nhà/phòng học cụ thể nào không (vd: 2.20 -> Nhà 2, 8.3.4 -> Nhà 8, 304.GD3 -> Nhà 3,...)
-    const matchedByRoom = findLocationByRoomOrQuery(q, locations);
-
-    const filtered = list.filter((loc) => {
-      return (
-        loc.name.toLowerCase().includes(q) ||
-        loc.building.toLowerCase().includes(q) ||
-        loc.category.toLowerCase().includes(q) ||
-        (loc.description && loc.description.toLowerCase().includes(q))
-      );
-    });
-
-    // Nếu tìm thấy địa điểm khớp theo phòng học (2.20, 8.3.4,...), đưa nó lên vị trí đầu tiên
-    if (matchedByRoom) {
-      const rest = filtered.filter((l) => l.id !== matchedByRoom.id);
-      return [matchedByRoom, ...rest];
-    }
-
-    return filtered;
-  }, [search, selectedCategory, locations]);
-
-  const matchedTargetId = targetRoom ? parseCampusRoom(targetRoom).buildingNumber : null;
+  }, [selectedLoc, userLocation]);
 
   // Khởi tạo mã HTML 1 lần duy nhất: WebView KHÔNG BAO GIỜ bị reload lại, triệt tiêu lag và nóng máy
   const mapHtmlSource = useMemo(() => {
@@ -808,11 +433,8 @@ export default function MapScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: AppColors.background }}>
-      {/* ─── THANH ĐIỀU HƯỚNG TRÊN CÙNG (GIỮ NGUYÊN 100%) ──────────────── */}
-      <NavHeader
-        title="Bản đồ khuôn viên"
-        subtitle="Đại học Tây Nguyên • Khuôn viên nội bộ"
-      />
+      {/* ─── THANH TIÊU ĐỀ NAV HEADER ─────────────────────────────────── */}
+      <NavHeader title="Bản đồ khuôn viên" subtitle="Đại học Tây Nguyên • Khuôn viên nội bộ" />
 
       {isLoggedIn === null ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
@@ -828,7 +450,7 @@ export default function MapScreen() {
           />
         </View>
       ) : (
-        /* ─── KHUNG BẢN ĐỒ TƯƠNG TÁC HIỆN ĐẠI (EDGE-TO-EDGE CANVAS) ────── */
+        /* ─── KHUNG BẢN ĐỒ TƯƠNG TÁC (EDGE-TO-EDGE CANVAS) ─────────────── */
         <View
           style={{
             flex: 1,
@@ -838,7 +460,7 @@ export default function MapScreen() {
             overflow: "hidden",
           }}
         >
-          {/* WebView: Bản đồ khuôn viên với Google Maps tiles & vẽ cung đường đi bộ trực tiếp */}
+          {/* WebView Tối ưu CPU, RAM, GPU */}
           <WebView
             ref={webViewRef}
             originWhitelist={["*"]}
@@ -854,6 +476,11 @@ export default function MapScreen() {
             mixedContentMode="always"
             allowsInlineMediaPlayback={true}
             startInLoadingState={true}
+            scrollEnabled={false}
+            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
+            overScrollMode="never"
+            bounces={false}
             renderLoading={() => (
               <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#F8FAFC" }}>
                 <ActivityIndicator size="large" color={AppColors.primary} />
@@ -928,7 +555,7 @@ export default function MapScreen() {
             </View>
           )}
 
-          {/* ─── THANH TÌM KIẾM NỔI & BĂNG DANH MỤC LỌC NHANH (ẨN KHI ĐANG CHỈ ĐƯỜNG) ─── */}
+          {/* ─── THANH TÌM KIẾM NỔI & DANH MỤC LỌC NHANH (Memoized) ─────── */}
           {!isRoutingActive && (
             <MapSearchBar
               search={search}
@@ -952,7 +579,7 @@ export default function MapScreen() {
             />
           )}
 
-          {/* ── CÁC NÚT ĐIỀU KHIỂN NỔI & LA BÀN ──────────────────────────────── */}
+          {/* ── CÁC NÚT ĐIỀU KHIỂN NỔI & LA BÀN (Memoized) ──────────────── */}
           <MapControlsOverlay
             mapLayer={mapLayer}
             bearing={bearing}
@@ -964,21 +591,21 @@ export default function MapScreen() {
             onToggleLayer={handleToggleLayer}
             onCompassPress={() => {
               if (bearing !== 0 && !compassMode) {
-                handleResetBearing();
+                resetBearing();
               } else {
                 toggleCompassMode();
               }
             }}
-            onResetBearing={handleResetBearing}
-            onUserLocationPress={() => requestUserLocation()}
+            onResetBearing={resetBearing}
+            onUserLocationPress={() => setShowLocationPicker(true)}
             onZoomIn={handleZoomIn}
             onZoomOut={handleZoomOut}
             onResetView={handleResetView}
-            onRotateStep={handleRotateStep}
+            onRotateStep={rotateStep}
             onClearRoute={handleClearRoute}
           />
 
-          {/* ── THẺ CHI TIẾT TÒA NHÀ ĐANG CHỌN (ẨN KHI ĐANG CHỈ ĐƯỜNG ĐỂ TỐI ĐA KHÔNG GIAN) ── */}
+          {/* ── THẺ CHI TIẾT TÒA NHÀ ĐANG CHỌN (Memoized) ──────────────── */}
           {!isRoutingActive && selectedLoc && (
             <MapLocationDetailCard
               selectedLoc={selectedLoc}
@@ -995,7 +622,7 @@ export default function MapScreen() {
             />
           )}
 
-          {/* ── THANH TRẠNG THÁI DẪN ĐƯỜNG TỐI GIẢN (KHI ĐANG CHỈ ĐƯỜNG) ──────── */}
+          {/* ── THANH TRẠNG THÁI DẪN ĐƯỜNG TỐI GIẢN (KHI ĐANG CHỈ ĐƯỜNG) ── */}
           {isRoutingActive && (
             <View
               style={{
@@ -1092,197 +719,20 @@ export default function MapScreen() {
                   }}
                 >
                   <Feather name="x-circle" size={16} color="#DC2626" />
-                  <Text style={{ fontSize: 13, fontWeight: "800", color: "#DC2626" }}>
-                    Dừng
-                  </Text>
+                  <Text style={{ fontSize: 13, fontWeight: "800", color: "#DC2626" }}>Dừng</Text>
                 </TouchableOpacity>
               </View>
             </View>
           )}
-          {/* ── MODAL CHỌN ĐIỂM ĐỊNH VỊ (GPS THỰC TẾ HOẶC VỊ TRÍ MẪU ĐỂ TEST) ── */}
-          <Modal
+
+          {/* ── MODAL CHỌN ĐỊNH VỊ (GPS THỰC TẾ HOẶC VỊ TRÍ MẪU ĐỂ TEST) ── */}
+          <MapLocationPickerModal
             visible={showLocationPicker}
-            transparent={true}
-            animationType="fade"
-            onRequestClose={() => setShowLocationPicker(false)}
-          >
-            <TouchableOpacity
-              activeOpacity={1}
-              onPress={() => setShowLocationPicker(false)}
-              style={{
-                flex: 1,
-                backgroundColor: "rgba(15, 23, 42, 0.55)",
-                justifyContent: "flex-end",
-              }}
-            >
-              <TouchableOpacity
-                activeOpacity={1}
-                style={{
-                  backgroundColor: "#FFFFFF",
-                  borderTopLeftRadius: 28,
-                  borderTopRightRadius: 28,
-                  paddingHorizontal: 20,
-                  paddingTop: 16,
-                  paddingBottom: Math.max(insets.bottom, 20),
-                  maxHeight: "82%",
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: -4 },
-                  shadowOpacity: 0.15,
-                  shadowRadius: 12,
-                  elevation: 16,
-                }}
-              >
-                {/* Thanh kéo nhỏ phía trên */}
-                <View style={{ alignItems: "center", marginBottom: 14 }}>
-                  <View style={{ width: 40, height: 4.5, borderRadius: 3, backgroundColor: "#E2E8F0" }} />
-                </View>
-
-                {/* Tiêu đề Modal */}
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                  <View>
-                    <Text style={{ fontSize: 17, fontWeight: "800", color: "#0F172A" }}>
-                      Chọn điểm định vị của bạn
-                    </Text>
-                    <Text style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
-                      Dùng GPS điện thoại hoặc vị trí mẫu để test tính năng trong trường
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => setShowLocationPicker(false)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 16,
-                      backgroundColor: "#F1F5F9",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Feather name="x" size={16} color="#64748B" />
-                  </TouchableOpacity>
-                </View>
-
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
-                  {/* Tùy chọn 1: Bắt GPS thực tế của điện thoại */}
-                  <TouchableOpacity
-                    onPress={() => fetchRealGpsLocation(true)}
-                    activeOpacity={0.8}
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      backgroundColor: "#EFF6FF",
-                      borderRadius: 18,
-                      padding: 14,
-                      marginBottom: 14,
-                      borderWidth: 1.5,
-                      borderColor: "#93C5FD",
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 22,
-                        backgroundColor: "#2563EB",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        marginRight: 14,
-                      }}
-                    >
-                      <MaterialIcons name="my-location" size={24} color="#FFFFFF" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <Text style={{ fontSize: 14.5, fontWeight: "800", color: "#1E40AF" }}>
-                          Vị trí GPS thực tế của máy
-                        </Text>
-                        <View style={{ backgroundColor: "#DBEAFE", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                          <Text style={{ fontSize: 10, fontWeight: "800", color: "#2563EB" }}>Vệ tinh</Text>
-                        </View>
-                      </View>
-                      <Text style={{ fontSize: 11.5, color: "#3B82F6", marginTop: 2 }}>
-                        Bắt tọa độ thật từ chip GPS điện thoại (quét 1 lần, không nóng máy)
-                      </Text>
-                    </View>
-                    <Feather name="chevron-right" size={20} color="#3B82F6" />
-                  </TouchableOpacity>
-
-                  {/* Phân cách danh sách vị trí mẫu */}
-                  <Text style={{ fontSize: 12, fontWeight: "800", color: "#94A3B8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10, marginLeft: 2 }}>
-                    Vị trí mẫu tại trường ĐH Tây Nguyên (Dùng test nhanh)
-                  </Text>
-
-                  {TNU_SAMPLE_TEST_LOCATIONS.map((sample) => (
-                    <TouchableOpacity
-                      key={sample.id}
-                      onPress={() => handleSelectSampleLocation(sample)}
-                      activeOpacity={0.7}
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        backgroundColor: "#F8FAFC",
-                        borderRadius: 16,
-                        padding: 12,
-                        marginBottom: 9,
-                        borderWidth: 1,
-                        borderColor: "#E2E8F0",
-                      }}
-                    >
-                      <View
-                        style={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: 20,
-                          backgroundColor: sample.id === "hospital_gate" ? "#FEE2E2" : "#F1F5F9",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          marginRight: 12,
-                        }}
-                      >
-                        <MaterialIcons
-                          name={sample.icon as any}
-                          size={20}
-                          color={sample.id === "hospital_gate" ? "#EF4444" : "#2563EB"}
-                        />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                          <Text style={{ fontSize: 14, fontWeight: "800", color: "#1E293B" }}>
-                            {sample.name}
-                          </Text>
-                          {sample.badge && (
-                            <View
-                              style={{
-                                backgroundColor: sample.id === "hospital_gate" ? "#FEE2E2" : "#E2E8F0",
-                                paddingHorizontal: 6,
-                                paddingVertical: 1.5,
-                                borderRadius: 6,
-                              }}
-                            >
-                              <Text
-                                style={{
-                                  fontSize: 10,
-                                  fontWeight: "800",
-                                  color: sample.id === "hospital_gate" ? "#DC2626" : "#475569",
-                                }}
-                              >
-                                {sample.badge}
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                        <Text style={{ fontSize: 11.5, color: "#64748B", marginTop: 2 }}>
-                          {sample.desc}
-                        </Text>
-                      </View>
-                      <Feather name="arrow-right" size={16} color="#94A3B8" />
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          </Modal>
+            insetsBottom={insets.bottom}
+            onClose={() => setShowLocationPicker(false)}
+            onSelectRealGps={() => fetchRealGpsLocation(true)}
+            onSelectSampleLocation={handleSelectSampleLocation}
+          />
         </View>
       )}
     </View>

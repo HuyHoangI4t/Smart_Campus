@@ -36,7 +36,7 @@ interface MapSearchBarProps {
   onSubmitSearch?: () => void;
 }
 
-export const MapSearchBar: React.FC<MapSearchBarProps> = ({
+const MapSearchBarComponent: React.FC<MapSearchBarProps> = ({
   search,
   showSuggestions,
   searchResults,
@@ -282,3 +282,5 @@ export const MapSearchBar: React.FC<MapSearchBarProps> = ({
     </View>
   );
 };
+
+export const MapSearchBar = React.memo(MapSearchBarComponent);

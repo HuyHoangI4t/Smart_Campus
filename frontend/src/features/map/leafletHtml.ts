@@ -343,7 +343,7 @@ ${LEAFLET_JS}
     var googleRoadLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&apistyle=s.t:3|p.v:off|s.t:4|p.v:off&x={x}&y={y}&z={z}', {
       subdomains: ['0', '1', '2', '3'],
       maxZoom: 20,
-      keepBuffer: 2,
+      keepBuffer: 1,
       updateWhenIdle: true,
       updateWhenZooming: false,
       attribution: '&copy; Google Maps'
@@ -358,7 +358,7 @@ ${LEAFLET_JS}
     var googleSatLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
       subdomains: ['0', '1', '2', '3'],
       maxZoom: 20,
-      keepBuffer: 2,
+      keepBuffer: 1,
       updateWhenIdle: true,
       updateWhenZooming: false,
       pane: 'satelliteCampusPane',
@@ -380,9 +380,21 @@ ${LEAFLET_JS}
       satellitePane.style.webkitClipPath = polyStr;
     }
 
+    // Tối ưu hiệu năng: Dùng requestAnimationFrame throttling khi người dùng kéo/vuốt bản đồ
+    var clipDirty = false;
+    function scheduleSatelliteClip() {
+      if (clipDirty) return;
+      clipDirty = true;
+      requestAnimationFrame(function() {
+        updateSatelliteClip();
+        clipDirty = false;
+      });
+    }
+
     // Kích hoạt lớp vệ tinh khuôn viên và đồng bộ clip-path khi bản đồ di chuyển/zoom
     googleSatLayer.addTo(map);
-    map.on('zoom viewreset moveend resize move', updateSatelliteClip);
+    map.on('zoomend viewreset moveend resize', updateSatelliteClip);
+    map.on('move', scheduleSatelliteClip);
     setTimeout(updateSatelliteClip, 100);
 
     // ── TƯỜNG RÀO KIÊN CỐ BAO QUANH KHUÔN VIÊN TRƯỜNG (Ô VIỀN LÀM TƯỜNG) ──

@@ -25,7 +25,7 @@ interface MapControlsOverlayProps {
   onClearRoute: () => void;
 }
 
-export const MapControlsOverlay: React.FC<MapControlsOverlayProps> = ({
+const MapControlsOverlayComponent: React.FC<MapControlsOverlayProps> = ({
   mapLayer,
   bearing,
   compassMode,
@@ -281,3 +281,5 @@ export const MapControlsOverlay: React.FC<MapControlsOverlayProps> = ({
     </>
   );
 };
+
+export const MapControlsOverlay = React.memo(MapControlsOverlayComponent);

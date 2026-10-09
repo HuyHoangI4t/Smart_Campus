@@ -16,8 +16,6 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Sharing from "expo-sharing";
-import { File, Paths } from "expo-file-system";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
 import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
@@ -237,33 +235,14 @@ export default function HomeDetailScreen() {
         return;
       }
 
-      // Tạo tên tệp an toàn cho hệ thống tệp điện thoại
-      let fileName = (att.title || "tailieu")
-        .replace(/[/\\?%*:|"<>]/g, "_")
-        .trim();
-      if (att.isPdf && !fileName.toLowerCase().endsWith(".pdf")) {
-        fileName += ".pdf";
-      }
-
-      const targetFile = new File(Paths.document, fileName);
-      const downloaded = await File.downloadFileAsync(downloadEndpoint, targetFile, { idempotent: true });
-
-      if (downloaded && downloaded.uri) {
-        const isSharingAvailable = await Sharing.isAvailableAsync();
-        if (isSharingAvailable) {
-          await Sharing.shareAsync(downloaded.uri, {
-            mimeType: att.isPdf ? "application/pdf" : "application/octet-stream",
-            dialogTitle: `Tập tin đã tải về: ${fileName}`,
-            UTI: att.isPdf ? "com.adobe.pdf" : undefined,
-          });
-        } else {
-          Alert.alert(
-            "Tải về thành công",
-            `Tập tin đã được tải về máy của bạn: ${fileName}`
-          );
-        }
-      } else {
-        throw new Error("Không thể tải tệp");
+      // Trên điện thoại (Android & iOS):
+      // Kích hoạt trình tải của hệ điều hành (Download Manager/Safari) để lưu thẳng vào thư mục Tải về (Downloads).
+      // Tuyệt đối KHÔNG mở bảng Share (Share sheet) của hệ thống.
+      const targetUrl = downloadEndpoint || att.url;
+      try {
+        await Linking.openURL(targetUrl);
+      } catch {
+        await Linking.openURL(att.url);
       }
     } catch (err: any) {
       console.warn("Lỗi tải tệp trực tiếp:", err.message);
@@ -279,7 +258,7 @@ export default function HomeDetailScreen() {
         ]
       );
     } finally {
-      setDownloadingUrl(null);
+      setTimeout(() => setDownloadingUrl(null), 1200);
     }
   };
 

@@ -17,7 +17,7 @@ interface MapLocationDetailCardProps {
   onOpenGoogleMaps: () => void;
 }
 
-export const MapLocationDetailCard: React.FC<MapLocationDetailCardProps> = ({
+const MapLocationDetailCardComponent: React.FC<MapLocationDetailCardProps> = ({
   selectedLoc,
   userLocation,
   matchedTargetId,
@@ -234,3 +234,5 @@ export const MapLocationDetailCard: React.FC<MapLocationDetailCardProps> = ({
     </View>
   );
 };
+
+export const MapLocationDetailCard = React.memo(MapLocationDetailCardComponent);

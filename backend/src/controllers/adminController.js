@@ -488,37 +488,12 @@ exports.deleteLocation = async (req, res) => {
 
 exports.resetLocations = async (req, res) => {
   try {
-    const { TAY_NGUYEN_CAMPUS_LOCATIONS } = require('../database/seed_37_locations');
-    
-    // Xóa toàn bộ dữ liệu hiện có
-    await db.query('DELETE FROM map_locations');
-
-    // Chèn lại 37 địa điểm gốc
-    for (const loc of TAY_NGUYEN_CAMPUS_LOCATIONS) {
-      await db.query(`
-        INSERT INTO map_locations (id, name, category, building, floor, description, lat, lng, icon, x, y, color)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [
-        loc.id,
-        loc.name,
-        loc.category,
-        loc.building || '',
-        loc.floor || '',
-        loc.description || '',
-        loc.lat,
-        loc.lng,
-        loc.icon || 'map-pin',
-        loc.x || 50,
-        loc.y || 50,
-        loc.color || '#10B981'
-      ]);
-    }
-
-    const [count] = await db.query('SELECT COUNT(*) as total FROM map_locations');
+    const { seedMapLocations } = require('../database/seeders');
+    const total = await seedMapLocations(db, { force: true });
     res.json({
       success: true,
-      message: `Đã khôi phục thành công ${count[0].total} địa điểm mặc định của Trường ĐH Tây Nguyên!`,
-      total: count[0].total
+      message: `Đã khôi phục thành công ${total} địa điểm mặc định của Trường ĐH Tây Nguyên!`,
+      total
     });
   } catch (error) {
     console.error('Lỗi reset địa điểm:', error);
@@ -612,19 +587,12 @@ exports.deletePath = async (req, res) => {
 
 exports.resetPaths = async (req, res) => {
   try {
-    const { DEFAULT_CAMPUS_PATHS } = require('../database/init_campus_paths');
-    await db.query('DELETE FROM campus_paths');
-    for (const p of DEFAULT_CAMPUS_PATHS) {
-      await db.query(
-        'INSERT INTO campus_paths (name, path_type, coordinates) VALUES (?, ?, ?)',
-        [p.name, p.path_type, JSON.stringify(p.coordinates)]
-      );
-    }
-    const [count] = await db.query('SELECT COUNT(*) as total FROM campus_paths');
+    const { seedCampusPaths } = require('../database/seeders');
+    const total = await seedCampusPaths(db, { force: true });
     res.json({
       success: true,
-      message: `Đã khôi phục ${count[0].total} tuyến đường nội bộ mặc định của trường!`,
-      total: count[0].total
+      message: `Đã khôi phục ${total} tuyến đường nội bộ mặc định của trường!`,
+      total
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi khôi phục đường nội bộ: ' + error.message });
