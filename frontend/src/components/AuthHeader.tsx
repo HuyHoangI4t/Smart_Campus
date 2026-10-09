@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppColors } from '@/src/constants/appColors';
 import { authStyles } from '@/src/constants/globalStyles';
+import { getHeaderTopPadding } from '@/src/utils/safeArea';
 
 interface AuthHeaderProps {
   currentTab: 'login' | 'register';
@@ -32,7 +33,7 @@ export const AuthHeader: React.FC<AuthHeaderProps> = ({
           authStyles.headerContainer, 
           isKeyboardVisible && { 
             height: 'auto', 
-            paddingTop: insets.top + 8, // Tự động đẩy xuống dưới tai thỏ
+            paddingTop: getHeaderTopPadding(insets.top, 8),
             paddingBottom: 4
           }
         ]}

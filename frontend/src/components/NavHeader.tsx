@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Platform, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, StatusBar } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppColors } from '../constants/appColors';
 import { commonStyles } from '../styles/common.styles';
+import { getHeaderTopPadding } from '../utils/safeArea';
 
 export interface NavHeaderProps {
   title: string;
@@ -46,7 +47,7 @@ export function NavHeader({
 
   const shouldShowBack = showBack || !!onBack;
   const headerBg = bg || backgroundColor || AppColors.primary;
-  const paddingTop = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 14 : Math.max(insets.top + 16, 32);
+  const paddingTop = getHeaderTopPadding(insets.top, 14);
 
   return (
     <>

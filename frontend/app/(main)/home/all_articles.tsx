@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
 import { AllArticlesSkeleton } from "../../../src/components/Skeleton";
+import { getHeaderTopPadding } from "../../../src/utils/safeArea";
 //import { AppColors } from "../../../src/constants/appColors";
 import {
   apiGetNews,
@@ -90,10 +91,7 @@ export default function AllArticlesScreen() {
     }, [])
   );
 
-  const topPadding =
-    Platform.OS === "android"
-      ? (StatusBar.currentHeight || 24) + 12
-      : Math.max(insets.top + 8, 44);
+  const topPadding = getHeaderTopPadding(insets.top, 14);
 
   // Chuyển ngày tháng thành timestamp mili-giây để sắp xếp
   const parseArticleTimestamp = (item: any): number => {

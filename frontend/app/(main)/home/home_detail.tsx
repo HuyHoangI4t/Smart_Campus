@@ -20,6 +20,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
 import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
 import { SkeletonBox } from "../../../src/components/Skeleton";
+import { getHeaderTopPadding } from "../../../src/utils/safeArea";
 import {
   getNewsImageUrl,
   CAMPUS_FALLBACK_IMAGES,
@@ -288,9 +289,7 @@ export default function HomeDetailScreen() {
 
 
   if (!isLoggedIn) {
-    const topPadding = Platform.OS === "android"
-      ? (StatusBar.currentHeight || 24) + 12
-      : Math.max(insets.top + 8, 44);
+    const topPadding = getHeaderTopPadding(insets.top, 14);
 
     return (
       <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
@@ -404,7 +403,7 @@ export default function HomeDetailScreen() {
           <View
             style={{
               position: "absolute",
-              top: Math.max(insets.top, 16) + 8,
+              top: getHeaderTopPadding(insets.top, 8),
               left: 16,
               right: 16,
               flexDirection: "row",
@@ -526,7 +525,7 @@ export default function HomeDetailScreen() {
         <View
           style={{
             backgroundColor: "#FFFFFF",
-            paddingTop: Math.max(insets.top, 16) + 8,
+            paddingTop: getHeaderTopPadding(insets.top, 10),
             paddingBottom: 14,
             paddingHorizontal: 16,
             borderBottomWidth: 1,

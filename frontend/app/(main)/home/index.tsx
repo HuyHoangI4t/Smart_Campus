@@ -20,6 +20,7 @@ import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { useTabBarScrollHandler } from "../../../src/components/MainTabs";
 import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
 import { HomeSkeleton } from "../../../src/components/Skeleton";
+import { getHeaderTopPadding } from "../../../src/utils/safeArea";
 import {
   apiGetSchedule,
   apiGetDashboard,
@@ -393,10 +394,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { onScroll: onTabBarScroll, bottomPadding } = useTabBarScrollHandler();
-  const topPadding =
-    Platform.OS === "android"
-      ? (StatusBar.currentHeight || 24) + 16
-      : Math.max(insets.top + 12, 44);
+  const topPadding = getHeaderTopPadding(insets.top, 14);
 
   const [student, setStudent] = useState<StudentInfo>({
     ho_ten: "Đang tải...",
