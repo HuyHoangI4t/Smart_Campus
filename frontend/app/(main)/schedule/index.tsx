@@ -46,6 +46,15 @@ interface RoomDirectionInfo {
   tips: string[];
 }
 
+interface AvailableWeekItem {
+  index: number;
+  weekRange: string;
+  label: string;
+  isCurrent?: boolean;
+  isNext?: boolean;
+  schedules?: ScheduleItem[];
+}
+
 interface ScheduleItem {
   id: string | number;
   course: string;
@@ -237,6 +246,11 @@ export default function ScheduleScreen() {
   const [scheduleList, setScheduleList] = useState<ScheduleItem[]>(FALLBACK_SCHEDULE);
   const [studentInfo, setStudentInfo] = useState<{ mssv: string; name: string }>({ mssv: "", name: "" });
   const [weekRangeText, setWeekRangeText] = useState("Từ ngày 28/09/2026 đến ngày 04/10/2026");
+  const [availableWeeks, setAvailableWeeks] = useState<AvailableWeekItem[]>([]);
+  const [selectedWeekIndex, setSelectedWeekIndex] = useState<number>(0);
+  const [currentWeekIndex, setCurrentWeekIndex] = useState<number>(0);
+  const [nextWeekIndex, setNextWeekIndex] = useState<number>(1);
+  const [isSunday, setIsSunday] = useState<boolean>(new Date().getDay() === 0);
   const [selectedScheduleForDirection, setSelectedScheduleForDirection] = useState<ScheduleItem | null>(null);
   const [isOfflineData, setIsOfflineData] = useState(false);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
@@ -399,7 +413,7 @@ export default function ScheduleScreen() {
     );
   };
 
-  const fetchSchedule = async () => {
+  const fetchSchedule = async (forceReload = false, weekOpts?: { week?: string; weekOffset?: number; weekIndex?: number }) => {
     try {
       const userStr = await AsyncStorage.getItem("@auth_user");
       let mssv = "";
@@ -413,16 +427,25 @@ export default function ScheduleScreen() {
 
       const isRealAccount = mssv && mssv !== "guest";
       const cacheKey = `@offline_schedule_${isRealAccount ? mssv : 'current'}`;
-      const cached = await readLocalCache<any>(cacheKey);
-      if (cached && cached.data) {
-        if (cached.data.weekRange) setWeekRangeText(cached.data.weekRange);
-        if (cached.data.schedules && cached.data.schedules.length > 0) {
-          setScheduleList(cached.data.schedules);
-          setLoading(false);
+      if (!forceReload && !weekOpts) {
+        const cached = await readLocalCache<any>(cacheKey);
+        if (cached && cached.data) {
+          if (cached.data.weekRange) setWeekRangeText(cached.data.weekRange);
+          if (cached.data.availableWeeks && Array.isArray(cached.data.availableWeeks)) {
+            setAvailableWeeks(cached.data.availableWeeks);
+          }
+          if (cached.data.selectedWeekIndex !== undefined) setSelectedWeekIndex(cached.data.selectedWeekIndex);
+          if (cached.data.currentWeekIndex !== undefined) setCurrentWeekIndex(cached.data.currentWeekIndex);
+          if (cached.data.nextWeekIndex !== undefined) setNextWeekIndex(cached.data.nextWeekIndex);
+          if (cached.data.isSunday !== undefined) setIsSunday(cached.data.isSunday);
+          if (cached.data.schedules && cached.data.schedules.length > 0) {
+            setScheduleList(cached.data.schedules);
+            setLoading(false);
+          }
         }
       }
 
-      const res = await apiGetSchedule(isRealAccount ? mssv : undefined);
+      const res = await apiGetSchedule(isRealAccount ? mssv : undefined, forceReload, weekOpts);
 
       if (res && res.isOfflineCache) {
         setIsOfflineData(true);
@@ -435,44 +458,26 @@ export default function ScheduleScreen() {
         if (res.weekRange) {
           setWeekRangeText(res.weekRange);
         }
+        if (res.isSunday !== undefined) setIsSunday(res.isSunday);
+        if (res.currentWeekIndex !== undefined) setCurrentWeekIndex(res.currentWeekIndex);
+        if (res.nextWeekIndex !== undefined) setNextWeekIndex(res.nextWeekIndex);
+        if (res.selectedWeekIndex !== undefined) {
+          setSelectedWeekIndex(res.selectedWeekIndex);
+          // Nếu vào Chủ nhật và đang hiển thị Tuần sau, chuyển sang Thứ 2 nếu CN không có tiết
+          if (res.isSunday && res.selectedWeekIndex === res.nextWeekIndex && selectedDay === 1) {
+            const scheds = res.schedules || [];
+            const hasSundayClass = scheds.some((s: any) => s.dayNum === 1);
+            if (!hasSundayClass) {
+              setSelectedDay(2);
+            }
+          }
+        }
+        if (res.availableWeeks && Array.isArray(res.availableWeeks)) {
+          setAvailableWeeks(res.availableWeeks);
+        }
 
         if (res.schedules && Array.isArray(res.schedules) && res.schedules.length > 0) {
           setScheduleList(res.schedules);
-        } else if (res.tables && res.tables.length > 0) {
-          const rows = res.tables[0].rows || [];
-          if (rows.length > 1) {
-            const parsed: ScheduleItem[] = [];
-            rows.slice(1).forEach((r: string[], idx: number) => {
-              if (r.length >= 5) {
-                const dayStr = r[0] || "";
-                let dayNum = 2;
-
-                const lowerDay = dayStr.toLowerCase();
-                if (lowerDay.startsWith("thứ 3") || lowerDay.includes("thứ ba")) dayNum = 3;
-                else if (lowerDay.startsWith("thứ 4") || lowerDay.includes("thứ tư")) dayNum = 4;
-                else if (lowerDay.startsWith("thứ 5") || lowerDay.includes("thứ năm")) dayNum = 5;
-                else if (lowerDay.startsWith("thứ 6") || lowerDay.includes("thứ sáu")) dayNum = 6;
-                else if (lowerDay.startsWith("thứ 7") || lowerDay.includes("thứ bảy")) dayNum = 7;
-                else if (lowerDay.includes("cn") || lowerDay.includes("chủ nhật")) dayNum = 1;
-                else if (lowerDay.startsWith("thứ 2") || lowerDay.includes("thứ hai")) dayNum = 2;
-
-                parsed.push({
-                  id: `sc-${idx}`,
-                  course: r[1] || "Môn học",
-                  code: dayStr,
-                  time: r[2] ? `Tiết ${r[2]}` : "Ca học tiêu chuẩn",
-                  room: r[3] || "Khu giảng đường",
-                  day: dayStr,
-                  dayNum,
-                  lecturer: r[4] || "Giảng viên bộ môn",
-                });
-              }
-            });
-
-            if (parsed.length > 0) {
-              setScheduleList(parsed);
-            }
-          }
         }
       }
     } catch (error) {
@@ -484,13 +489,31 @@ export default function ScheduleScreen() {
     }
   };
 
+  const handleSelectWeek = (w: AvailableWeekItem) => {
+    setSelectedWeekIndex(w.index);
+    setWeekRangeText(w.weekRange);
+    if (w.schedules && Array.isArray(w.schedules) && w.schedules.length > 0) {
+      setScheduleList(w.schedules);
+      // Nếu chọn tuần sau vào Chủ nhật, ưu tiên chọn Thứ 2 nếu CN không có môn
+      if (isSunday && w.isNext && selectedDay === 1) {
+        const hasSundayClass = w.schedules.some((s) => s.dayNum === 1);
+        if (!hasSundayClass) {
+          setSelectedDay(2);
+        }
+      }
+    } else {
+      setLoading(true);
+      fetchSchedule(false, { weekIndex: w.index });
+    }
+  };
+
   useEffect(() => {
     fetchSchedule();
   }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchSchedule();
+    fetchSchedule(true, { weekIndex: selectedWeekIndex });
   };
 
   const filtered = scheduleList.filter((item) => item.dayNum === selectedDay);
@@ -556,6 +579,109 @@ export default function ScheduleScreen() {
           </TouchableOpacity>
         }
       />
+
+      {/* 1. THANH CHỌN TUẦN HỌC (Tuần này / Tuần sau / ...) */}
+      {availableWeeks && availableWeeks.length > 0 && (
+        <View style={{ backgroundColor: "#F8FAFC", paddingVertical: 10, borderBottomWidth: 1, borderColor: "#E2E8F0" }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, alignItems: "center" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginRight: 2 }}>
+              <Feather name="calendar" size={13} color={AppColors.primary} />
+              <Text style={{ fontSize: 12, fontWeight: "700", color: AppColors.textSecondary }}>Tuần học:</Text>
+            </View>
+
+            {availableWeeks.map((w) => {
+              const isSelectedWeek = w.index === selectedWeekIndex;
+              const matchDates = w.weekRange.match(/(\d{2}\/\d{2})\/\d{4}.*?(\d{2}\/\d{2})\/\d{4}/);
+              const shortDates = matchDates ? `${matchDates[1]} - ${matchDates[2]}` : "";
+              const displayLabel = w.label ? `${w.label}${shortDates ? ` (${shortDates})` : ""}` : (shortDates || `Tuần ${w.index + 1}`);
+
+              return (
+                <TouchableOpacity
+                  key={w.index}
+                  onPress={() => handleSelectWeek(w)}
+                  activeOpacity={0.7}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                    paddingVertical: 6,
+                    paddingHorizontal: 12,
+                    borderRadius: 16,
+                    backgroundColor: isSelectedWeek ? AppColors.primary : "#FFFFFF",
+                    borderWidth: 1,
+                    borderColor: isSelectedWeek ? AppColors.primary : "#CBD5E1",
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: isSelectedWeek ? 0.15 : 0.04,
+                    shadowRadius: 2,
+                    elevation: isSelectedWeek ? 2 : 1,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: isSelectedWeek ? "700" : "600",
+                      color: isSelectedWeek ? "#FFFFFF" : AppColors.text,
+                    }}
+                  >
+                    {displayLabel}
+                  </Text>
+                  {w.isNext && isSunday && (
+                    <View
+                      style={{
+                        backgroundColor: isSelectedWeek ? "rgba(255,255,255,0.25)" : "#FEF3C7",
+                        paddingHorizontal: 5,
+                        paddingVertical: 1,
+                        borderRadius: 8,
+                      }}
+                    >
+                      <Text style={{ fontSize: 10, fontWeight: "700", color: isSelectedWeek ? "#FFFFFF" : "#D97706" }}>
+                        Tuần tới
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* 2. THÔNG BÁO THÔNG MINH KHI ĐANG LÀ CHỦ NHẬT */}
+      {isSunday && selectedWeekIndex === nextWeekIndex && (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            backgroundColor: "#EFF6FF",
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+            borderBottomWidth: 1,
+            borderColor: "#BFDBFE",
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
+            <Feather name="info" size={14} color="#2563EB" />
+            <Text style={{ fontSize: 12, color: "#1D4ED8", fontWeight: "600", flex: 1 }}>
+              Hôm nay là Chủ nhật: Đang xem trước lịch học Tuần sau
+            </Text>
+          </View>
+          {availableWeeks[currentWeekIndex] && (
+            <TouchableOpacity
+              onPress={() => handleSelectWeek(availableWeeks[currentWeekIndex])}
+              style={{
+                backgroundColor: "#DBEAFE",
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 8,
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: "700", color: "#1E40AF" }}>Xem tuần này</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       <View style={{ paddingVertical: 12, backgroundColor: AppColors.cardBg, borderBottomWidth: 1, borderColor: AppColors.cardBorder }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>

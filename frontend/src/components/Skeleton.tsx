@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from "react";
 import { View, Animated, StyleSheet, ViewStyle, DimensionValue } from "react-native";
-import { AppColors } from "../constants/appColors";
 
 interface SkeletonBoxProps {
   width?: DimensionValue;

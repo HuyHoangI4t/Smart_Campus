@@ -44,7 +44,7 @@ const DashboardModule = {
       }
 
       // 2. Render biểu đồ Chart.js
-      this.renderCharts(stats);
+      this.renderCharts(stats, res.activityChart);
 
       // 3. Render danh sách gần đây
       this.renderRecentFeedback(res.recentFeedback || []);
@@ -56,7 +56,7 @@ const DashboardModule = {
     }
   },
 
-  renderCharts(stats) {
+  renderCharts(stats, activityChart = null) {
     if (typeof Chart === 'undefined') return;
 
     // Chart 1: Phân bố đối tượng & tính năng (Doughnut)
@@ -99,20 +99,32 @@ const DashboardModule = {
     if (ctxAct) {
       if (this.charts.activity) this.charts.activity.destroy();
 
+      const labels = (activityChart && Array.isArray(activityChart.labels) && activityChart.labels.length)
+        ? activityChart.labels
+        : ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+
+      const interactions = (activityChart && Array.isArray(activityChart.interactions) && activityChart.interactions.length)
+        ? activityChart.interactions
+        : [120, 190, 240, 210, 280, 160, 95];
+
+      const feedback = (activityChart && Array.isArray(activityChart.feedback) && activityChart.feedback.length)
+        ? activityChart.feedback
+        : [5, 12, 8, 15, 6, 3, 2];
+
       this.charts.activity = new Chart(ctxAct, {
         type: 'bar',
         data: {
-          labels: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
+          labels,
           datasets: [
             {
               label: 'Lượt tương tác',
-              data: [120, 190, 240, 210, 280, 160, 95],
+              data: interactions,
               backgroundColor: '#132F73',
               borderRadius: 6
             },
             {
               label: 'Phản ánh sinh viên',
-              data: [5, 12, 8, 15, 6, 3, 2],
+              data: feedback,
               backgroundColor: '#38BDF8',
               borderRadius: 6
             }
@@ -125,10 +137,21 @@ const DashboardModule = {
             legend: {
               position: 'top',
               labels: { boxWidth: 12, font: { size: 11, family: 'Inter' } }
+            },
+            tooltip: {
+              callbacks: {
+                title: (items) => {
+                  const idx = items[0]?.dataIndex;
+                  if (activityChart && activityChart.dates && activityChart.dates[idx]) {
+                    return `${items[0].label} (${activityChart.dates[idx]})`;
+                  }
+                  return items[0]?.label || '';
+                }
+              }
             }
           },
           scales: {
-            y: { grid: { color: '#F1F5F9' }, ticks: { font: { size: 10 } } },
+            y: { grid: { color: '#F1F5F9' }, ticks: { font: { size: 10 }, beginAtZero: true } },
             x: { grid: { display: false }, ticks: { font: { size: 11 } } }
           }
         }

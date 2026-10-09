@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { LocationItem, CampusPath } from "../types";
 import { TAY_NGUYEN_CAMPUS_LOCATIONS } from "../constants";
 import { mapCache } from "../services/mapCache";
-import { findLocationByRoomOrQuery, parseCampusRoom, HOUSE_NUM_TO_ID, calculateDistanceKm } from "../utils";
+import { findLocationByRoomOrQuery, parseCampusRoom, calculateDistanceKm } from "../utils";
 
 interface UseMapDataParams {
   search?: string;
@@ -54,12 +54,13 @@ export function useMapData(params: UseMapDataParams = {}) {
   }, []);
 
   // Cập nhật khi params từ navigation thay đổi (ví dụ: bấm từ thời khóa biểu)
+  const { room, subject, building, buildingCode, search: searchP, t, onFocusLocation } = params;
   useEffect(() => {
-    const roomParam = params.room ? String(params.room).trim() : "";
-    const subjectParam = params.subject ? String(params.subject).trim() : "";
-    const buildingParam = params.building ? String(params.building).trim() : "";
-    const buildingCodeParam = params.buildingCode ? String(params.buildingCode).trim() : "";
-    const searchParam = params.search ? String(params.search).trim() : "";
+    const roomParam = room ? String(room).trim() : "";
+    const subjectParam = subject ? String(subject).trim() : "";
+    const buildingParam = building ? String(building).trim() : "";
+    const buildingCodeParam = buildingCode ? String(buildingCode).trim() : "";
+    const searchParam = searchP ? String(searchP).trim() : "";
 
     const query = buildingParam || buildingCodeParam || roomParam || searchParam;
     if (!query) return;
@@ -76,9 +77,9 @@ export function useMapData(params: UseMapDataParams = {}) {
 
     if (matched) {
       setSelectedLoc(matched);
-      params.onFocusLocation?.(matched);
+      onFocusLocation?.(matched);
     }
-  }, [params.room, params.subject, params.building, params.buildingCode, params.search, params.t, locations]);
+  }, [room, subject, building, buildingCode, searchP, t, locations, onFocusLocation]);
 
   // Lọc kết quả tìm kiếm được memoized tối ưu CPU
   const searchResults = useMemo(() => {

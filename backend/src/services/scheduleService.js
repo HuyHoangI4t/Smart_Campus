@@ -166,7 +166,7 @@ const DAYS_OF_WEEK = [
  * - Trích xuất tiết học tiếp theo (nextClass)
  * - Tự động gắn hướng dẫn chỉ đường cho từng phòng học
  */
-function processSchedulePayload(rawTables, weekRangeText, customItems = []) {
+function processSchedulePayload(rawTables, weekRangeText, customItems = [], options = {}) {
   const parsed = [];
   const groupedByDay = {
     1: [],
@@ -330,9 +330,30 @@ function processSchedulePayload(rawTables, weekRangeText, customItems = []) {
       type: upcomingToday.type || 'chinh_khoa',
     };
   } else {
-    // 2. Hôm nay đã hết tiết hoặc không có lịch: Ưu tiên tìm NGÀY MAI
-    const tomorrowSchedule = groupedByDay[tomorrowDayNum] || [];
+    // 2. Hôm nay đã hết tiết hoặc không có lịch:
+    // ĐẶC BIỆT: Nếu hôm nay là Chủ nhật (todayJsDay === 0 || currentDayNum === 1), ngày mai là Thứ 2 của TUẦN MỚI!
+    const isSunday = todayJsDay === 0 || currentDayNum === 1;
+    let tomorrowSchedule = [];
+
+    if (isSunday && options.nextWeekSchedule && Array.isArray(options.nextWeekSchedule) && options.nextWeekSchedule.length > 0) {
+      // Ưu tiên tìm Thứ 2 của tuần sau
+      tomorrowSchedule = options.nextWeekSchedule.filter((c) => c.dayNum === 2);
+      if (tomorrowSchedule.length === 0) {
+        // Nếu Thứ 2 tuần sau không có tiết, tìm ngày tiếp theo trong tuần sau
+        for (let d = 3; d <= 7; d++) {
+          const match = options.nextWeekSchedule.filter((c) => c.dayNum === d);
+          if (match.length > 0) {
+            tomorrowSchedule = match;
+            break;
+          }
+        }
+      }
+    } else {
+      tomorrowSchedule = groupedByDay[tomorrowDayNum] || [];
+    }
+
     if (tomorrowSchedule.length > 0) {
+      const isNextWeekClass = isSunday && options.nextWeekSchedule && options.nextWeekSchedule.length > 0;
       nextClass = {
         subject: tomorrowSchedule[0].course,
         room: tomorrowSchedule[0].room,
@@ -341,8 +362,8 @@ function processSchedulePayload(rawTables, weekRangeText, customItems = []) {
         day: tomorrowSchedule[0].day,
         direction: tomorrowSchedule[0].direction,
         status: 'NEXT_DAY',
-        statusLabel: 'NGÀY MAI',
-        dayText: 'Ngày mai',
+        statusLabel: isNextWeekClass ? `LỊCH HỌC ${tomorrowSchedule[0].day?.toUpperCase() || 'NGÀY MAI'} (TUẦN MỚI)` : 'NGÀY MAI',
+        dayText: isNextWeekClass ? `Ngày mai (${tomorrowSchedule[0].day || 'Thứ Hai'})` : 'Ngày mai',
         isCustom: tomorrowSchedule[0].isCustom || false,
         note: tomorrowSchedule[0].note || '',
         type: tomorrowSchedule[0].type || 'chinh_khoa',

@@ -24,13 +24,28 @@
   <em>Khuôn viên trường Đại học Tây Nguyên (Tay Nguyen University)</em>
 </p>
 
-| 🔐 Đăng nhập & Xác thực | 🏠 Trang chủ & Thống kê | 📅 Thời khóa biểu |
-|:---:|:---:|:---:|
-| Giao diện đăng nhập, đăng ký & xác thực OTP qua Email | Dashboard tổng quan: GPA, tín chỉ, môn học hôm nay & lối tắt tiện ích | Lịch học thông minh theo tuần, xem chi tiết phòng học và giảng viên |
+### 📱 Giao diện chính của ứng dụng di động Smart Campus
 
-| 📊 Tra cứu điểm số | 🗺️ Bản đồ khuôn viên | 👤 Hồ sơ & Tiện ích |
-|:---:|:---:|:---:|
-| Bảng điểm chi tiết từng kỳ, GPA hệ 10 & 4, tín chỉ tích lũy | Định vị các tòa nhà giảng đường, phòng thí nghiệm, thư viện | Đổi avatar (camera/thư viện), đổi mật khẩu & gửi cảnh báo khẩn cấp SOS |
+| 🔐 Đăng nhập hệ thống | 📝 Đăng ký tài khoản | 📩 Xác thực OTP Email |
+| :---: | :---: | :---: |
+| <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100158.png" width="240" alt="Đăng nhập" /> | <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100245.png" width="240" alt="Đăng ký" /> | <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100326.png" width="240" alt="Xác thực OTP Email" /> |
+| *Đăng nhập bằng MSSV / Email* | *Đăng ký tài khoản sinh viên* | *Gửi & xác thực OTP qua Email trường* |
+
+| 🏠 Trang chủ (Dashboard) | 📅 Thời khóa biểu theo tuần | 🧭 Chỉ đường phòng học |
+| :---: | :---: | :---: |
+| <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100501.png" width="240" alt="Trang chủ" /> | <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100509.png" width="240" alt="Thời khóa biểu" /> | <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100515.png" width="240" alt="Chỉ đường phòng học" /> |
+| *Lớp học tiếp theo, tin tức & lối tắt* | *Lịch học theo tuần, xem phòng & GV* | *Lộ trình di chuyển & tiện ích phòng* |
+
+| 📊 Kết quả học tập (Điểm) | 👤 Hồ sơ sinh viên | 🔒 Đổi mật khẩu |
+| :---: | :---: | :---: |
+| <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100524.png" width="240" alt="Kết quả học tập" /> | <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100544.png" width="240" alt="Hồ sơ sinh viên" /> | <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100555.png" width="240" alt="Đổi mật khẩu" /> |
+| *GPA hệ 10 & 4, tín chỉ & lọc kỳ* | *Thông tin sinh viên & avatar* | *Cập nhật mật khẩu bảo mật* |
+
+<p align="center">
+  <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100601.png" width="240" alt="Cập nhật hồ sơ sinh viên" />
+  <br>
+  <em>Chỉnh sửa thông tin hồ sơ sinh viên & liên hệ</em>
+</p>
 
 ---
 
@@ -186,7 +201,7 @@ cd Smart_Campus
    npm start
    ```
 2. Truy cập cổng quản trị trên trình duyệt:
-   - Địa chỉ: `http://localhost:3000`
+   - Địa chỉ: `http://localhost:5001`
    - Quản lý tin tức, duyệt danh sách địa điểm bản đồ, thống kê cảnh báo SOS, phản hồi và tài khoản sinh viên.
 
 ---

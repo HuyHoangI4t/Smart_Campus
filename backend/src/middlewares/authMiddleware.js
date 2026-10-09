@@ -1,4 +1,7 @@
+const crypto = require('crypto');
 const UserModel = require('../models/userModel');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'smartcampus_secret_key_2026_secure';
 
 /**
  * Middleware xác thực Bearer Token
@@ -21,23 +24,49 @@ const verifyToken = async (req, res, next) => {
       });
     }
 
-    // Token format: jwt-token-{id}-{email_or_mssv}
+    // Token format: jwt-token-{mssv_or_id}-{timestamp}-{signature?}
     if (token.startsWith('jwt-token-')) {
       const parts = token.split('-');
-      const userId = parts[2];
+      const identifier = parts[2];
+      const timestamp = parts[3];
+      const signature = parts[4];
       
       let user = null;
-      if (userId) {
-        user = await UserModel.findById(userId);
+      if (identifier) {
+        user = (await UserModel.findByMssv(identifier)) || (await UserModel.findById(identifier));
       }
 
-      req.user = user || { id: userId, role: 'sinh_vien' };
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: 'Tài khoản không tồn tại trên hệ thống.'
+        });
+      }
+
+      // Xác thực chữ ký số HMAC nếu token được ký
+      if (signature) {
+        const expectedSig = crypto
+          .createHmac('sha256', JWT_SECRET)
+          .update(`${identifier}:${user.role || 'sinh_vien'}:${timestamp}`)
+          .digest('hex')
+          .slice(0, 16);
+
+        if (signature !== expectedSig) {
+          return res.status(401).json({
+            success: false,
+            message: 'Chữ ký token không hợp lệ hoặc đã bị thay đổi.'
+          });
+        }
+      }
+
+      req.user = user;
       return next();
     }
 
-    // Default fallback user
-    req.user = { id: 1, role: 'sinh_vien' };
-    next();
+    return res.status(401).json({
+      success: false,
+      message: 'Định dạng token không được hỗ trợ.'
+    });
   } catch (error) {
     return res.status(401).json({
       success: false,

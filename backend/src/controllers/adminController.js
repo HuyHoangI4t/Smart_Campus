@@ -6,15 +6,94 @@ const bcrypt = require('bcryptjs');
  */
 exports.getDashboardStats = async (req, res) => {
   try {
-    const [[usersCount]] = await db.query('SELECT COUNT(*) AS total FROM users');
-    const [[studentsCount]] = await db.query("SELECT COUNT(*) AS total FROM users WHERE role = 'sinh_vien' OR role IS NULL");
-    const [[notificationsCount]] = await db.query('SELECT COUNT(*) AS total FROM notifications');
-    const [[feedbackCount]] = await db.query('SELECT COUNT(*) AS total FROM feedback');
-    const [[sosCount]] = await db.query('SELECT COUNT(*) AS total FROM sos_alerts');
-    const [[locationsCount]] = await db.query('SELECT COUNT(*) AS total FROM map_locations');
+    const [
+      [[usersCount]],
+      [[studentsCount]],
+      [[notificationsCount]],
+      [[feedbackCount]],
+      [[sosCount]],
+      [[locationsCount]],
+      [recentFeedback],
+      [recentSos]
+    ] = await Promise.all([
+      db.query('SELECT COUNT(*) AS total FROM users'),
+      db.query("SELECT COUNT(*) AS total FROM users WHERE role = 'sinh_vien' OR role IS NULL"),
+      db.query('SELECT COUNT(*) AS total FROM notifications'),
+      db.query('SELECT COUNT(*) AS total FROM feedback'),
+      db.query('SELECT COUNT(*) AS total FROM sos_alerts'),
+      db.query('SELECT COUNT(*) AS total FROM map_locations'),
+      db.query('SELECT * FROM feedback ORDER BY id DESC LIMIT 5'),
+      db.query('SELECT * FROM sos_alerts ORDER BY id DESC LIMIT 5')
+    ]);
 
-    const [recentFeedback] = await db.query('SELECT * FROM feedback ORDER BY id DESC LIMIT 5');
-    const [recentSos] = await db.query('SELECT * FROM sos_alerts ORDER BY id DESC LIMIT 5');
+    // 2. Tổng hợp dữ liệu 7 ngày trong tuần (T2 -> CN) thực tế từ MySQL cho biểu đồ
+    const dayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+    const currentWeekDays = [];
+    const weekLookup = {};
+
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0 là CN, 1 là T2...
+    const distToMon = (dayOfWeek + 6) % 7;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - distToMon);
+
+    const pad = (n) => String(n).padStart(2, '0');
+    const toDateKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const dateStr = toDateKey(d);
+      weekLookup[dateStr] = i;
+      currentWeekDays.push({
+        label: dayLabels[i],
+        date: dateStr,
+        interactions: 0,
+        feedback: 0
+      });
+    }
+
+    const startDate = `${currentWeekDays[0].date} 00:00:00`;
+    const endDate = `${currentWeekDays[6].date} 23:59:59`;
+
+    const [
+      [feedbackRows],
+      [activityRows]
+    ] = await Promise.all([
+      db.query(
+        "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') as f_date, COUNT(*) as cnt FROM feedback WHERE created_at >= ? AND created_at <= ? GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')",
+        [startDate, endDate]
+      ).catch(() => [[]]),
+      db.query(
+        "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') as a_date, COUNT(*) as cnt FROM activity_logs WHERE created_at >= ? AND created_at <= ? GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')",
+        [startDate, endDate]
+      ).catch(() => [[]])
+    ]);
+
+    if (Array.isArray(feedbackRows)) {
+      for (const row of feedbackRows) {
+        const dStr = String(row.f_date || '');
+        if (weekLookup[dStr] !== undefined) {
+          currentWeekDays[weekLookup[dStr]].feedback = Number(row.cnt) || 0;
+        }
+      }
+    }
+
+    if (Array.isArray(activityRows)) {
+      for (const row of activityRows) {
+        const dStr = String(row.a_date || '');
+        if (weekLookup[dStr] !== undefined) {
+          currentWeekDays[weekLookup[dStr]].interactions = Number(row.cnt) || 0;
+        }
+      }
+    }
+
+    const activityChart = {
+      labels: currentWeekDays.map(d => d.label),
+      dates: currentWeekDays.map(d => d.date),
+      interactions: currentWeekDays.map(d => d.interactions),
+      feedback: currentWeekDays.map(d => d.feedback)
+    };
 
     res.json({
       success: true,
@@ -26,6 +105,7 @@ exports.getDashboardStats = async (req, res) => {
         totalSosAlerts: sosCount.total,
         totalLocations: locationsCount.total,
       },
+      activityChart,
       recentFeedback,
       recentSos
     });

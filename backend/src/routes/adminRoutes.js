@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
+const { verifyToken, requireRole } = require('../middlewares/authMiddleware');
+
+// Bắt buộc xác thực Bearer token và quyền Quản trị viên (admin) trên toàn bộ Admin API
+router.use(verifyToken, requireRole('admin'));
 
 /**
  * @swagger

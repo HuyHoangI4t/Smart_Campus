@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const generalController = require('../controllers/generalController');
+const { verifyToken, requireRole } = require('../middlewares/authMiddleware');
 
 /**
  * @swagger
@@ -25,8 +26,10 @@ const generalController = require('../controllers/generalController');
  *       200:
  *         description: Danh sách thông báo
  *   post:
- *     summary: Tạo thông báo mới
+ *     summary: Tạo thông báo mới (Yêu cầu quyền Admin)
  *     tags: [General]
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -38,7 +41,7 @@ const generalController = require('../controllers/generalController');
  *         description: Tạo thông báo thành công
  */
 router.get('/notifications', generalController.getNotifications);
-router.post('/notifications', generalController.createNotification);
+router.post('/notifications', verifyToken, requireRole('admin'), generalController.createNotification);
 
 /**
  * @swagger
@@ -57,8 +60,10 @@ router.post('/notifications', generalController.createNotification);
  *       200:
  *         description: Chi tiết thông báo
  *   delete:
- *     summary: Xóa một thông báo theo ID
+ *     summary: Xóa một thông báo theo ID (Yêu cầu quyền Admin)
  *     tags: [General]
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -71,6 +76,6 @@ router.post('/notifications', generalController.createNotification);
  *         description: Xóa thành công
  */
 router.get('/notifications/:id', generalController.getNotificationById);
-router.delete('/notifications/:id', generalController.deleteNotification);
+router.delete('/notifications/:id', verifyToken, requireRole('admin'), generalController.deleteNotification);
 
 module.exports = router;

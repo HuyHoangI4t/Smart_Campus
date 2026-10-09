@@ -93,11 +93,12 @@ exports.submitSos = async (req, res) => {
 
 // Get Map Locations (với đầy đủ danh mục và phân tầng)
 exports.getMapLocations = async (req, res) => {
-  const CATEGORIES = ["Tất cả", "Giảng đường", "Học tập", "Phòng máy", "Dịch vụ", "Y tế", "Tiện ích", "Hành chính", "Ký túc xá"];
+  const CATEGORIES = ["Tất cả", "Giảng đường", "Học tập", "Phòng máy", "Dịch vụ", "Y tế", "Tiện ích", "WC", "Hành chính", "Ký túc xá"];
 
   try {
+    const { TAY_NGUYEN_CAMPUS_LOCATIONS } = require('../database/seedData');
     const [rows] = await db.query('SELECT * FROM map_locations ORDER BY id ASC');
-    if (rows && rows.length >= 37) {
+    if (rows && rows.length >= TAY_NGUYEN_CAMPUS_LOCATIONS.length) {
       return res.json({
         success: true,
         categories: CATEGORIES,
@@ -105,7 +106,7 @@ exports.getMapLocations = async (req, res) => {
       });
     }
 
-    // Nếu chưa đủ 37 điểm, nạp lại tự động
+    // Nếu chưa đủ số điểm chuẩn, nạp lại tự động
     const { seedMapLocations } = require('../database/seeders');
     await seedMapLocations(db);
     const [freshRows] = await db.query('SELECT * FROM map_locations ORDER BY id ASC');

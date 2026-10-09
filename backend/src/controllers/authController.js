@@ -3,6 +3,51 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 
+const JWT_SECRET = process.env.JWT_SECRET || 'smartcampus_secret_key_2026_secure';
+
+// Helper tạo token đăng nhập có chữ ký bảo mật HMAC-SHA256
+function generateAuthToken(mssv, role = 'sinh_vien') {
+  const timestamp = Date.now();
+  const signature = crypto
+    .createHmac('sha256', JWT_SECRET)
+    .update(`${mssv}:${role}:${timestamp}`)
+    .digest('hex')
+    .slice(0, 16);
+  return `jwt-token-${mssv}-${timestamp}-${signature}`;
+}
+
+// In-memory rate limiting cho việc thử mã OTP (Tối đa 5 lần thử sai / 15 phút)
+const otpAttemptTracker = new Map();
+
+function checkOtpAttemptLimit(key) {
+  const now = Date.now();
+  const record = otpAttemptTracker.get(key);
+  if (!record) return { allowed: true };
+  if (now - record.firstAttempt > 15 * 60 * 1000) {
+    otpAttemptTracker.delete(key);
+    return { allowed: true };
+  }
+  if (record.attempts >= 5) {
+    const remainingMins = Math.ceil((15 * 60 * 1000 - (now - record.firstAttempt)) / 60000);
+    return { allowed: false, message: `Bạn đã thử sai quá 5 lần. Vui lòng chờ ${remainingMins} phút hoặc yêu cầu mã mới.` };
+  }
+  return { allowed: true };
+}
+
+function recordOtpFailure(key) {
+  const now = Date.now();
+  const record = otpAttemptTracker.get(key);
+  if (!record) {
+    otpAttemptTracker.set(key, { attempts: 1, firstAttempt: now });
+  } else {
+    record.attempts += 1;
+  }
+}
+
+function clearOtpAttempts(key) {
+  otpAttemptTracker.delete(key);
+}
+
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
   port: parseInt(process.env.SMTP_PORT || '587', 10),
@@ -55,7 +100,7 @@ exports.registerRequest = async (req, res) => {
 
     const finalFullName = userFullName || ('Sinh viên ' + mssv);
     const userEmail = email || `${mssv}@sv.ttn.edu.vn`;
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpCode = crypto.randomInt(100000, 1000000).toString();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
 
     console.log('========================================');
@@ -123,6 +168,11 @@ exports.verifyRegisterOtp = async (req, res) => {
     return res.status(400).json({ success: false, message: 'Vui lòng cung cấp MSSV và mã OTP.' });
   }
 
+  const rateCheck = checkOtpAttemptLimit(`reg_${mssv.trim()}`);
+  if (!rateCheck.allowed) {
+    return res.status(429).json({ success: false, message: rateCheck.message });
+  }
+
   try {
     await ensureRegistrationOtpTable();
 
@@ -132,8 +182,11 @@ exports.verifyRegisterOtp = async (req, res) => {
     );
 
     if (rows.length === 0) {
+      recordOtpFailure(`reg_${mssv.trim()}`);
       return res.status(400).json({ success: false, message: 'Mã OTP không chính xác hoặc đã hết hạn.' });
     }
+
+    clearOtpAttempts(`reg_${mssv.trim()}`);
 
     const regData = rows[0];
 
@@ -231,7 +284,7 @@ exports.login = async (req, res) => {
         role: user.role || 'sinh_vien',
         avatar: user.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'
       },
-      token: 'jwt-token-' + user.mssv + '-' + Date.now()
+      token: generateAuthToken(user.mssv, user.role || 'sinh_vien')
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi đăng nhập', error: error.message });
@@ -354,7 +407,7 @@ exports.forgotPassword = async (req, res) => {
 
     const user = rows[0];
     const recipientEmail = user.email || `${user.mssv}@sv.ttn.edu.vn`;
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpCode = crypto.randomInt(100000, 1000000).toString();
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes expiry
 
@@ -425,15 +478,23 @@ exports.verifyOtp = async (req, res) => {
     return res.status(400).json({ success: false, message: 'Vui lòng cung cấp MSSV và mã OTP.' });
   }
 
+  const rateCheck = checkOtpAttemptLimit(`pw_${mssv.trim()}`);
+  if (!rateCheck.allowed) {
+    return res.status(429).json({ success: false, message: rateCheck.message });
+  }
+
   try {
     const [rows] = await db.query(
       'SELECT * FROM password_resets WHERE mssv = ? AND otp_code = ? AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1',
-      [mssv, otpCode]
+      [mssv.trim(), otpCode.trim()]
     );
 
     if (rows.length === 0) {
+      recordOtpFailure(`pw_${mssv.trim()}`);
       return res.status(400).json({ success: false, message: 'Mã OTP không chính xác hoặc đã hết hạn.' });
     }
+
+    clearOtpAttempts(`pw_${mssv.trim()}`);
 
     const record = rows[0];
 

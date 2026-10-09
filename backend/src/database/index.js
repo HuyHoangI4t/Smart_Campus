@@ -9,7 +9,14 @@
 
 const pool = require('../config/db');
 const { createAllTables, TABLE_DEFINITIONS, safeAddColumn, safeAddIndex } = require('./tables');
-const { seedAdminUser, seedMapLocations, seedCampusPaths, runAllSeeders } = require('./seeders');
+const {
+  seedAdminUser,
+  seedMapLocations,
+  seedCampusPaths,
+  seedSampleFeedback,
+  seedSampleActivityLogs,
+  runAllSeeders
+} = require('./seeders');
 const seedData = require('./seedData');
 
 /**
@@ -45,6 +52,8 @@ module.exports = {
   seedAdminUser,
   seedMapLocations,
   seedCampusPaths,
+  seedSampleFeedback,
+  seedSampleActivityLogs,
   runAllSeeders,
   ...seedData,
 };

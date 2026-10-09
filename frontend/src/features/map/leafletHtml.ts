@@ -9,11 +9,12 @@ export function generateLeafletMapHtml(
   campusPaths: CampusPath[] = [],
   gates: CampusGate[] = TNU_CAMPUS_GATES
 ): string {
-  const locationsJson = JSON.stringify(locations);
-  const boundaryJson = JSON.stringify(boundary);
-  const centerJson = JSON.stringify(center);
-  const campusPathsJson = JSON.stringify(campusPaths);
-  const gatesJson = JSON.stringify(gates);
+  const safeJson = (data: any) => JSON.stringify(data).replace(/</g, "\\u003c").replace(/>/g, "\\u003e");
+  const locationsJson = safeJson(locations);
+  const boundaryJson = safeJson(boundary);
+  const centerJson = safeJson(center);
+  const campusPathsJson = safeJson(campusPaths);
+  const gatesJson = safeJson(gates);
 
   return `<!DOCTYPE html>
 <html>

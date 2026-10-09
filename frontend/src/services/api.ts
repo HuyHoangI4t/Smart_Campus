@@ -281,12 +281,22 @@ export async function readLocalCache<T = any>(key: string): Promise<{ data: T; s
   }
 }
 
-export async function apiGetSchedule(mssv?: string, reload = false) {
+export async function apiGetSchedule(
+  mssv?: string,
+  reload = false,
+  options?: { week?: string; weekOffset?: number; weekIndex?: number }
+) {
   const cacheKey = `@offline_schedule_${mssv || 'current'}`;
   try {
     const headers = await getAuthHeaders();
     const targetMssv = mssv || (headers['X-MSSV'] !== 'guest' ? headers['X-MSSV'] : undefined);
-    const qs = reload ? '?reload=true' : '';
+    const params = new URLSearchParams();
+    if (reload) params.append('reload', 'true');
+    if (options?.week !== undefined) params.append('week', options.week);
+    if (options?.weekOffset !== undefined) params.append('weekOffset', String(options.weekOffset));
+    if (options?.weekIndex !== undefined) params.append('weekIndex', String(options.weekIndex));
+
+    const qs = params.toString() ? `?${params.toString()}` : '';
     const url = targetMssv ? `${API_BASE_URL}/student/schedule/${targetMssv}${qs}` : `${API_BASE_URL}/student/schedule${qs}`;
     const response = await fetchWithTimeout(url, { headers });
     const result = await handleResponse(response);

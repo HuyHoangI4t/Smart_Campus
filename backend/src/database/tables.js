@@ -215,6 +215,18 @@ const TABLE_DEFINITIONS = {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_reg_email (email)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `,
+
+  // 14. Bảng nhật ký hoạt động & lượt tương tác hệ thống
+  activity_logs: `
+    CREATE TABLE IF NOT EXISTS activity_logs (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      action VARCHAR(100) NOT NULL,
+      mssv VARCHAR(50) DEFAULT 'guest',
+      ip_address VARCHAR(50) DEFAULT '',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_act_created (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `
 };
 
@@ -259,13 +271,16 @@ async function createAllTables(connection) {
   await safeAddColumn(connection, 'student_schedules', 'is_custom', 'TINYINT(1) DEFAULT 0');
   await safeAddColumn(connection, 'student_schedules', 'ghi_chu', 'VARCHAR(255) DEFAULT ""');
   await safeAddColumn(connection, 'student_schedules', 'loai_lich', 'VARCHAR(50) DEFAULT "chinh_khoa"');
+  await safeAddColumn(connection, 'student_schedules', 'week_range', 'VARCHAR(100) NULL');
 
   // Đảm bảo các chỉ mục tăng tốc truy vấn
   await safeAddIndex(connection, 'feedback', 'mssv', 'idx_feedback_mssv');
   await safeAddIndex(connection, 'sos_alerts', 'mssv', 'idx_sos_mssv');
   await safeAddIndex(connection, 'student_grades', 'mssv', 'idx_student_grades_mssv');
   await safeAddIndex(connection, 'student_schedules', 'mssv', 'idx_student_schedules_mssv');
+  await safeAddIndex(connection, 'student_schedules', 'week_range', 'idx_sched_week_range');
   await safeAddIndex(connection, 'news_cache', 'type', 'idx_news_cache_type');
+  await safeAddIndex(connection, 'activity_logs', 'created_at', 'idx_act_created');
 }
 
 module.exports = {

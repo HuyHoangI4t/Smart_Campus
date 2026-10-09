@@ -204,3 +204,5 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = Rea
     );
   }
 );
+
+MapLocationPickerModal.displayName = "MapLocationPickerModal";
