@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { LocationItem, CampusPath } from "../types";
 import { TAY_NGUYEN_CAMPUS_LOCATIONS } from "../constants";
 import { mapCache } from "../services/mapCache";
-import { findLocationByRoomOrQuery, parseCampusRoom, calculateDistanceKm } from "../utils";
+import { findLocationByRoomOrQuery, parseCampusRoom, calculateDistanceKm, findWalkwayDistanceMeters } from "../utils";
 
 interface UseMapDataParams {
   search?: string;
@@ -53,8 +53,15 @@ export function useMapData(params: UseMapDataParams = {}) {
     };
   }, []);
 
+  // Ref lưu callback onFocusLocation tránh re-render liên tục gây rung bản đồ
+  const onFocusLocationRef = useRef(params.onFocusLocation);
+  onFocusLocationRef.current = params.onFocusLocation;
+
+  // Ref lưu khóa nhận diện lượt chuyển hướng đã xử lý (chống loop và cho phép đóng card vị trí)
+  const lastHandledParamsKeyRef = useRef<string>("");
+
   // Cập nhật khi params từ navigation thay đổi (ví dụ: bấm từ thời khóa biểu)
-  const { room, subject, building, buildingCode, search: searchP, t, onFocusLocation } = params;
+  const { room, subject, building, buildingCode, search: searchP, t } = params;
   useEffect(() => {
     const roomParam = room ? String(room).trim() : "";
     const subjectParam = subject ? String(subject).trim() : "";
@@ -64,6 +71,11 @@ export function useMapData(params: UseMapDataParams = {}) {
 
     const query = buildingParam || buildingCodeParam || roomParam || searchParam;
     if (!query) return;
+
+    const currentKey = `${buildingParam}__${buildingCodeParam}__${roomParam}__${searchParam}__${t || ""}`;
+    // Nếu lượt chuyển hướng này đã được xử lý rồi, bỏ qua hoàn toàn để tránh lặp lại & cho phép đóng card
+    if (lastHandledParamsKeyRef.current === currentKey) return;
+    lastHandledParamsKeyRef.current = currentKey;
 
     if (roomParam) setTargetRoom(roomParam);
     if (subjectParam) setTargetSubject(subjectParam);
@@ -77,9 +89,16 @@ export function useMapData(params: UseMapDataParams = {}) {
 
     if (matched) {
       setSelectedLoc(matched);
-      onFocusLocation?.(matched);
+      onFocusLocationRef.current?.(matched);
     }
-  }, [room, subject, building, buildingCode, searchP, t, locations, onFocusLocation]);
+  }, [room, subject, building, buildingCode, searchP, t, locations]);
+
+  // Hàm chủ động đóng thông tin địa điểm (người dùng bấm nút đóng)
+  const dismissSelectedLoc = () => {
+    setSelectedLoc(null);
+    setTargetRoom("");
+    setTargetSubject("");
+  };
 
   // Lọc kết quả tìm kiếm được memoized tối ưu CPU
   const searchResults = useMemo(() => {
@@ -116,16 +135,30 @@ export function useMapData(params: UseMapDataParams = {}) {
     return targetRoom ? parseCampusRoom(targetRoom).buildingNumber : null;
   }, [targetRoom]);
 
-  // Tính khoảng cách tới địa điểm đang chọn
+  // Tính khoảng cách tới địa điểm đang chọn theo mạng lưới đường đi bộ nội bộ (Dijkstra)
   const computedDistanceKm = useMemo(() => {
     if (!selectedLoc || !params.userLocation) return null;
+
+    // 1. Ưu tiên tính theo mạng lưới lối đi bộ nội bộ trường ĐH Tây Nguyên (Dijkstra)
+    const walkwayMeters = findWalkwayDistanceMeters(
+      params.userLocation.latitude,
+      params.userLocation.longitude,
+      selectedLoc.lat,
+      selectedLoc.lng,
+      campusPaths
+    );
+    if (walkwayMeters !== null && walkwayMeters > 0) {
+      return walkwayMeters / 1000;
+    }
+
+    // 2. Dự phòng (Fallback): Đường thẳng chim bay
     return calculateDistanceKm(
       params.userLocation.latitude,
       params.userLocation.longitude,
       selectedLoc.lat,
       selectedLoc.lng
     );
-  }, [selectedLoc, params.userLocation]);
+  }, [selectedLoc, params.userLocation, campusPaths]);
 
   const computedDistanceText = useMemo(() => {
     if (computedDistanceKm === null) return "";
@@ -136,7 +169,7 @@ export function useMapData(params: UseMapDataParams = {}) {
 
   const computedWalkingMinutes = useMemo(() => {
     if (computedDistanceKm === null) return null;
-    return Math.max(1, Math.ceil((computedDistanceKm * 1000) / 80));
+    return Math.max(1, Math.ceil((computedDistanceKm * 1000) / 75)); // ~75m/phút đi bộ chuẩn
   }, [computedDistanceKm]);
 
   return {
@@ -154,6 +187,7 @@ export function useMapData(params: UseMapDataParams = {}) {
     setShowSuggestions,
     selectedLoc,
     setSelectedLoc,
+    dismissSelectedLoc,
     searchResults,
     currentParsed,
     matchedTargetId,

@@ -30,8 +30,10 @@ const TAB_ITEMS: TabItemConfig[] = [
 
 type TabBarVisibilityListener = (visible: boolean) => void;
 const visibilityListeners: Set<TabBarVisibilityListener> = new Set();
+let currentTabBarVisible = true;
 
 export function setTabBarVisible(visible: boolean) {
+  currentTabBarVisible = visible;
   visibilityListeners.forEach((listener) => listener(visible));
 }
 
@@ -123,25 +125,33 @@ export function useTabBarScrollHandler(options?: { visiblePadding?: number; hidd
 export function CustomBottomNav(props: CustomBottomNavProps) {
   const insets = useSafeAreaInsets();
   const bottomPadding = Math.max(insets.bottom, 16);
-  const hideDistance = 140 + insets.bottom;
+  const hideDistance = 160 + insets.bottom;
 
-  const translateY = useRef(new Animated.Value(0)).current;
-  const [isVisible, setIsVisible] = useState(true);
+  const translateY = useRef(new Animated.Value(currentTabBarVisible ? 0 : hideDistance)).current;
+  const opacity = useRef(new Animated.Value(currentTabBarVisible ? 1 : 0)).current;
+  const [isVisible, setIsVisible] = useState(currentTabBarVisible);
 
   useEffect(() => {
     const listener = (visible: boolean) => {
       setIsVisible(visible);
-      Animated.timing(translateY, {
-        toValue: visible ? 0 : hideDistance,
-        duration: 220,
-        useNativeDriver: true,
-      }).start();
+      Animated.parallel([
+        Animated.timing(translateY, {
+          toValue: visible ? 0 : hideDistance,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: visible ? 1 : 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
     };
     visibilityListeners.add(listener);
     return () => {
       visibilityListeners.delete(listener);
     };
-  }, [hideDistance, translateY]);
+  }, [hideDistance, translateY, opacity]);
 
   const isTabBarProps = 'state' in props;
 
@@ -167,15 +177,24 @@ export function CustomBottomNav(props: CustomBottomNavProps) {
     activeIndex = props.selectedIndex;
   }
 
-  // Khi chuyển tab, luôn trượt thanh nav lên hiển thị lại
+  // Khi chuyển tab, chỉ trượt thanh nav lên nếu không bị lệnh ẩn ép buộc (ví dụ đang chỉ đường)
   useEffect(() => {
-    setIsVisible(true);
-    Animated.timing(translateY, {
-      toValue: 0,
-      duration: 180,
-      useNativeDriver: true,
-    }).start();
-  }, [activeIndex, translateY]);
+    if (currentTabBarVisible) {
+      setIsVisible(true);
+      Animated.parallel([
+        Animated.timing(translateY, {
+          toValue: 0,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [activeIndex, translateY, opacity]);
 
   if (isSubScreenHidden) {
     return null;
@@ -206,6 +225,7 @@ export function CustomBottomNav(props: CustomBottomNavProps) {
         tabBarStyles.container,
         {
           paddingBottom: bottomPadding,
+          opacity,
           transform: [{ translateY }],
         },
       ]}
@@ -230,7 +250,7 @@ export function CustomBottomNav(props: CustomBottomNavProps) {
                 >
                   <Feather
                     name={item.icon}
-                    size={22}
+                    size={25}
                     color="#FFFFFF"
                   />
                 </View>
@@ -264,7 +284,7 @@ export function CustomBottomNav(props: CustomBottomNavProps) {
               >
                 <Feather
                   name={item.icon}
-                  size={20}
+                  size={22}
                   color={isSelected ? AppColors.primary : AppColors.textMuted}
                 />
               </View>

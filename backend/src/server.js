@@ -79,8 +79,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Initialize DB tables & Swagger UI on startup
-initializeTables();
+// Khởi tạo Swagger UI API Docs
 setupSwagger(app);
 
 /**
@@ -170,13 +169,25 @@ const getLocalIPv4 = () => {
   return candidates[0] || '192.168.1.20';
 };
 
-server.listen(PORT, '0.0.0.0', () => {
-  const localIP = getLocalIPv4();
-  console.log(`🚀 LTDDDNT Backend server đang chạy tại cổng ${PORT} (0.0.0.0)`);
-  console.log(`📱 Expo Go / Mobile API: http://${localIP}:${PORT}/api`);
-  console.log(`📄 Swagger UI sẵn sàng tại http://localhost:${PORT}/api-docs`);
-  console.log(`⚡ [Socket.IO] Realtime Engine sẵn sàng tại ws://${localIP}:${PORT}`);
-  
-  // Khởi động tiến trình đồng bộ dữ liệu tự động 3 lần/ngày
-  cronService.startCronJobs();
-});
+async function startServer() {
+  try {
+    // Tự động khởi tạo database, tạo 14 bảng và import toàn bộ dữ liệu mẫu
+    console.log('🔄 Đang kiểm tra cấu trúc cơ sở dữ liệu và dữ liệu mẫu...');
+    await initializeTables();
+  } catch (err) {
+    console.error('⚠️ [Startup] Khởi tạo database thất bại:', err.message);
+  }
+
+  server.listen(PORT, '0.0.0.0', () => {
+    const localIP = getLocalIPv4();
+    console.log(`🚀 LTDDDNT Backend server đang chạy tại cổng ${PORT} (0.0.0.0)`);
+    console.log(`📱 Expo Go / Mobile API: http://${localIP}:${PORT}/api`);
+    console.log(`📄 Swagger UI sẵn sàng tại http://localhost:${PORT}/api-docs`);
+    console.log(`⚡ [Socket.IO] Realtime Engine sẵn sàng tại ws://${localIP}:${PORT}`);
+    
+    // Khởi động tiến trình đồng bộ dữ liệu tự động 3 lần/ngày
+    cronService.startCronJobs();
+  });
+}
+
+startServer();

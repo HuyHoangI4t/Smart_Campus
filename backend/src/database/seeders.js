@@ -295,24 +295,24 @@ async function seedSampleSosAlerts(conn, options = {}) {
 }
 
 /**
- * 7. Chạy toàn bộ các seeder hệ thống ban đầu
- * (Chỉ nạp tài khoản Admin quản trị và dữ liệu bản đồ địa điểm thực tế, KHÔNG nạp dữ liệu mẫu)
+ * Chạy toàn bộ các seeder hệ thống ban đầu khi khởi động backend:
+ * CHỈ tự động nạp 3 thành phần cốt lõi của hệ thống:
+ * 1. Tài khoản Quản trị viên (admin / admin123)
+ * 2. 40 Địa điểm chính thức khuôn viên ĐH Tây Nguyên
+ * 3. 17 Tuyến đường đi bộ nội bộ trường
+ * (Toàn bộ các bảng còn lại giữ nguyên hoặc để trống hoàn toàn, KHÔNG nạp dữ liệu mẫu)
  * @param {import('mysql2/promise').Connection|import('mysql2/promise').Pool} connection
  */
 async function runAllSeeders(connection) {
   await seedAdminUser(connection);
   await seedMapLocations(connection);
   await seedCampusPaths(connection);
-  // Không tự động nạp dữ liệu mẫu (feedback, activity logs, sos alerts)
 }
 
 module.exports = {
   seedAdminUser,
   seedMapLocations,
   seedCampusPaths,
-  seedSampleFeedback,
-  seedSampleActivityLogs,
-  seedSampleSosAlerts,
   runAllSeeders,
 };
 

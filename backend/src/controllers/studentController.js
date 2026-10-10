@@ -4,6 +4,7 @@ const db = require('../config/db');
 const https = require('https');
 const gradeService = require('../services/gradeService');
 const scheduleService = require('../services/scheduleService');
+const studentSyncService = require('../services/studentSyncService');
 
 // Tạo httpsAgent để bỏ qua lỗi chứng chỉ SSL tự ký của trường (tránh SSLCertVerificationError)
 const httpsAgent = new https.Agent({
@@ -171,8 +172,60 @@ exports.getGrades = async (req, res) => {
 
   const forceRefresh = req.query.reload === 'true' || req.query.refresh === 'true' || req.body?.reload === true;
 
-  // 1. Đọc ngay từ Database siêu tốc (1-2ms) nếu không yêu cầu reload cưỡng bức
-  if (!forceRefresh && mssv && !isGuestOrEmail(mssv)) {
+  // 1. TỐI ƯU HÓA: Kiểm tra Cache TTL (12 giờ) trong Database siêu tốc (1ms)
+  let isGradesFresh = false;
+  let gradesLastSync = 0;
+  if (mssv && !isGuestOrEmail(mssv)) {
+    try {
+      const [cacheMeta] = await db.query(
+        'SELECT MAX(created_at) AS last_sync, COUNT(*) AS count FROM student_grades WHERE mssv = ?',
+        [mssv]
+      );
+      const hasCache = cacheMeta && cacheMeta[0] && cacheMeta[0].count > 0;
+      gradesLastSync = hasCache ? new Date(cacheMeta[0].last_sync).getTime() : 0;
+      isGradesFresh = hasCache && (Date.now() - gradesLastSync < studentSyncService.TTL_GRADES_MS);
+
+      // Nếu không ép reload và cache vẫn còn hạn (dưới 12h): Trả ngay lập tức từ DB, 0 request tới trường
+      if (!forceRefresh && isGradesFresh) {
+        const [dbGrades] = await db.query(
+          `SELECT ten_hp, nam_hoc, ky, diem_dbp, diem_thi1, diem_thi2, diem_1, diem_2, diem_chu, so_tin_chi, hoc_phi, hoc_ky 
+           FROM student_grades WHERE mssv = ? ORDER BY id ASC`,
+          [mssv]
+        );
+        if (dbGrades && dbGrades.length > 0) {
+          const processed = gradeService.processGradesPayload(dbGrades);
+          return res.json({
+            success: true,
+            mssv: mssv,
+            isDbCached: true,
+            cacheAgeHours: Math.round((Date.now() - gradesLastSync) / 3600000 * 10) / 10,
+            ho_ten: studentName || ('Sinh viên ' + mssv),
+            ...processed
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Lỗi kiểm tra cache student_grades:', e.message);
+    }
+  }
+
+  // 2. Nếu DB chưa có hoặc cache quá 12h hoặc người dùng chủ động vuốt reload:
+  // Đồng bộ qua studentSyncService (Được điều tiết tải hàng đợi MAX 3, chống nghẽn web trường)
+  let syncSuccess = false;
+  if (mssv && !isGuestOrEmail(mssv)) {
+    try {
+      const syncRes = await studentSyncService.syncGradesForStudent(mssv, studentDk);
+      if (syncRes && syncRes.success) {
+        syncSuccess = true;
+        if (syncRes.studentName) studentName = syncRes.studentName;
+      }
+    } catch (crawlErr) {
+      console.warn('Lỗi đồng bộ bảng điểm qua crawler:', crawlErr.message);
+    }
+  }
+
+  // 3. Đọc dữ liệu từ DB (vừa cào xong hoặc fallback cache cũ nếu cào lỗi)
+  if (mssv && !isGuestOrEmail(mssv)) {
     try {
       const [dbGrades] = await db.query(
         `SELECT ten_hp, nam_hoc, ky, diem_dbp, diem_thi1, diem_thi2, diem_1, diem_2, diem_chu, so_tin_chi, hoc_phi, hoc_ky 
@@ -184,7 +237,7 @@ exports.getGrades = async (req, res) => {
         return res.json({
           success: true,
           mssv: mssv,
-          isDbCached: true,
+          isDbCached: !syncSuccess,
           ho_ten: studentName || ('Sinh viên ' + mssv),
           ...processed
         });
@@ -194,184 +247,15 @@ exports.getGrades = async (req, res) => {
     }
   }
 
-  // 2. Chỉ cào trực tiếp bảng điểm sinh viên từ kqcq.php của trường TTN khi DB trống hoặc khi reload
+  /* 
+  // [Ghi chú: Đoạn cào trực tiếp cũ đã được chuyển giao vào studentSyncService có Queue & Rate Limiter, giữ lại để tham khảo]
   let liveSubjects = [];
   try {
     const payload = new URLSearchParams({ 'msv': mssv, 'mssv': mssv, 'dk': studentDk });
+    ...
+  */
 
-    const response = await axios.post(TTN_CONFIG.GRADES_URL, payload.toString(), {
-      httpsAgent,
-      headers: {
-        ...TTN_CONFIG.COMMON_HEADERS,
-        'Referer': TTN_CONFIG.GRADES_REFERER,
-        'Accept': '*/*'
-      },
-      timeout: 10000
-    });
-
-    const $ = cheerio.load(response.data);
-    let extractedName = extractFullNameFromHtml($);
-
-    if (extractedName && mssv && !isGuestOrEmail(mssv)) {
-      studentName = extractedName;
-      try {
-        await db.query('UPDATE users SET ho_ten = ?, full_name = ? WHERE mssv = ?', [extractedName, extractedName, mssv]);
-      } catch (err) {}
-    }
-
-    // Bóc tách toàn bộ bảng từ response HTML của kqcq.php
-    const tablesData = [];
-    $('table').each((index, table) => {
-      const rows = [];
-      $(table).find('tr').each((i, row) => {
-        const cols = [];
-        $(row).find('td, th').each((j, col) => {
-          cols.push($(col).text().trim());
-        });
-        if (cols.length > 1 && cols.some(c => c !== '')) {
-          rows.push(cols);
-        }
-      });
-      if (rows.length > 0) tablesData.push({ tableIndex: index, rows });
-    });
-
-    for (const table of tablesData) {
-      const rows = table.rows || [];
-      if (rows.length < 2) continue;
-      const header = rows[0] || [];
-
-      // Nhận diện bảng điểm chính quy trường Tây Nguyên (có các cột Năm học, Học phần, ĐBP, Thi1, Thi2, Đ1, Đ2, ĐChữ, TChỉ, Học phí)
-      const isGradeTable = header.some(h => 
-        h.includes('Năm học') || h.includes('Học phần') || h.includes('ĐBP') || h.includes('ĐChữ') || h.includes('TChỉ')
-      );
-
-      if (isGradeTable) {
-        let colNam = 0, colKy = 1, colHp = 2, colDbp = 3, colThi1 = 4, colThi2 = 5, colD1 = 6, colD2 = 7, colChu = 8, colTc = 9, colPhi = 10;
-
-        header.forEach((h, idx) => {
-          const l = h.toLowerCase();
-          if (l.includes('năm học')) colNam = idx;
-          else if (l === 'kỳ' || l.includes('học kỳ')) colKy = idx;
-          else if (l.includes('học phần') || l.includes('tên môn') || l.includes('tên')) colHp = idx;
-          else if (l.includes('đbp') || l.includes('quá trình')) colDbp = idx;
-          else if (l.includes('thi1') || l.includes('thi 1')) colThi1 = idx;
-          else if (l.includes('thi2') || l.includes('thi 2')) colThi2 = idx;
-          else if (l.includes('đ1') || l.includes('điểm 1')) colD1 = idx;
-          else if (l.includes('đ2') || l.includes('điểm 2')) colD2 = idx;
-          else if (l.includes('đchữ') || l.includes('chữ')) colChu = idx;
-          else if (l.includes('tchỉ') || l.includes('tín chỉ') || l === 'tc') colTc = idx;
-          else if (l.includes('học phí') || l.includes('tiền')) colPhi = idx;
-        });
-
-        for (let rIdx = 1; rIdx < rows.length; rIdx++) {
-          const r = rows[rIdx];
-          if (r.length < 4) continue;
-          const tenHp = cleanName(r[colHp] || '');
-          if (!tenHp || tenHp.length < 2 || /^\d+$/.test(tenHp)) continue;
-
-          const namHoc = r[colNam] || '';
-          const ky = r[colKy] || '';
-          const dbpStr = r[colDbp];
-          const thi1Str = r[colThi1];
-          const thi2Str = r[colThi2];
-          const d1Str = r[colD1];
-          const d2Str = r[colD2];
-          const dchuStr = r[colChu];
-          const tcStr = r[colTc];
-          const phiStr = r[colPhi] || '';
-
-          const dbp = dbpStr !== '' && !isNaN(parseFloat(dbpStr)) ? parseFloat(dbpStr) : null;
-          const thi1 = thi1Str !== '' && !isNaN(parseFloat(thi1Str)) ? parseFloat(thi1Str) : null;
-          const thi2 = thi2Str !== '' && !isNaN(parseFloat(thi2Str)) ? parseFloat(thi2Str) : null;
-          const d1 = d1Str !== '' && !isNaN(parseFloat(d1Str)) ? parseFloat(d1Str) : null;
-          const d2 = d2Str !== '' && !isNaN(parseFloat(d2Str)) ? parseFloat(d2Str) : null;
-
-          const diemThi = thi2 !== null ? thi2 : thi1;
-          const diemHp = d2 !== null ? d2 : d1;
-          const tc = tcStr !== '' && !isNaN(parseFloat(tcStr)) ? parseFloat(tcStr) : 3;
-
-          let dchu = dchuStr || (diemHp !== null ? '' : 'X');
-          if (!dchu && diemHp !== null) {
-            dchu = diemHp >= 8.5 ? 'A' : diemHp >= 7.0 ? 'B' : diemHp >= 5.5 ? 'C' : diemHp >= 4.0 ? 'D' : 'F';
-          }
-
-          const semStr = ky ? `HK${ky} (${namHoc})` : (namHoc ? `Năm ${namHoc}` : 'HK1 (2026)');
-
-          liveSubjects.push({
-            ten_hp: tenHp,
-            nam_hoc: namHoc,
-            ky: ky,
-            diem_dbp: dbp,
-            diem_qt: dbp,
-            diem_thi1: thi1,
-            diem_thi2: thi2,
-            diem_thi: diemThi,
-            diem_1: d1,
-            diem_2: d2,
-            diem_hp: diemHp,
-            diem_chu: dchu,
-            so_tin_chi: tc,
-            hoc_phi: phiStr,
-            hoc_ky: semStr
-          });
-        }
-      }
-    }
-  } catch (error) {
-    console.warn('Lỗi cào dữ liệu từ kqcq.php:', error.message);
-  }
-
-  // 2. Nếu cào thành công từ kqcq.php: lưu vào Database và trả về ngay
-  if (liveSubjects.length > 0) {
-    try {
-      await db.query('DELETE FROM student_grades WHERE mssv = ?', [mssv]);
-      for (const s of liveSubjects) {
-        await db.query(
-          `INSERT INTO student_grades 
-           (mssv, ten_hp, nam_hoc, ky, diem_dbp, diem_thi1, diem_thi2, diem_1, diem_2, diem_chu, so_tin_chi, hoc_phi, hoc_ky) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            mssv, s.ten_hp, s.nam_hoc, s.ky, s.diem_dbp, 
-            s.diem_thi1, s.diem_thi2, s.diem_1, s.diem_2, 
-            s.diem_chu, s.so_tin_chi, s.hoc_phi, s.hoc_ky
-          ]
-        );
-      }
-    } catch (e) {
-      console.warn('Lỗi lưu student_grades:', e.message);
-    }
-
-    const processed = gradeService.processGradesPayload(liveSubjects);
-    return res.json({
-      success: true,
-      mssv: mssv,
-      ho_ten: studentName || ('Sinh viên ' + mssv),
-      ...processed
-    });
-  }
-
-  // 3. Nếu cào trực tiếp không thành công, kiểm tra dữ liệu đã lưu trong Database
-  try {
-    const [dbGrades] = await db.query(
-      `SELECT ten_hp, nam_hoc, ky, diem_dbp, diem_thi1, diem_thi2, diem_1, diem_2, diem_chu, so_tin_chi, hoc_phi, hoc_ky 
-       FROM student_grades WHERE mssv = ? ORDER BY id ASC`,
-      [mssv]
-    );
-    if (dbGrades && dbGrades.length > 0) {
-      const processed = gradeService.processGradesPayload(dbGrades);
-      return res.json({
-        success: true,
-        mssv: mssv,
-        isDbCached: true,
-        ho_ten: studentName || ('Sinh viên ' + mssv),
-        ...processed
-      });
-    }
-  } catch (e) {
-    console.warn('Lỗi query student_grades từ DB:', e.message);
-  }
-
-  // 4. Dự phòng: Danh sách học phần chuyên ngành chuẩn
+  // 4. Dự phòng: Danh sách học phần chuyên ngành chuẩn nếu DB hoàn toàn trống
   const fallbackList = [
     { ten_hp: 'Lập trình thiết bị di động', nam_hoc: '2026', ky: '1', so_tin_chi: 3, diem_dbp: 9.5, diem_thi1: 8.5, diem_thi2: null, diem_1: 8.9, diem_2: null, diem_chu: 'A', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
     { ten_hp: 'Cấu trúc dữ liệu & Giải thuật', nam_hoc: '2026', ky: '1', so_tin_chi: 4, diem_dbp: 8.5, diem_thi1: 8.0, diem_thi2: null, diem_1: 8.3, diem_2: null, diem_chu: 'B', hoc_ky: 'HK1 (2026)', hoc_phi: 'Đã nộp' },
@@ -546,257 +430,52 @@ exports.getSchedule = async (req, res) => {
     customItems = customRows || [];
   } catch (e) {}
 
-  // 1. Kiểm tra ngay trong Database nếu không yêu cầu reload cưỡng bức
-  if (!forceRefresh && mssv && !isGuestOrEmail(mssv)) {
+  // 1. TỐI ƯU HÓA: Kiểm tra Cache TTL (24 giờ) trong Database siêu tốc (1ms)
+  let isSchedFresh = false;
+  let schedLastSync = 0;
+  if (mssv && !isGuestOrEmail(mssv)) {
+    try {
+      const [cacheMeta] = await db.query(
+        'SELECT MAX(created_at) AS last_sync, COUNT(*) AS count FROM student_schedules WHERE mssv = ? AND (is_custom = 0 OR is_custom IS NULL)',
+        [mssv]
+      );
+      const hasCache = cacheMeta && cacheMeta[0] && cacheMeta[0].count > 0;
+      schedLastSync = hasCache ? new Date(cacheMeta[0].last_sync).getTime() : 0;
+      isSchedFresh = hasCache && (Date.now() - schedLastSync < studentSyncService.TTL_SCHEDULE_MS);
+    } catch (e) {}
+  }
+
+  // 1.1 Nếu không yêu cầu ép reload và cache còn hạn (dưới 24h): Trả ngay lập tức từ DB (0 request tới trường)
+  if (!forceRefresh && isSchedFresh && mssv && !isGuestOrEmail(mssv)) {
     try {
       const [dbSchedules] = await db.query(
         'SELECT id, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich, week_range, ngay_hoc FROM student_schedules WHERE mssv = ? ORDER BY id ASC',
         [mssv]
       );
       if (dbSchedules && dbSchedules.length > 0) {
-        // Gom nhóm theo từng khoảng tuần (week_range)
-        const weekMap = {};
-        for (const row of dbSchedules) {
-          if (!row.is_custom) {
-            const wRange = row.week_range || row.hoc_ky || "Lịch học đã lưu từ cổng đào tạo";
-            if (!weekMap[wRange]) {
-              weekMap[wRange] = [["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"]];
-            }
-            weekMap[wRange].push([
-              row.thu || "Thứ 2",
-              row.ten_hp || "Môn học",
-              row.tiet || "1-4",
-              row.phong || "Khu giảng đường",
-              row.giang_vien || "Giảng viên bộ môn"
-            ]);
-          }
-        }
-
-        const weekKeys = Object.keys(weekMap);
-        if (weekKeys.length > 0) {
-          const dbWeeks = [];
-          for (let i = 0; i < weekKeys.length; i++) {
-            const wRange = weekKeys[i];
-            const { startDate, endDate } = parseWeekRangeDates(wRange);
-            const isCur = startDate && endDate ? (today >= startDate && today <= endDate) : (i === 0);
-            dbWeeks.push({
-              index: i,
-              weekRange: wRange,
-              startDate,
-              endDate,
-              isCurrent: isCur,
-              rows: weekMap[wRange]
-            });
-          }
-
-          let curWeekIdx = dbWeeks.findIndex(w => w.isCurrent);
-          if (curWeekIdx === -1) curWeekIdx = 0;
-          dbWeeks[curWeekIdx].isCurrent = true;
-          const nextWeekIdx = (curWeekIdx + 1 < dbWeeks.length) ? (curWeekIdx + 1) : curWeekIdx;
-          if (dbWeeks[nextWeekIdx]) dbWeeks[nextWeekIdx].isNext = true;
-
-          // Kiểm tra xem cache DB có chứa tuần hiện tại hay không
-          const hasCurrentOrFuture = dbWeeks.some(w => w.endDate && w.endDate >= today);
-          if (hasCurrentOrFuture) {
-            // Cache hợp lệ, xử lý và trả về ngay
-            const processedWeeks = dbWeeks.map(w => {
-              const proc = scheduleService.processSchedulePayload([{ tableIndex: 1, rows: w.rows }], w.weekRange, customItems, { isCurrentWeek: w.index === curWeekIdx });
-              return {
-                index: w.index,
-                weekRange: w.weekRange,
-                label: w.index === curWeekIdx ? 'Tuần này' : (w.index === nextWeekIdx ? 'Tuần sau' : `Tuần ${w.index + 1}`),
-                isCurrent: w.index === curWeekIdx,
-                isNext: w.index === nextWeekIdx,
-                schedules: proc.schedules
-              };
-            });
-
-            let selectedWeekIdx = curWeekIdx;
-            if (requestedWeek === 'next' || requestedWeekOffset === 1) {
-              selectedWeekIdx = nextWeekIdx;
-            } else if (requestedWeek === 'current' || requestedWeekOffset === 0) {
-              selectedWeekIdx = curWeekIdx;
-            } else if (requestedWeekIndex !== undefined && requestedWeekIndex >= 0 && requestedWeekIndex < dbWeeks.length) {
-              selectedWeekIdx = requestedWeekIndex;
-            } else if (isSunday) {
-              selectedWeekIdx = nextWeekIdx; // Vào Chủ nhật tự động ưu tiên tuần tới
-            }
-
-            const targetWeekData = dbWeeks[selectedWeekIdx] || dbWeeks[0];
-            const nextWeekSchedule = dbWeeks[nextWeekIdx] ? processedWeeks[nextWeekIdx]?.schedules : [];
-            const targetProcessed = scheduleService.processSchedulePayload(
-              [{ tableIndex: 1, rows: targetWeekData.rows }],
-              targetWeekData.weekRange,
-              customItems,
-              { nextWeekSchedule, isSunday, isCurrentWeek: selectedWeekIdx === curWeekIdx }
-            );
-
-            return res.json({
-              success: true,
-              mssv: mssv,
-              isDbCached: true,
-              isSunday,
-              selectedWeekIndex: selectedWeekIdx,
-              currentWeekIndex: curWeekIdx,
-              nextWeekIndex: nextWeekIdx,
-              weekRange: targetWeekData.weekRange,
-              availableWeeks: processedWeeks,
-              ...targetProcessed
-            });
-          }
-        }
+        const handled = formatDbSchedulesResponse(dbSchedules, customItems, req, res, mssv, true, today, isSunday, requestedWeek, requestedWeekOffset, requestedWeekIndex);
+        if (handled) return;
       }
     } catch (e) {
       console.warn('Lỗi đọc student_schedules từ DB:', e.message);
     }
   }
 
-  // 2. Cào từ cổng trường khi DB chưa có, cache hết hạn hoặc khi người dùng vuốt reload
-  try {
-    const payload = new URLSearchParams({ 'msv': mssv, 'mssv': mssv, 'dk': studentDk });
-
-    const response = await axios.post(TTN_CONFIG.SCHEDULE_URL, payload.toString(), {
-      httpsAgent,
-      headers: {
-        ...TTN_CONFIG.COMMON_HEADERS,
-        'Referer': TTN_CONFIG.SCHEDULE_REFERER,
-        'Accept': 'text/plain, */*; q=0.01'
-      },
-      timeout: 10000
-    });
-
-    const $ = cheerio.load(response.data);
-
-    // Bóc tách tất cả các tuần có trong phản hồi cổng trường
-    const parsedWeeks = [];
-    $('p').each((i, pElem) => {
-      const pText = $(pElem).text().trim();
-      if (pText.startsWith('Từ ngày')) {
-        const { startDate, endDate } = parseWeekRangeDates(pText);
-        const isCur = startDate && endDate ? (today >= startDate && today <= endDate) : false;
-        const table = $(pElem).next('table');
-        const rows = parseWeekTable($, table);
-
-        parsedWeeks.push({
-          index: parsedWeeks.length,
-          weekRangeText: pText,
-          startDate,
-          endDate,
-          isCurrent: isCur,
-          rows
-        });
+  // 2. Nếu DB chưa có hoặc cache quá 24h hoặc người dùng chủ động vuốt reload:
+  // Đồng bộ qua studentSyncService (Được điều tiết tải hàng đợi MAX 3, chống nghẽn web trường)
+  let scheduleSyncSuccess = false;
+  if (mssv && !isGuestOrEmail(mssv)) {
+    try {
+      const syncRes = await studentSyncService.syncScheduleForStudent(mssv, studentDk);
+      if (syncRes && syncRes.success) {
+        scheduleSyncSuccess = true;
       }
-    });
-
-    if (parsedWeeks.length === 0) {
-      // Trường hợp không tìm thấy thẻ <p>Từ ngày, fallback tìm bảng đầu tiên
-      const firstTable = $('table').first();
-      if (firstTable.length > 0) {
-        parsedWeeks.push({
-          index: 0,
-          weekRangeText: "Lịch học tuần hiện tại",
-          startDate: null,
-          endDate: null,
-          isCurrent: true,
-          rows: parseWeekTable($, firstTable)
-        });
-      }
+    } catch (crawlErr) {
+      console.warn('Lỗi đồng bộ lịch học qua crawler:', crawlErr.message);
     }
-
-    let curWeekIdx = parsedWeeks.findIndex(w => w.isCurrent);
-    if (curWeekIdx === -1) curWeekIdx = 0;
-    if (parsedWeeks[curWeekIdx]) parsedWeeks[curWeekIdx].isCurrent = true;
-
-    const nextWeekIdx = (curWeekIdx + 1 < parsedWeeks.length) ? (curWeekIdx + 1) : curWeekIdx;
-    if (parsedWeeks[nextWeekIdx]) parsedWeeks[nextWeekIdx].isNext = true;
-
-    // 3. Lưu toàn bộ các tuần vào Database (giữ lại các lịch học tự tạo is_custom = 1)
-    if (parsedWeeks.length > 0 && mssv && !isGuestOrEmail(mssv)) {
-      try {
-        await db.query('DELETE FROM student_schedules WHERE mssv = ? AND (is_custom = 0 OR is_custom IS NULL)', [mssv]);
-        const bulkValues = [];
-        for (const w of parsedWeeks) {
-          if (w.rows && w.rows.length > 1) {
-            for (let i = 1; i < w.rows.length; i++) {
-              const r = w.rows[i];
-              bulkValues.push([
-                mssv,
-                `HP-${w.index}-${i}`,
-                r[1],
-                r[0],
-                r[2],
-                r[3],
-                r[4],
-                'HK1 (2025-2026)',
-                0,
-                '',
-                'chinh_khoa',
-                w.weekRangeText
-              ]);
-            }
-          }
-        }
-        if (bulkValues.length > 0) {
-          await db.query(
-            'INSERT INTO student_schedules (mssv, ma_hp, ten_hp, thu, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich, week_range) VALUES ?',
-            [bulkValues]
-          );
-        }
-      } catch (dbSaveErr) {
-        console.warn('Lỗi lưu student_schedules:', dbSaveErr.message);
-      }
-    }
-
-    // Xử lý danh sách tuần để trả về giao diện
-    const availableWeeks = parsedWeeks.map(w => {
-      const proc = scheduleService.processSchedulePayload([{ tableIndex: 1, rows: w.rows }], w.weekRangeText, customItems, { isCurrentWeek: w.index === curWeekIdx });
-      return {
-        index: w.index,
-        weekRange: w.weekRangeText,
-        label: w.index === curWeekIdx ? 'Tuần này' : (w.index === nextWeekIdx ? 'Tuần sau' : `Tuần ${w.index + 1}`),
-        isCurrent: w.index === curWeekIdx,
-        isNext: w.index === nextWeekIdx,
-        schedules: proc.schedules
-      };
-    });
-
-    let selectedWeekIdx = curWeekIdx;
-    if (requestedWeek === 'next' || requestedWeekOffset === 1) {
-      selectedWeekIdx = nextWeekIdx;
-    } else if (requestedWeek === 'current' || requestedWeekOffset === 0) {
-      selectedWeekIdx = curWeekIdx;
-    } else if (requestedWeekIndex !== undefined && requestedWeekIndex >= 0 && requestedWeekIndex < parsedWeeks.length) {
-      selectedWeekIdx = requestedWeekIndex;
-    } else if (isSunday) {
-      selectedWeekIdx = nextWeekIdx; // Vào Chủ nhật tự động chọn Tuần sau
-    }
-
-    const targetWeekData = parsedWeeks[selectedWeekIdx] || parsedWeeks[0];
-    const nextWeekSchedule = parsedWeeks[nextWeekIdx] ? availableWeeks[nextWeekIdx]?.schedules : [];
-    const targetProcessed = scheduleService.processSchedulePayload(
-      [{ tableIndex: 1, rows: targetWeekData.rows }],
-      targetWeekData.weekRangeText,
-      customItems,
-      { nextWeekSchedule, isSunday, isCurrentWeek: selectedWeekIdx === curWeekIdx }
-    );
-
-    return res.json({
-      success: true,
-      mssv: mssv,
-      isSunday,
-      selectedWeekIndex: selectedWeekIdx,
-      currentWeekIndex: curWeekIdx,
-      nextWeekIndex: nextWeekIdx,
-      weekRange: targetWeekData.weekRangeText,
-      availableWeeks,
-      ...targetProcessed
-    });
-
-  } catch (error) {
-    console.warn('Lỗi cào lịch học:', error.message);
   }
 
-  // 4. Nếu cào trực tiếp không thành công, kiểm tra dữ liệu đã lưu trong Database
+  // 3. Đọc dữ liệu từ DB (vừa cào xong hoặc fallback cache cũ nếu cào lỗi)
   if (mssv && !isGuestOrEmail(mssv)) {
     try {
       const [dbSchedules] = await db.query(
@@ -804,34 +483,36 @@ exports.getSchedule = async (req, res) => {
         [mssv]
       );
       if (dbSchedules && dbSchedules.length > 0) {
-        const cachedRows = [["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"]];
-        const customItems = [];
-        for (const row of dbSchedules) {
-          if (row.is_custom) {
-            customItems.push(row);
-          } else {
-            cachedRows.push([
-              row.thu || "Thứ 2",
-              row.ten_hp || "Môn học",
-              row.tiet || "1-4",
-              row.phong || "Khu giảng đường",
-              row.giang_vien || "Giảng viên bộ môn"
-            ]);
-          }
-        }
-        const rawTables = [{ tableIndex: 1, rows: cachedRows }];
-        const processed = scheduleService.processSchedulePayload(rawTables, "Lịch học đã lưu từ cổng đào tạo", customItems, { isCurrentWeek: true });
-        return res.json({
-          success: true,
-          mssv: mssv,
-          isDbCached: true,
-          ...processed
-        });
+        const handled = formatDbSchedulesResponse(dbSchedules, customItems, req, res, mssv, !scheduleSyncSuccess, today, isSunday, requestedWeek, requestedWeekOffset, requestedWeekIndex);
+        if (handled) return;
       }
-    } catch (dbErr) {
-      console.warn('Lỗi query student_schedules từ DB:', dbErr.message);
+    } catch (e) {
+      console.warn('Lỗi đọc student_schedules từ DB:', e.message);
     }
   }
+
+  /*
+  // [Ghi chú: Đoạn cào lịch trực tiếp cũ đã được chuyển sang studentSyncService có Queue & Rate Limiter, giữ lại để tham khảo]
+  try {
+    const payload = new URLSearchParams({ 'msv': mssv, 'mssv': mssv, 'dk': studentDk });
+    ...
+  } catch (error) {
+    console.warn('Lỗi cào lịch học:', error.message);
+  }
+  */
+
+  /* [Ghi chú: Step 4 cũ — đã được thay thế bởi step 3 dùng formatDbSchedulesResponse() có week grouping đầy đủ]
+  // 4. Nếu cào trực tiếp không thành công, kiểm tra dữ liệu đã lưu trong Database
+  if (mssv && !isGuestOrEmail(mssv)) {
+    try {
+      const [dbSchedules] = await db.query(...);
+      if (dbSchedules && dbSchedules.length > 0) {
+        // Logic cũ thiếu week grouping — formatDbSchedulesResponse() đã thay thế hoàn toàn
+        ...
+      }
+    } catch (dbErr) {}
+  }
+  */
 
   // Dữ liệu dự phòng nếu cào lỗi
   let fallbackCustom = [];
@@ -892,6 +573,95 @@ function parseWeekRangeDates(rangeText) {
   const startDate = new Date(Number(sY), Number(sM) - 1, Number(sD), 0, 0, 0);
   const endDate = new Date(Number(eY), Number(eM) - 1, Number(eD), 23, 59, 59, 999);
   return { startDate, endDate };
+}
+
+// Helper định dạng và trả về phản hồi thời khóa biểu trực tiếp từ Database
+function formatDbSchedulesResponse(dbSchedules, customItems, req, res, mssv, isDbCached, today, isSunday, requestedWeek, requestedWeekOffset, requestedWeekIndex) {
+  const weekMap = {};
+  for (const row of dbSchedules) {
+    if (!row.is_custom) {
+      const wRange = row.week_range || row.hoc_ky || "Lịch học đã lưu từ cổng đào tạo";
+      if (!weekMap[wRange]) {
+        weekMap[wRange] = [["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"]];
+      }
+      weekMap[wRange].push([
+        row.thu || "Thứ 2",
+        row.ten_hp || "Môn học",
+        row.tiet || "1-4",
+        row.phong || "Khu giảng đường",
+        row.giang_vien || "Giảng viên bộ môn"
+      ]);
+    }
+  }
+
+  const weekKeys = Object.keys(weekMap);
+  if (weekKeys.length === 0) return null;
+
+  const dbWeeks = [];
+  for (let i = 0; i < weekKeys.length; i++) {
+    const wRange = weekKeys[i];
+    const { startDate, endDate } = parseWeekRangeDates(wRange);
+    const isCur = startDate && endDate ? (today >= startDate && today <= endDate) : (i === 0);
+    dbWeeks.push({
+      index: i,
+      weekRange: wRange,
+      startDate,
+      endDate,
+      isCurrent: isCur,
+      rows: weekMap[wRange]
+    });
+  }
+
+  let curWeekIdx = dbWeeks.findIndex(w => w.isCurrent);
+  if (curWeekIdx === -1) curWeekIdx = 0;
+  dbWeeks[curWeekIdx].isCurrent = true;
+  const nextWeekIdx = (curWeekIdx + 1 < dbWeeks.length) ? (curWeekIdx + 1) : curWeekIdx;
+  if (dbWeeks[nextWeekIdx]) dbWeeks[nextWeekIdx].isNext = true;
+
+  const processedWeeks = dbWeeks.map(w => {
+    const proc = scheduleService.processSchedulePayload([{ tableIndex: 1, rows: w.rows }], w.weekRange, customItems, { isCurrentWeek: w.index === curWeekIdx });
+    return {
+      index: w.index,
+      weekRange: w.weekRange,
+      label: w.index === curWeekIdx ? 'Tuần này' : (w.index === nextWeekIdx ? 'Tuần sau' : `Tuần ${w.index + 1}`),
+      isCurrent: w.index === curWeekIdx,
+      isNext: w.index === nextWeekIdx,
+      schedules: proc.schedules
+    };
+  });
+
+  let selectedWeekIdx = curWeekIdx;
+  if (requestedWeek === 'next' || requestedWeekOffset === 1) {
+    selectedWeekIdx = nextWeekIdx;
+  } else if (requestedWeek === 'current' || requestedWeekOffset === 0) {
+    selectedWeekIdx = curWeekIdx;
+  } else if (requestedWeekIndex !== undefined && requestedWeekIndex >= 0 && requestedWeekIndex < dbWeeks.length) {
+    selectedWeekIdx = requestedWeekIndex;
+  } else if (isSunday) {
+    selectedWeekIdx = nextWeekIdx;
+  }
+
+  const targetWeekData = dbWeeks[selectedWeekIdx] || dbWeeks[0];
+  const nextWeekSchedule = dbWeeks[nextWeekIdx] ? processedWeeks[nextWeekIdx]?.schedules : [];
+  const targetProcessed = scheduleService.processSchedulePayload(
+    [{ tableIndex: 1, rows: targetWeekData.rows }],
+    targetWeekData.weekRange,
+    customItems,
+    { nextWeekSchedule, isSunday, isCurrentWeek: selectedWeekIdx === curWeekIdx }
+  );
+
+  return res.json({
+    success: true,
+    mssv: mssv,
+    isDbCached: isDbCached,
+    isSunday,
+    selectedWeekIndex: selectedWeekIdx,
+    currentWeekIndex: curWeekIdx,
+    nextWeekIndex: nextWeekIdx,
+    weekRange: targetWeekData.weekRange,
+    availableWeeks: processedWeeks,
+    ...targetProcessed
+  });
 }
 
 // Bóc tách bảng thời khóa biểu của 1 tuần

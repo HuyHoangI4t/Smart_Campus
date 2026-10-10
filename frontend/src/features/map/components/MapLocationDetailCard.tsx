@@ -11,6 +11,8 @@ interface MapLocationDetailCardProps {
   matchedTargetId: string | null;
   currentParsed: ParsedCampusRoom | null;
   targetSubject?: string;
+  distanceText?: string;
+  walkingMinutes?: number | null;
   bottomOffset?: number;
   onClose: () => void;
   onStartDirections: () => void;
@@ -23,12 +25,19 @@ const MapLocationDetailCardComponent: React.FC<MapLocationDetailCardProps> = ({
   matchedTargetId,
   currentParsed,
   targetSubject,
+  distanceText,
+  walkingMinutes,
   bottomOffset = 100,
   onClose,
   onStartDirections,
   onOpenGoogleMaps,
 }) => {
   const isMatch = matchedTargetId && String(selectedLoc.id) === String(matchedTargetId);
+
+  const displayDistance = distanceText || (userLocation ? formatDistanceText(userLocation.latitude, userLocation.longitude, selectedLoc.lat, selectedLoc.lng) : "");
+  const displayMinutes = walkingMinutes !== undefined && walkingMinutes !== null
+    ? walkingMinutes
+    : (userLocation ? Math.max(1, Math.ceil((calculateDistanceKm(userLocation.latitude, userLocation.longitude, selectedLoc.lat, selectedLoc.lng) * 1000) / 75)) : null);
 
   return (
     <View
@@ -104,7 +113,7 @@ const MapLocationDetailCardComponent: React.FC<MapLocationDetailCardProps> = ({
             </View>
           )}
 
-          {userLocation && (
+          {userLocation && displayDistance ? (
             <View
               style={{
                 backgroundColor: "#ECFDF5",
@@ -118,12 +127,11 @@ const MapLocationDetailCardComponent: React.FC<MapLocationDetailCardProps> = ({
             >
               <Feather name="navigation" size={10} color="#059669" />
               <Text style={{ fontSize: 10.5, fontWeight: "800", color: "#059669" }}>
-                Cách bạn {formatDistanceText(userLocation.latitude, userLocation.longitude, selectedLoc.lat, selectedLoc.lng)}
-                {" • "}
-                ~{Math.max(1, Math.ceil((calculateDistanceKm(userLocation.latitude, userLocation.longitude, selectedLoc.lat, selectedLoc.lng) * 1000) / 80))} phút đi bộ
+                Cách bạn {displayDistance}
+                {displayMinutes ? ` • ~${displayMinutes} phút đi bộ` : ""}
               </Text>
             </View>
-          )}
+          ) : null}
         </View>
 
         {/* Nút Đóng */}

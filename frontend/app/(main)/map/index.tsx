@@ -163,6 +163,7 @@ export default function MapScreen() {
     setShowSuggestions,
     selectedLoc,
     setSelectedLoc,
+    dismissSelectedLoc,
     searchResults,
     currentParsed,
     matchedTargetId,
@@ -177,9 +178,9 @@ export default function MapScreen() {
     buildingCode: params.buildingCode,
     t: params.t,
     userLocation,
-    onFocusLocation: (matched) => {
+    onFocusLocation: useCallback((matched: LocationItem) => {
       setActiveRoute(null);
-      const sendFocus = () => {
+      if (isMapReadyRef.current) {
         webViewRef.current?.postMessage(
           JSON.stringify({
             type: "FOCUS_LOCATION",
@@ -188,37 +189,69 @@ export default function MapScreen() {
             lng: matched.lng,
           })
         );
-      };
-      if (isMapReadyRef.current) {
-        sendFocus();
-        const timer = setTimeout(sendFocus, 200);
-        return () => clearTimeout(timer);
+        webViewRef.current?.postMessage(
+          JSON.stringify({
+            type: "REQUEST_LOCATION_DISTANCE",
+            id: matched.id,
+            lat: matched.lat,
+            lng: matched.lng,
+          })
+        );
       }
-    },
+    }, []),
   });
 
-  // Tự động kiểm tra quyền, khôi phục tab bar & lấy vị trí GPS nền (chỉ cho tài khoản đã đăng nhập)
+  // Khoảng cách lộ trình đi bộ thực tế tính từ vị trí người dùng (User Location)
+  const [selectedLocRouteDistance, setSelectedLocRouteDistance] = useState<{
+    distanceMeters?: number;
+    durationMinutes?: number;
+  } | null>(null);
+
+  // Ref lưu vị trí người dùng để tránh useFocusEffect re-render liên tục gây hiện lại nav
+  const userLocationRef = useRef(userLocation);
+  userLocationRef.current = userLocation;
+
+  // Tự động kiểm tra quyền & lấy vị trí GPS nền lần đầu (chỉ cho tài khoản đã đăng nhập)
   useFocusEffect(
     useCallback(() => {
       checkAuth().then((isAuthed) => {
-        if (isAuthed && !userLocation) {
+        if (isAuthed && !userLocationRef.current) {
           fetchRealGpsLocation(false, true);
         }
       });
       return () => {
+        // Chỉ khôi phục tab bar khi rời khỏi màn hình Map hoàn toàn (chuyển sang tab khác)
         setTabBarVisible(true);
       };
-    }, [checkAuth, userLocation, fetchRealGpsLocation])
+    }, [checkAuth, fetchRealGpsLocation])
   );
 
   // Khi bản đồ sẵn sàng trong WebView
   const handleMapReady = useCallback(() => {
     isMapReadyRef.current = true;
     resetBearing();
+    if (userLocation) {
+      webViewRef.current?.postMessage(
+        JSON.stringify({
+          type: "UPDATE_USER_LOCATION",
+          lat: userLocation.latitude,
+          lng: userLocation.longitude,
+          accuracy: 10,
+        })
+      );
+    }
     if (selectedLoc) {
       webViewRef.current?.postMessage(
         JSON.stringify({
           type: "FOCUS_LOCATION",
+          id: selectedLoc.id,
+          lat: selectedLoc.lat,
+          lng: selectedLoc.lng,
+        })
+      );
+      webViewRef.current?.postMessage(
+        JSON.stringify({
+          type: "REQUEST_LOCATION_DISTANCE",
           id: selectedLoc.id,
           lat: selectedLoc.lat,
           lng: selectedLoc.lng,
@@ -248,7 +281,31 @@ export default function MapScreen() {
         })
       );
     }
-  }, [selectedLoc, locations, campusPaths, resetBearing]);
+  }, [userLocation, selectedLoc, locations, campusPaths, resetBearing]);
+
+  // Đồng bộ vị trí người dùng sang WebView và cập nhật khoảng cách lộ trình liên tục
+  useEffect(() => {
+    if (isMapReadyRef.current && userLocation) {
+      webViewRef.current?.postMessage(
+        JSON.stringify({
+          type: "UPDATE_USER_LOCATION",
+          lat: userLocation.latitude,
+          lng: userLocation.longitude,
+          accuracy: 10,
+        })
+      );
+      if (selectedLoc) {
+        webViewRef.current?.postMessage(
+          JSON.stringify({
+            type: "REQUEST_LOCATION_DISTANCE",
+            id: selectedLoc.id,
+            lat: selectedLoc.lat,
+            lng: selectedLoc.lng,
+          })
+        );
+      }
+    }
+  }, [userLocation, selectedLoc]);
 
   // Đồng bộ mạng lưới lối đi ngay khi tải xong từ Cache/API sang WebView (tránh trường hợp Map ready trước khi Paths nạp xong)
   useEffect(() => {
@@ -282,7 +339,25 @@ export default function MapScreen() {
           const found = locations.find((l) => l.id === data.id);
           if (found) {
             setSelectedLoc(found);
+            if (typeof data.distanceMeters === "number") {
+              setSelectedLocRouteDistance({
+                distanceMeters: data.distanceMeters,
+                durationMinutes: data.durationMinutes,
+              });
+            } else {
+              setSelectedLocRouteDistance(null);
+            }
           }
+        } else if (data.type === "LOCATION_DISTANCE_RESULT") {
+          if (typeof data.distanceMeters === "number") {
+            setSelectedLocRouteDistance({
+              distanceMeters: data.distanceMeters,
+              durationMinutes: data.durationMinutes,
+            });
+          }
+        } else if (data.type === "DESELECT_LOCATION") {
+          dismissSelectedLoc();
+          setSelectedLocRouteDistance(null);
         } else if (data.type === "ROUTE_INFO") {
           setActiveRoute({
             distanceMeters: data.distanceMeters,
@@ -306,7 +381,7 @@ export default function MapScreen() {
         console.error("Lỗi parse message từ webview:", err);
       }
     },
-    [handleMapReady, locations, setSelectedLoc, setShowSuggestions, stopCompassTracking, setBearing]
+    [handleMapReady, locations, setSelectedLoc, setShowSuggestions, stopCompassTracking, setBearing, dismissSelectedLoc]
   );
 
   // Chọn danh mục bộ lọc
@@ -348,6 +423,15 @@ export default function MapScreen() {
       webViewRef.current?.postMessage(
         JSON.stringify({
           type: "FOCUS_LOCATION",
+          id: loc.id,
+          lat: loc.lat,
+          lng: loc.lng,
+        })
+      );
+
+      webViewRef.current?.postMessage(
+        JSON.stringify({
+          type: "REQUEST_LOCATION_DISTANCE",
           id: loc.id,
           lat: loc.lat,
           lng: loc.lng,
@@ -401,10 +485,15 @@ export default function MapScreen() {
       ? { lat: origCoords.latitude, lng: origCoords.longitude }
       : { lat: 12.65138, lng: 108.02366 };
 
-    if (computedDistanceKm !== null) {
+    const initialDist =
+      selectedLocRouteDistance?.distanceMeters ??
+      (computedDistanceKm !== null ? Math.round(computedDistanceKm * 1000) : undefined);
+    const initialMin = selectedLocRouteDistance?.durationMinutes ?? computedWalkingMinutes ?? 1;
+
+    if (initialDist !== undefined) {
       setActiveRoute({
-        distanceMeters: Math.round(computedDistanceKm * 1000),
-        durationMinutes: computedWalkingMinutes || 1,
+        distanceMeters: initialDist,
+        durationMinutes: initialMin,
         gateId: safeGateId || selectedGateId || undefined,
       });
     }
@@ -424,7 +513,7 @@ export default function MapScreen() {
         gateId: typeof gateToUse === "string" ? gateToUse : undefined,
       })
     );
-  }, [selectedLoc, userLocation, fetchRealGpsLocation, computedDistanceKm, computedWalkingMinutes, currentLocationName, selectedGateId]);
+  }, [selectedLoc, userLocation, fetchRealGpsLocation, selectedLocRouteDistance, computedDistanceKm, computedWalkingMinutes, currentLocationName, selectedGateId]);
 
   // Đổi cổng vào khác khi dẫn đường từ ngoài trường (Lê Duẩn <-> Y Wang <-> Bệnh viện)
   const handleSwitchGate = useCallback(() => {
@@ -442,6 +531,7 @@ export default function MapScreen() {
     setIsRoutingActive(false);
     setActiveRoute(null);
     setSelectedGateId(null);
+    setSelectedLocRouteDistance(null);
     setTabBarVisible(true);
     webViewRef.current?.postMessage(JSON.stringify({ type: "CLEAR_ROUTE" }));
   }, []);
@@ -471,6 +561,22 @@ export default function MapScreen() {
       Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`);
     });
   }, [selectedLoc, userLocation]);
+
+  // Tính chuỗi khoảng cách và thời gian đi bộ hiển thị trên Card dựa theo lộ trình thực tế
+  const displayDistanceText = useMemo(() => {
+    if (selectedLocRouteDistance?.distanceMeters !== undefined) {
+      const d = selectedLocRouteDistance.distanceMeters;
+      return d < 1000 ? `~${d}m` : `~${(d / 1000).toFixed(1)}km`;
+    }
+    return computedDistanceText;
+  }, [selectedLocRouteDistance, computedDistanceText]);
+
+  const displayWalkingMinutes = useMemo(() => {
+    if (selectedLocRouteDistance?.durationMinutes !== undefined) {
+      return selectedLocRouteDistance.durationMinutes;
+    }
+    return computedWalkingMinutes;
+  }, [selectedLocRouteDistance, computedWalkingMinutes]);
 
   // Khởi tạo mã HTML 1 lần duy nhất: WebView KHÔNG BAO GIỜ bị reload lại, triệt tiêu lag và nóng máy
   const mapHtmlSource = useMemo(() => {
@@ -561,43 +667,45 @@ export default function MapScreen() {
           )}
 
           {/* ── CÁC NÚT ĐIỀU KHIỂN NỔI & LA BÀN (Memoized) ──────────────── */}
-          <MapControlsOverlay
-            mapLayer={mapLayer}
-            bearing={bearing}
-            compassMode={compassMode}
-            locationLoading={locationLoading}
-            hasUserLocation={Boolean(userLocation)}
-            activeRoute={activeRoute}
-            isRoutingActive={isRoutingActive}
-            onToggleLayer={handleToggleLayer}
-            onCompassPress={() => {
-              if (bearing !== 0 && !compassMode) {
-                resetBearing();
-              } else {
-                toggleCompassMode();
-              }
-            }}
-            onResetBearing={resetBearing}
-            onUserLocationPress={() => {
-              if (userLocation) {
-                webViewRef.current?.postMessage(
-                  JSON.stringify({
-                    type: "FOCUS_LOCATION",
-                    lat: userLocation.latitude,
-                    lng: userLocation.longitude,
-                    zoom: 18,
-                  })
-                );
-                fetchRealGpsLocation(false, true);
-              } else {
-                fetchRealGpsLocation(true);
-              }
-            }}
-            onUserLocationLongPress={() => setShowLocationPicker(true)}
-            onResetView={handleResetView}
-            onRotateStep={rotateStep}
-            onClearRoute={handleClearRoute}
-          />
+          {!isRoutingActive && (
+            <MapControlsOverlay
+              mapLayer={mapLayer}
+              bearing={bearing}
+              compassMode={compassMode}
+              locationLoading={locationLoading}
+              hasUserLocation={Boolean(userLocation)}
+              activeRoute={activeRoute}
+              isRoutingActive={isRoutingActive}
+              onToggleLayer={handleToggleLayer}
+              onCompassPress={() => {
+                if (bearing !== 0 && !compassMode) {
+                  resetBearing();
+                } else {
+                  toggleCompassMode();
+                }
+              }}
+              onResetBearing={resetBearing}
+              onUserLocationPress={() => {
+                if (userLocation) {
+                  webViewRef.current?.postMessage(
+                    JSON.stringify({
+                      type: "FOCUS_LOCATION",
+                      lat: userLocation.latitude,
+                      lng: userLocation.longitude,
+                      zoom: 18,
+                    })
+                  );
+                  fetchRealGpsLocation(false, true);
+                } else {
+                  fetchRealGpsLocation(true);
+                }
+              }}
+              onUserLocationLongPress={() => setShowLocationPicker(true)}
+              onResetView={handleResetView}
+              onRotateStep={rotateStep}
+              onClearRoute={handleClearRoute}
+            />
+          )}
 
           {/* ── THẺ CHI TIẾT TÒA NHÀ ĐANG CHỌN (Memoized) ──────────────── */}
           {!isRoutingActive && selectedLoc && (
@@ -607,8 +715,11 @@ export default function MapScreen() {
               matchedTargetId={matchedTargetId}
               currentParsed={currentParsed}
               targetSubject={targetSubject}
+              distanceText={displayDistanceText}
+              walkingMinutes={displayWalkingMinutes}
               onClose={() => {
-                setSelectedLoc(null);
+                dismissSelectedLoc();
+                setSelectedLocRouteDistance(null);
                 handleClearRoute();
               }}
               onStartDirections={() => handleStartInAppDirections()}
@@ -621,19 +732,19 @@ export default function MapScreen() {
             <View
               style={{
                 position: "absolute",
-                bottom: Math.max(insets.bottom, 16) + 10,
+                bottom: Math.max(insets.bottom, 16) + 96,
                 left: 14,
                 right: 14,
-                zIndex: 50,
+                zIndex: 999,
                 backgroundColor: "#FFFFFF",
                 borderRadius: 22,
                 paddingVertical: 14,
                 paddingHorizontal: 16,
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.16,
+                shadowOpacity: 0.18,
                 shadowRadius: 16,
-                elevation: 10,
+                elevation: 16,
                 borderWidth: 1,
                 borderColor: "rgba(226, 232, 240, 0.9)",
               }}
@@ -656,19 +767,29 @@ export default function MapScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                      <Text
-                        style={{
-                          fontSize: 10.5,
-                          fontWeight: "800",
-                          color: "#64748B",
-                          textTransform: "uppercase",
-                          letterSpacing: 0.5,
-                        }}
-                      >
-                        {activeRoute?.gateName
-                          ? `Qua ${activeRoute.gateName}`
-                          : "Đang chỉ đường đi bộ tới"}
-                      </Text>
+                      {activeRoute?.gateName ? (
+                        <Text
+                          style={{
+                            fontSize: 10.5,
+                            fontWeight: "800",
+                            color: "#64748B",
+                            textTransform: "uppercase",
+                            letterSpacing: 0.5,
+                          }}
+                        >
+                          {`Qua ${activeRoute.gateName}`}
+                        </Text>
+                      ) : (
+                        <View
+                          style={{
+                            width: 75,
+                            height: 10,
+                            backgroundColor: "#E2E8F0",
+                            borderRadius: 5,
+                            marginVertical: 2,
+                          }}
+                        />
+                      )}
                       {activeRoute?.gateName ? (
                         <TouchableOpacity
                           onPress={handleSwitchGate}
@@ -688,34 +809,37 @@ export default function MapScreen() {
                         </TouchableOpacity>
                       ) : null}
                     </View>
-                    <Text
-                      style={{
-                        fontSize: 15,
-                        fontWeight: "900",
-                        color: "#0F172A",
-                        marginTop: 1,
-                      }}
-                      numberOfLines={1}
-                    >
-                      {targetRoom && currentParsed ? currentParsed.fullDisplay : selectedLoc?.name || "Điểm đến"}
-                    </Text>
-                    <Text
-                      style={{
-                        fontSize: 12.5,
-                        fontWeight: "800",
-                        color: "#059669",
-                        marginTop: 2,
-                      }}
-                    >
-                      {activeRoute?.distanceMeters
-                        ? `~${activeRoute.distanceMeters}m`
-                        : computedDistanceText || "Đang tính..."}
-                      {activeRoute?.durationMinutes
-                        ? ` • ~${activeRoute.durationMinutes} phút đi bộ`
-                        : computedWalkingMinutes
-                        ? ` • ~${computedWalkingMinutes} phút đi bộ`
-                        : " • Đi bộ"}
-                    </Text>
+
+                    {!activeRoute?.distanceMeters ? (
+                      <View style={{ gap: 6, marginTop: 4 }}>
+                        <View style={{ width: "80%", height: 14, backgroundColor: "#E2E8F0", borderRadius: 4 }} />
+                        <View style={{ width: "50%", height: 12, backgroundColor: "#E2E8F0", borderRadius: 4 }} />
+                      </View>
+                    ) : (
+                      <>
+                        <Text
+                          style={{
+                            fontSize: 15,
+                            fontWeight: "900",
+                            color: "#0F172A",
+                            marginTop: 1,
+                          }}
+                          numberOfLines={1}
+                        >
+                          {targetRoom && currentParsed ? currentParsed.fullDisplay : selectedLoc?.name || "Điểm đến"}
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 12.5,
+                            fontWeight: "800",
+                            color: "#059669",
+                            marginTop: 2,
+                          }}
+                        >
+                          {`~${activeRoute.distanceMeters}m • ~${activeRoute.durationMinutes || 1} phút đi bộ`}
+                        </Text>
+                      </>
+                    )}
                   </View>
                 </View>
 

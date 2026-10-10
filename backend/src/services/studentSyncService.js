@@ -21,6 +21,45 @@ const TTN_CONFIG = {
   }
 };
 
+// ============================================================================
+// HỆ THỐNG ĐIỀU TIẾT TẢI (RATE LIMITING) & HÀNG ĐỢI REQUEST CỔNG TRƯỜNG TTN
+// ============================================================================
+const MAX_CONCURRENT_TTN = 3; // Tối đa 3 request đồng thời tới web trường
+let activeTtnRequests = 0;
+const ttnRequestQueue = [];
+
+function enqueueTtnRequest(taskFn) {
+  return new Promise((resolve, reject) => {
+    ttnRequestQueue.push({ taskFn, resolve, reject });
+    processTtnQueue();
+  });
+}
+
+function processTtnQueue() {
+  if (activeTtnRequests >= MAX_CONCURRENT_TTN || ttnRequestQueue.length === 0) {
+    return;
+  }
+  const { taskFn, resolve, reject } = ttnRequestQueue.shift();
+  activeTtnRequests++;
+
+  Promise.resolve()
+    .then(taskFn)
+    .then(resolve)
+    .catch(reject)
+    .finally(() => {
+      activeTtnRequests--;
+      setTimeout(processTtnQueue, 200); // Cách nhau tối thiểu 200ms bảo vệ cổng trường
+    });
+}
+
+// Bảng theo dõi chống cào trùng lặp cùng thời điểm cho cùng 1 MSSV
+const inFlightGradeSyncs = new Map();
+const inFlightScheduleSyncs = new Map();
+
+// Cấu hình thời gian sống của Cache (Time-To-Live - TTL)
+const TTL_GRADES_MS = 12 * 60 * 60 * 1000;   // 12 giờ cho Điểm thi
+const TTL_SCHEDULE_MS = 24 * 60 * 60 * 1000; // 24 giờ cho Thời khóa biểu
+
 const cleanName = (name) => {
   if (!name) return name;
   return name
@@ -85,24 +124,32 @@ function pushScheduleRow(headers, colIdx, buoi, currentLesson, parsedRows) {
 }
 
 /**
- * 1. Cào và lưu bảng điểm cho 1 MSSV vào DB (student_grades)
+ * 1. Cào và lưu bảng điểm cho 1 MSSV vào DB (student_grades) - Có điều tiết tải & chống trùng lặp
  */
 async function syncGradesForStudent(mssv, dk = '10') {
   if (!mssv || mssv === 'guest' || mssv.includes('@') || mssv.length < 4) {
     return { success: false, message: 'MSSV không hợp lệ' };
   }
 
-  try {
-    const payload = new URLSearchParams({ 'msv': mssv, 'mssv': mssv, 'dk': dk });
-    const response = await axios.post(TTN_CONFIG.GRADES_URL, payload.toString(), {
-      httpsAgent,
-      headers: {
-        ...TTN_CONFIG.COMMON_HEADERS,
-        'Referer': TTN_CONFIG.GRADES_REFERER,
-        'Accept': '*/*'
-      },
-      timeout: 10000
-    });
+  // Chống cào lặp đồng thời cho cùng 1 MSSV
+  if (inFlightGradeSyncs.has(mssv)) {
+    return inFlightGradeSyncs.get(mssv);
+  }
+
+  const syncPromise = (async () => {
+    try {
+      const payload = new URLSearchParams({ 'msv': mssv, 'mssv': mssv, 'dk': dk });
+      const response = await enqueueTtnRequest(() =>
+        axios.post(TTN_CONFIG.GRADES_URL, payload.toString(), {
+          httpsAgent,
+          headers: {
+            ...TTN_CONFIG.COMMON_HEADERS,
+            'Referer': TTN_CONFIG.GRADES_REFERER,
+            'Accept': '*/*'
+          },
+          timeout: 10000
+        })
+      );
 
     const $ = cheerio.load(response.data);
     let extractedName = extractFullNameFromHtml($);
@@ -227,32 +274,46 @@ async function syncGradesForStudent(mssv, dk = '10') {
     }
 
     return { success: false, message: 'Không có dữ liệu điểm trả về từ web trường' };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
+    } catch (error) {
+      return { success: false, error: error.message };
+    } finally {
+      inFlightGradeSyncs.delete(mssv);
+    }
+  })();
+
+  inFlightGradeSyncs.set(mssv, syncPromise);
+  return syncPromise;
 }
 
 /**
- * 2. Cào và lưu thời khóa biểu cho 1 MSSV vào DB (student_schedules)
+ * 2. Cào và lưu thời khóa biểu cho 1 MSSV vào DB (student_schedules) - Có điều tiết tải & chống trùng lặp
  */
 async function syncScheduleForStudent(mssv, dk = '10') {
   if (!mssv || mssv === 'guest' || mssv.includes('@') || mssv.length < 4) {
     return { success: false, message: 'MSSV không hợp lệ' };
   }
 
-  try {
-    const payload = new URLSearchParams({ 'msv': mssv, 'mssv': mssv, 'dk': dk });
-    const response = await axios.post(TTN_CONFIG.SCHEDULE_URL, payload.toString(), {
-      httpsAgent,
-      headers: {
-        ...TTN_CONFIG.COMMON_HEADERS,
-        'Referer': TTN_CONFIG.SCHEDULE_REFERER,
-        'Accept': 'text/plain, */*; q=0.01'
-      },
-      timeout: 10000
-    });
+  // Chống cào lặp đồng thời cho cùng 1 MSSV
+  if (inFlightScheduleSyncs.has(mssv)) {
+    return inFlightScheduleSyncs.get(mssv);
+  }
 
-    const $ = cheerio.load(response.data);
+  const syncPromise = (async () => {
+    try {
+      const payload = new URLSearchParams({ 'msv': mssv, 'mssv': mssv, 'dk': dk });
+      const response = await enqueueTtnRequest(() =>
+        axios.post(TTN_CONFIG.SCHEDULE_URL, payload.toString(), {
+          httpsAgent,
+          headers: {
+            ...TTN_CONFIG.COMMON_HEADERS,
+            'Referer': TTN_CONFIG.SCHEDULE_REFERER,
+            'Accept': 'text/plain, */*; q=0.01'
+          },
+          timeout: 10000
+        })
+      );
+
+      const $ = cheerio.load(response.data);
     const parsedWeeks = [];
 
     function parseTableRows(tableElem) {
@@ -365,23 +426,65 @@ async function syncScheduleForStudent(mssv, dk = '10') {
     }
 
     return { success: false, message: 'Không có dòng thời khóa biểu trả về từ web trường' };
-  } catch (error) {
-    return { success: false, error: error.message };
+    } catch (error) {
+      return { success: false, error: error.message };
+    } finally {
+      inFlightScheduleSyncs.delete(mssv);
+    }
+  })();
+
+  inFlightScheduleSyncs.set(mssv, syncPromise);
+  return syncPromise;
+}
+
+/**
+ * 3. Dọn dẹp thời khóa biểu cũ (Data Pruning) để cơ sở dữ liệu luôn gọn nhẹ
+ * Loại bỏ các lịch học chính khóa quá 45 ngày (giữ lại lịch học tự tạo is_custom = 1)
+ */
+async function pruneStaleSchedules(daysThreshold = 45) {
+  try {
+    const [res] = await db.query(
+      `DELETE FROM student_schedules 
+       WHERE (is_custom = 0 OR is_custom IS NULL) 
+         AND created_at < NOW() - INTERVAL ? DAY`,
+      [daysThreshold]
+    );
+    if (res.affectedRows > 0) {
+      console.log(`🧹 [Data Pruning] Đã dọn dẹp ${res.affectedRows} bản ghi thời khóa biểu cũ (> ${daysThreshold} ngày).`);
+    }
+    return res.affectedRows || 0;
+  } catch (err) {
+    console.warn('Lỗi khi dọn dẹp student_schedules cũ:', err.message);
+    return 0;
   }
 }
 
 /**
- * 3. Đồng bộ toàn bộ sinh viên có tài khoản thực trong cơ sở dữ liệu
+ * 4. Đồng bộ thông minh: Chỉ đồng bộ sinh viên đang hoạt động mà Cache đã hết hạn
+ * Giới hạn theo lô (Batching, mặc định 30 SV/lần) và có độ trễ nghỉ (Pacing) để bảo vệ cổng trường
  */
-async function syncAllActiveStudents() {
+async function syncAllActiveStudents(maxBatchSize = 30) {
   try {
+    // 1. Dọn dẹp lịch cũ trước
+    await pruneStaleSchedules(45);
+
+    // 2. Lấy danh sách sinh viên có hoạt động gần đây mà cache đã quá hạn TTL (12h đối với điểm, 24h đối với TKB)
     const [rows] = await db.query(
-      `SELECT DISTINCT mssv FROM users 
-       WHERE role = 'sinh_vien' 
-         AND mssv IS NOT NULL 
-         AND mssv != 'guest' 
-         AND mssv NOT LIKE '%@%' 
-         AND LENGTH(mssv) >= 4`
+      `SELECT DISTINCT u.mssv,
+              MAX(sg.created_at) AS last_grade_sync,
+              MAX(ss.created_at) AS last_sched_sync
+       FROM users u
+       LEFT JOIN student_grades sg ON u.mssv = sg.mssv
+       LEFT JOIN student_schedules ss ON u.mssv = ss.mssv AND (ss.is_custom = 0 OR ss.is_custom IS NULL)
+       WHERE u.role = 'sinh_vien' 
+         AND u.mssv IS NOT NULL 
+         AND u.mssv != 'guest' 
+         AND u.mssv NOT LIKE '%@%' 
+         AND LENGTH(u.mssv) >= 4
+       GROUP BY u.mssv
+       ORDER BY (last_grade_sync IS NULL) DESC, last_grade_sync ASC
+       LIMIT ?`,
+      [maxBatchSize]
     );
 
     if (!rows || rows.length === 0) {
@@ -390,14 +493,26 @@ async function syncAllActiveStudents() {
 
     let syncedGrades = 0;
     let syncedSchedules = 0;
+    const now = Date.now();
 
     for (const r of rows) {
       const mssv = r.mssv;
-      const gradeRes = await syncGradesForStudent(mssv);
-      if (gradeRes.success) syncedGrades++;
+      const gradeAge = r.last_grade_sync ? (now - new Date(r.last_grade_sync).getTime()) : Infinity;
+      const schedAge = r.last_sched_sync ? (now - new Date(r.last_sched_sync).getTime()) : Infinity;
 
-      const scheduleRes = await syncScheduleForStudent(mssv);
-      if (scheduleRes.success) syncedSchedules++;
+      // Chỉ cào nếu cache điểm đã quá hạn 12 giờ
+      if (gradeAge >= TTL_GRADES_MS) {
+        const gradeRes = await syncGradesForStudent(mssv);
+        if (gradeRes.success) syncedGrades++;
+        await new Promise(resolve => setTimeout(resolve, 350)); // Nghỉ 350ms giữa các request
+      }
+
+      // Chỉ cào nếu cache TKB đã quá hạn 24 giờ
+      if (schedAge >= TTL_SCHEDULE_MS) {
+        const scheduleRes = await syncScheduleForStudent(mssv);
+        if (scheduleRes.success) syncedSchedules++;
+        await new Promise(resolve => setTimeout(resolve, 350));
+      }
     }
 
     return {
@@ -414,5 +529,8 @@ async function syncAllActiveStudents() {
 module.exports = {
   syncGradesForStudent,
   syncScheduleForStudent,
-  syncAllActiveStudents
+  syncAllActiveStudents,
+  pruneStaleSchedules,
+  TTL_GRADES_MS,
+  TTL_SCHEDULE_MS
 };

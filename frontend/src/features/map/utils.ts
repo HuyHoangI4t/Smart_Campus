@@ -1,4 +1,5 @@
 import { LocationItem, ParsedCampusRoom } from "./types";
+import { TNU_CAMPUS_GATES } from "./constants";
 
 export const HOUSE_NUM_TO_ID: Record<string, number> = {
   "1": 1,
@@ -307,4 +308,197 @@ export function formatDistanceText(lat1: number, lon1: number, lat2: number, lon
   }
   return `~${km.toFixed(1)}km`;
 }
+
+export function getWalkwayBranches(rawCoords: any): [number, number][][] {
+  if (!rawCoords) return [];
+  let coords = rawCoords;
+  if (typeof coords === "string") {
+    try {
+      coords = JSON.parse(coords);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(coords) || coords.length === 0) return [];
+  if (Array.isArray(coords[0]) && typeof coords[0][0] === "number") {
+    return [coords as [number, number][]];
+  }
+  if (Array.isArray(coords[0]) && Array.isArray(coords[0][0])) {
+    return (coords as [number, number][][]).filter(
+      (b) => Array.isArray(b) && b.length >= 2
+    );
+  }
+  return [];
+}
+
+export function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
+/**
+ * Thuật toán Dijkstra tính khoảng cách đi bộ thực tế (mét) theo mạng lưới đường nội bộ
+ */
+export function findWalkwayDistanceMeters(
+  origLat: number,
+  origLng: number,
+  destLat: number,
+  destLng: number,
+  campusPaths: any[]
+): number | null {
+  if (!campusPaths || campusPaths.length === 0) return null;
+
+  const vertices: [number, number][] = [];
+  const adj: Record<number, { node: number; weight: number }[]> = {};
+
+  function addEdge(u: number, v: number, weight: number) {
+    if (!adj[u]) adj[u] = [];
+    if (!adj[v]) adj[v] = [];
+    adj[u].push({ node: v, weight });
+    adj[v].push({ node: u, weight });
+  }
+
+  let nodeIndex = 0;
+  campusPaths.forEach((path) => {
+    const branches = getWalkwayBranches(path.coordinates);
+    branches.forEach((pts) => {
+      let prevIdx = -1;
+      for (let i = 0; i < pts.length; i++) {
+        const curIdx = nodeIndex++;
+        vertices.push([pts[i][0], pts[i][1]]);
+        if (prevIdx !== -1) {
+          const w = getDistanceMeters(
+            vertices[prevIdx][0],
+            vertices[prevIdx][1],
+            vertices[curIdx][0],
+            vertices[curIdx][1]
+          );
+          addEdge(prevIdx, curIdx, Math.max(1, w));
+        }
+        prevIdx = curIdx;
+      }
+    });
+  });
+
+  if (vertices.length < 2) return null;
+
+  // Nối các giao lộ (điểm thuộc các tuyến khác nhau cách nhau <= 12m)
+  for (let i = 0; i < vertices.length; i++) {
+    for (let j = i + 1; j < vertices.length; j++) {
+      const d = getDistanceMeters(
+        vertices[i][0],
+        vertices[i][1],
+        vertices[j][0],
+        vertices[j][1]
+      );
+      if (d <= 12) {
+        addEdge(i, j, Math.max(1, d));
+      }
+    }
+  }
+
+  // Tìm đỉnh gần nhất tới Origin và Destination
+  let startNode = -1;
+  let startMinDist = Infinity;
+  let endNode = -1;
+  let endMinDist = Infinity;
+
+  for (let k = 0; k < vertices.length; k++) {
+    const dStart = getDistanceMeters(origLat, origLng, vertices[k][0], vertices[k][1]);
+    if (dStart < startMinDist) {
+      startMinDist = dStart;
+      startNode = k;
+    }
+    const dEnd = getDistanceMeters(destLat, destLng, vertices[k][0], vertices[k][1]);
+    if (dEnd < endMinDist) {
+      endMinDist = dEnd;
+      endNode = k;
+    }
+  }
+
+  if (endMinDist > 500 || endNode === -1) {
+    return null;
+  }
+
+  let extraStartMeters = 0;
+  if (startMinDist > 500 || startNode === -1) {
+    // Nếu người dùng ở ngoài trường, tìm cổng vào gần nhất để dẫn đường qua cổng
+    let nearestGateDist = Infinity;
+    let chosenGateInside: [number, number] | null = null;
+    let chosenGateTransition = 0;
+
+    for (let g = 0; g < TNU_CAMPUS_GATES.length; g++) {
+      const gate = TNU_CAMPUS_GATES[g];
+      const dOut = getDistanceMeters(origLat, origLng, gate.outsidePoint[0], gate.outsidePoint[1]);
+      if (dOut < nearestGateDist) {
+        nearestGateDist = dOut;
+        chosenGateInside = gate.insidePoint;
+        chosenGateTransition = getDistanceMeters(
+          gate.outsidePoint[0],
+          gate.outsidePoint[1],
+          gate.insidePoint[0],
+          gate.insidePoint[1]
+        );
+      }
+    }
+
+    if (chosenGateInside) {
+      extraStartMeters = Math.round(nearestGateDist + chosenGateTransition);
+      startMinDist = Infinity;
+      startNode = -1;
+      for (let k = 0; k < vertices.length; k++) {
+        const d = getDistanceMeters(chosenGateInside[0], chosenGateInside[1], vertices[k][0], vertices[k][1]);
+        if (d < startMinDist) {
+          startMinDist = d;
+          startNode = k;
+        }
+      }
+    }
+  }
+
+  if (startNode === -1) {
+    return null;
+  }
+
+  // Dijkstra
+  const dist: Record<number, number> = {};
+  const visited: Record<number, boolean> = {};
+  const pq: { node: number; dist: number }[] = [{ node: startNode, dist: 0 }];
+  dist[startNode] = 0;
+
+  while (pq.length > 0) {
+    pq.sort((a, b) => a.dist - b.dist);
+    const cur = pq.shift()!;
+    const u = cur.node;
+
+    if (visited[u]) continue;
+    visited[u] = true;
+
+    if (u === endNode) break;
+
+    const neighbors = adj[u] || [];
+    for (let n = 0; n < neighbors.length; n++) {
+      const edge = neighbors[n];
+      const v = edge.node;
+      const alt = dist[u] + edge.weight;
+      if (dist[v] === undefined || alt < dist[v]) {
+        dist[v] = alt;
+        pq.push({ node: v, dist: alt });
+      }
+    }
+  }
+
+  if (dist[endNode] === undefined) return null;
+
+  return Math.round(extraStartMeters + startMinDist + dist[endNode] + endMinDist);
+}
+
 

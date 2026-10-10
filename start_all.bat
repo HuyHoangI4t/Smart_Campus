@@ -2,32 +2,14 @@
 chcp 65001 >nul
 title KHOI DONG HE THONG SMART CAMPUS
 
-echo ======================================================================
-echo          HE THONG SMART CAMPUS - DAI HOC TAY NGUYEN
-echo ======================================================================
-echo.
-echo [1/3] Dang khoi dong BACKEND SERVER (Port 5000)...
-start "BACKEND API (Port 5000)" cmd /k "cd /d "%~dp0backend" && npm run dev"
+echo Dang khoi dong 3 tab trong Windows Terminal...
 
-timeout /t 2 /nobreak >nul
-
-echo [2/3] Dang khoi dong ADMIN PORTAL (Port 5001)...
-start "ADMIN PORTAL (Port 5001)" cmd /k "cd /d "%~dp0admin" && npm start"
-
-timeout /t 2 /nobreak >nul
-
-echo [3/3] Dang khoi dong FRONTEND EXPO APP (Metro Bundler)...
-start "FRONTEND APP (Expo)" cmd /k "cd /d "%~dp0frontend" && npm start"
+:: Mo 3 tab doc lap trong cung 1 cua so Windows Terminal
+start wt.exe new-tab --title "BACKEND" -d "%~dp0backend" cmd /k "npm run dev" ; new-tab --title "ADMIN" -d "%~dp0admin" cmd /k "npm start" ; new-tab --title "FRONTEND EXPO" -d "%~dp0frontend" cmd /k "npx expo start"
 
 echo.
 echo ======================================================================
-echo  DA KHOI DONG THANH CONG CA 3 HE THONG!
-echo.
-echo  * Swagger Docs:    http://localhost:5000/api-docs
-echo  * Admin Portal:    http://localhost:5001
-echo  * Mobile App:      Quet ma QR tren cua so Expo bang Expo Go
+echo  DA KHOI DONG THANH CONG!
 echo ======================================================================
 echo.
-echo Nhan phim bat ky hoac dong cua so nay (3 service van tiep tuc chay).
 pause >nul
-

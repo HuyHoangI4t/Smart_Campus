@@ -14,8 +14,9 @@
 
 > **Smart Campus** là giải pháp hệ sinh thái ứng dụng toàn diện hỗ trợ sinh viên trường **Đại học Tây Nguyên**:
 > - 📱 **Ứng dụng di động (Mobile App):** Tra cứu điểm số, thời khóa biểu thông minh, bản đồ khuôn viên với dẫn đường nội bộ (thuật toán Dijkstra), la bàn định hướng và các tiện ích sinh viên.
-> - 💻 **Cổng quản trị (Admin Portal):** Quản lý tài khoản sinh viên (hỗ trợ avatar), duyệt phản hồi, cảnh báo SOS thời gian thực qua Socket.IO, chỉnh sửa 37 địa điểm và vẽ mạng lưới đường nội bộ trực tiếp trên bản đồ số.
+> - 💻 **Cổng quản trị (Admin Portal):** Quản lý tài khoản sinh viên, duyệt phản hồi, cảnh báo SOS thời gian thực qua Socket.IO, chỉnh sửa 37 địa điểm và vẽ mạng lưới đường nội bộ trực tiếp trên bản đồ số.
 > - ⚡ **Khởi động 1 chạm:** Kèm sẵn script `start_all.bat` khởi chạy đồng thời Backend, Admin Portal và Mobile App.
+> - 🚀 **Tối ưu hóa quy mô lớn:** Hệ thống Cache TTL + Rate Limiter bảo vệ cổng trường khi có 1,000–10,000 sinh viên đồng thời.
 
 ---
 
@@ -56,13 +57,14 @@
 - **🗺️ Bản đồ & Dẫn đường thông minh (Campus Map & Navigation):**
   - **Thuật toán Dijkstra:** Tìm tuyến đường đi bộ ngắn nhất giữa các tòa nhà trong trường dựa trên mạng lưới đường nội bộ.
   - **Trải nghiệm như Google Maps:** Khi bấm bắt đầu chỉ đường, bản đồ tự động zoom cận cảnh và xoay theo hướng đường di chuyển.
-  - **Biểu tượng vị trí hình tam giác:** Tích hợp la bàn (Compass / Heading) hiển thị hướng nhìn thực tế của người dùng và đưa vị trí về tâm màn hình.
-  - **Lọc rung lắc cảm biến:** Thuật toán làm mịn góc quay (ngưỡng lệch $\ge 8^\circ$ và giới hạn tối thiểu 450ms) giúp tiết kiệm pin và chống giật.
+  - **Biểu tượng vị trí hình tam giác:** Tích hợp la bàn hiển thị hướng nhìn thực tế của người dùng và đưa vị trí về tâm màn hình.
+  - **Lọc rung lắc cảm biến:** Thuật toán làm mịn góc quay (ngưỡng lệch ≥ 8° và giới hạn tối thiểu 450ms) giúp tiết kiệm pin và chống giật.
   - **Tự động ẩn thanh điều hướng (Bottom Tabs):** Tối ưu hóa toàn bộ diện tích màn hình khi đang trong chế độ dẫn đường.
   - **37 Địa điểm trọng điểm:** Tòa nhà điều hành, Thư viện, Giảng đường A1-A6, B1-B3, Ký túc xá, Sân vận động, Căn tin...
 - **📅 Thời khóa biểu thông minh (Schedule):**
   - Xem lịch học theo tuần và ngày, hiển thị phòng học, tiết học, giảng viên.
   - Thêm / chỉnh sửa lịch học bù, thực hành đột xuất: Giao diện thẻ **Ngày học** tự động đồng bộ thứ trong tuần, ô **Tiết học** full-width với danh sách chọn nhanh mượt mà.
+  - Vuốt xuống (Pull-to-Refresh) để đồng bộ lịch mới nhất từ cổng trường.
 - **📊 Kết quả học tập (Grades):**
   - Tra cứu điểm thành phần, chuyên cần, thi, điểm chữ.
   - Tự động tính toán điểm trung bình tích lũy GPA (thang 10 & thang 4), tổng tín chỉ đạt.
@@ -84,7 +86,65 @@
 
 ---
 
-## 🛠️ 3. Công nghệ sử dụng (Tech Stack)
+## 🚀 3. Kiến trúc tối ưu hóa quy mô lớn (Scalability Architecture)
+
+Hệ thống được thiết kế để phục vụ **1,000 – 10,000 sinh viên** mà **không làm quá tải** cổng tra cứu `ttn.edu.vn` của trường:
+
+### 🗄️ Chiến lược Cache TTL (Time-To-Live) trong Database
+
+```
+Student requests grades/schedule
+        │
+        ▼
+  ┌─────────────────────────┐
+  │   Check DB Cache TTL    │
+  │  Grades:   12 giờ       │
+  │  Schedule: 24 giờ       │
+  └─────────┬───────────────┘
+            │
+     Cache còn hạn?
+      ┌─────┴──────┐
+      │ Có         │ Hết hạn / Chưa có
+      ▼            ▼
+  Trả từ DB    Enqueue → Rate Limiter → Cào ttn.edu.vn
+  (0ms, 0 req)  (max 3 đồng thời, 200ms gap)
+                     │
+                     ▼
+              Lưu vào MySQL → Trả về app
+```
+
+| Thành phần | Giá trị | Mục đích |
+|:---|:---:|:---|
+| `TTL_GRADES_MS` | 12 giờ | Cache bảng điểm — chỉ cào lại sau 12h |
+| `TTL_SCHEDULE_MS` | 24 giờ | Cache thời khóa biểu — chỉ cào lại sau 24h |
+| `MAX_CONCURRENT_TTN` | 3 | Tối đa 3 request đồng thời tới `ttn.edu.vn` |
+| Gap giữa requests | 200ms | Bảo vệ cổng tra cứu trường khỏi bị quá tải |
+| Pacing cron batch | 350ms | Thời gian nghỉ giữa mỗi sinh viên trong batch |
+| Batch size cron | 30 SV | Số sinh viên mỗi lần đồng bộ nền |
+
+### ⚡ Các cơ chế bảo vệ
+
+1. **In-Flight Deduplication** — Nếu 1000 sinh viên cùng xem điểm của MSSV `23103023` vào cùng lúc, chỉ **1 request duy nhất** được gửi tới `ttn.edu.vn`, 999 request còn lại chờ và nhận kết quả từ cùng Promise.
+
+2. **Rate Limiter Queue** — Hàng đợi FIFO tự động, đảm bảo tối đa `MAX_CONCURRENT_TTN = 3` request đồng thời tới web trường, 200ms giữa các request liên tiếp.
+
+3. **Smart Batch Sync (Cron)** — Cron chạy lúc **06:00, 12:00, 18:00** (Asia/Ho_Chi_Minh). Chỉ đồng bộ những sinh viên có cache **đã quá hạn TTL**, ưu tiên cache cũ nhất trước.
+
+4. **Data Pruning** — Tự động xóa lịch học chính khóa (`is_custom = 0`) cũ hơn **45 ngày** trước mỗi lần batch sync, giữ DB luôn gọn. Lịch học tự tạo của sinh viên (`is_custom = 1`) **không bao giờ bị xóa**.
+
+5. **Fallback Cache** — Nếu cào thất bại (ttn.edu.vn không phản hồi), hệ thống vẫn trả dữ liệu cũ từ DB thay vì báo lỗi cho sinh viên.
+
+### 📈 Ước lượng hiệu suất
+
+| Quy mô | Không có Cache | Với Cache TTL |
+|:---|:---:|:---:|
+| 100 sinh viên đăng nhập cùng lúc | 100 request → ttn.edu.vn | ~0 request (cache hit) |
+| 1,000 sinh viên/ngày | 1,000+ request | ≤ 30 request (cron batch/lần) |
+| 10,000 sinh viên/ngày | **Quá tải ttn.edu.vn** | ≤ 30 request (cron batch/lần) |
+
+---
+
+## 🛠️ 4. Công nghệ sử dụng (Tech Stack)
 
 | Phân hệ | Công nghệ & Thư viện chính |
 | :--- | :--- |
@@ -93,10 +153,11 @@
 | **Database** | MySQL 8.0 (Cơ chế tự động tạo schema & nạp seeders khi khởi động) |
 | **Admin Portal** | HTML5 / Vanilla JS (ES6 Modules), Tailwind CSS, Lucide Icons, Leaflet.js |
 | **Tài liệu API** | OpenAPI 3.0 / Swagger UI (`swagger-ui-express`) |
+| **Tối ưu hóa** | Cache TTL Strategy, Rate Limiter Queue, In-Flight Dedup, Data Pruning, Cron Smart Batch |
 
 ---
 
-## 🚀 4. Hướng dẫn khởi chạy nhanh (Quick Start)
+## 🚀 5. Hướng dẫn khởi chạy nhanh (Quick Start)
 
 ### Yêu cầu hệ thống:
 - [Node.js](https://nodejs.org/) (Phiên bản `>= 18.x`)
@@ -108,7 +169,7 @@
 ### ⚡ CÁCH 1: Khởi động 1 chạm bằng file `.bat` (Khuyên dùng trên Windows)
 
 Chỉ cần **nhấp đúp chuột (Double Click)** vào file:
-👉 **[start_all.bat](file:///e:/LTDDDNT/start_all.bat)** (hoặc `run.bat`)
+👉 **`start_all.bat`** (hoặc `run.bat`)
 
 File sẽ tự động mở 3 cửa sổ console chạy đồng thời:
 1. `BACKEND API (Port 5000)`: Khởi chạy Node.js server, kết nối MySQL và Socket.IO.
@@ -154,7 +215,7 @@ npx expo start
 
 ---
 
-## 📁 5. Cấu trúc thư mục dự án (Project Structure)
+## 📁 6. Cấu trúc thư mục dự án (Project Structure)
 
 ```text
 LTDDDNT/
@@ -165,7 +226,7 @@ LTDDDNT/
 │   ├── public/                         # Mã nguồn giao diện Admin tĩnh
 │   │   ├── css/style.css               # Phong cách giao diện Admin
 │   │   ├── js/
-│   │   │   ├── api.js                  # Gọi REST API kết nối Backend
+│   │   │   ├── api.js                  # Gọi REST API + token cache in-memory
 │   │   │   ├── app.js                  # Điều phối chung, Realtime Socket.IO
 │   │   │   ├── dashboard.js            # Thống kê & biểu đồ hoạt động
 │   │   │   ├── feedback.js             # Quản lý & duyệt phản hồi
@@ -189,7 +250,7 @@ LTDDDNT/
 │   │   │   ├── campusController.js     # Bản đồ, định tuyến đường, phản hồi, SOS
 │   │   │   ├── generalController.js    # Thông báo, khảo sát
 │   │   │   ├── newsController.js       # Tin tức trường học
-│   │   │   └── studentController.js    # Bảng điểm, TKB, lịch thực hành
+│   │   │   └── studentController.js    # Điểm & TKB (TTL cache + fallback)
 │   │   ├── database/                   # Quản lý schema CSDL tập trung
 │   │   │   ├── tables.js               # Định nghĩa DDL toàn bộ 13 bảng
 │   │   │   ├── seedData.js             # 37 địa điểm, tài khoản mẫu, đường nội bộ
@@ -197,8 +258,13 @@ LTDDDNT/
 │   │   │   └── index.js                # Điều phối khởi tạo CSDL
 │   │   ├── middlewares/                # Middleware xác thực JWT & quyền Admin
 │   │   ├── routes/                     # Định tuyến API
-│   │   ├── services/                   # Dịch vụ nền (Cron sync, Grade, Schedule)
-│   │   └── server.js                   # Entry point máy chủ Express & Socket.IO
+│   │   ├── services/
+│   │   │   ├── studentSyncService.js   # ⭐ Rate Limiter + Cache TTL + Dedup + Pruning
+│   │   │   ├── cronService.js          # Cron tự động (06:00, 12:00, 18:00 ICT)
+│   │   │   ├── gradeService.js         # Xử lý & tính toán điểm số GPA
+│   │   │   ├── scheduleService.js      # Parse & format thời khóa biểu
+│   │   │   └── newsService.js          # Cào tin tức từ ttn.edu.vn
+│   │   └── server.js                   # Entry point Express + Socket.IO
 │   ├── .env.example                    # Mẫu cấu hình môi trường backend
 │   └── package.json
 │
@@ -228,7 +294,58 @@ LTDDDNT/
 
 ---
 
-## 👥 6. Tác giả & Thành viên thực hiện (Authors)
+## ⚙️ 7. Cấu hình môi trường (Environment Variables)
+
+Tạo file `.env` trong thư mục `backend/` (xem mẫu tại `backend/.env.example`):
+
+```env
+# Database
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASS=your_password
+DB_NAME=smartcampus
+
+# JWT
+JWT_SECRET=your_secret_key_here
+
+# Email OTP (Nodemailer)
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASS=your_app_password
+
+# Optional: SSL (cho MySQL Cloud)
+# DB_SSL=true
+```
+
+---
+
+## 🔌 8. API Endpoints chính (REST API)
+
+| Phương thức | Endpoint | Mô tả |
+|:---:|:---|:---|
+| `POST` | `/api/auth/login` | Đăng nhập sinh viên |
+| `POST` | `/api/auth/register` | Đăng ký tài khoản mới |
+| `POST` | `/api/auth/send-otp` | Gửi OTP xác thực qua Email |
+| `GET` | `/api/grades?mssv=...` | Lấy bảng điểm (cache TTL 12h) |
+| `GET` | `/api/schedule?mssv=...` | Lấy thời khóa biểu (cache TTL 24h) |
+| `GET` | `/api/schedule?mssv=...&reload=true` | Bỏ qua cache, cào ngay từ trường |
+| `POST` | `/api/schedule/custom` | Thêm lịch học thủ công |
+| `PUT` | `/api/schedule/custom/:id` | Sửa lịch học thủ công |
+| `DELETE` | `/api/schedule/custom/:id` | Xóa lịch học thủ công |
+| `GET` | `/api/map/locations` | Danh sách 37 địa điểm |
+| `GET` | `/api/map/paths` | Mạng lưới đường nội bộ |
+| `GET` | `/api/news` | Tin tức từ cổng trường |
+| `GET` | `/api/notifications` | Thông báo từ trường |
+| `POST` | `/api/feedback` | Gửi phản hồi |
+| `POST` | `/api/sos` | Gửi tín hiệu SOS khẩn cấp |
+| `GET` | `/api/admin/stats` | Thống kê tổng quan (Admin) |
+| `GET` | `/api/admin/users` | Danh sách người dùng (Admin) |
+| `GET` | `/api/health` | Kiểm tra trạng thái server |
+| `GET` | `/api-docs` | Swagger UI tài liệu API |
+
+---
+
+## 👥 9. Tác giả & Thành viên thực hiện (Authors)
 
 Dự án được thực hiện phục vụ học phần **Lập trình ứng dụng đa nền tảng (LTUDDNT)** - Trường **Đại học Tây Nguyên**:
 
@@ -241,7 +358,7 @@ Dự án được thực hiện phục vụ học phần **Lập trình ứng d�
 
 ---
 
-## 📄 7. Giấy phép (License)
+## 📄 10. Giấy phép (License)
 
 Dự án được phân phối dưới giấy phép **MIT License**.
 

@@ -16,11 +16,23 @@ const pool = mysql.createPool({
   keepAliveInitialDelay: 10000,
 });
 
-// Test connection function
+// Kiểm tra kết nối & tự động tạo Database nếu chưa tồn tại
 async function testConnection() {
+  const dbName = process.env.DB_NAME || 'smartcampus';
   try {
+    // Tự động tạo Database nếu MySQL hoàn toàn mới tinh
+    const rootConn = await mysql.createConnection({
+      host: process.env.DB_HOST || '127.0.0.1',
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASSWORD || '',
+      port: Number(process.env.DB_PORT) || 3306,
+    });
+    await rootConn.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+    await rootConn.end();
+
+    // Kiểm tra kết nối pool tới Database
     const connection = await pool.getConnection();
-    console.log('✅ Connected to MySQL database (smartcampus) successfully.');
+    console.log(`✅ Kết nối MySQL database (${dbName}) thành công.`);
     connection.release();
   } catch (error) {
     console.error('❌ Database connection failed:', error.message);

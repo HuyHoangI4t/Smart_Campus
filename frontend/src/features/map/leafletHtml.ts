@@ -568,12 +568,16 @@ ${LEAFLET_JS}
 
         marker.on('click', function() {
           setActiveMarker(loc.id);
-          if (window.ReactNativeWebView) {
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'SELECT_LOCATION',
-              id: loc.id
-            }));
-          }
+          computeRouteDistanceToLoc(loc.lat, loc.lng, function(distMeters, durMin) {
+            if (window.ReactNativeWebView) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'SELECT_LOCATION',
+                id: loc.id,
+                distanceMeters: distMeters,
+                durationMinutes: durMin
+              }));
+            }
+          });
         });
 
         markerObjects[loc.id] = marker;
@@ -581,6 +585,16 @@ ${LEAFLET_JS}
     }
 
     renderLocationMarkers(locationsData);
+
+    // Click vào vùng trống bản đồ để bỏ chọn địa điểm
+    map.on('click', function() {
+      setActiveMarker(null);
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'DESELECT_LOCATION'
+        }));
+      }
+    });
 
     function setActiveMarker(locId) {
       if (currentActiveMarkerId && markerObjects[currentActiveMarkerId]) {
@@ -614,10 +628,92 @@ ${LEAFLET_JS}
     // Biến quản lý User Location và Tuyến đường (Routing)
     var userLocationMarker = null;
     var userAccuracyCircle = null;
+    var currentUserLat = null;
+    var currentUserLng = null;
     var currentUserHeading = 0;
     var currentArrowCumulativeAngle = 0;
     var hasArrowRotatedOnce = false;
     var routeLayerGroup = L.layerGroup().addTo(map);
+
+    function computeRouteDistanceToLoc(destLat, destLng, callback) {
+      if (currentUserLat === null || currentUserLng === null) {
+        callback(null, null);
+        return;
+      }
+      var origLat = currentUserLat;
+      var origLng = currentUserLng;
+      var origIn = isPointInCampus(origLat, origLng);
+      var destIn = isPointInCampus(destLat, destLng);
+
+      var nearStartGate = null;
+      for (var gIdx = 0; gIdx < gatesData.length; gIdx++) {
+        var gItem = gatesData[gIdx];
+        var dStartGate = Math.min(
+          getDistanceMeters(origLat, origLng, gItem.outsidePoint[0], gItem.outsidePoint[1]),
+          getDistanceMeters(origLat, origLng, gItem.gatePoint[0], gItem.gatePoint[1]),
+          getDistanceMeters(origLat, origLng, gItem.insidePoint[0], gItem.insidePoint[1])
+        );
+        if (dStartGate <= 70) {
+          nearStartGate = gItem;
+          break;
+        }
+      }
+
+      if (nearStartGate && destIn) {
+        origIn = true;
+        origLat = nearStartGate.insidePoint[0];
+        origLng = nearStartGate.insidePoint[1];
+      }
+
+      // Trong trường -> Trong trường
+      if (origIn && destIn) {
+        var internal = findCampusWalkwayRoute(origLat, origLng, destLat, destLng);
+        if (internal && internal.distanceMeters) {
+          callback(internal.distanceMeters, internal.durationMinutes);
+          return;
+        }
+        var straight = getDistanceMeters(origLat, origLng, destLat, destLng);
+        callback(straight, Math.max(1, Math.round(straight / 75)));
+        return;
+      }
+
+      // Ngoài trường -> Trong trường
+      if (!origIn && destIn) {
+        var gate = getBestGate(origLat, origLng, destLat, destLng, true);
+        if (gate) {
+          var intRoute = findCampusWalkwayRoute(gate.insidePoint[0], gate.insidePoint[1], destLat, destLng);
+          var intDist = (intRoute && intRoute.distanceMeters)
+            ? intRoute.distanceMeters
+            : getDistanceMeters(gate.insidePoint[0], gate.insidePoint[1], destLat, destLng);
+          var gateDist = getDistanceMeters(gate.outsidePoint[0], gate.outsidePoint[1], gate.insidePoint[0], gate.insidePoint[1]);
+
+          fetchExternalOsrmRoute(origLat, origLng, gate.outsidePoint[0], gate.outsidePoint[1], function(extCoords, extDist, extDur) {
+            var safeExtDist = (extDist !== null && extDist !== undefined)
+              ? extDist
+              : getDistanceMeters(origLat, origLng, gate.outsidePoint[0], gate.outsidePoint[1]);
+            var totDist = Math.round(safeExtDist + gateDist + intDist);
+            callback(totDist, Math.max(1, Math.round(totDist / 75)));
+          });
+          return;
+        }
+      }
+
+      // Ngoài trường -> Ngoài trường
+      if (!origIn && !destIn) {
+        fetchExternalOsrmRoute(origLat, origLng, destLat, destLng, function(extCoords, extDist, extDur) {
+          if (extDist !== null && extDist !== undefined) {
+            callback(extDist, extDur || Math.max(1, Math.round(extDist / 75)));
+          } else {
+            var straight = getDistanceMeters(origLat, origLng, destLat, destLng);
+            callback(straight, Math.max(1, Math.round(straight / 75)));
+          }
+        });
+        return;
+      }
+
+      var fallbackDist = getDistanceMeters(origLat, origLng, destLat, destLng);
+      callback(fallbackDist, Math.max(1, Math.round(fallbackDist / 75)));
+    }
 
     function updateUserHeading(heading) {
       if (typeof heading !== 'number' || isNaN(heading)) return;
@@ -651,6 +747,9 @@ ${LEAFLET_JS}
     }
 
     function updateUserLocation(lat, lng, accuracy, heading) {
+      currentUserLat = lat;
+      currentUserLng = lng;
+
       if (typeof heading === 'number' && !isNaN(heading)) {
         currentUserHeading = ((heading % 360) + 360) % 360;
       }
@@ -1260,6 +1359,19 @@ ${LEAFLET_JS}
           case 'RESET_VIEW':
             applyBearing(0, true);
             map.flyTo(centerData, 17, { animate: true, duration: 1.0 });
+            break;
+
+          case 'REQUEST_LOCATION_DISTANCE':
+            computeRouteDistanceToLoc(msg.lat, msg.lng, function(distMeters, durMin) {
+              if (window.ReactNativeWebView && distMeters !== null && distMeters !== undefined) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'LOCATION_DISTANCE_RESULT',
+                  id: msg.id,
+                  distanceMeters: distMeters,
+                  durationMinutes: durMin
+                }));
+              }
+            });
             break;
         }
       } catch (err) {
