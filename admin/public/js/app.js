@@ -147,6 +147,7 @@ const App = {
     // 1. Nhận sự kiện có SOS mới phát sinh
     socket.on('new_sos', (data) => {
       console.log('🚨 [Socket.IO] Sự kiện new_sos:', data);
+      if (!AdminAPI.getToken()) return;
       if (window.DashboardModule && typeof window.DashboardModule.playAlertSound === 'function') {
         window.DashboardModule.playAlertSound();
       }
@@ -163,6 +164,7 @@ const App = {
     // 2. Nhận sự kiện trạng thái SOS cập nhật
     socket.on('sos_status_changed', (data) => {
       console.log('🔄 [Socket.IO] Sự kiện sos_status_changed:', data);
+      if (!AdminAPI.getToken()) return;
       this.refreshSosBadge();
       if (this.currentTab === 'sos' && window.SosModule) {
         SosModule.loadAlerts();
@@ -175,6 +177,7 @@ const App = {
     // 3. Nhận sự kiện có phản ánh mới từ sinh viên
     socket.on('new_feedback', (data) => {
       console.log('💬 [Socket.IO] Sự kiện new_feedback:', data);
+      if (!AdminAPI.getToken()) return;
       this.showToast(`💬 Phản ánh mới: ${data?.title || 'Sinh viên vừa gửi phản ánh mới'}`, 'info');
       if (this.currentTab === 'feedback' && window.FeedbackModule) {
         FeedbackModule.loadFeedback();
@@ -187,6 +190,7 @@ const App = {
     // 4. Nhận sự kiện phản ánh thay đổi trạng thái hoặc bị xóa
     socket.on('feedback_status_changed', (data) => {
       console.log('🔄 [Socket.IO] Sự kiện feedback_status_changed:', data);
+      if (!AdminAPI.getToken()) return;
       if (this.currentTab === 'feedback' && window.FeedbackModule) {
         FeedbackModule.loadFeedback();
       }
@@ -198,6 +202,7 @@ const App = {
     // 5. Thống kê hệ thống cập nhật
     socket.on('stats_update', () => {
       console.log('📊 [Socket.IO] Sự kiện stats_update');
+      if (!AdminAPI.getToken()) return;
       if (this.currentTab === 'dashboard' && window.DashboardModule) {
         DashboardModule.loadStats(true);
       }
@@ -206,6 +211,7 @@ const App = {
     // 6. Hoạt động người dùng mới
     socket.on('activity_update', () => {
       console.log('⚡ [Socket.IO] Sự kiện activity_update');
+      if (!AdminAPI.getToken()) return;
       if (this.currentTab === 'dashboard' && window.DashboardModule) {
         DashboardModule.loadStats(true);
       }
@@ -330,14 +336,34 @@ const App = {
   },
 
   showAuthView() {
-    document.getElementById('loginView').classList.remove('hidden');
-    document.getElementById('mainView').classList.add('hidden');
+    const loginView = document.getElementById('loginView');
+    const mainView = document.getElementById('mainView');
+
+    if (loginView) {
+      loginView.classList.remove('hidden');
+      loginView.classList.add('flex');
+      loginView.style.display = 'flex';
+    }
+    if (mainView) {
+      mainView.classList.add('hidden');
+      mainView.style.display = 'none';
+    }
     if (window.lucide) window.lucide.createIcons();
   },
 
   showMainView(user) {
-    document.getElementById('loginView').classList.add('hidden');
-    document.getElementById('mainView').classList.remove('hidden');
+    const loginView = document.getElementById('loginView');
+    const mainView = document.getElementById('mainView');
+
+    if (loginView) {
+      loginView.classList.add('hidden');
+      loginView.classList.remove('flex');
+      loginView.style.display = 'none';
+    }
+    if (mainView) {
+      mainView.classList.remove('hidden');
+      mainView.style.display = 'block';
+    }
 
     const displayName = user.ho_ten || user.fullName || user.email || 'Quản trị viên';
     const displayEmail = user.email || 'admin@ttn.edu.vn';
@@ -357,11 +383,21 @@ const App = {
     if (headerAvatarEl && avatarUrl) headerAvatarEl.src = avatarUrl;
     if (sidebarAvatarEl && avatarUrl) sidebarAvatarEl.src = avatarUrl;
 
-    // Khởi tạo tab mặc định
-    this.switchTab('dashboard');
+    // Khởi tạo tab mặc định với try/catch an toàn
+    try {
+      this.switchTab('dashboard');
+    } catch (tabErr) {
+      console.warn('Lỗi khi mở tab Dashboard mặc định:', tabErr);
+    }
 
     // Tự động tải avatar & thông tin mới nhất trực tiếp từ bảng users
-    this.fetchAdminProfile();
+    try {
+      this.fetchAdminProfile();
+    } catch (profErr) {
+      console.warn('Lỗi khi nạp profile admin:', profErr);
+    }
+
+    if (window.lucide) window.lucide.createIcons();
   },
 
   // Đồng bộ thông tin và avatar Admin mới nhất từ MySQL users table
@@ -409,8 +445,10 @@ const App = {
     alertBox.classList.add('hidden');
 
     try {
+      console.log('🔑 [Admin Login] Gửi yêu cầu đăng nhập:', uInput);
       const res = await AdminAPI.login(uInput, pInput);
-      if (res.success && res.token && res.user) {
+      console.log('🔑 [Admin Login] Kết quả phản hồi:', res);
+      if (res && res.success && res.token && res.user) {
         if (res.user.role !== 'admin') {
           throw new Error('Tài khoản này không có quyền Quản trị viên (Admin).');
         }
@@ -420,14 +458,31 @@ const App = {
         this.showToast('Đăng nhập thành công!', 'success');
         this.showMainView(res.user);
       } else {
-        throw new Error(res.message || 'Đăng nhập thất bại.');
+        throw new Error(res?.message || 'Đăng nhập thất bại.');
       }
     } catch (err) {
+      console.error('❌ [Admin Login Error]:', err);
       alertBox.textContent = err.message || 'Không thể kết nối đến máy chủ';
       alertBox.className = 'mb-5 p-3.5 rounded-xl text-sm font-medium bg-red-50 text-red-700 border border-red-200 block';
     } finally {
       submitBtn.disabled = false;
       submitBtn.innerHTML = '<span>Đăng nhập Quản Trị</span> <i data-lucide="arrow-right" class="w-4 h-4 ml-2"></i>';
+      if (window.lucide) window.lucide.createIcons();
+    }
+  },
+
+  // Ẩn / hiện mật khẩu tại form đăng nhập
+  togglePasswordVisibility() {
+    const input = document.getElementById('loginPassword');
+    const eye = document.getElementById('loginEyeIcon');
+    if (input) {
+      if (input.type === 'password') {
+        input.type = 'text';
+        if (eye) eye.setAttribute('data-lucide', 'eye-off');
+      } else {
+        input.type = 'password';
+        if (eye) eye.setAttribute('data-lucide', 'eye');
+      }
       if (window.lucide) window.lucide.createIcons();
     }
   },

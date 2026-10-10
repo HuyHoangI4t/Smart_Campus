@@ -30,16 +30,17 @@ const TABLE_DEFINITIONS = {
     CREATE TABLE IF NOT EXISTS map_locations (
       id INT AUTO_INCREMENT PRIMARY KEY,
       name VARCHAR(255) NOT NULL,
-      category VARCHAR(100) NOT NULL,
+      category VARCHAR(100) NULL,
       building VARCHAR(100) NULL,
       floor VARCHAR(100) NULL,
       description TEXT NULL,
-      lat DOUBLE NOT NULL,
-      lng DOUBLE NOT NULL,
+      lat DECIMAL(10,8) NULL,
+      lng DECIMAL(11,8) NULL,
       icon VARCHAR(50) NULL,
       x INT NULL DEFAULT 50,
       y INT NULL DEFAULT 50,
-      color VARCHAR(50) NULL DEFAULT '#10B981',
+      type VARCHAR(50) DEFAULT 'academic',
+      color VARCHAR(50) NULL DEFAULT '#6366F1',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -135,6 +136,8 @@ const TABLE_DEFINITIONS = {
       mssv VARCHAR(50),
       title VARCHAR(255) NOT NULL,
       content TEXT NOT NULL,
+      category VARCHAR(50) DEFAULT 'facility',
+      rating INT DEFAULT 5,
       status VARCHAR(50) DEFAULT 'Đã giải quyết',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_feedback_mssv (mssv)
@@ -148,7 +151,8 @@ const TABLE_DEFINITIONS = {
       mssv VARCHAR(50),
       location VARCHAR(255),
       message TEXT,
-      status VARCHAR(50) DEFAULT 'Đã tiếp nhận & hỗ trợ',
+      incident_type VARCHAR(100) DEFAULT 'Khẩn cấp',
+      status VARCHAR(50) DEFAULT 'Đã tiếp nhận',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_sos_mssv (mssv)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -269,12 +273,16 @@ async function createAllTables(connection) {
   await safeAddColumn(connection, 'map_locations', 'icon', 'VARCHAR(50) NULL');
   await safeAddColumn(connection, 'map_locations', 'x', 'INT NULL DEFAULT 50');
   await safeAddColumn(connection, 'map_locations', 'y', 'INT NULL DEFAULT 50');
-  await safeAddColumn(connection, 'map_locations', 'color', 'VARCHAR(50) NULL DEFAULT "#10B981"');
+  await safeAddColumn(connection, 'map_locations', 'type', "VARCHAR(50) DEFAULT 'academic'");
+  await safeAddColumn(connection, 'map_locations', 'color', 'VARCHAR(50) NULL DEFAULT "#6366F1"');
   await safeAddColumn(connection, 'student_schedules', 'is_custom', 'TINYINT(1) DEFAULT 0');
   await safeAddColumn(connection, 'student_schedules', 'ghi_chu', 'VARCHAR(255) DEFAULT ""');
   await safeAddColumn(connection, 'student_schedules', 'loai_lich', 'VARCHAR(50) DEFAULT "chinh_khoa"');
   await safeAddColumn(connection, 'student_schedules', 'week_range', 'VARCHAR(100) NULL');
   await safeAddColumn(connection, 'student_schedules', 'ngay_hoc', 'VARCHAR(20) NULL');
+  await safeAddColumn(connection, 'feedback', 'category', "VARCHAR(50) DEFAULT 'facility'");
+  await safeAddColumn(connection, 'feedback', 'rating', 'INT DEFAULT 5');
+  await safeAddColumn(connection, 'sos_alerts', 'incident_type', "VARCHAR(100) DEFAULT 'Khẩn cấp'");
 
   // Đảm bảo các chỉ mục tăng tốc truy vấn
   await safeAddIndex(connection, 'feedback', 'mssv', 'idx_feedback_mssv');

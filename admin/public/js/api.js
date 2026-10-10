@@ -2,22 +2,42 @@
  * API Service for Admin Portal
  */
 
-const API_BASE = (typeof window !== 'undefined' && window.__ENV__ && window.__ENV__.API_URL) ? window.__ENV__.API_URL : '';
+const getApiBase = () => {
+  if (typeof window !== 'undefined') {
+    if (window.__ENV__ && window.__ENV__.API_URL) return window.__ENV__.API_URL;
+    const host = window.location.hostname || 'localhost';
+    const proto = window.location.protocol || 'http:';
+    return `${proto}//${host}:5000`;
+  }
+  return 'http://localhost:5000';
+};
+const API_BASE = getApiBase();
 
 const AdminAPI = {
   baseUrl: `${API_BASE}/api/admin`,
   authUrl: `${API_BASE}/api/auth`,
 
+  _token: '',
+
   getToken() {
-    return localStorage.getItem('ttn_admin_token') || '';
+    if (this._token) return this._token;
+    try {
+      this._token = localStorage.getItem('ttn_admin_token') || '';
+    } catch {
+      this._token = '';
+    }
+    return this._token;
   },
 
   setToken(token) {
-    if (token) {
-      localStorage.setItem('ttn_admin_token', token);
-    } else {
-      localStorage.removeItem('ttn_admin_token');
-    }
+    this._token = token || '';
+    try {
+      if (token) {
+        localStorage.setItem('ttn_admin_token', token);
+      } else {
+        localStorage.removeItem('ttn_admin_token');
+      }
+    } catch {}
   },
 
   getUser() {
@@ -38,8 +58,11 @@ const AdminAPI = {
   },
 
   clearAuth() {
-    localStorage.removeItem('ttn_admin_token');
-    localStorage.removeItem('ttn_admin_user');
+    this._token = '';
+    try {
+      localStorage.removeItem('ttn_admin_token');
+      localStorage.removeItem('ttn_admin_user');
+    } catch {}
   },
 
   getHeaders() {
@@ -52,6 +75,14 @@ const AdminAPI = {
   },
 
   async request(endpoint, options = {}) {
+    const isAuthEndpoint = endpoint.includes('/auth/login') || endpoint.includes('/auth/register');
+    const token = this.getToken();
+
+    if (!isAuthEndpoint && !token) {
+      console.warn(`[AdminAPI] Bỏ qua gọi ${endpoint} do chưa có token đăng nhập.`);
+      return { success: false, message: 'Chưa đăng nhập' };
+    }
+
     const url = endpoint.startsWith('http')
       ? endpoint
       : (endpoint.startsWith('/') ? `${API_BASE}${endpoint}` : `${this.baseUrl}/${endpoint}`);
@@ -70,10 +101,12 @@ const AdminAPI = {
       const data = await res.json().catch(() => ({ success: false, message: 'Dữ liệu trả về không hợp lệ' }));
 
       if (res.status === 401) {
-        this.clearAuth();
-        if (window.App && typeof window.App.showAuthView === 'function') {
-          window.App.showAuthView();
-          window.App.showToast('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 'error');
+        if (!endpoint.includes('/auth/login')) {
+          this.clearAuth();
+          if (window.App && typeof window.App.showAuthView === 'function') {
+            window.App.showAuthView();
+            window.App.showToast('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 'error');
+          }
         }
         throw new Error(data.message || 'Hết phiên đăng nhập');
       }

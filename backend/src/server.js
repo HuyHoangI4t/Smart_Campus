@@ -57,8 +57,9 @@ app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 // Ghi nhận lượt tương tác của sinh viên / người dùng ứng dụng di động vào MySQL
 app.use((req, res, next) => {
   const isApi = req.path.startsWith('/api');
-  // LOẠI TRỪ HOÀN TOÀN: các API quản trị Admin, health check, cron job nội bộ
+  // LOẠI TRỪ HOÀN TOÀN: các API quản trị Admin, xác thực auth, health check, cron job nội bộ
   const isInternal = req.path.startsWith('/api/admin') ||
+                     req.path.startsWith('/api/auth') ||
                      req.path.startsWith('/api/health') ||
                      req.path.startsWith('/api/cron') ||
                      req.path.includes('/swagger') ||

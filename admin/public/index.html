@@ -31,6 +31,8 @@
               50: '#EFF6FF',
               100: '#DBEAFE',
               200: '#BFDBFE',
+              300: '#93C5FD',
+              400: '#60A5FA',
               500: '#3B82F6',
               600: '#2563EB',
               700: '#1D4ED8',
@@ -44,7 +46,7 @@
   </script>
 
   <!-- Dedicated Stylesheet (Apex / SaaS Style) -->
-  <link rel="stylesheet" href="/portal/css/style.css">
+  <link rel="stylesheet" href="/portal/css/style.css?v=2">
 
   <!-- Leaflet Map CSS & JS for Campus Management -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -62,58 +64,173 @@
   <div id="mobileSidebarOverlay" class="hidden" onclick="App.toggleMobileSidebar()"></div>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <!-- 1. MÀN HÌNH ĐĂNG NHẬP ADMIN (AUTH VIEW)                               -->
+  <!-- 1. MÀN HÌNH ĐĂNG NHẬP ADMIN (MODERN APEX / SAAS SPLIT LAYOUT)         -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <div id="loginView" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-brand-900 to-slate-900">
-    <div class="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100">
-      <div class="bg-brand-800 p-8 text-center text-white relative">
-        <div class="w-16 h-16 bg-white/10 rounded-2xl mx-auto flex items-center justify-center mb-4 border border-white/20 shadow-inner">
-          <i data-lucide="shield" class="w-9 h-9 text-blue-200"></i>
-        </div>
-        <h1 class="text-xl font-black uppercase tracking-wider">ĐẠI HỌC TÂY NGUYÊN</h1>
-        <p class="text-blue-200 text-sm mt-1">Trang Quản Trị Hệ Thống (Admin Portal)</p>
-        <span class="inline-block mt-3 px-3 py-1 bg-amber-400/20 text-amber-200 border border-amber-400/40 rounded-full text-xs font-semibold">
-          Chỉ dành riêng cho Quản trị viên
-        </span>
-      </div>
+  <div id="loginView" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-hidden">
+    <!-- Hiệu ứng ánh sáng nền đa tầng (Được bọc chặn tràn tuyệt đối) -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+      <div class="login-hero-glow w-[500px] h-[500px] bg-blue-600/20 rounded-full -top-24 -left-24"></div>
+      <div class="login-hero-glow w-[450px] h-[450px] bg-indigo-600/15 rounded-full -bottom-20 -right-20"></div>
+    </div>
 
-      <div class="p-8">
-        <div id="loginAlert" class="hidden mb-5 p-3.5 rounded-xl text-sm font-medium"></div>
+    <!-- Khung chính Split Layout (Enterprise Portal Standard) -->
+    <div class="w-full max-w-4xl max-h-[94vh] rounded-3xl overflow-hidden shadow-2xl border border-slate-700/60 grid grid-cols-1 lg:grid-cols-12 bg-slate-900/90 backdrop-blur-2xl relative z-10 animate-fade-in my-auto">
+      
+      <!-- CỘT TRÁI: SHOWCASE THƯƠNG HIỆU & HỆ THỐNG SMART CAMPUS (LG: 7 CỘT) -->
+      <div class="lg:col-span-7 p-8 sm:p-12 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-800/80 bg-gradient-to-br from-slate-900/95 via-brand-950/40 to-slate-900/95 relative overflow-hidden">
+        
+        <!-- Header thương hiệu -->
+        <div>
+          <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-3.5">
+              <div class="w-12 h-12 bg-gradient-to-tr from-brand-600 to-blue-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-500/25 border border-white/20">
+                <i data-lucide="shield" class="w-6 h-6 text-white"></i>
+              </div>
+              <div>
+                <h3 class="text-xs font-black tracking-widest text-blue-400 uppercase">TRƯỜNG ĐẠI HỌC TÂY NGUYÊN</h3>
+                <p class="text-sm font-bold text-white tracking-wide">Trung Tâm Điều Hành Số</p>
+              </div>
+            </div>
 
-        <form id="loginForm" onsubmit="App.handleLogin(event)" class="space-y-4">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Tên đăng nhập / Email Admin</label>
-            <div class="relative">
-              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <i data-lucide="user" class="w-4 h-4"></i>
-              </span>
-              <input type="text" id="loginUsername" required placeholder="admin" value="admin"
-                class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              <span>Trực tuyến 24/7</span>
             </div>
           </div>
 
-          <div>
-            <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Mật khẩu</label>
-            <div class="relative">
-              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <i data-lucide="lock" class="w-4 h-4"></i>
+          <!-- Tiêu đề lớn -->
+          <div class="space-y-3 mb-8">
+            <span class="px-3 py-1.5 rounded-full text-[11px] font-mono font-extrabold tracking-wider uppercase bg-blue-500/20 text-sky-300 border border-sky-400/40 inline-flex items-center gap-2 shadow-sm">
+              <span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span>
+              SmartCampus Control Center v2.5
+            </span>
+            <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
+              Quản Trị Khuôn Viên Số <br>
+              <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-sky-300 to-teal-300">
+                Thời Gian Thực & Thông Minh
               </span>
-              <input type="password" id="loginPassword" required placeholder="••••••••" value="admin123"
-                class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium">
-            </div>
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-lg">
+              Hệ thống giám sát toàn diện dữ liệu sinh viên, bản đồ số định vị khuôn viên GPS, tiếp nhận xử lý phản ánh và kích hoạt cứu trợ khẩn cấp SOS tức thì.
+            </p>
           </div>
 
-          <button type="submit" id="loginSubmitBtn"
-            class="w-full py-3 bg-brand-800 hover:bg-brand-900 text-white rounded-xl font-bold text-sm transition shadow-lg shadow-brand-900/20 flex items-center justify-center gap-2">
-            <span>Đăng nhập Quản Trị</span>
-            <i data-lucide="arrow-right" class="w-4 h-4"></i>
-          </button>
-        </form>
+          <!-- 3 Thẻ Micro-Widget tính năng nổi bật đồng bộ với Dashboard -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            <div class="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/80 backdrop-blur-sm">
+              <div class="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center mb-2">
+                <i data-lucide="zap" class="w-4 h-4"></i>
+              </div>
+              <p class="text-xs font-bold text-white">Socket.IO Realtime</p>
+              <p class="text-[10px] text-slate-300 mt-0.5">Push sự kiện tức thì 0 polling</p>
+            </div>
 
-        <div class="mt-6 pt-6 border-t border-slate-100 text-center">
-          <p class="text-xs text-slate-400">Hệ thống quản lý SmartCampus - Đại học Tây Nguyên</p>
+            <div class="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/80 backdrop-blur-sm">
+              <div class="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center mb-2">
+                <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+              </div>
+              <p class="text-xs font-bold text-white">Giám Sát SOS</p>
+              <p class="text-[10px] text-slate-300 mt-0.5">Phản ứng nhanh với âm thanh</p>
+            </div>
+
+            <div class="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/80 backdrop-blur-sm">
+              <div class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-2">
+                <i data-lucide="map-pin" class="w-4 h-4"></i>
+              </div>
+              <p class="text-xs font-bold text-white">Bản Đồ 37+ Điểm</p>
+              <p class="text-[10px] text-slate-300 mt-0.5">Định vị GPS khuôn viên trường</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Trạng thái server ở đáy cột trái -->
+        <div class="pt-6 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-300">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>API Server: http://localhost:5000</span>
+          </div>
+          <span class="font-mono text-slate-400 font-medium">MySQL: smartcampus</span>
         </div>
       </div>
+
+      <!-- CỘT PHẢI: FORM ĐĂNG NHẬP SANG TRỌNG (LG: 5 CỘT) -->
+      <div class="lg:col-span-5 bg-white p-8 sm:p-10 flex flex-col justify-between relative">
+        <div>
+          <!-- Header Form -->
+          <div class="mb-6 text-center sm:text-left">
+            <div class="w-11 h-11 bg-brand-50 border border-brand-100 rounded-2xl flex items-center justify-center text-brand-600 mb-4 shadow-sm mx-auto sm:mx-0">
+              <i data-lucide="lock" class="w-5 h-5"></i>
+            </div>
+            <h2 class="text-xl font-black text-slate-900 tracking-tight">Đăng Nhập Quản Trị</h2>
+            <p class="text-xs text-slate-500 mt-1">Xác thực quyền quản trị để vào Bảng Điều Khiển Hệ Thống</p>
+          </div>
+
+          <!-- Alert box thông báo lỗi -->
+          <div id="loginAlert" class="hidden mb-4 p-3.5 rounded-xl text-xs font-semibold"></div>
+
+          <!-- Form đăng nhập -->
+          <form id="loginForm" onsubmit="App.handleLogin(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                <span>Tài khoản / Email</span>
+                <span class="text-[10px] text-slate-400 font-normal">Quyền: Admin</span>
+              </label>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <i data-lucide="user" class="w-4 h-4"></i>
+                </span>
+                <input type="text" id="loginUsername" required placeholder="admin" value="admin"
+                  class="w-full pl-10 pr-4 py-3 bg-slate-50 hover:bg-slate-100/70 focus:bg-white rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500 transition">
+              </div>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Mật khẩu</label>
+                <button type="button" onclick="App.togglePasswordVisibility()" class="text-[11px] font-bold text-brand-600 hover:text-brand-700">
+                  Hiện/Ẩn
+                </button>
+              </div>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <i data-lucide="key-round" class="w-4 h-4"></i>
+                </span>
+                <input type="password" id="loginPassword" required placeholder="••••••••" value="admin123"
+                  class="w-full pl-10 pr-10 py-3 bg-slate-50 hover:bg-slate-100/70 focus:bg-white rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500 transition">
+                <button type="button" onclick="App.togglePasswordVisibility()" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600">
+                  <i data-lucide="eye" id="loginEyeIcon" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Gợi ý tài khoản nhanh & Ghi nhớ -->
+            <div class="flex items-center justify-between pt-1">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked class="w-4 h-4 rounded text-brand-600 focus:ring-brand-500 border-slate-300">
+                <span class="text-xs text-slate-600 font-medium">Ghi nhớ phiên</span>
+              </label>
+              <button type="button" onclick="document.getElementById('loginUsername').value='admin'; document.getElementById('loginPassword').value='admin123';"
+                class="px-2 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-bold border border-blue-200 transition">
+                Tài khoản mẫu: admin
+              </button>
+            </div>
+
+            <!-- Nút bấm submit -->
+            <button type="submit" id="loginSubmitBtn"
+              class="w-full py-3.5 bg-gradient-to-r from-brand-700 via-blue-600 to-indigo-700 hover:from-brand-800 hover:to-indigo-800 text-white rounded-xl font-bold text-sm transition shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 mt-2">
+              <span>Đăng nhập Quản Trị</span>
+              <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </button>
+          </form>
+        </div>
+
+        <!-- Chân trang bảo mật -->
+        <div class="mt-8 pt-5 border-t border-slate-100 flex items-center justify-center gap-2 text-[11px] text-slate-400">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-500"></i>
+          <span>Bảo mật 256-bit SSL • Đại Học Tây Nguyên © 2026</span>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -1505,13 +1622,14 @@
   </div>
 
   <!-- JavaScript Modules -->
-  <script src="/portal/js/api.js"></script>
-  <script src="/portal/js/dashboard.js"></script>
-  <script src="/portal/js/users.js"></script>
-  <script src="/portal/js/locations.js"></script>
-  <script src="/portal/js/notifications.js"></script>
-  <script src="/portal/js/feedback.js"></script>
-  <script src="/portal/js/sos.js"></script>
-  <script src="/portal/js/app.js"></script>
+  <script src="/env.js?v=2"></script>
+  <script src="/portal/js/api.js?v=2"></script>
+  <script src="/portal/js/dashboard.js?v=2"></script>
+  <script src="/portal/js/users.js?v=2"></script>
+  <script src="/portal/js/locations.js?v=2"></script>
+  <script src="/portal/js/notifications.js?v=2"></script>
+  <script src="/portal/js/feedback.js?v=2"></script>
+  <script src="/portal/js/sos.js?v=2"></script>
+  <script src="/portal/js/app.js?v=2"></script>
 </body>
 </html>

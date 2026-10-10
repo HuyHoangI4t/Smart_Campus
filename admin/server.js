@@ -12,7 +12,7 @@ const API_URL = process.env.API_URL || 'http://localhost:5000';
 app.use(cors());
 
 // Cung cấp biến môi trường trực tiếp cho Client Browser qua /env.js
-app.get('/env.js', (req, res) => {
+app.get(['/env.js', '/portal/env.js'], (req, res) => {
   res.type('application/javascript');
   res.send(`window.__ENV__ = ${JSON.stringify({ API_URL, PORT })};`);
 });

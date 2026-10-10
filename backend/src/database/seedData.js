@@ -48,658 +48,2385 @@ const DEFAULT_FEEDBACK_TOPICS = [
 // 4. Danh sách 37 Tòa nhà và Cơ sở vật chất trường Đại học Tây Nguyên
 const TAY_NGUYEN_CAMPUS_LOCATIONS = [
   {
-    id: 1,
-    name: "Tòa nhà Điều hành (Khu Hiệu bộ)",
-    category: "Hành chính",
-    building: "Tòa Hiệu Bộ",
-    floor: "Tầng 1 - 7",
-    description: "Ban Giám hiệu, Phòng Đào tạo, Phòng CTSV, Phòng Tài chính...",
-    lat: 12.6509,
-    lng: 108.0241,
-    icon: "briefcase",
-    x: 76,
-    y: 33,
-    color: "#10B981"
+    "id": 1,
+    "name": "Tòa nhà Điều hành (Khu Hiệu bộ)",
+    "category": "Hành chính",
+    "building": "Tòa Hiệu Bộ",
+    "floor": "Tầng 1 - 7",
+    "description": "Trung tâm hành chính và các phòng ban hiệu bộ trường Đại học Tây Nguyên",
+    "lat": 12.65099693,
+    "lng": 108.02452788,
+    "icon": "briefcase",
+    "x": 76,
+    "y": 33,
+    "color": "#10B981"
   },
   {
-    id: 2,
-    name: "Nhà học số 2 - Khoa Ngoại ngữ - Khoa Lý luận chính trị",
-    category: "Giảng đường",
-    building: "Nhà học số 2",
-    floor: "Tầng 1 - 3",
-    description: "Khu vực giảng đường ngoại ngữ và lý luận chính trị.",
-    lat: 12.650725,
-    lng: 108.02431,
-    icon: "book-open",
-    x: 71,
-    y: 33,
-    color: "#8B5CF6"
+    "id": 2,
+    "name": "Nhà học số 2 - Khoa Ngoại ngữ - Khoa Lý luận chính trị",
+    "category": "Giảng đường",
+    "building": "Nhà học số 2",
+    "floor": "Tầng 1 - 2",
+    "description": "Khu vực giảng đường ngoại ngữ và lý luận chính trị.",
+    "lat": 12.65079877,
+    "lng": 108.02465772,
+    "icon": "book-open",
+    "x": 71,
+    "y": 33,
+    "color": "#8B5CF6"
   },
   {
-    id: 3,
-    name: "Phòng thí nghiệm Khoa Y Dược",
-    category: "Phòng thí nghiệm",
-    building: "Phòng TN Y Dược",
-    floor: "Tầng 1 - 3",
-    description: "Phòng thí nghiệm thực hành chuyên ngành Y - Dược.",
-    lat: 12.650585,
-    lng: 108.024478,
-    icon: "cpu",
-    x: 67,
-    y: 33,
-    color: "#06B6D4"
+    "id": 3,
+    "name": "Phòng thí nghiệm Khoa Y Dược",
+    "category": "Phòng thí nghiệm",
+    "building": "Phòng TN Y Dược",
+    "floor": "",
+    "description": "Phòng thí nghiệm thực hành chuyên ngành Y - Dược.",
+    "lat": 12.65054504,
+    "lng": 108.02483976,
+    "icon": "cpu",
+    "x": 67,
+    "y": 33,
+    "color": "#06B6D4"
   },
   {
-    id: 4,
-    name: "Bệnh viện Trường Đại học Tây Nguyên",
-    category: "Y tế",
-    building: "Bệnh viện ĐH Tây Nguyên",
-    floor: "Nhiều tầng",
-    description: "Bệnh viện thực hành đa khoa và Trung tâm xét nghiệm y khoa chuyên sâu.",
-    lat: 12.650355,
-    lng: 108.023122,
-    icon: "activity",
-    x: 81,
-    y: 9,
-    color: "#EF4444"
+    "id": 4,
+    "name": "Bệnh viện Trường Đại học Tây Nguyên",
+    "category": "Y tế",
+    "building": "Bệnh viện ĐH Tây Nguyên",
+    "floor": "Nhiều tầng",
+    "description": "Bệnh viện thực hành đa khoa và Trung tâm xét nghiệm y khoa chuyên sâu.",
+    "lat": 12.65041159,
+    "lng": 108.0230479,
+    "icon": "activity",
+    "x": 81,
+    "y": 9,
+    "color": "#EF4444"
   },
   {
-    id: 5,
-    name: "Nhà học số 5 - Khoa Y Dược",
-    category: "Giảng đường",
-    building: "Nhà học số 5",
-    floor: "Tầng 1 - 4",
-    description: "Giảng đường chính đào tạo khối ngành Y Đa khoa, Điều dưỡng, Dược học.",
-    lat: 12.65005,
-    lng: 108.023828,
-    icon: "book-open",
-    x: 68,
-    y: 14,
-    color: "#6366F1"
+    "id": 5,
+    "name": "Nhà học số 5 - Khoa Y Dược",
+    "category": "Giảng đường",
+    "building": "Nhà học số 5",
+    "floor": "Tầng 1 - 4",
+    "description": "Giảng đường chính đào tạo khối ngành Y Đa khoa, Điều dưỡng, Dược học.",
+    "lat": 12.64991685,
+    "lng": 108.02399454,
+    "icon": "book-open",
+    "x": 68,
+    "y": 14,
+    "color": "#6366F1"
   },
   {
-    id: 6,
-    name: "Nhà học số 6",
-    category: "Giảng đường",
-    building: "Nhà học số 6",
-    floor: "Tầng 1",
-    description: "Khu giảng đường học tập chung của các khoa.",
-    lat: 12.65035,
-    lng: 108.0251,
-    icon: "layers",
-    x: 56,
-    y: 38,
-    color: "#06B6D4"
+    "id": 6,
+    "name": "Nhà học số 6",
+    "category": "Giảng đường",
+    "building": "Nhà học số 6",
+    "floor": "",
+    "description": "Khu giảng đường học tập chung của các khoa.",
+    "lat": 12.65029684,
+    "lng": 108.02549959,
+    "icon": "layers",
+    "x": 56,
+    "y": 38,
+    "color": "#06B6D4"
   },
   {
-    id: 7,
-    name: "Nhà học số 7 - Khoa Kinh tế - Trung tâm Ngoại ngữ Tin học",
-    category: "Giảng đường",
-    building: "Nhà học số 7",
-    floor: "Tầng 1 - 4",
-    description: "Khu giảng đường Khoa Kinh tế, Trung tâm NN-TH.",
-    lat: 12.65168,
-    lng: 108.024456,
-    icon: "book-open",
-    x: 82,
-    y: 52,
-    color: "#F97316"
+    "id": 7,
+    "name": "Nhà học số 7 - Khoa Kinh tế - Trung tâm Ngoại ngữ Tin học",
+    "category": "Giảng đường",
+    "building": "Nhà học số 7",
+    "floor": "Tầng 1 - 4",
+    "description": "Khu giảng đường Khoa Kinh tế, Trung tâm NN-TH.",
+    "lat": 12.65219714,
+    "lng": 108.02494019,
+    "icon": "book-open",
+    "x": 82,
+    "y": 52,
+    "color": "#F97316"
   },
   {
-    id: 8,
-    name: "Nhà học số 8 - Khoa Sư phạm",
-    category: "Giảng đường",
-    building: "Nhà học số 8",
-    floor: "Tầng 1 - 4",
-    description: "Giảng đường chính của Khoa Sư phạm.",
-    lat: 12.651975,
-    lng: 108.02485,
-    icon: "book-open",
-    x: 81,
-    y: 63,
-    color: "#3B82F6"
+    "id": 8,
+    "name": "Nhà học số 8 - Khoa Sư phạm",
+    "category": "Giảng đường",
+    "building": "Nhà học số 8",
+    "floor": "Tầng 1 - 4",
+    "description": "Giảng đường chính của Khoa Sư phạm.",
+    "lat": 12.65279834,
+    "lng": 108.02540642,
+    "icon": "book-open",
+    "x": 81,
+    "y": 63,
+    "color": "#3B82F6"
   },
   {
-    id: 9,
-    name: "Nhà học số 9 - Khoa Khoa học Tự nhiên và Công nghệ",
-    category: "Giảng đường",
-    building: "Nhà học số 9",
-    floor: "Tầng 1 - 4",
-    description: "Khoa CNTT, Toán, Vật lý, Hóa học...",
-    lat: 12.65227,
-    lng: 108.025244,
-    icon: "cpu",
-    x: 80,
-    y: 74,
-    color: "#1E3A8A"
+    "id": 9,
+    "name": "Nhà học số 9 - Khoa Khoa học Tự nhiên và Công nghệ",
+    "category": "Giảng đường",
+    "building": "Nhà học số 9",
+    "floor": "Tầng 1 - 4",
+    "description": "Khoa CNTT, Toán, Vật lý, Hóa học...",
+    "lat": 12.65332602,
+    "lng": 108.02583055,
+    "icon": "cpu",
+    "x": 80,
+    "y": 74,
+    "color": "#1E3A8A"
   },
   {
-    id: 10,
-    name: "Giảng đường 400 chỗ",
-    category: "Hội trường",
-    building: "Hội trường lớn",
-    floor: "Tầng 1",
-    description: "Hội trường lớn tổ chức sự kiện, hội thảo và các lớp đại cương đông sinh viên.",
-    lat: 12.65134,
-    lng: 108.025204,
-    icon: "award",
-    x: 68,
-    y: 57,
-    color: "#F59E0B"
+    "id": 10,
+    "name": "Giảng đường 400 chỗ",
+    "category": "Hội trường",
+    "building": "Hội trường lớn",
+    "floor": "",
+    "description": "Hội trường lớn tổ chức sự kiện, hội thảo và các lớp đại cương đông sinh viên.",
+    "lat": 12.65199587,
+    "lng": 108.02544363,
+    "icon": "award",
+    "x": 68,
+    "y": 57,
+    "color": "#F59E0B"
   },
   {
-    id: 11,
-    name: "Giảng đường 200 chỗ",
-    category: "Hội trường",
-    building: "Hội trường vừa",
-    floor: "Tầng 1",
-    description: "Hội trường tổ chức chuyên đề, bảo vệ khóa luận và sinh hoạt lớp.",
-    lat: 12.651785,
-    lng: 108.025282,
-    icon: "award",
-    x: 73,
-    y: 66,
-    color: "#F59E0B"
+    "id": 11,
+    "name": "Giảng đường 200 chỗ",
+    "category": "Hội trường",
+    "building": "Hội trường vừa",
+    "floor": "",
+    "description": "Hội trường tổ chức chuyên đề, bảo vệ khóa luận và sinh hoạt lớp.",
+    "lat": 12.65260175,
+    "lng": 108.02584499,
+    "icon": "award",
+    "x": 73,
+    "y": 66,
+    "color": "#F59E0B"
   },
   {
-    id: 12,
-    name: "Viện Công nghệ Sinh học & Môi trường",
-    category: "Nghiên cứu",
-    building: "Viện CNSH & MT",
-    floor: "Tầng 1 - 3",
-    description: "Nghiên cứu công nghệ sinh học và tài nguyên môi trường Tây Nguyên.",
-    lat: 12.65261,
-    lng: 108.025924,
-    icon: "cpu",
-    x: 76,
-    y: 90,
-    color: "#10B981"
+    "id": 12,
+    "name": "Viện Công nghệ Sinh học & Môi trường",
+    "category": "Nghiên cứu",
+    "building": "Viện CNSH & MT",
+    "floor": "Tầng 1 - 3",
+    "description": "Nghiên cứu công nghệ sinh học và tài nguyên môi trường Tây Nguyên.",
+    "lat": 12.65317106,
+    "lng": 108.02651524,
+    "icon": "cpu",
+    "x": 76,
+    "y": 90,
+    "color": "#10B981"
   },
   {
-    id: 13,
-    name: "Thư viện Trung tâm",
-    category: "Học tập",
-    building: "Tòa Thư viện",
-    floor: "Tầng 1 - 2",
-    description: "Thư viện tài liệu học tập, phòng tự học và tra cứu thông tin.",
-    lat: 12.65114,
-    lng: 108.025308,
-    icon: "book",
-    x: 64,
-    y: 55,
-    color: "#F59E0B"
+    "id": 13,
+    "name": "Thư viện Trung tâm",
+    "category": "Học tập",
+    "building": "Tòa Thư viện",
+    "floor": "Tầng 1 - 2",
+    "description": "Thư viện tài liệu học tập, phòng tự học và tra cứu thông tin.",
+    "lat": 12.65153895,
+    "lng": 108.02550658,
+    "icon": "book",
+    "x": 64,
+    "y": 55,
+    "color": "#F59E0B"
   },
   {
-    id: 14,
-    name: "Ký túc xá số 2",
-    category: "Ký túc xá",
-    building: "KTX 2",
-    floor: "Tầng 1 - 4",
-    description: "Khu nội trú ký túc xá sinh viên số 2.",
-    lat: 12.650675,
-    lng: 108.026478,
-    icon: "home",
-    x: 43,
-    y: 64,
-    color: "#8B5CF6"
+    "id": 14,
+    "name": "Ký túc xá số 2",
+    "category": "Ký túc xá",
+    "building": "KTX 2",
+    "floor": "Tầng 1 - 4",
+    "description": "Khu nội trú ký túc xá sinh viên số 2.",
+    "lat": 12.64987752,
+    "lng": 108.02716015,
+    "icon": "home",
+    "x": 43,
+    "y": 64,
+    "color": "#8B5CF6"
   },
   {
-    id: 15,
-    name: "Trung tâm Ứng dụng và Tư vấn Kỹ thuật Nông Lâm nghiệp",
-    category: "Nghiên cứu",
-    building: "TT Ứng dụng Nông Lâm",
-    floor: "Tầng 1 - 2",
-    description: "Nghiên cứu nông lâm nghiệp, chuyển giao kỹ thuật công nghệ.",
-    lat: 12.65232,
-    lng: 108.026408,
-    icon: "layers",
-    x: 66,
-    y: 92,
-    color: "#10B981"
+    "id": 15,
+    "name": "Trung tâm Ứng dụng và Tư vấn Kỹ thuật Nông Lâm nghiệp",
+    "category": "Nghiên cứu",
+    "building": "TT Ứng dụng Nông Lâm",
+    "floor": "Tầng 1 - 2",
+    "description": "Nghiên cứu nông lâm nghiệp, chuyển giao kỹ thuật công nghệ.",
+    "lat": 12.65182639,
+    "lng": 108.02749163,
+    "icon": "layers",
+    "x": 66,
+    "y": 92,
+    "color": "#10B981"
   },
   {
-    id: 16,
-    name: "Khu đất ứng dụng và tư vấn kỹ thuật nông lâm nghiệp",
-    category: "Thực nghiệm",
-    building: "Khu thực nghiệm",
-    floor: "Mặt đất",
-    description: "Khu vườn thực vật và đất thí nghiệm thực hành nông nghiệp.",
-    lat: 12.651245,
-    lng: 108.027086,
-    icon: "award",
-    x: 43,
-    y: 83,
-    color: "#10B981"
+    "id": 16,
+    "name": "Khu đất ứng dụng và tư vấn kỹ thuật nông lâm nghiệp",
+    "category": "Thực nghiệm",
+    "building": "Khu thực nghiệm",
+    "floor": "",
+    "description": "Khu vườn thực vật và đất thí nghiệm thực hành nông nghiệp.",
+    "lat": 12.6499721,
+    "lng": 108.02816422,
+    "icon": "award",
+    "x": 43,
+    "y": 83,
+    "color": "#10B981"
   },
   {
-    id: 17,
-    name: "Trường Mầm non Thực hành 11-11",
-    category: "Tiện ích",
-    building: "Mầm non 11-11",
-    floor: "Tầng 1 - 2",
-    description: "Trường mầm non trực thuộc phục vụ thực hành sư phạm và con em cán bộ.",
-    lat: 12.65207,
-    lng: 108.026776,
-    icon: "award",
-    x: 58,
-    y: 93,
-    color: "#EC4899"
+    "id": 17,
+    "name": "Trường Mầm non Thực hành 11-11",
+    "category": "Tiện ích",
+    "building": "Mầm non 11-11",
+    "floor": "Tầng 1 - 2",
+    "description": "Trường mầm non trực thuộc phục vụ thực hành sư phạm và con em cán bộ.",
+    "lat": 12.65120158,
+    "lng": 108.02801497,
+    "icon": "award",
+    "x": 58,
+    "y": 93,
+    "color": "#EC4899"
   },
   {
-    id: 18,
-    name: "Trường THPT Thực hành Cao Nguyên",
-    category: "Giảng đường",
-    building: "THPT Thực hành",
-    floor: "Tầng 1 - 4",
-    description: "Trường THPT Thực hành Cao Nguyên trực thuộc Đại học Tây Nguyên.",
-    lat: 12.651615,
-    lng: 108.027798,
-    icon: "book-open",
-    x: 39,
-    y: 100,
-    color: "#3B82F6"
+    "id": 18,
+    "name": "Trường THPT Thực hành Cao Nguyên",
+    "category": "Giảng đường",
+    "building": "THPT Thực hành",
+    "floor": "Tầng 1 - 4",
+    "description": "Trường THPT Thực hành Cao Nguyên trực thuộc Đại học Tây Nguyên.",
+    "lat": 12.65019949,
+    "lng": 108.02919879,
+    "icon": "book-open",
+    "x": 39,
+    "y": 100,
+    "color": "#3B82F6"
   },
   {
-    id: 19,
-    name: "Trung tâm Giáo dục Quốc phòng và An ninh Trường ĐH Tây Nguyên",
-    category: "Giảng đường",
-    building: "TT GDQP-AN",
-    floor: "Tầng 1 - 4",
-    description: "Trung tâm GDQP-AN đào tạo kiến thức QP-AN cho sinh viên toàn vùng Tây Nguyên.",
-    lat: 12.649645,
-    lng: 108.026966,
-    icon: "award",
-    x: 23,
-    y: 53,
-    color: "#EF4444"
+    "id": 19,
+    "name": "Trung tâm Giáo dục Quốc phòng và An ninh Trường ĐH Tây Nguyên",
+    "category": "Giảng đường",
+    "building": "TT GDQP-AN",
+    "floor": "Tầng 1 - 4",
+    "description": "Trung tâm GDQP-AN đào tạo kiến thức QP-AN cho sinh viên toàn vùng Tây Nguyên.",
+    "lat": 12.64828877,
+    "lng": 108.02723233,
+    "icon": "award",
+    "x": 23,
+    "y": 53,
+    "color": "#EF4444"
   },
   {
-    id: 20,
-    name: "Thao trường quân sự",
-    category: "Tiện ích",
-    building: "Thao trường",
-    floor: "Bãi tập",
-    description: "Bãi tập bắn súng, chiến thuật và thao trường huấn luyện quân sự ngoài trời.",
-    lat: 12.650615,
-    lng: 108.02689,
-    icon: "award",
-    x: 37,
-    y: 69,
-    color: "#F59E0B"
+    "id": 20,
+    "name": "Thao trường quân sự",
+    "category": "Tiện ích",
+    "building": "Thao trường",
+    "floor": "Bãi tập",
+    "description": "Bãi tập bắn súng, chiến thuật và thao trường huấn luyện quân sự ngoài trời.",
+    "lat": 12.64954745,
+    "lng": 108.02747023,
+    "icon": "award",
+    "x": 37,
+    "y": 69,
+    "color": "#F59E0B"
   },
   {
-    id: 21,
-    name: "Khu thể thao",
-    category: "Thể thao",
-    building: "Sân vận động",
-    floor: "Mặt sân",
-    description: "Sân vận động, sân bóng đá, đường chạy điền kinh phục vụ rèn luyện thể chất.",
-    lat: 12.649835,
-    lng: 108.026058,
-    icon: "award",
-    x: 37,
-    y: 43,
-    color: "#06B6D4"
+    "id": 21,
+    "name": "Khu thể thao",
+    "category": "Thể thao",
+    "building": "Sân vận động",
+    "floor": "Mặt sân",
+    "description": "Sân vận động, sân bóng đá, đường chạy điền kinh phục vụ rèn luyện thể chất.",
+    "lat": 12.64917237,
+    "lng": 108.02630782,
+    "icon": "award",
+    "x": 37,
+    "y": 43,
+    "color": "#06B6D4"
   },
   {
-    id: 22,
-    name: "Nhà thi đấu thể thao",
-    category: "Thể thao",
-    building: "Nhà thi đấu",
-    floor: "Tầng 1",
-    description: "Nhà thi đấu đa năng trong nhà cho cầu lông, bóng chuyền, bóng rổ.",
-    lat: 12.64949,
-    lng: 108.025452,
-    icon: "award",
-    x: 40,
-    y: 28,
-    color: "#3B82F6"
+    "id": 22,
+    "name": "Nhà thi đấu thể thao",
+    "category": "Thể thao",
+    "building": "Nhà thi đấu",
+    "floor": "",
+    "description": "Nhà thi đấu đa năng trong nhà cho cầu lông, bóng chuyền, bóng rổ.",
+    "lat": 12.64917513,
+    "lng": 108.02581528,
+    "icon": "award",
+    "x": 40,
+    "y": 28,
+    "color": "#3B82F6"
   },
   {
-    id: 23,
-    name: "Hồ bơi",
-    category: "Thể thao",
-    building: "Khu hồ bơi",
-    floor: "Bể bơi",
-    description: "Bể bơi tiêu chuẩn phục vụ học phần bơi lội và thể thao dưới nước.",
-    lat: 12.64946,
-    lng: 108.024944,
-    icon: "award",
-    x: 46,
-    y: 20,
-    color: "#06B6D4"
+    "id": 23,
+    "name": "Hồ bơi",
+    "category": "Thể thao",
+    "building": "Khu hồ bơi",
+    "floor": "Bể bơi",
+    "description": "Bể bơi tiêu chuẩn phục vụ học phần bơi lội và thể thao dưới nước.",
+    "lat": 12.64930933,
+    "lng": 108.02508591,
+    "icon": "award",
+    "x": 46,
+    "y": 20,
+    "color": "#06B6D4"
   },
   {
-    id: 24,
-    name: "Toà nhà Thí nghiệm Khoa Nông nghiệp",
-    category: "Phòng thí nghiệm",
-    building: "Khu TN Nông nghiệp",
-    floor: "Tầng 1 - 3",
-    description: "Khu phòng thí nghiệm chuyên ngành Nông - Lâm - Thủy sản.",
-    lat: 12.65154,
-    lng: 108.026052,
-    icon: "cpu",
-    x: 60,
-    y: 73,
-    color: "#06B6D4"
+    "id": 24,
+    "name": "Toà nhà Thí nghiệm Khoa Nông nghiệp",
+    "category": "Phòng thí nghiệm",
+    "building": "Khu TN Nông nghiệp",
+    "floor": "Tầng 1 - 4",
+    "description": "Khu phòng thí nghiệm chuyên ngành Nông - Lâm - Thủy sản.",
+    "lat": 12.65128786,
+    "lng": 108.02688494,
+    "icon": "cpu",
+    "x": 60,
+    "y": 73,
+    "color": "#06B6D4"
   },
   {
-    id: 25,
-    name: "Ký túc xá Lào - Campuchia",
-    category: "Ký túc xá",
-    building: "KTX Lưu học sinh",
-    floor: "Tầng 1 - 3",
-    description: "Ký túc xá dành cho lưu học sinh quốc tế Lào và Campuchia.",
-    lat: 12.65145,
-    lng: 108.026432,
-    icon: "home",
-    x: 54,
-    y: 77,
-    color: "#8B5CF6"
+    "id": 25,
+    "name": "Ký túc xá Lào - Campuchia",
+    "category": "Ký túc xá",
+    "building": "KTX Lưu học sinh",
+    "floor": "Tầng 1 - 4",
+    "description": "Ký túc xá dành cho lưu học sinh quốc tế Lào và Campuchia.",
+    "lat": 12.65095505,
+    "lng": 108.027262,
+    "icon": "home",
+    "x": 54,
+    "y": 77,
+    "color": "#8B5CF6"
   },
   {
-    id: 26,
-    name: "Ký túc xá số 1",
-    category: "Ký túc xá",
-    building: "KTX 1",
-    floor: "Tầng 1 - 4",
-    description: "Khu ký túc xá sinh viên số 1.",
-    lat: 12.650765,
-    lng: 108.026098,
-    icon: "home",
-    x: 49,
-    y: 60,
-    color: "#8B5CF6"
+    "id": 26,
+    "name": "Ký túc xá số 1",
+    "category": "Ký túc xá",
+    "building": "KTX 1",
+    "floor": "Tầng 1 - 4",
+    "description": "Khu ký túc xá sinh viên số 1.",
+    "lat": 12.65031896,
+    "lng": 108.02666604,
+    "icon": "home",
+    "x": 49,
+    "y": 60,
+    "color": "#8B5CF6"
   },
   {
-    id: 27,
-    name: "Ký túc xá số 3",
-    category: "Ký túc xá",
-    building: "KTX 3",
-    floor: "Tầng 1 - 4",
-    description: "Khu ký túc xá sinh viên số 3.",
-    lat: 12.65059,
-    lng: 108.02726,
-    icon: "home",
-    x: 32,
-    y: 74,
-    color: "#8B5CF6"
+    "id": 27,
+    "name": "Ký túc xá số 3",
+    "category": "Ký túc xá",
+    "building": "KTX 3",
+    "floor": "Tầng 1 - 4",
+    "description": "Khu ký túc xá sinh viên số 3.",
+    "lat": 12.6491545,
+    "lng": 108.02799588,
+    "icon": "home",
+    "x": 32,
+    "y": 74,
+    "color": "#8B5CF6"
   },
   {
-    id: 28,
-    name: "Ký túc xá số 4",
-    category: "Ký túc xá",
-    building: "KTX 4",
-    floor: "Tầng 1 - 4",
-    description: "Khu ký túc xá sinh viên số 4.",
-    lat: 12.65048,
-    lng: 108.02746,
-    icon: "home",
-    x: 28,
-    y: 75,
-    color: "#8B5CF6"
+    "id": 28,
+    "name": "Ký túc xá số 4",
+    "category": "Ký túc xá",
+    "building": "KTX 4",
+    "floor": "Tầng 1 - 4",
+    "description": "Khu ký túc xá sinh viên số 4.",
+    "lat": 12.64888412,
+    "lng": 108.02826763,
+    "icon": "home",
+    "x": 28,
+    "y": 75,
+    "color": "#8B5CF6"
   },
   {
-    id: 29,
-    name: "Nhà khách",
-    category: "Tiện ích",
-    building: "Nhà khách TNU",
-    floor: "Tầng 1 - 3",
-    description: "Nhà khách đón tiếp chuyên gia, giảng viên thỉnh giảng và đối tác.",
-    lat: 12.65085,
-    lng: 108.025792,
-    icon: "home",
-    x: 54,
-    y: 57,
-    color: "#64748B"
+    "id": 29,
+    "name": "Nhà khách",
+    "category": "Tiện ích",
+    "building": "Nhà khách TNU",
+    "floor": "Tầng 1 - 4",
+    "description": "Nhà khách đón tiếp chuyên gia, giảng viên thỉnh giảng và đối tác.",
+    "lat": 12.6506929,
+    "lng": 108.02645132,
+    "icon": "home",
+    "x": 54,
+    "y": 57,
+    "color": "#64748B"
   },
   {
-    id: 30,
-    name: "Sân quần vợt",
-    category: "Thể thao",
-    building: "Sân Tennis",
-    floor: "Mặt sân",
-    description: "Cụm sân quần vợt / pickleball phục vụ thể thao cán bộ và sinh viên.",
-    lat: 12.65087,
-    lng: 108.025496,
-    icon: "award",
-    x: 58,
-    y: 53,
-    color: "#06B6D4"
+    "id": 30,
+    "name": "Sân quần vợt",
+    "category": "Thể thao",
+    "building": "Sân Tennis",
+    "floor": "Mặt sân",
+    "description": "Cụm sân quần vợt / pickleball phục vụ thể thao cán bộ và sinh viên.",
+    "lat": 12.65090752,
+    "lng": 108.02617253,
+    "icon": "award",
+    "x": 58,
+    "y": 53,
+    "color": "#06B6D4"
   },
   {
-    id: 31,
-    name: "Căn tin - Đảo sinh viên",
-    category: "Tiện ích",
-    building: "Căng tin trung tâm",
-    floor: "Tầng trệt",
-    description: "Khu ẩm thực, ăn trưa, giải khát và không gian sinh hoạt chung ngoài trời.",
-    lat: 12.65192,
-    lng: 108.025664,
-    icon: "coffee",
-    x: 70,
-    y: 74,
-    color: "#F97316"
+    "id": 31,
+    "name": "Căn tin - Đảo sinh viên",
+    "category": "Tiện ích",
+    "building": "Căng tin trung tâm",
+    "floor": "",
+    "description": "Khu ẩm thực, ăn trưa, giải khát và không gian sinh hoạt chung ngoài trời.",
+    "lat": 12.652164,
+    "lng": 108.02635759,
+    "icon": "coffee",
+    "x": 70,
+    "y": 74,
+    "color": "#F97316"
   },
   {
-    id: 32,
-    name: "Phòng trưng bày",
-    category: "Học tập",
-    building: "Nhà Truyền thống",
-    floor: "Tầng 1",
-    description: "Nhà truyền thống và phòng trưng bày lịch sử hình thành, phát triển nhà trường.",
-    lat: 12.651075,
-    lng: 108.023414,
-    icon: "award",
-    x: 87,
-    y: 26,
-    color: "#EC4899"
+    "id": 32,
+    "name": "Phòng trưng bày",
+    "category": "Học tập",
+    "building": "Nhà Truyền thống",
+    "floor": "",
+    "description": "Nhà truyền thống và phòng trưng bày lịch sử hình thành, phát triển nhà trường.",
+    "lat": 12.65160888,
+    "lng": 108.02402675,
+    "icon": "award",
+    "x": 87,
+    "y": 26,
+    "color": "#EC4899"
   },
   {
-    id: 33,
-    name: "Nhà bảo vệ (Cổng chính Lê Duẩn)",
-    category: "Hành chính",
-    building: "Cổng chính",
-    floor: "Tầng trệt",
-    description: "Phòng kiểm soát ra vào, cổng chính số 567 Lê Duẩn.",
-    lat: 12.65138,
-    lng: 108.02366,
-    icon: "briefcase",
-    x: 88,
-    y: 35,
-    color: "#10B981"
+    "id": 33,
+    "name": "Nhà bảo vệ (Cổng chính Lê Duẩn)",
+    "category": "Hành chính",
+    "building": "Cổng chính",
+    "floor": "",
+    "description": "Phòng kiểm soát ra vào, cổng chính số 567 Lê Duẩn.",
+    "lat": 12.65144341,
+    "lng": 108.02382916,
+    "icon": "briefcase",
+    "x": 88,
+    "y": 35,
+    "color": "#10B981"
   },
   {
-    id: 34,
-    name: "Trung tâm Kỹ năng Sư phạm",
-    category: "Học tập",
-    building: "TT Kỹ năng Sư phạm",
-    floor: "Tầng 1 - 2",
-    description: "Trung tâm rèn luyện kỹ năng nghề nghiệp và nghiệp vụ sư phạm.",
-    lat: 12.65183,
-    lng: 108.027472,
-    icon: "book-open",
-    x: 46,
-    y: 99,
-    color: "#3B82F6"
+    "id": 34,
+    "name": "Trung tâm Kỹ năng Sư phạm",
+    "category": "Học tập",
+    "building": "TT Kỹ năng Sư phạm",
+    "floor": "Tầng 1 - 4",
+    "description": "Trung tâm rèn luyện kỹ năng nghề nghiệp và nghiệp vụ sư phạm.",
+    "lat": 12.65056583,
+    "lng": 108.02892942,
+    "icon": "book-open",
+    "x": 46,
+    "y": 99,
+    "color": "#3B82F6"
   },
   {
-    id: 35,
-    name: "Gara ô tô",
-    category: "Tiện ích",
-    building: "Gara ô tô trường",
-    floor: "Tầng trệt",
-    description: "Bãi đỗ xe ô tô và nhà để xe cán bộ, khách công tác.",
-    lat: 12.652885,
-    lng: 108.025186,
-    icon: "layers",
-    x: 89,
-    y: 84,
-    color: "#64748B"
+    "id": 35,
+    "name": "Gara ô tô",
+    "category": "Tiện ích",
+    "building": "Gara ô tô trường",
+    "floor": "",
+    "description": "Bãi đỗ xe ô tô và nhà để xe cán bộ, khách công tác.",
+    "lat": 12.65107564,
+    "lng": 108.02378504,
+    "icon": "layers",
+    "x": 89,
+    "y": 84,
+    "color": "#64748B"
   },
   {
-    id: 36,
-    name: "Văn phòng Công đoàn trường",
-    category: "Hành chính",
-    building: "Khu Đoàn thể",
-    floor: "Tầng 1",
-    description: "Trụ sở Ban Chấp hành Công đoàn Trường Đại học Tây Nguyên.",
-    lat: 12.650725,
-    lng: 108.023358,
-    icon: "briefcase",
-    x: 83,
-    y: 19,
-    color: "#10B981"
+    "id": 36,
+    "name": "Văn phòng Công đoàn trường",
+    "category": "Hành chính",
+    "building": "Khu Đoàn thể",
+    "floor": "",
+    "description": "Trụ sở Ban Chấp hành Công đoàn Trường Đại học Tây Nguyên.",
+    "lat": 12.65074771,
+    "lng": 108.02339404,
+    "icon": "briefcase",
+    "x": 83,
+    "y": 19,
+    "color": "#10B981"
   },
   {
-    id: 37,
-    name: "Văn phòng Đoàn Thanh niên - Hội Sinh viên",
-    category: "Hành chính",
-    building: "Khu Đoàn thể",
-    floor: "Tầng 1",
-    description: "Trụ sở Đoàn TNCS Hồ Chí Minh & Hội Sinh viên Trường Đại học Tây Nguyên.",
-    lat: 12.65065,
-    lng: 108.023516,
-    icon: "briefcase",
-    x: 80,
-    y: 20,
-    color: "#10B981"
+    "id": 37,
+    "name": "Văn phòng Đoàn Thanh niên - Hội Sinh viên",
+    "category": "Hành chính",
+    "building": "Khu Đoàn thể",
+    "floor": "",
+    "description": "Trụ sở Đoàn TNCS Hồ Chí Minh & Hội Sinh viên Trường Đại học Tây Nguyên.",
+    "lat": 12.65054867,
+    "lng": 108.02358106,
+    "icon": "briefcase",
+    "x": 80,
+    "y": 20,
+    "color": "#10B981"
   },
   {
-    id: 38,
-    name: "Nhà vệ sinh (WC) - Giảng đường 400 chỗ",
-    category: "WC",
-    building: "Khu WC GĐ 400",
-    floor: "Tầng trệt",
-    description: "Khu vệ sinh nam nữ công cộng phía sau Giảng đường 400 chỗ, gần Thư viện và Hồ nước.",
-    lat: 12.65142,
-    lng: 108.02535,
-    icon: "droplet",
-    x: 68,
-    y: 59,
-    color: "#0284C7"
+    "id": 43,
+    "name": "WC",
+    "category": "Khác",
+    "building": "Nhà 6",
+    "floor": "Tầng 1",
+    "description": "Nhà vệ sinh nhà 6",
+    "lat": 12.65005177,
+    "lng": 108.02507489,
+    "icon": "map-pin",
+    "x": 50,
+    "y": 50,
+    "color": "#3b82f6"
   },
   {
-    id: 39,
-    name: "Nhà vệ sinh (WC) - Nhà học số 2",
-    category: "WC",
-    building: "Khu WC Nhà học số 2",
-    floor: "Tầng 1 - 3",
-    description: "Khu vệ sinh nam nữ phục vụ giảng đường Nhà học số 2 và khu Hiệu bộ.",
-    lat: 12.65065,
-    lng: 108.02425,
-    icon: "droplet",
-    x: 72,
-    y: 32,
-    color: "#0284C7"
+    "id": 44,
+    "name": "WC",
+    "category": "Khác",
+    "building": "Nhà 6",
+    "floor": "Tầng 1",
+    "description": "Nhà vệ sinh nhà 6",
+    "lat": 12.6498268,
+    "lng": 108.02530036,
+    "icon": "map-pin",
+    "x": 50,
+    "y": 50,
+    "color": "#3b82f6"
   },
   {
-    id: 40,
-    name: "Nhà vệ sinh (WC) - Dãy Nhà học 7, 8, 9",
-    category: "WC",
-    building: "Khu WC Dãy Nhà 7-8-9",
-    floor: "Tầng 1 - 4",
-    description: "Khu vệ sinh công cộng phục vụ sinh viên khối Khoa Kinh tế, Sư phạm, CNTT & KHTN.",
-    lat: 12.65185,
-    lng: 108.02465,
-    icon: "droplet",
-    x: 81,
-    y: 58,
-    color: "#0284C7"
-  },
-  {
-    id: 41,
-    name: "Nhà vệ sinh (WC) - Khu Thể thao & Nhà thi đấu",
-    category: "WC",
-    building: "Khu WC Thể thao",
-    floor: "Tầng trệt",
-    description: "Khu vệ sinh và phòng thay đồ phục vụ sinh viên học Giáo dục thể chất, sân bóng, nhà thi đấu.",
-    lat: 12.64955,
-    lng: 108.02525,
-    icon: "droplet",
-    x: 42,
-    y: 25,
-    color: "#0284C7"
-  },
-  {
-    id: 42,
-    name: "Nhà vệ sinh (WC) - Căn tin & Đảo sinh viên",
-    category: "WC",
-    building: "Khu WC Căn tin",
-    floor: "Tầng trệt",
-    description: "Khu vệ sinh công cộng khu vực ăn uống, giải khát và sinh hoạt Đảo sinh viên.",
-    lat: 12.65198,
-    lng: 108.02582,
-    icon: "droplet",
-    x: 69,
-    y: 76,
-    color: "#0284C7"
+    "id": 45,
+    "name": "WC",
+    "category": "Giảng đường",
+    "building": "Nhà 2, Nhà 3",
+    "floor": "Tầng 1",
+    "description": "Nhà vệ sinh nhà 2, nhà 3",
+    "lat": 12.65044239,
+    "lng": 108.02490875,
+    "icon": "map-pin",
+    "x": 50,
+    "y": 50,
+    "color": "#3b82f6"
   }
 ];
 
 // 5. Tuyến đường đi bộ nội bộ mặc định ban đầu
 const DEFAULT_CAMPUS_PATHS = [
   {
-    name: "Đường Trục Chính: Cổng Lê Duẩn - Khu Hiệu Bộ - Nhà 2",
-    path_type: "main_road",
-    coordinates: [
-      [12.65155, 108.02495],
-      [12.65125, 108.02455],
-      [12.65090, 108.02410],
-      [12.65072, 108.02431],
+    "name": "Mạng lưới lối đi 1 (59 nhánh)",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        [
+          12.6515362,
+          108.023856
+        ],
+        [
+          12.6514434,
+          108.0239459
+        ],
+        [
+          12.651938,
+          108.024481
+        ],
+        [
+          12.6520387,
+          108.0245708
+        ],
+        [
+          12.6525581,
+          108.0250454
+        ],
+        [
+          12.6531195,
+          108.0254384
+        ]
+      ],
+      [
+        [
+          12.6532045,
+          108.0258286
+        ],
+        [
+          12.6529665,
+          108.0256356
+        ],
+        [
+          12.6531195,
+          108.0254384
+        ]
+      ],
+      [
+        [
+          12.6526537,
+          108.0253834
+        ],
+        [
+          12.6524379,
+          108.0251984
+        ],
+        [
+          12.6525581,
+          108.0250454
+        ]
+      ],
+      [
+        [
+          12.652087,
+          108.0249596
+        ],
+        [
+          12.6518699,
+          108.0247759
+        ],
+        [
+          12.6520387,
+          108.0245708
+        ]
+      ],
+      [
+        [
+          12.651938,
+          108.024481
+        ],
+        [
+          12.6517587,
+          108.0246768
+        ],
+        [
+          12.6518699,
+          108.0247759
+        ]
+      ],
+      [
+        [
+          12.6531457,
+          108.0259776
+        ],
+        [
+          12.6529795,
+          108.0260004
+        ],
+        [
+          12.65302,
+          108.0263476
+        ],
+        [
+          12.6529258,
+          108.0264428
+        ]
+      ],
+      [
+        [
+          12.6529795,
+          108.0260004
+        ],
+        [
+          12.6524771,
+          108.0260594
+        ],
+        [
+          12.6528303,
+          108.0263195
+        ],
+        [
+          12.6529258,
+          108.0264428
+        ]
+      ],
+      [
+        [
+          12.6521657,
+          108.0263355
+        ],
+        [
+          12.6523109,
+          108.0260701
+        ],
+        [
+          12.6524771,
+          108.0260594
+        ]
+      ],
+      [
+        [
+          12.6523109,
+          108.0260701
+        ],
+        [
+          12.6523083,
+          108.0258703
+        ],
+        [
+          12.6520938,
+          108.0257135
+        ],
+        [
+          12.6521069,
+          108.0253301
+        ],
+        [
+          12.6519356,
+          108.0251344
+        ],
+        [
+          12.652087,
+          108.0249596
+        ],
+        [
+          12.6519356,
+          108.0251344
+        ]
+      ],
+      [
+        [
+          12.6519356,
+          108.0251344
+        ],
+        [
+          12.6517708,
+          108.0252456
+        ],
+        [
+          12.6517629,
+          108.0256733
+        ],
+        [
+          12.6519735,
+          108.0256693
+        ],
+        [
+          12.6520938,
+          108.0257135
+        ]
+      ],
+      [
+        [
+          12.6521015,
+          108.0255619
+        ],
+        [
+          12.6523147,
+          108.0255538
+        ],
+        [
+          12.6526658,
+          108.0255688
+        ]
+      ],
+      [
+        [
+          12.6523083,
+          108.0258703
+        ],
+        [
+          12.6523147,
+          108.0255538
+        ],
+        [
+          12.6523148,
+          108.0250979
+        ]
+      ],
+      [
+        [
+          12.6529258,
+          108.0264428
+        ],
+        [
+          12.6528918,
+          108.0266254
+        ],
+        [
+          12.6528487,
+          108.0267903
+        ],
+        [
+          12.652782,
+          108.0269244
+        ],
+        [
+          12.6526773,
+          108.0270263
+        ],
+        [
+          12.6525544,
+          108.0271322
+        ],
+        [
+          12.6524354,
+          108.0272247
+        ]
+      ],
+      [
+        [
+          12.6514368,
+          108.0249797
+        ],
+        [
+          12.6516043,
+          108.0248135
+        ],
+        [
+          12.6519356,
+          108.0251344
+        ],
+        [
+          12.6516043,
+          108.0248135
+        ],
+        [
+          12.651285,
+          108.0251394
+        ],
+        [
+          12.6513896,
+          108.025256
+        ],
+        [
+          12.6514525,
+          108.0251421
+        ],
+        [
+          12.6515977,
+          108.0251755
+        ],
+        [
+          12.6517708,
+          108.0252456
+        ],
+        [
+          12.6514368,
+          108.0249797
+        ]
+      ],
+      [
+        [
+          12.6517587,
+          108.0246768
+        ],
+        [
+          12.6516043,
+          108.0248135
+        ],
+        [
+          12.6506647,
+          108.023931
+        ],
+        [
+          12.6506176,
+          108.0237795
+        ],
+        [
+          12.6507734,
+          108.0236146
+        ],
+        [
+          12.6509316,
+          108.0234523
+        ],
+        [
+          12.6514434,
+          108.0239459
+        ]
+      ],
+      [
+        [
+          12.651156,
+          108.024383
+        ],
+        [
+          12.651938,
+          108.024481
+        ]
+      ],
+      [
+        [
+          12.6514434,
+          108.0239459
+        ],
+        [
+          12.6514071,
+          108.0241015
+        ],
+        [
+          12.651156,
+          108.024383
+        ]
+      ],
+      [
+        [
+          12.6510435,
+          108.0242838
+        ],
+        [
+          12.6513155,
+          108.0239835
+        ],
+        [
+          12.6514434,
+          108.0239459
+        ]
+      ],
+      [
+        [
+          12.6514434,
+          108.0239459
+        ],
+        [
+          12.6506176,
+          108.0237795
+        ],
+        [
+          12.6503263,
+          108.0238764
+        ],
+        [
+          12.6501589,
+          108.0237262
+        ],
+        [
+          12.6499758,
+          108.0239032
+        ],
+        [
+          12.6500098,
+          108.024064
+        ],
+        [
+          12.6502295,
+          108.0243214
+        ],
+        [
+          12.6504676,
+          108.0240533
+        ],
+        [
+          12.6503263,
+          108.0238764
+        ]
+      ],
+      [
+        [
+          12.651285,
+          108.0251394
+        ],
+        [
+          12.6511715,
+          108.0249275
+        ],
+        [
+          12.6509492,
+          108.0247157
+        ],
+        [
+          12.6507059,
+          108.0244583
+        ],
+        [
+          12.6504731,
+          108.0241982
+        ],
+        [
+          12.6504676,
+          108.0240533
+        ],
+        [
+          12.6506647,
+          108.023931
+        ]
+      ],
+      [
+        [
+          12.6509492,
+          108.0247157
+        ],
+        [
+          12.6507843,
+          108.02489
+        ],
+        [
+          12.6505227,
+          108.0246165
+        ],
+        [
+          12.6503474,
+          108.0244154
+        ]
+      ],
+      [
+        [
+          12.6507059,
+          108.0244583
+        ],
+        [
+          12.6505227,
+          108.0246165
+        ]
+      ],
+      [
+        [
+          12.6509763,
+          108.0254586
+        ],
+        [
+          12.65084,
+          108.025417
+        ],
+        [
+          12.6505652,
+          108.0251501
+        ],
+        [
+          12.6502631,
+          108.0248296
+        ],
+        [
+          12.6499896,
+          108.0245157
+        ],
+        [
+          12.6496324,
+          108.024155
+        ]
+      ],
+      [
+        [
+          12.6508112,
+          108.0255832
+        ],
+        [
+          12.650471,
+          108.025244
+        ],
+        [
+          12.6501767,
+          108.0249235
+        ],
+        [
+          12.6498901,
+          108.0246123
+        ],
+        [
+          12.6495315,
+          108.0242368
+        ]
+      ],
+      [
+        [
+          12.6499896,
+          108.0245157
+        ],
+        [
+          12.6498901,
+          108.0246123
+        ]
+      ],
+      [
+        [
+          12.6502631,
+          108.0248296
+        ],
+        [
+          12.6501767,
+          108.0249235
+        ]
+      ],
+      [
+        [
+          12.6508375,
+          108.0277948
+        ],
+        [
+          12.6500484,
+          108.0286316
+        ],
+        [
+          12.6498731,
+          108.0288179
+        ]
+      ],
+      [
+        [
+          12.6500484,
+          108.0286316
+        ],
+        [
+          12.6494752,
+          108.0280401
+        ],
+        [
+          12.6489193,
+          108.0274609
+        ]
+      ],
+      [
+        [
+          12.6503474,
+          108.0244154
+        ],
+        [
+          12.6502295,
+          108.0243214
+        ],
+        [
+          12.6499896,
+          108.0245157
+        ]
+      ],
+      [
+        [
+          12.6505227,
+          108.0246165
+        ],
+        [
+          12.6503263,
+          108.0246755
+        ],
+        [
+          12.6502631,
+          108.0248296
+        ]
+      ],
+      [
+        [
+          12.6507843,
+          108.02489
+        ],
+        [
+          12.6507292,
+          108.0250215
+        ],
+        [
+          12.6505652,
+          108.0251501
+        ]
+      ],
+      [
+        [
+          12.6507452,
+          108.0263539
+        ],
+        [
+          12.6504549,
+          108.026008
+        ],
+        [
+          12.6506746,
+          108.0257801
+        ],
+        [
+          12.650277,
+          108.0254905
+        ]
+      ],
+      [
+        [
+          12.6498579,
+          108.0269739
+        ],
+        [
+          12.6497533,
+          108.0268694
+        ],
+        [
+          12.6499809,
+          108.0266897
+        ],
+        [
+          12.6498893,
+          108.0265879
+        ],
+        [
+          12.6504549,
+          108.026008
+        ]
+      ],
+      [
+        [
+          12.6498893,
+          108.0265879
+        ],
+        [
+          12.6497635,
+          108.02647
+        ],
+        [
+          12.6498498,
+          108.0261965
+        ],
+        [
+          12.6497347,
+          108.0259418
+        ],
+        [
+          12.6494862,
+          108.0258399
+        ],
+        [
+          12.6492168,
+          108.0259177
+        ],
+        [
+          12.6493214,
+          108.0262796
+        ],
+        [
+          12.6491331,
+          108.0263252
+        ]
+      ],
+      [
+        [
+          12.6494862,
+          108.0258399
+        ],
+        [
+          12.6493868,
+          108.0252313
+        ]
+      ],
+      [
+        [
+          12.6498893,
+          108.0265879
+        ],
+        [
+          12.6490517,
+          108.027395
+        ],
+        [
+          12.6489193,
+          108.0274609
+        ],
+        [
+          12.6486436,
+          108.0278187
+        ],
+        [
+          12.6489287,
+          108.0280385
+        ]
+      ],
+      [
+        [
+          12.6486436,
+          108.0278187
+        ],
+        [
+          12.6484419,
+          108.0280148
+        ]
+      ],
+      [
+        [
+          12.6494752,
+          108.0280401
+        ],
+        [
+          12.6492561,
+          108.0282882
+        ],
+        [
+          12.6489287,
+          108.0280385
+        ]
+      ],
+      [
+        [
+          12.6494752,
+          108.0280401
+        ],
+        [
+          12.6504154,
+          108.0271243
+        ],
+        [
+          12.6499809,
+          108.0266897
+        ]
+      ],
+      [
+        [
+          12.6504154,
+          108.0271243
+        ],
+        [
+          12.6508471,
+          108.0266764
+        ],
+        [
+          12.6511349,
+          108.0270116
+        ],
+        [
+          12.6510302,
+          108.0271161
+        ]
+      ],
+      [
+        [
+          12.6508471,
+          108.0266764
+        ],
+        [
+          12.6512653,
+          108.0262498
+        ]
+      ],
+      [
+        [
+          12.6520116,
+          108.0263384
+        ],
+        [
+          12.6516245,
+          108.026703
+        ]
+      ],
+      [
+        [
+          12.6521657,
+          108.0263355
+        ],
+        [
+          12.6520116,
+          108.0263384
+        ]
+      ],
+      [
+        [
+          12.650277,
+          108.0254905
+        ],
+        [
+          12.6500123,
+          108.0251475
+        ],
+        [
+          12.6498841,
+          108.0252708
+        ]
+      ],
+      [
+        [
+          12.6500177,
+          108.0235303
+        ],
+        [
+          12.6501929,
+          108.023356
+        ],
+        [
+          12.6503708,
+          108.0232059
+        ],
+        [
+          12.6505173,
+          108.0233158
+        ],
+        [
+          12.650703,
+          108.0232514
+        ],
+        [
+          12.6504781,
+          108.0234634
+        ],
+        [
+          12.650363,
+          108.023576
+        ],
+        [
+          12.6501589,
+          108.0237262
+        ]
+      ],
+      [
+        [
+          12.650363,
+          108.023576
+        ],
+        [
+          12.6501929,
+          108.023356
+        ]
+      ],
+      [
+        [
+          12.6513626,
+          108.0247562
+        ],
+        [
+          12.6511715,
+          108.0249275
+        ],
+        [
+          12.6513626,
+          108.0247562
+        ]
+      ],
+      [
+        [
+          12.6525586,
+          108.0257324
+        ],
+        [
+          12.6526658,
+          108.0255688
+        ],
+        [
+          12.6526537,
+          108.0253834
+        ]
+      ],
+      [
+        [
+          12.6531457,
+          108.0259776
+        ],
+        [
+          12.6532045,
+          108.0258286
+        ]
+      ],
+      [
+        [
+          12.6529795,
+          108.0260004
+        ],
+        [
+          12.6529665,
+          108.0256356
+        ]
+      ],
+      [
+        [
+          12.6535609,
+          108.0261856
+        ],
+        [
+          12.6534982,
+          108.0257432
+        ],
+        [
+          12.6531195,
+          108.0254384
+        ]
+      ],
+      [
+        [
+          12.649282,
+          108.027178
+        ],
+        [
+          12.6494023,
+          108.0273255
+        ]
+      ],
+      [
+        [
+          12.6506746,
+          108.0257801
+        ],
+        [
+          12.6508112,
+          108.0255832
+        ],
+        [
+          12.6509763,
+          108.0254586
+        ],
+        [
+          12.6508265,
+          108.0257275
+        ],
+        [
+          12.6509971,
+          108.0259482
+        ],
+        [
+          12.651111,
+          108.0260566
+        ],
+        [
+          12.6512653,
+          108.0262498
+        ],
+        [
+          12.6513726,
+          108.026384
+        ],
+        [
+          12.6514917,
+          108.0265302
+        ],
+        [
+          12.6516245,
+          108.026703
+        ],
+        [
+          12.6517495,
+          108.0268398
+        ],
+        [
+          12.6515375,
+          108.0270532
+        ],
+        [
+          12.6513726,
+          108.0272208
+        ],
+        [
+          12.6512627,
+          108.0273509
+        ],
+        [
+          12.6510979,
+          108.0275279
+        ],
+        [
+          12.6509617,
+          108.0276688
+        ],
+        [
+          12.6508375,
+          108.0277948
+        ]
+      ],
+      [
+        [
+          12.6527571,
+          108.026026
+        ],
+        [
+          12.6528303,
+          108.0263195
+        ]
+      ],
+      [
+        [
+          12.6529977,
+          108.0261829
+        ],
+        [
+          12.6527989,
+          108.0261923
+        ]
+      ],
+      [
+        [
+          12.6527571,
+          108.026026
+        ],
+        [
+          12.65271,
+          108.0258102
+        ],
+        [
+          12.6526658,
+          108.0255688
+        ]
+      ],
+      [
+        [
+          12.6529665,
+          108.0256356
+        ],
+        [
+          12.6528985,
+          108.0254882
+        ],
+        [
+          12.6528945,
+          108.0252778
+        ]
+      ],
+      [
+        [
+          12.651569,
+          108.0245763
+        ],
+        [
+          12.6514683,
+          108.0246835
+        ]
+      ],
+      [
+        [
+          12.6514302,
+          108.0244166
+        ],
+        [
+          12.6513072,
+          108.0245292
+        ]
+      ],
+      [
+        [
+          12.6508432,
+          108.024099
+        ],
+        [
+          12.6506025,
+          108.0243456
+        ]
+      ],
+      [
+        [
+          12.6509187,
+          108.024348
+        ],
+        [
+          12.6508432,
+          108.024099
+        ]
+      ],
+      [
+        [
+          12.6524771,
+          108.0260594
+        ],
+        [
+          12.6523083,
+          108.0258703
+        ]
+      ],
+      [
+        [
+          12.6524379,
+          108.0251984
+        ],
+        [
+          12.6523148,
+          108.0250979
+        ],
+        [
+          12.6523148,
+          108.0248231
+        ]
+      ],
+      [
+        [
+          12.6510435,
+          108.0242838
+        ],
+        [
+          12.6509187,
+          108.024348
+        ],
+        [
+          12.6510913,
+          108.024533
+        ],
+        [
+          12.6513626,
+          108.0247562
+        ],
+        [
+          12.6513072,
+          108.0245292
+        ],
+        [
+          12.6510913,
+          108.024533
+        ],
+        [
+          12.651156,
+          108.024383
+        ]
+      ],
+      [
+        [
+          12.6507707,
+          108.0234777
+        ],
+        [
+          12.6507734,
+          108.0236146
+        ],
+        [
+          12.6506189,
+          108.0236091
+        ]
+      ],
+      [
+        [
+          12.6500534,
+          108.0247922
+        ],
+        [
+          12.6498598,
+          108.0249786
+        ],
+        [
+          12.6496781,
+          108.0250884
+        ],
+        [
+          12.6495386,
+          108.0251262
+        ],
+        [
+          12.6493868,
+          108.0252313
+        ]
+      ],
+      [
+        [
+          12.6498731,
+          108.0288179
+        ],
+        [
+          12.6494896,
+          108.0291973
+        ]
+      ],
+      [
+        [
+          12.6492561,
+          108.0282882
+        ],
+        [
+          12.6489299,
+          108.0285966
+        ]
+      ],
+      [
+        [
+          12.6513726,
+          108.0272208
+        ],
+        [
+          12.6511349,
+          108.0270116
+        ]
+      ],
+      [
+        [
+          12.6523097,
+          108.0274705
+        ],
+        [
+          12.6520753,
+          108.0272153
+        ],
+        [
+          12.6517286,
+          108.0274996
+        ],
+        [
+          12.6519968,
+          108.0277571
+        ]
+      ],
+      [
+        [
+          12.6520753,
+          108.0272153
+        ],
+        [
+          12.6519131,
+          108.0270519
+        ],
+        [
+          12.6517495,
+          108.0268398
+        ]
+      ],
+      [
+        [
+          12.6508112,
+          108.0255832
+        ],
+        [
+          12.6508265,
+          108.0257275
+        ],
+        [
+          12.6506746,
+          108.0257801
+        ]
+      ],
+      [
+        [
+          12.651637,
+          108.0241511
+        ],
+        [
+          12.6514302,
+          108.0244166
+        ]
+      ],
+      [
+        [
+          12.651637,
+          108.0241511
+        ],
+        [
+          12.6517587,
+          108.0246768
+        ],
+        [
+          12.651569,
+          108.0245763
+        ],
+        [
+          12.651637,
+          108.0241511
+        ]
+      ],
+      [
+        [
+          12.6498598,
+          108.0249786
+        ],
+        [
+          12.6497217,
+          108.0247696
+        ]
+      ],
+      [
+        [
+          12.6509763,
+          108.0254586
+        ],
+        [
+          12.6510585,
+          108.025181
+        ],
+        [
+          12.6507843,
+          108.02489
+        ]
+      ],
+      [
+        [
+          12.651285,
+          108.0251394
+        ],
+        [
+          12.6510585,
+          108.025181
+        ]
+      ],
+      [
+        [
+          12.6531732,
+          108.0261586
+        ],
+        [
+          12.6529977,
+          108.0261829
+        ]
+      ],
+      [
+        [
+          12.6490517,
+          108.027395
+        ],
+        [
+          12.6488261,
+          108.0272033
+        ],
+        [
+          12.6482662,
+          108.0265945
+        ]
+      ],
+      [
+        [
+          12.6492168,
+          108.0259177
+        ],
+        [
+          12.6488054,
+          108.0260636
+        ],
+        [
+          12.6485985,
+          108.0261426
+        ],
+        [
+          12.6484964,
+          108.0262458
+        ],
+        [
+          12.6484428,
+          108.0263732
+        ],
+        [
+          12.6484363,
+          108.0265515
+        ],
+        [
+          12.6485436,
+          108.0267245
+        ],
+        [
+          12.648749,
+          108.0268157
+        ],
+        [
+          12.6489597,
+          108.0267594
+        ],
+        [
+          12.6491861,
+          108.0266816
+        ],
+        [
+          12.6494177,
+          108.0266119
+        ],
+        [
+          12.6496035,
+          108.0265676
+        ],
+        [
+          12.6497635,
+          108.02647
+        ]
+      ],
+      [
+        [
+          12.6488054,
+          108.0260636
+        ],
+        [
+          12.6488524,
+          108.025904
+        ],
+        [
+          12.648787,
+          108.0256157
+        ],
+        [
+          12.6488995,
+          108.0254117
+        ],
+        [
+          12.6491141,
+          108.0253648
+        ],
+        [
+          12.6493868,
+          108.0252313
+        ]
+      ],
+      [
+        [
+          12.6501074,
+          108.0290834
+        ],
+        [
+          12.6503283,
+          108.0288529
+        ]
+      ],
+      [
+        [
+          12.6508375,
+          108.0277948
+        ],
+        [
+          12.6511371,
+          108.0279472
+        ]
+      ],
+      [
+        [
+          12.6505889,
+          108.0261626
+        ],
+        [
+          12.6507393,
+          108.0260004
+        ],
+        [
+          12.6508557,
+          108.0261399
+        ]
+      ],
+      [
+        [
+          12.650277,
+          108.0254905
+        ],
+        [
+          12.6501373,
+          108.0255135
+        ],
+        [
+          12.6498841,
+          108.0252708
+        ]
+      ]
     ]
   },
   {
-    name: "Lối Đi Bộ: Nhà 2 - Nhà 5 - Bệnh Viện Trường",
-    path_type: "walkway",
-    coordinates: [
-      [12.65072, 108.02431],
-      [12.65045, 108.02410],
-      [12.65005, 108.02383],
-      [12.65015, 108.02340],
-      [12.65035, 108.02312],
+    "name": "Lối đi nội bộ 2",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        12.6513687,
+        108.0266548
+      ],
+      [
+        12.6514917,
+        108.0265302
+      ]
     ]
   },
   {
-    name: "Tuyến Đường: Khu Hiệu Bộ - Thư Viện - Căng Tin Trung Tâm",
-    path_type: "walkway",
-    coordinates: [
-      [12.65090, 108.02410],
-      [12.65125, 108.02455],
-      [12.65150, 108.02480],
-      [12.65170, 108.02490],
-      [12.65185, 108.02510],
+    "name": "Lối đi nội bộ 3",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        12.6505,
+        108.02308
+      ],
+      [
+        12.6503708,
+        108.0232059
+      ]
     ]
   },
   {
-    name: "Đường Trục Đông: Thư Viện - Nhà 8 - Trung Tâm Kỹ Năng Sư Phạm",
-    path_type: "main_road",
-    coordinates: [
-      [12.65170, 108.02490],
-      [12.65180, 108.02560],
-      [12.65190, 108.02640],
-      [12.65215, 108.02690],
-      [12.65230, 108.02720],
+    "name": "Lối đi nội bộ 4",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        12.652087,
+        108.0249596
+      ],
+      [
+        12.6521069,
+        108.0253301
+      ]
     ]
   },
   {
-    name: "Đường Liên Khu: Nhà 8 - Khu Ký Túc Xá - Khu Thể Thao",
-    path_type: "walkway",
-    coordinates: [
-      [12.65190, 108.02640],
-      [12.65210, 108.02580],
-      [12.65210, 108.02530],
-      [12.65250, 108.02580],
-      [12.65280, 108.02680],
+    "name": "Mạng lưới lối đi 5 (4 nhánh)",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        [
+          12.6498901,
+          108.0246123
+        ],
+        [
+          12.6497217,
+          108.0247696
+        ],
+        [
+          12.6495199,
+          108.0247532
+        ],
+        [
+          12.6493117,
+          108.024835
+        ],
+        [
+          12.6490264,
+          108.0249356
+        ],
+        [
+          12.6489113,
+          108.0249946
+        ],
+        [
+          12.6489191,
+          108.0251769
+        ],
+        [
+          12.6488995,
+          108.0254117
+        ]
+      ],
+      [
+        [
+          12.6495199,
+          108.0247532
+        ],
+        [
+          12.6495386,
+          108.0251262
+        ]
+      ],
+      [
+        [
+          12.6505652,
+          108.0251501
+        ],
+        [
+          12.650471,
+          108.025244
+        ]
+      ],
+      [
+        [
+          12.6509763,
+          108.0254586
+        ],
+        [
+          12.6506746,
+          108.0257801
+        ]
+      ]
     ]
   },
   {
-    name: "Lối Đi Bộ Phía Nam: Nhà 5 - Khu Thực Hành Nông Lâm",
-    path_type: "walkway",
-    coordinates: [
-      [12.65005, 108.02383],
-      [12.64965, 108.02420],
-      [12.64930, 108.02480],
+    "name": "Lối đi nội bộ 6",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        12.6501074,
+        108.0290834
+      ],
+      [
+        12.6498731,
+        108.0288179
+      ]
+    ]
+  },
+  {
+    "name": "Lối đi nội bộ 7",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        12.6515765,
+        108.0276754
+      ],
+      [
+        12.6517286,
+        108.0274996
+      ]
+    ]
+  },
+  {
+    "name": "Lối đi nội bộ 8",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        12.6507734,
+        108.0236146
+      ],
+      [
+        12.651121,
+        108.02375
+      ],
+      [
+        12.6514434,
+        108.0239459
+      ]
+    ]
+  },
+  {
+    "name": "Mạng lưới lối đi 9 (2 nhánh)",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        [
+          12.6491609,
+          108.0257551
+        ],
+        [
+          12.6492168,
+          108.0259177
+        ]
+      ],
+      [
+        [
+          12.6493544,
+          108.0250834
+        ],
+        [
+          12.6493868,
+          108.0252313
+        ]
+      ]
+    ]
+  },
+  {
+    "name": "Lối đi nội bộ 10",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        12.6506176,
+        108.0237795
+      ],
+      [
+        12.650363,
+        108.023576
+      ]
+    ]
+  },
+  {
+    "name": "Mạng lưới lối đi 11 (2 nhánh)",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        [
+          12.650471,
+          108.025244
+        ],
+        [
+          12.650277,
+          108.0254905
+        ]
+      ],
+      [
+        [
+          12.6501767,
+          108.0249235
+        ],
+        [
+          12.6500123,
+          108.0251475
+        ]
+      ]
+    ]
+  },
+  {
+    "name": "Mạng lưới lối đi 12 (3 nhánh)",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        [
+          12.6511608,
+          108.0238899
+        ],
+        [
+          12.6508432,
+          108.024099
+        ]
+      ],
+      [
+        [
+          12.6511608,
+          108.0238899
+        ],
+        [
+          12.6510435,
+          108.0242838
+        ]
+      ],
+      [
+        [
+          12.6489193,
+          108.0274609
+        ],
+        [
+          12.64879,
+          108.0273898
+        ]
+      ]
+    ]
+  },
+  {
+    "name": "Lối đi nội bộ 13",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        12.6517587,
+        108.0246768
+      ],
+      [
+        12.6515986,
+        108.0244337
+      ],
+      [
+        12.6515173,
+        108.0243116
+      ]
+    ]
+  },
+  {
+    "name": "Mạng lưới lối đi 14 (2 nhánh)",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        [
+          12.6509763,
+          108.0254586
+        ],
+        [
+          12.6510946,
+          108.0256529
+        ],
+        [
+          12.6513024,
+          108.0258839
+        ],
+        [
+          12.6514564,
+          108.02578
+        ],
+        [
+          12.6516265,
+          108.0257428
+        ],
+        [
+          12.6517629,
+          108.0256733
+        ]
+      ],
+      [
+        [
+          12.6513024,
+          108.0258839
+        ],
+        [
+          12.651111,
+          108.0260566
+        ]
+      ]
+    ]
+  },
+  {
+    "name": "Lối đi nội bộ 15",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        12.651285,
+        108.0251394
+      ],
+      [
+        12.6509763,
+        108.0254586
+      ]
+    ]
+  },
+  {
+    "name": "Lối đi nội bộ 16",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        12.6507734,
+        108.0236146
+      ],
+      [
+        12.6505173,
+        108.0233158
+      ]
+    ]
+  },
+  {
+    "name": "Lối đi nội bộ 17",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        12.6505173,
+        108.0233158
+      ],
+      [
+        12.6504781,
+        108.0234634
+      ],
+      [
+        12.6501929,
+        108.023356
+      ]
     ]
   }
 ];

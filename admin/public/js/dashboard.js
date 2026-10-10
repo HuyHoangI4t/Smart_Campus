@@ -48,12 +48,13 @@ const DashboardModule = {
   },
 
   async loadStats(silent = false) {
+    if (!AdminAPI.getToken()) return;
     if (this.isFetching) return;
     this.isFetching = true;
 
     try {
       const res = await AdminAPI.getStats();
-      if (!res.success) throw new Error(res.message);
+      if (!res || !res.success) throw new Error(res?.message || 'Không thể tải thống kê');
 
       const stats = res.stats || {};
 

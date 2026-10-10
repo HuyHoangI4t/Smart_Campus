@@ -142,7 +142,7 @@ npm install
 npm start
 ```
 - Truy cập trình duyệt: `http://localhost:5001`
-- Tài khoản quản trị mặc định: `admin` / Mật khẩu: `123456`
+- Tài khoản quản trị mặc định: `admin` / Mật khẩu: `admin123`
 
 #### Bước 4: Chạy Mobile App (Frontend)
 ```bash
