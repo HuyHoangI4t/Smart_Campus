@@ -15,6 +15,8 @@ const newsRoutes = require('./routes/newsRoutes');
 const cronService = require('./services/cronService');
 const path = require('path');
 const os = require('os');
+const http = require('http');
+const { Server } = require('socket.io');
 
 dotenv.config();
 
@@ -28,6 +30,25 @@ process.on('uncaughtException', (err) => {
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Khởi tạo HTTP Server & Socket.IO Realtime Engine
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE']
+  }
+});
+
+io.on('connection', (socket) => {
+  console.log(`🔌 [Socket.IO] Client kết nối: ${socket.id}`);
+  socket.on('disconnect', () => {
+    console.log(`🔌 [Socket.IO] Client ngắt kết nối: ${socket.id}`);
+  });
+});
+
+// Gắn io instance vào Express app để các controller truy cập được qua req.app.get('io')
+app.set('io', io);
 
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
@@ -50,7 +71,9 @@ app.use((req, res, next) => {
       action,
       mssv,
       req.ip || '127.0.0.1'
-    ]).catch(() => {});
+    ]).then(() => {
+      if (io) io.emit('activity_update');
+    }).catch(() => {});
   }
   next();
 });
@@ -146,11 +169,12 @@ const getLocalIPv4 = () => {
   return candidates[0] || '192.168.1.20';
 };
 
-app.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '0.0.0.0', () => {
   const localIP = getLocalIPv4();
   console.log(`🚀 LTDDDNT Backend server đang chạy tại cổng ${PORT} (0.0.0.0)`);
   console.log(`📱 Expo Go / Mobile API: http://${localIP}:${PORT}/api`);
   console.log(`📄 Swagger UI sẵn sàng tại http://localhost:${PORT}/api-docs`);
+  console.log(`⚡ [Socket.IO] Realtime Engine sẵn sàng tại ws://${localIP}:${PORT}`);
   
   // Khởi động tiến trình đồng bộ dữ liệu tự động 3 lần/ngày
   cronService.startCronJobs();

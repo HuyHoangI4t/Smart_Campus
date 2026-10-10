@@ -9,33 +9,21 @@ const DashboardModule = {
     distribution: null,
     trend: null
   },
-  pollingTimer: null,
   isFetching: false,
   lastSosCount: null,
-  realtimeIntervalMs: 3000, // 3 giây đồng bộ 1 lần
 
   async init() {
     await this.loadStats(false);
-    this.startRealtime();
+    // Realtime được quản lý tập trung thông qua Socket.IO (Event-driven, 0 HTTP polling)
   },
 
-  // Bắt đầu chu kỳ đồng bộ Realtime
+  // Tương thích ngược: Không sử dụng setInterval polling nữa
   startRealtime() {
-    this.stopRealtime();
-    this.pollingTimer = setInterval(() => {
-      // Chỉ tự động đồng bộ khi người dùng đang ở tab dashboard
-      if (window.App && window.App.currentTab === 'dashboard') {
-        this.loadStats(true);
-      }
-    }, this.realtimeIntervalMs);
+    // Không cần polling vì Socket.IO sẽ tự động push khi có thay đổi
   },
 
-  // Dừng đồng bộ Realtime
   stopRealtime() {
-    if (this.pollingTimer) {
-      clearInterval(this.pollingTimer);
-      this.pollingTimer = null;
-    }
+    // Không cần clearInterval vì đã chuyển sang Socket.IO
   },
 
   // Phát âm thanh cảnh báo khi có SOS mới phát sinh

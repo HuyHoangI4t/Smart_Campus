@@ -15,6 +15,8 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Socket.IO Client (Realtime Event-Driven Architecture) -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
   <!-- Tailwind Custom Config -->
   <script>
@@ -209,6 +211,7 @@
           <!-- Category 4: HỆ THỐNG -->
           <div>
             <div class="nav-section-title">HỆ THỐNG</div>
+            <div class="space-y-1">
               <a href="http://localhost:5000/api-docs" target="_blank" class="nav-link-btn text-slate-500 hover:text-slate-900">
                 <i data-lucide="file-code-2" class="w-4 h-4 shrink-0 text-blue-500"></i>
                 <span class="flex-1">Tài Liệu Swagger API</span>
@@ -335,7 +338,7 @@
                 <!-- Realtime Status Indicator Badge -->
                 <div id="dashboardRealtimeBadge" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold shadow-sm">
                   <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                  <span id="dashboardRealtimeText">Realtime: Trực tiếp (3s)</span>
+                  <span id="dashboardRealtimeText">Socket.IO: Trực tiếp</span>
                 </div>
                 <button onclick="DashboardModule.loadStats(false)" title="Cập nhật dữ liệu ngay lập tức" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition flex items-center gap-1.5">
                   <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
@@ -1036,7 +1039,7 @@
 
         <!-- FOOTER -->
         <footer class="bg-white border-t border-slate-200/80 py-4 px-6 text-center text-xs text-slate-400">
-          <p>Trang Quản Trị Hệ Thống - Trường Đại Học Tây Nguyên &copy; 2026. Tất cả các quyền được bảo lưu.</p>
+          <p>Trang Quản Trị Hệ Thống - SmartCampus &copy; 2026. Tất cả các quyền được bảo lưu.</p>
         </footer>
       </div>
     </div>

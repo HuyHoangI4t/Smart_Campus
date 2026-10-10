@@ -18,6 +18,7 @@ interface MapControlsOverlayProps {
   onCompassPress: () => void;
   onResetBearing: () => void;
   onUserLocationPress: () => void;
+  onUserLocationLongPress?: () => void;
   onZoomIn?: () => void;
   onZoomOut?: () => void;
   onResetView?: () => void;
@@ -37,6 +38,7 @@ const MapControlsOverlayComponent: React.FC<MapControlsOverlayProps> = ({
   onCompassPress,
   onResetBearing,
   onUserLocationPress,
+  onUserLocationLongPress,
   onZoomIn,
   onZoomOut,
   onResetView,
@@ -203,6 +205,7 @@ const MapControlsOverlayComponent: React.FC<MapControlsOverlayProps> = ({
         {/* Nút Định vị GPS của tôi */}
         <TouchableOpacity
           onPress={onUserLocationPress}
+          onLongPress={onUserLocationLongPress || onUserLocationPress}
           activeOpacity={0.8}
           style={{
             width: 42,

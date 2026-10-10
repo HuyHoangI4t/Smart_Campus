@@ -38,22 +38,32 @@ exports.submitFeedback = async (req, res) => {
 
   try {
     const feedbackTitle = category ? `[${category}] ${title}` : title;
-    await db.query(
+    const [result] = await db.query(
       'INSERT INTO feedback (mssv, title, content, category, rating, status) VALUES (?, ?, ?, ?, ?, ?)',
       [mssv, feedbackTitle, content, category || 'Cơ sở vật chất', rating || 5, 'Chờ tiếp nhận']
     );
 
+    const newFeedbackData = {
+      id: result.insertId,
+      mssv,
+      title: feedbackTitle,
+      content,
+      category: category || 'Chung',
+      rating: rating || 5,
+      createdAt: new Date()
+    };
+
+    // Bắn sự kiện Realtime qua Socket.IO tới Admin
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('new_feedback', newFeedbackData);
+      io.emit('stats_update');
+    }
+
     res.json({
       success: true,
       message: 'Gửi phản hồi thành công! Cảm ơn ý kiến đóng góp của bạn.',
-      feedback: {
-        mssv,
-        title: feedbackTitle,
-        content,
-        category: category || 'Chung',
-        rating: rating || 5,
-        createdAt: new Date()
-      }
+      feedback: newFeedbackData
     });
   } catch (error) {
     console.error('Error in submitFeedback:', error);
@@ -69,21 +79,32 @@ exports.submitSos = async (req, res) => {
   const alertMsg = incidentType ? `[${incidentType}] ${description || message || 'Yêu cầu hỗ trợ khẩn cấp'}` : (description || message || 'Yêu cầu hỗ trợ khẩn cấp');
 
   try {
-    await db.query(
+    const [result] = await db.query(
       'INSERT INTO sos_alerts (mssv, location, message) VALUES (?, ?, ?)',
       [mssv, sosLocation, alertMsg]
     );
 
+    const newAlertData = {
+      id: result.insertId,
+      mssv,
+      location: sosLocation,
+      message: alertMsg,
+      incidentType: incidentType || 'Khẩn cấp',
+      status: 'Chờ xử lý',
+      timestamp: new Date()
+    };
+
+    // Bắn sự kiện Realtime qua Socket.IO tới Admin (Ngay lập tức reo còi & tăng badge)
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('new_sos', newAlertData);
+      io.emit('stats_update');
+    }
+
     res.json({
       success: true,
       message: 'Đã gửi tín hiệu SOS khẩn cấp thành công. Đội an ninh và y tế đã nhận được vị trí!',
-      alert: {
-        mssv,
-        location: sosLocation,
-        message: alertMsg,
-        incidentType: incidentType || 'Khẩn cấp',
-        timestamp: new Date()
-      }
+      alert: newAlertData
     });
   } catch (error) {
     console.error('Error in submitSos:', error);

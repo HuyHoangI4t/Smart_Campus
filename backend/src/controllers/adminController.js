@@ -473,6 +473,14 @@ exports.updateFeedbackStatus = async (req, res) => {
 
   try {
     await db.query('UPDATE feedback SET status = ? WHERE id = ?', [newStatus, id]);
+
+    // Bắn sự kiện Realtime qua Socket.IO
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('feedback_status_changed', { id: Number(id), status: newStatus });
+      io.emit('stats_update');
+    }
+
     res.json({ success: true, message: `Đã cập nhật trạng thái phản hồi: ${newStatus}`, status: newStatus });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi cập nhật trạng thái phản hồi: ' + error.message });
@@ -483,6 +491,12 @@ exports.deleteFeedback = async (req, res) => {
   const { id } = req.params;
   try {
     await db.query('DELETE FROM feedback WHERE id = ?', [id]);
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('stats_update');
+    }
+
     res.json({ success: true, message: 'Đã xóa ý kiến phản hồi.' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi xóa phản hồi: ' + error.message });
@@ -513,6 +527,14 @@ exports.updateSosStatus = async (req, res) => {
 
   try {
     await db.query('UPDATE sos_alerts SET status = ? WHERE id = ?', [newStatus, id]);
+
+    // Bắn sự kiện Realtime qua Socket.IO
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('sos_status_changed', { id: Number(id), status: newStatus });
+      io.emit('stats_update');
+    }
+
     res.json({ success: true, message: `Đã cập nhật trạng thái cảnh báo SOS: ${newStatus}`, status: newStatus });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi cập nhật trạng thái SOS: ' + error.message });

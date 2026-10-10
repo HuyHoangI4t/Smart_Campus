@@ -188,7 +188,7 @@ const MapLocationDetailCardComponent: React.FC<MapLocationDetailCardProps> = ({
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
         {/* Nút chỉ đường đi bộ trực tiếp ngay trên bản đồ Leaflet */}
         <TouchableOpacity
-          onPress={onStartDirections}
+          onPress={() => onStartDirections()}
           activeOpacity={0.8}
           style={{
             flex: 1,
@@ -212,7 +212,7 @@ const MapLocationDetailCardComponent: React.FC<MapLocationDetailCardProps> = ({
 
         {/* Nút phụ: Mở Google Maps bên ngoài */}
         <TouchableOpacity
-          onPress={onOpenGoogleMaps}
+          onPress={() => onOpenGoogleMaps()}
           activeOpacity={0.7}
           style={{
             height: 42,

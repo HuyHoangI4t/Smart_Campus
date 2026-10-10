@@ -74,8 +74,7 @@ const App = {
   confirmCallback: null,
   sidebarMode: 'vertical', // 'vertical' hoặc 'detached'
   currentZoom: '80%',
-  globalSosTimer: null,
-  lastKnownSosCount: null,
+  socket: null,
 
   init() {
     this.startClock();
@@ -83,54 +82,139 @@ const App = {
     this.initSidebarMode();
     this.checkAuth();
     this.bindGlobalEvents();
-    this.startGlobalSosMonitor();
+    this.initSocket();
+    this.refreshSosBadge();
   },
 
-  // Giám sát cảnh báo SOS khẩn cấp ngầm trên toàn bộ hệ thống
-  startGlobalSosMonitor() {
-    if (this.globalSosTimer) clearInterval(this.globalSosTimer);
-    this.globalSosTimer = setInterval(async () => {
-      const token = AdminAPI.getToken();
-      if (!token) return;
-
-      try {
-        const res = await AdminAPI.getSosAlerts();
-        if (!res || !res.success) return;
-
-        const alerts = res.alerts || [];
-        const unresolved = alerts.filter(a => a.status !== 'Đã xử lý' && a.status !== 'Đã giải quyết');
-        const unresolvedCount = unresolved.length;
-
-        // Cập nhật huy hiệu trên thanh điều hướng sidebar
-        const badgeSosNav = document.getElementById('navBadgeSos');
-        if (badgeSosNav) {
-          if (unresolvedCount > 0) {
-            badgeSosNav.textContent = unresolvedCount;
-            badgeSosNav.classList.remove('hidden');
-            badgeSosNav.style.display = 'inline-flex';
-          } else {
-            badgeSosNav.classList.add('hidden');
-            badgeSosNav.style.display = 'none';
-          }
+  // Cập nhật số lượng SOS chưa xử lý lên badge (gọi 1 lần khi khởi tạo hoặc khi có event Socket.IO)
+  async refreshSosBadge() {
+    const token = AdminAPI.getToken();
+    if (!token) return;
+    try {
+      const res = await AdminAPI.getSosAlerts();
+      if (!res || !res.success) return;
+      const alerts = res.alerts || [];
+      const unresolved = alerts.filter(a => a.status !== 'Đã xử lý' && a.status !== 'Đã giải quyết');
+      const unresolvedCount = unresolved.length;
+      const badgeSosNav = document.getElementById('navBadgeSos');
+      if (badgeSosNav) {
+        if (unresolvedCount > 0) {
+          badgeSosNav.textContent = unresolvedCount;
+          badgeSosNav.classList.remove('hidden');
+          badgeSosNav.style.display = 'inline-flex';
+        } else {
+          badgeSosNav.classList.add('hidden');
+          badgeSosNav.style.display = 'none';
         }
-
-        // Phát hiện cảnh báo SOS mới phát sinh thời gian thực
-        if (this.lastKnownSosCount !== null && unresolvedCount > this.lastKnownSosCount) {
-          if (window.DashboardModule && typeof window.DashboardModule.playAlertSound === 'function') {
-            window.DashboardModule.playAlertSound();
-          }
-          this.showToast(`🚨 CẢNH BÁO SOS: Có ${unresolvedCount - this.lastKnownSosCount} yêu cầu cứu trợ khẩn cấp mới!`, 'error');
-
-          // Nếu đang mở tab SOS, tự động làm mới danh sách bảng
-          if (this.currentTab === 'sos' && window.SosModule) {
-            SosModule.loadAlerts();
-          }
-        }
-        this.lastKnownSosCount = unresolvedCount;
-      } catch (e) {
-        // Silent error on background poll
       }
-    }, 4000);
+    } catch (e) {}
+  },
+
+  // Khởi tạo kết nối Socket.IO thời gian thực (Event-Driven Architecture)
+  initSocket() {
+    if (typeof io === 'undefined') {
+      console.warn('⚠️ [Socket.IO] Thư viện Socket.IO client chưa sẵn sàng.');
+      return;
+    }
+
+    const socketUrl = (window.__ENV__ && window.__ENV__.API_URL) ? window.__ENV__.API_URL : 'http://localhost:5000';
+    console.log(`🔌 [Socket.IO] Đang kết nối tới ${socketUrl}...`);
+    const socket = io(socketUrl, {
+      transports: ['websocket', 'polling']
+    });
+    this.socket = socket;
+
+    socket.on('connect', () => {
+      console.log('⚡ [Socket.IO] Đã kết nối thành công, ID:', socket.id);
+      const badge = document.getElementById('dashboardRealtimeBadge');
+      const badgeText = document.getElementById('dashboardRealtimeText');
+      if (badgeText) badgeText.textContent = 'Socket.IO: Trực tiếp';
+      if (badge) {
+        badge.className = 'flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold shadow-sm';
+      }
+    });
+
+    socket.on('disconnect', () => {
+      console.log('⚠️ [Socket.IO] Mất kết nối tới server.');
+      const badge = document.getElementById('dashboardRealtimeBadge');
+      const badgeText = document.getElementById('dashboardRealtimeText');
+      if (badgeText) badgeText.textContent = 'Socket.IO: Mất kết nối...';
+      if (badge) {
+        badge.className = 'flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold shadow-sm';
+      }
+    });
+
+    // 1. Nhận sự kiện có SOS mới phát sinh
+    socket.on('new_sos', (data) => {
+      console.log('🚨 [Socket.IO] Sự kiện new_sos:', data);
+      if (window.DashboardModule && typeof window.DashboardModule.playAlertSound === 'function') {
+        window.DashboardModule.playAlertSound();
+      }
+      this.showToast(`🚨 CẢNH BÁO SOS: Có yêu cầu cứu trợ khẩn cấp mới! (${data?.location_name || 'Vị trí mới'})`, 'error');
+      this.refreshSosBadge();
+      if (this.currentTab === 'sos' && window.SosModule) {
+        SosModule.loadAlerts();
+      }
+      if (window.DashboardModule) {
+        DashboardModule.loadStats(true);
+      }
+    });
+
+    // 2. Nhận sự kiện trạng thái SOS cập nhật
+    socket.on('sos_status_changed', (data) => {
+      console.log('🔄 [Socket.IO] Sự kiện sos_status_changed:', data);
+      this.refreshSosBadge();
+      if (this.currentTab === 'sos' && window.SosModule) {
+        SosModule.loadAlerts();
+      }
+      if (window.DashboardModule) {
+        DashboardModule.loadStats(true);
+      }
+    });
+
+    // 3. Nhận sự kiện có phản ánh mới từ sinh viên
+    socket.on('new_feedback', (data) => {
+      console.log('💬 [Socket.IO] Sự kiện new_feedback:', data);
+      this.showToast(`💬 Phản ánh mới: ${data?.title || 'Sinh viên vừa gửi phản ánh mới'}`, 'info');
+      if (this.currentTab === 'feedback' && window.FeedbackModule) {
+        FeedbackModule.loadFeedback();
+      }
+      if (window.DashboardModule) {
+        DashboardModule.loadStats(true);
+      }
+    });
+
+    // 4. Nhận sự kiện phản ánh thay đổi trạng thái hoặc bị xóa
+    socket.on('feedback_status_changed', (data) => {
+      console.log('🔄 [Socket.IO] Sự kiện feedback_status_changed:', data);
+      if (this.currentTab === 'feedback' && window.FeedbackModule) {
+        FeedbackModule.loadFeedback();
+      }
+      if (window.DashboardModule) {
+        DashboardModule.loadStats(true);
+      }
+    });
+
+    // 5. Thống kê hệ thống cập nhật
+    socket.on('stats_update', () => {
+      console.log('📊 [Socket.IO] Sự kiện stats_update');
+      if (this.currentTab === 'dashboard' && window.DashboardModule) {
+        DashboardModule.loadStats(true);
+      }
+    });
+
+    // 6. Hoạt động người dùng mới
+    socket.on('activity_update', () => {
+      console.log('⚡ [Socket.IO] Sự kiện activity_update');
+      if (this.currentTab === 'dashboard' && window.DashboardModule) {
+        DashboardModule.loadStats(true);
+      }
+    });
+  },
+
+  // Tương thích ngược: Thay thế polling ngầm bằng 1 lần kiểm tra
+  startGlobalSosMonitor() {
+    this.refreshSosBadge();
   },
 
   // Khởi tạo mức thu nhỏ giao diện (Mặc định 80% theo yêu cầu)

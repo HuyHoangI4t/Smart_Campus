@@ -10,6 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
+        "CADisableMinimumFrameDurationOnPhone": true,
         "NSLocationWhenInUseUsageDescription": "Ứng dụng cần quyền truy cập vị trí để định vị bạn trên bản đồ.",
         "NSCameraUsageDescription": "Ứng dụng cần quyền truy cập máy ảnh.",
         "NSPhotoLibraryUsageDescription": "Ứng dụng cần quyền truy cập thư viện ảnh."
@@ -63,7 +64,8 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "./plugins/withHighRefreshRate"
     ],
     "experiments": {
       "typedRoutes": true,
