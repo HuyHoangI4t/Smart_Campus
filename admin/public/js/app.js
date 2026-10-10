@@ -1,5 +1,6 @@
 /**
  * Master App Controller - Quản trị hệ thống Đại Học Tây Nguyên
+ * Giao diện hiện đại Apex / SaaS Dashboard Template
  */
 
 // Helper an toàn tránh XSS
@@ -71,11 +72,102 @@ function formatCategory(cat) {
 const App = {
   currentTab: 'dashboard',
   confirmCallback: null,
+  sidebarMode: 'vertical', // 'vertical' hoặc 'detached'
+  currentZoom: '80%',
+  globalSosTimer: null,
+  lastKnownSosCount: null,
 
   init() {
     this.startClock();
+    this.initZoom();
+    this.initSidebarMode();
     this.checkAuth();
     this.bindGlobalEvents();
+    this.startGlobalSosMonitor();
+  },
+
+  // Giám sát cảnh báo SOS khẩn cấp ngầm trên toàn bộ hệ thống
+  startGlobalSosMonitor() {
+    if (this.globalSosTimer) clearInterval(this.globalSosTimer);
+    this.globalSosTimer = setInterval(async () => {
+      const token = AdminAPI.getToken();
+      if (!token) return;
+
+      try {
+        const res = await AdminAPI.getSosAlerts();
+        if (!res || !res.success) return;
+
+        const alerts = res.alerts || [];
+        const unresolved = alerts.filter(a => a.status !== 'Đã xử lý' && a.status !== 'Đã giải quyết');
+        const unresolvedCount = unresolved.length;
+
+        // Cập nhật huy hiệu trên thanh điều hướng sidebar
+        const badgeSosNav = document.getElementById('navBadgeSos');
+        if (badgeSosNav) {
+          if (unresolvedCount > 0) {
+            badgeSosNav.textContent = unresolvedCount;
+            badgeSosNav.classList.remove('hidden');
+            badgeSosNav.style.display = 'inline-flex';
+          } else {
+            badgeSosNav.classList.add('hidden');
+            badgeSosNav.style.display = 'none';
+          }
+        }
+
+        // Phát hiện cảnh báo SOS mới phát sinh thời gian thực
+        if (this.lastKnownSosCount !== null && unresolvedCount > this.lastKnownSosCount) {
+          if (window.DashboardModule && typeof window.DashboardModule.playAlertSound === 'function') {
+            window.DashboardModule.playAlertSound();
+          }
+          this.showToast(`🚨 CẢNH BÁO SOS: Có ${unresolvedCount - this.lastKnownSosCount} yêu cầu cứu trợ khẩn cấp mới!`, 'error');
+
+          // Nếu đang mở tab SOS, tự động làm mới danh sách bảng
+          if (this.currentTab === 'sos' && window.SosModule) {
+            SosModule.loadAlerts();
+          }
+        }
+        this.lastKnownSosCount = unresolvedCount;
+      } catch (e) {
+        // Silent error on background poll
+      }
+    }, 4000);
+  },
+
+  // Khởi tạo mức thu nhỏ giao diện (Mặc định 80% theo yêu cầu)
+  initZoom() {
+    const saved = localStorage.getItem('admin_ui_zoom') || '80%';
+    this.setZoom(saved, false);
+  },
+
+  setZoom(zoomVal, notify = true) {
+    this.currentZoom = zoomVal;
+    localStorage.setItem('admin_ui_zoom', zoomVal);
+
+    // Cập nhật thuộc tính zoom trên thẻ html
+    document.documentElement.style.zoom = zoomVal;
+    document.documentElement.className = document.documentElement.className
+      .replace(/zoom-\d+/g, '')
+      .trim();
+    document.documentElement.classList.add(`zoom-${zoomVal.replace('%', '')}`);
+
+    const label = document.getElementById('zoomLabel');
+    if (label) label.textContent = zoomVal;
+
+    if (notify) {
+      this.showToast(`Thu phóng giao diện: ${zoomVal}`, 'info');
+    }
+
+    // Tự động căn chỉnh lại bản đồ Leaflet nếu đang mở tab bản đồ
+    if (window.LocationsModule && window.LocationsModule.map) {
+      setTimeout(() => window.LocationsModule.map.invalidateSize(), 150);
+    }
+  },
+
+  cycleZoom() {
+    const levels = ['80%', '90%', '100%'];
+    const idx = levels.indexOf(this.currentZoom);
+    const next = levels[(idx + 1) % levels.length];
+    this.setZoom(next, true);
   },
 
   // Đồng hồ thời gian thực
@@ -89,6 +181,57 @@ const App = {
     };
     update();
     setInterval(update, 1000);
+  },
+
+  // Khởi tạo chế độ hiển thị Sidebar (Dọc vs Nổi)
+  initSidebarMode() {
+    const saved = localStorage.getItem('admin_sidebar_mode') || 'vertical';
+    this.sidebarMode = saved;
+    this.applySidebarMode();
+  },
+
+  toggleSidebarMode() {
+    this.sidebarMode = (this.sidebarMode === 'vertical') ? 'detached' : 'vertical';
+    localStorage.setItem('admin_sidebar_mode', this.sidebarMode);
+    this.applySidebarMode();
+    this.showToast(`Đã chuyển sang kiểu Sidebar: ${this.sidebarMode === 'detached' ? 'Nổi (Detached)' : 'Dọc (Vertical)'}`, 'info');
+  },
+
+  applySidebarMode() {
+    const layout = document.getElementById('mainLayout');
+    const tag = document.getElementById('sidebarModeTag');
+    if (layout) {
+      if (this.sidebarMode === 'detached') {
+        layout.classList.add('mode-detached');
+        if (tag) tag.textContent = 'Nổi';
+      } else {
+        layout.classList.remove('mode-detached');
+        if (tag) tag.textContent = 'Dọc';
+      }
+    }
+  },
+
+  // Điều khiển Mobile Sidebar Drawer
+  toggleMobileSidebar() {
+    const sidebar = document.getElementById('appSidebar');
+    const overlay = document.getElementById('mobileSidebarOverlay');
+    if (sidebar && overlay) {
+      const isOpen = sidebar.classList.contains('mobile-open');
+      if (isOpen) {
+        sidebar.classList.remove('mobile-open');
+        overlay.classList.add('hidden');
+      } else {
+        sidebar.classList.add('mobile-open');
+        overlay.classList.remove('hidden');
+      }
+    }
+  },
+
+  closeMobileSidebar() {
+    const sidebar = document.getElementById('appSidebar');
+    const overlay = document.getElementById('mobileSidebarOverlay');
+    if (sidebar) sidebar.classList.remove('mobile-open');
+    if (overlay) overlay.classList.add('hidden');
   },
 
   checkAuth() {
@@ -112,13 +255,60 @@ const App = {
     document.getElementById('loginView').classList.add('hidden');
     document.getElementById('mainView').classList.remove('hidden');
 
+    const displayName = user.ho_ten || user.fullName || user.email || 'Quản trị viên';
+    const displayEmail = user.email || 'admin@ttn.edu.vn';
+    const avatarUrl = user.avatar || 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTffzZtOfmsnGMh1O97etZoJGLvIZTQLuEwcT7BwgtIRQ&s=10';
+
     const nameEl = document.getElementById('headerAdminName');
     const emailEl = document.getElementById('headerAdminEmail');
-    if (nameEl) nameEl.textContent = user.ho_ten || user.fullName || user.email || 'Quản trị viên';
-    if (emailEl) emailEl.textContent = user.email || 'admin@ttn.edu.vn';
+    const sNameEl = document.getElementById('sidebarAdminName');
+    const sRoleEl = document.getElementById('sidebarAdminRole');
+    const headerAvatarEl = document.getElementById('headerAdminAvatar');
+    const sidebarAvatarEl = document.getElementById('sidebarAdminAvatar');
+
+    if (nameEl) nameEl.textContent = displayName;
+    if (emailEl) emailEl.textContent = displayEmail;
+    if (sNameEl) sNameEl.textContent = displayName;
+    if (sRoleEl) sRoleEl.textContent = user.role === 'admin' ? 'Quản Trị Viên Cấp Cao' : 'Cán Bộ Phụ Trách';
+    if (headerAvatarEl && avatarUrl) headerAvatarEl.src = avatarUrl;
+    if (sidebarAvatarEl && avatarUrl) sidebarAvatarEl.src = avatarUrl;
 
     // Khởi tạo tab mặc định
     this.switchTab('dashboard');
+
+    // Tự động tải avatar & thông tin mới nhất trực tiếp từ bảng users
+    this.fetchAdminProfile();
+  },
+
+  // Đồng bộ thông tin và avatar Admin mới nhất từ MySQL users table
+  async fetchAdminProfile() {
+    try {
+      const user = AdminAPI.getUser();
+      const mssv = (user && user.mssv) ? user.mssv : 'admin';
+      const res = await AdminAPI.request(`/api/auth/profile?mssv=${encodeURIComponent(mssv)}`);
+      if (res && res.success && res.profile) {
+        const p = res.profile;
+        const updatedUser = { ...(user || {}), ...p };
+        AdminAPI.setUser(updatedUser);
+
+        const headerAvatarEl = document.getElementById('headerAdminAvatar');
+        const sidebarAvatarEl = document.getElementById('sidebarAdminAvatar');
+        const sNameEl = document.getElementById('sidebarAdminName');
+        const nameEl = document.getElementById('headerAdminName');
+
+        if (p.avatar) {
+          if (headerAvatarEl) headerAvatarEl.src = p.avatar;
+          if (sidebarAvatarEl) sidebarAvatarEl.src = p.avatar;
+        }
+        if (p.ho_ten || p.fullName) {
+          const name = p.ho_ten || p.fullName;
+          if (sNameEl) sNameEl.textContent = name;
+          if (nameEl) nameEl.textContent = name;
+        }
+      }
+    } catch (e) {
+      // Bỏ qua lỗi mạng nền
+    }
   },
 
   async handleLogin(e) {
@@ -163,6 +353,11 @@ const App = {
       'Đăng xuất hệ thống',
       'Bạn có chắc chắn muốn đăng xuất khỏi Trang Quản Trị Web?',
       () => {
+        if (window.DashboardModule) DashboardModule.stopRealtime();
+        if (this.globalSosTimer) {
+          clearInterval(this.globalSosTimer);
+          this.globalSosTimer = null;
+        }
         AdminAPI.clearAuth();
         this.showToast('Đã đăng xuất', 'info');
         this.showAuthView();
@@ -171,9 +366,16 @@ const App = {
   },
 
   switchTab(tabId) {
+    const prevTab = this.currentTab;
     this.currentTab = tabId;
+    this.closeMobileSidebar();
 
-    // Cập nhật giao diện nút tab
+    // Dừng đồng bộ Realtime nếu rời khỏi tab Dashboard
+    if (prevTab === 'dashboard' && tabId !== 'dashboard' && window.DashboardModule) {
+      DashboardModule.stopRealtime();
+    }
+
+    // Cập nhật giao diện nút tab trên sidebar
     const tabs = ['dashboard', 'users', 'locations', 'notifications', 'feedback', 'sos'];
     tabs.forEach(t => {
       const btn = document.getElementById(`navbtn-${t}`);
@@ -181,9 +383,9 @@ const App = {
       
       if (btn) {
         if (t === tabId) {
-          btn.className = 'px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition bg-brand-800 text-white shadow-sm';
+          btn.classList.add('active');
         } else {
-          btn.className = 'px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition text-slate-600 hover:bg-slate-100';
+          btn.classList.remove('active');
         }
       }
 
@@ -198,7 +400,7 @@ const App = {
       }
     });
 
-    // Tải dữ liệu tương ứng cho tab
+    // Tải dữ liệu tương ứng cho từng tab
     if (tabId === 'dashboard') DashboardModule.init();
     if (tabId === 'users') UsersModule.init();
     if (tabId === 'locations') LocationsModule.init();
@@ -212,6 +414,42 @@ const App = {
   refreshCurrentTab() {
     this.showToast('Đang làm mới dữ liệu...', 'info');
     this.switchTab(this.currentTab);
+  },
+
+  handleGlobalSearch(e) {
+    if (e.key === 'Enter') {
+      const query = (e.target.value || '').trim().toLowerCase();
+      if (!query) return;
+
+      if (query.includes('dia diem') || query.includes('dia') || query.includes('phong') || query.includes('nha') || query.includes('ban do')) {
+        this.switchTab('locations');
+        const locSearch = document.getElementById('locationSearchInput');
+        if (locSearch) {
+          locSearch.value = query;
+          if (window.LocationsModule) {
+            LocationsModule.searchQuery = query;
+            LocationsModule.applyFilter();
+          }
+        }
+      } else if (query.includes('thong bao') || query.includes('tin')) {
+        this.switchTab('notifications');
+      } else if (query.includes('phan anh') || query.includes('y kien') || query.includes('gop y')) {
+        this.switchTab('feedback');
+      } else if (query.includes('sos') || query.includes('khan cap') || query.includes('cuu')) {
+        this.switchTab('sos');
+      } else {
+        // Mặc định tìm kiếm tài khoản sinh viên
+        this.switchTab('users');
+        const userSearch = document.getElementById('userSearchInput');
+        if (userSearch) {
+          userSearch.value = query;
+          if (window.UsersModule) {
+            UsersModule.searchQuery = query;
+            UsersModule.applyFilter();
+          }
+        }
+      }
+    }
   },
 
   showToast(message, type = 'info') {
@@ -267,6 +505,18 @@ const App = {
       if (e.target.classList && e.target.classList.contains('modal-overlay')) {
         const modal = e.target.closest('[id$="Modal"]');
         if (modal) closeModal(modal.id);
+      }
+    });
+
+    // Phím tắt Ctrl + K để focus vào ô tìm kiếm toàn cục
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        const searchInput = document.getElementById('globalSearchInput');
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select();
+        }
       }
     });
   }

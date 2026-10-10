@@ -91,6 +91,22 @@ router.get('/paths', campusController.getCampusPaths);
  *       200:
  *         description: Tóm tắt điểm GPA, ca học kế tiếp, thông báo mới và tiện ích nhanh
  */
+/**
+ * @swagger
+ * /api/campus/home/dashboard:
+ *   get:
+ *     summary: Lấy dữ liệu trang chủ ứng dụng di động (Đồng danh với /api/campus/dashboard)
+ *     tags: [Campus]
+ *     parameters:
+ *       - in: query
+ *         name: mssv
+ *         schema:
+ *           type: string
+ *           example: '23103023'
+ *     responses:
+ *       200:
+ *         description: Tóm tắt điểm GPA, ca học kế tiếp, thông báo mới và tiện ích nhanh
+ */
 router.get('/dashboard', campusController.getDashboard);
 router.get('/home/dashboard', campusController.getDashboard);
 
@@ -118,8 +134,59 @@ router.get('/feedback/config', campusController.getFeedbackConfig);
  */
 router.get('/sos/config', campusController.getSosConfig);
 
+/**
+ * @swagger
+ * /api/campus/notifications:
+ *   get:
+ *     summary: Lấy danh sách thông báo trường học (Dành cho ứng dụng Campus)
+ *     tags: [Campus]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *     responses:
+ *       200:
+ *         description: Danh sách thông báo
+ *   post:
+ *     summary: Tạo thông báo mới qua Campus API
+ *     tags: [Campus]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/NotificationRequest'
+ *     responses:
+ *       201:
+ *         description: Đã tạo thông báo thành công
+ */
 router.get('/notifications', generalController.getNotifications);
 router.post('/notifications', generalController.createNotification);
+
+/**
+ * @swagger
+ * /api/campus/notifications/{id}:
+ *   delete:
+ *     summary: Xóa thông báo theo ID qua Campus API
+ *     tags: [Campus]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *     responses:
+ *       200:
+ *         description: Đã xóa thông báo
+ */
 router.delete('/notifications/:id', generalController.deleteNotification);
 
 module.exports = router;

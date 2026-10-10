@@ -28,7 +28,7 @@ const TABLE_DEFINITIONS = {
   // 2. Bảng địa điểm bản đồ khuôn viên trường (37 điểm tòa nhà, phòng thi, phòng TN)
   map_locations: `
     CREATE TABLE IF NOT EXISTS map_locations (
-      id INT PRIMARY KEY,
+      id INT AUTO_INCREMENT PRIMARY KEY,
       name VARCHAR(255) NOT NULL,
       category VARCHAR(100) NOT NULL,
       building VARCHAR(100) NULL,
@@ -72,6 +72,8 @@ const TABLE_DEFINITIONS = {
       is_custom TINYINT(1) DEFAULT 0,
       ghi_chu VARCHAR(255) DEFAULT '',
       loai_lich VARCHAR(50) DEFAULT 'chinh_khoa',
+      week_range VARCHAR(100) DEFAULT NULL,
+      ngay_hoc VARCHAR(20) DEFAULT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_sched_mssv (mssv)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -272,6 +274,7 @@ async function createAllTables(connection) {
   await safeAddColumn(connection, 'student_schedules', 'ghi_chu', 'VARCHAR(255) DEFAULT ""');
   await safeAddColumn(connection, 'student_schedules', 'loai_lich', 'VARCHAR(50) DEFAULT "chinh_khoa"');
   await safeAddColumn(connection, 'student_schedules', 'week_range', 'VARCHAR(100) NULL');
+  await safeAddColumn(connection, 'student_schedules', 'ngay_hoc', 'VARCHAR(20) NULL');
 
   // Đảm bảo các chỉ mục tăng tốc truy vấn
   await safeAddIndex(connection, 'feedback', 'mssv', 'idx_feedback_mssv');
@@ -279,6 +282,7 @@ async function createAllTables(connection) {
   await safeAddIndex(connection, 'student_grades', 'mssv', 'idx_student_grades_mssv');
   await safeAddIndex(connection, 'student_schedules', 'mssv', 'idx_student_schedules_mssv');
   await safeAddIndex(connection, 'student_schedules', 'week_range', 'idx_sched_week_range');
+  await safeAddIndex(connection, 'student_schedules', 'ngay_hoc', 'idx_sched_ngay_hoc');
   await safeAddIndex(connection, 'news_cache', 'type', 'idx_news_cache_type');
   await safeAddIndex(connection, 'activity_logs', 'created_at', 'idx_act_created');
 }

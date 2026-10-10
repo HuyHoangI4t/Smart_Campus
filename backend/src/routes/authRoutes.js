@@ -130,6 +130,23 @@ router.post('/logout', authController.logout);
  *         description: Thành công
  */
 router.get('/me', authController.getMe);
+
+/**
+ * @swagger
+ * /api/auth/profile:
+ *   get:
+ *     summary: Lấy hồ sơ tài khoản cá nhân (Đồng danh với /api/auth/me)
+ *     tags: [Auth]
+ *     parameters:
+ *       - in: query
+ *         name: mssv
+ *         schema:
+ *           type: string
+ *           example: '23103023'
+ *     responses:
+ *       200:
+ *         description: Thông tin chi tiết người dùng
+ */
 router.get('/profile', authController.getMe);
 
 /**

@@ -33,9 +33,17 @@ app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
-// Ghi nhận lượt tương tác hệ thống vào MySQL (phục vụ biểu đồ Dashboard thống kê thời gian thực)
+// Ghi nhận lượt tương tác của sinh viên / người dùng ứng dụng di động vào MySQL
 app.use((req, res, next) => {
-  if (req.path.startsWith('/api') && !req.path.includes('/health') && req.method !== 'OPTIONS') {
+  const isApi = req.path.startsWith('/api');
+  // LOẠI TRỪ HOÀN TOÀN: các API quản trị Admin, health check, cron job nội bộ
+  const isInternal = req.path.startsWith('/api/admin') ||
+                     req.path.startsWith('/api/health') ||
+                     req.path.startsWith('/api/cron') ||
+                     req.path.includes('/swagger') ||
+                     req.path.includes('/api-docs');
+
+  if (isApi && !isInternal && req.method !== 'OPTIONS') {
     const mssv = req.headers['x-mssv'] || 'guest';
     const action = `${req.method} ${req.path.slice(0, 60)}`;
     db.query('INSERT INTO activity_logs (action, mssv, ip_address) VALUES (?, ?, ?)', [

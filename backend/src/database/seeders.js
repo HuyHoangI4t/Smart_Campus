@@ -57,7 +57,9 @@ async function seedMapLocations(conn, options = {}) {
   const [existing] = await connection.query('SELECT COUNT(*) as total FROM map_locations');
   const count = existing[0]?.total || 0;
 
-  if (count < TAY_NGUYEN_CAMPUS_LOCATIONS.length || force) {
+  // CHỈ nạp dữ liệu khi bảng hoàn toàn trống (count === 0) hoặc khi có yêu cầu khôi phục thủ công (force = true).
+  // Tuyệt đối KHÔNG tự động nạp lại khi restart backend để bảo vệ các chỉnh sửa tọa độ của Quản trị viên.
+  if (count === 0 || force) {
     if (force) {
       await connection.query('DELETE FROM map_locations');
     }
@@ -213,6 +215,9 @@ async function seedSampleActivityLogs(conn, options = {}) {
     for (let day = 0; day < 7; day++) {
       const targetDate = new Date(monday);
       targetDate.setDate(monday.getDate() + day);
+      // Không tạo dữ liệu cho các ngày tương lai chưa diễn ra
+      if (targetDate > now) continue;
+
       const dayKey = toDateKey(targetDate);
       const totalForDay = countsPerDay[day];
 
@@ -240,15 +245,65 @@ async function seedSampleActivityLogs(conn, options = {}) {
 }
 
 /**
- * 6. Chạy toàn bộ các seeder
+ * 6. Seed dữ liệu cảnh báo cứu hộ SOS mẫu cho tuần hiện tại (nếu bảng trống)
+ * @param {import('mysql2/promise').Connection|import('mysql2/promise').Pool} conn
+ */
+async function seedSampleSosAlerts(conn, options = {}) {
+  const connection = conn || pool;
+  const { force = false } = options;
+  const [existing] = await connection.query('SELECT COUNT(*) as total FROM sos_alerts');
+  const count = existing[0]?.total || 0;
+
+  if (count === 0 || force) {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const distToMon = (dayOfWeek + 6) % 7;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - distToMon);
+
+    const pad = (n) => String(n).padStart(2, '0');
+    const toDateKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    const sampleSos = [
+      { dayOffset: 0, mssv: '21103001', location: 'Nhà thi đấu TDTT', message: 'Trượt chân ngã trật khớp cổ chân khi đá bóng, cần hỗ trợ y tế', incident_type: 'Y tế / Tai nạn', status: 'Đã xử lý' },
+      { dayOffset: 0, mssv: '21103015', location: 'Toà nhà C - Tầng 3', message: 'Kẹt cửa thang máy toà C tầng 3, có 4 sinh viên bên trong', incident_type: 'Sự cố hạ tầng', status: 'Đã xử lý' },
+      { dayOffset: 1, mssv: '22103042', location: 'Thư viện trung tâm - Tầng 2', message: 'Sinh viên bị hạ đường huyết ngất xỉu tại bàn học', incident_type: 'Y tế / Cấp cứu', status: 'Đã xử lý' },
+      { dayOffset: 2, mssv: '21103088', location: 'Khu tự học Nhà B', message: 'Phát hiện khói và mùi khét bốc lên từ ổ cắm điện máy chiếu', incident_type: 'Cháy nổ / An toàn', status: 'Đã xử lý' },
+      { dayOffset: 2, mssv: '23103011', location: 'Khuôn viên hồ nước', message: 'Để quên ba lô có laptop và giấy tờ trên ghế đá, cần check camera', incident_type: 'An ninh trật tự', status: 'Đang xử lý' },
+      { dayOffset: 2, mssv: '21103001', location: 'Nhà xe sinh viên cổng 2', message: 'Bị rơi chìa khóa xe máy xuống cống thoát nước', incident_type: 'Khẩn cấp khác', status: 'Đã xử lý' },
+      { dayOffset: 3, mssv: '22103042', location: 'Giảng đường A1 - Phòng 204', message: 'Đèn trần bị chập nổ tia lửa điện nguy hiểm', incident_type: 'Sự cố hạ tầng', status: 'Đã xử lý' },
+      { dayOffset: 4, mssv: '21103015', location: 'Sân bóng rổ ngoài trời', message: 'Xô xát to tiếng giữa nhóm sinh viên, cần bảo vệ can thiệp', incident_type: 'An ninh trật tự', status: 'Đã xử lý' },
+      { dayOffset: 4, mssv: '21103088', location: 'Ký túc xá B4 - Phòng 302', message: 'Bị kẹt khóa cửa phòng không ra ngoài được để đi thi', incident_type: 'Khẩn cấp khác', status: 'Đang xử lý' },
+      { dayOffset: 5, mssv: '23103011', location: 'Căn tin trung tâm', message: 'Dị ứng thực phẩm nổi mề đay khó thở, cần chuyển trạm y tế', incident_type: 'Y tế / Cấp cứu', status: 'Đã xử lý' }
+    ];
+
+    for (const item of sampleSos) {
+      const sosDate = new Date(monday);
+      sosDate.setDate(monday.getDate() + item.dayOffset);
+      if (sosDate > now) continue; // Bỏ qua nếu là ngày tương lai
+
+      const timeStr = `${toDateKey(sosDate)} 10:${pad(15 + item.dayOffset * 3)}:00`;
+      await connection.query(
+        'INSERT INTO sos_alerts (mssv, location, message, incident_type, status, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        [item.mssv, item.location, item.message, item.incident_type, item.status, timeStr]
+      );
+    }
+    console.log(`✔ [Seeder] Đã nạp ${sampleSos.length} bản ghi cảnh báo SOS mẫu cho tuần hiện tại.`);
+    return sampleSos.length;
+  }
+  return count;
+}
+
+/**
+ * 7. Chạy toàn bộ các seeder hệ thống ban đầu
+ * (Chỉ nạp tài khoản Admin quản trị và dữ liệu bản đồ địa điểm thực tế, KHÔNG nạp dữ liệu mẫu)
  * @param {import('mysql2/promise').Connection|import('mysql2/promise').Pool} connection
  */
 async function runAllSeeders(connection) {
   await seedAdminUser(connection);
   await seedMapLocations(connection);
   await seedCampusPaths(connection);
-  await seedSampleFeedback(connection);
-  await seedSampleActivityLogs(connection);
+  // Không tự động nạp dữ liệu mẫu (feedback, activity logs, sos alerts)
 }
 
 module.exports = {
@@ -257,6 +312,7 @@ module.exports = {
   seedCampusPaths,
   seedSampleFeedback,
   seedSampleActivityLogs,
+  seedSampleSosAlerts,
   runAllSeeders,
 };
 

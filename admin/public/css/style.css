@@ -1,72 +1,238 @@
 /* ==========================================================================
    Admin Portal Stylesheet - Truong Dai Hoc Tay Nguyen
+   SaaS Modern Dashboard Template Style (Apex / Adminto / Sneat Aesthetic)
    ========================================================================== */
 
 :root {
-  --brand-50: #F0F4FE;
-  --brand-100: #D9E3FC;
-  --brand-500: #2563EB;
-  --brand-800: #132F73;
-  --brand-900: #0C1E4A;
+  --brand-50: #EFF6FF;
+  --brand-100: #DBEAFE;
+  --brand-200: #BFDBFE;
+  --brand-500: #3B82F6;
+  --brand-600: #2563EB;
+  --brand-700: #1D4ED8;
+  --brand-800: #1E40AF;
+  --brand-900: #1E3A8A;
+  
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 76px;
+  --topbar-height: 70px;
+  --bg-main: #F4F7FC;
+}
+
+html {
+  zoom: 80%;
+}
+
+html.zoom-80 {
+  zoom: 80%;
+}
+
+html.zoom-90 {
+  zoom: 90%;
+}
+
+html.zoom-100 {
+  zoom: 100%;
 }
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-main);
+  color: #1E293B;
 }
 
-/* Glassmorphism & Header */
-.glass-header {
-  background: rgba(19, 47, 115, 0.96);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+/* ==========================================================================
+   LAYOUT CONTAINERS (Vertical & Detached Sidebar)
+   ========================================================================== */
+
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--bg-main);
+  position: relative;
+  overflow-x: hidden;
 }
 
-.glass-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(8px);
+/* 1. Standard Vertical Sidebar */
+.app-sidebar {
+  width: var(--sidebar-width);
+  background: #FFFFFF;
+  border-right: 1px solid #E2E8F0;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 50;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 2. Detached Sidebar Mode */
+.app-layout.mode-detached {
+  padding: 1rem;
+  gap: 1rem;
+}
+
+.app-layout.mode-detached .app-sidebar {
+  top: 1rem;
+  bottom: 1rem;
+  left: 1rem;
+  height: calc(100vh - 2rem);
+  border-radius: 1.5rem;
   border: 1px solid #E2E8F0;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05), 0 8px 10px -6px rgba(15, 23, 42, 0.03);
 }
 
-/* Custom Scrollbar */
-.custom-scroll::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-.custom-scroll::-webkit-scrollbar-track {
-  background: #F1F5F9;
-  border-radius: 4px;
-}
-.custom-scroll::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
-  border-radius: 4px;
-}
-.custom-scroll::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+.app-layout.mode-detached .app-main-content {
+  margin-left: calc(var(--sidebar-width) + 1rem);
 }
 
-/* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+.app-layout.mode-detached .app-topbar {
+  margin-bottom: 1rem;
+  border-radius: 1.25rem;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 4px 15px -3px rgba(15, 23, 42, 0.04);
 }
 
-@keyframes pulseRed {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
-  50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+/* Main Content Area */
+.app-main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-left: var(--sidebar-width);
+  min-width: 0;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+/* Mobile Sidebar Drawer */
+@media (max-width: 1024px) {
+  .app-sidebar {
+    transform: translateX(-100%);
+  }
+  .app-sidebar.mobile-open {
+    transform: translateX(0);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  }
+  .app-main-content {
+    margin-left: 0 !important;
+  }
+  .app-layout.mode-detached {
+    padding: 0.5rem;
+  }
 }
 
-.sos-pulse {
-  animation: pulseRed 2s infinite;
+/* Overlay for Mobile Drawer */
+#mobileSidebarOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 45;
+  transition: opacity 0.2s;
 }
 
-/* Table Utilities */
+/* ==========================================================================
+   SIDEBAR NAVIGATION ELEMENTS
+   ========================================================================== */
+
+.nav-section-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94A3B8;
+  padding: 0.75rem 1rem 0.35rem 1rem;
+}
+
+.nav-link-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.85rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #64748B;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: left;
+  border: 1px solid transparent;
+}
+
+.nav-link-btn:hover {
+  background-color: #F8FAFC;
+  color: #1E293B;
+}
+
+.nav-link-btn.active {
+  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+  color: #FFFFFF !important;
+  box-shadow: 0 8px 16px -4px rgba(37, 99, 235, 0.3);
+}
+
+.nav-link-btn.active svg {
+  color: #FFFFFF !important;
+}
+
+.nav-link-btn.active .nav-badge-count {
+  background-color: rgba(255, 255, 255, 0.25) !important;
+  color: #FFFFFF !important;
+}
+
+/* ==========================================================================
+   TOPBAR
+   ========================================================================== */
+
+.app-topbar {
+  height: var(--topbar-height);
+  background: #FFFFFF;
+  border-bottom: 1px solid #E2E8F0;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+/* ==========================================================================
+   KPI CARDS WITH RING INDICATOR (Matching Apex Template)
+   ========================================================================== */
+
+.kpi-card {
+  background: #FFFFFF;
+  border-radius: 1.25rem;
+  border: 1px solid #E2E8F0;
+  padding: 1.25rem;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.02);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -5px rgba(15, 23, 42, 0.06);
+  border-color: #CBD5E1;
+}
+
+.kpi-ring {
+  width: 44px;
+  height: 44px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ==========================================================================
+   DATA TABLES & BADGES
+   ========================================================================== */
+
 .admin-table th {
   letter-spacing: 0.05em;
   font-size: 0.72rem;
@@ -75,7 +241,7 @@ body {
   color: #64748B;
   background-color: #F8FAFC;
   border-bottom: 1px solid #E2E8F0;
-  padding: 0.75rem 1rem;
+  padding: 0.85rem 1rem;
 }
 
 .admin-table td {
@@ -89,7 +255,6 @@ body {
   background-color: #F8FAFC;
 }
 
-/* Badge Styles */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -124,6 +289,45 @@ body {
   border: 1px solid #A7F3D0;
 }
 
+/* ==========================================================================
+   SCROLLBAR & UTILITIES
+   ========================================================================== */
+
+.custom-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scroll::-webkit-scrollbar-track {
+  background: #F1F5F9;
+  border-radius: 4px;
+}
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseRed {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+  50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.sos-pulse {
+  animation: pulseRed 2s infinite;
+}
+
 /* Toast Container */
 #toastContainer {
   position: fixed;
@@ -148,45 +352,10 @@ body {
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
   border: 1px solid #E2E8F0;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  transform: translateX(100%);
-  opacity: 0;
 }
 
-.toast.show {
-  transform: translateX(0);
-  opacity: 1;
-}
-
-/* Modal Transitions */
 .modal-overlay {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(15, 23, 42, 0.5);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
 }
-
-.modal-content {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
-}
-
-/* Leaflet Custom Map Styles */
-.leaflet-popup-content-wrapper {
-  border-radius: 1rem !important;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
-  border: 1px solid #E2E8F0 !important;
-  padding: 0.25rem !important;
-}
-
-.leaflet-popup-tip {
-  background: #FFFFFF !important;
-}
-
-.custom-campus-marker {
-  background: transparent !important;
-  border: none !important;
-}
-
-.picker-pin {
-  background: transparent !important;
-  border: none !important;
-}
-

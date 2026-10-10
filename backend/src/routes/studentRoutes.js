@@ -57,6 +57,19 @@ router.post('/grades', studentController.getGrades);
  *     responses:
  *       200:
  *         description: Trả về bảng điểm
+ *   post:
+ *     summary: Lấy bảng điểm theo MSSV trên URL (phương thức POST)
+ *     tags: [Student]
+ *     parameters:
+ *       - in: path
+ *         name: mssv
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: '23103023'
+ *     responses:
+ *       200:
+ *         description: Trả về bảng điểm
  */
 router.get('/grades/:mssv', studentController.getGrades);
 router.post('/grades/:mssv', studentController.getGrades);
@@ -173,6 +186,19 @@ router.post('/schedule', studentController.getSchedule);
  *     responses:
  *       200:
  *         description: Danh sách thời khóa biểu
+ *   post:
+ *     summary: Lấy thời khóa biểu theo MSSV trên URL (phương thức POST)
+ *     tags: [Student]
+ *     parameters:
+ *       - in: path
+ *         name: mssv
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: '23103023'
+ *     responses:
+ *       200:
+ *         description: Danh sách thời khóa biểu
  */
 router.get('/schedule/:mssv', studentController.getSchedule);
 router.post('/schedule/:mssv', studentController.getSchedule);
@@ -192,6 +218,31 @@ router.post('/schedule/:mssv', studentController.getSchedule);
  *     responses:
  *       200:
  *         description: Thông tin chi tiết sinh viên (họ tên, email, lớp, khoa, ảnh đại diện)
+ */
+router.get('/profile', studentController.getProfile);
+
+/**
+ * @swagger
+ * /api/student/profile/{mssv}:
+ *   get:
+ *     summary: Lấy hồ sơ sinh viên theo MSSV trên đường dẫn
+ *     tags: [Student]
+ *     parameters:
+ *       - in: path
+ *         name: mssv
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: '23103023'
+ *     responses:
+ *       200:
+ *         description: Thông tin hồ sơ sinh viên
+ */
+router.get('/profile/:mssv', studentController.getProfile);
+
+/**
+ * @swagger
+ * /api/student/profile:
  *   put:
  *     summary: Cập nhật thông tin hồ sơ sinh viên (Email, số điện thoại, ảnh avatar)
  *     tags: [Student]
@@ -218,26 +269,6 @@ router.post('/schedule/:mssv', studentController.getSchedule);
  *       200:
  *         description: Cập nhật thành công
  */
-router.get('/profile', studentController.getProfile);
-
-/**
- * @swagger
- * /api/student/profile/{mssv}:
- *   get:
- *     summary: Lấy hồ sơ sinh viên theo MSSV trên đường dẫn
- *     tags: [Student]
- *     parameters:
- *       - in: path
- *         name: mssv
- *         required: true
- *         schema:
- *           type: string
- *           example: '23103023'
- *     responses:
- *       200:
- *         description: Thông tin hồ sơ sinh viên
- */
-router.get('/profile/:mssv', studentController.getProfile);
 router.put('/profile', studentController.updateProfile);
 
 module.exports = router;

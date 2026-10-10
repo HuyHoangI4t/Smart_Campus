@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -24,6 +24,7 @@ import {
   apiCreateCustomSchedule,
   apiUpdateCustomSchedule,
   apiDeleteCustomSchedule,
+  CustomSchedulePayload,
 } from "../../../src/services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTabBarScrollHandler } from "../../../src/components/MainTabs";
@@ -55,6 +56,14 @@ interface AvailableWeekItem {
   schedules?: ScheduleItem[];
 }
 
+interface WeekDateItem {
+  num: number;
+  label: string;
+  dateStr: string;
+  dateShort: string;
+  dateObj: Date;
+}
+
 interface ScheduleItem {
   id: string | number;
   course: string;
@@ -67,6 +76,10 @@ interface ScheduleItem {
   isCustom?: boolean;
   note?: string;
   type?: string;
+  date?: string;
+  dateShort?: string;
+  ngay_hoc?: string;
+  week_range?: string;
   direction?: RoomDirectionInfo;
 }
 
@@ -236,6 +249,60 @@ const getTodayDayNum = () => {
   return jsDay === 0 ? 1 : jsDay + 1; // 1: CN, 2: T2, 3: T3, 4: T4...
 };
 
+function parseWeekRangeDates(rangeText: string) {
+  if (!rangeText) return { startDate: null, endDate: null };
+  const match = rangeText.match(/Từ ngày\s+(\d{1,2})\/(\d{1,2})\/(\d{4})\s+đến ngày\s+(\d{1,2})\/(\d{1,2})\/(\d{4})/i);
+  if (!match) return { startDate: null, endDate: null };
+  const [_, sD, sM, sY, eD, eM, eY] = match;
+  const startDate = new Date(Number(sY), Number(sM) - 1, Number(sD), 0, 0, 0);
+  const endDate = new Date(Number(eY), Number(eM) - 1, Number(eD), 23, 59, 59, 999);
+  return { startDate, endDate };
+}
+
+function formatDateVN(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
+function formatDateShort(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
+}
+
+function parseDateVN(str: string): Date | null {
+  if (!str) return null;
+  const s = str.trim();
+  const m1 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m1) {
+    return new Date(Number(m1[3]), Number(m1[2]) - 1, Number(m1[1]), 12, 0, 0);
+  }
+  const m2 = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m2) {
+    return new Date(Number(m2[1]), Number(m2[2]) - 1, Number(m2[3]), 12, 0, 0);
+  }
+  return null;
+}
+
+function getDayNumFromDate(d: Date): number {
+  const jsDay = d.getDay();
+  return jsDay === 0 ? 1 : jsDay + 1; // 1: CN, 2: T2, 3: T3, ... 7: T7
+}
+
+function getDayLabelFromDate(d: Date): string {
+  const num = getDayNumFromDate(d);
+  return num === 1 ? "Chủ nhật" : `Thứ ${num}`;
+}
+
+function getWeekRangeFromDate(d: Date): string {
+  const jsDay = d.getDay();
+  const distToMon = (jsDay + 6) % 7;
+  const mon = new Date(d);
+  mon.setDate(d.getDate() - distToMon);
+  const sun = new Date(mon);
+  sun.setDate(mon.getDate() + 6);
+  return `Từ ngày ${formatDateVN(mon)} đến ngày ${formatDateVN(sun)}`;
+}
+
 export default function ScheduleScreen() {
   const router = useRouter();
   const { onScroll: onTabBarScroll, bottomPadding } = useTabBarScrollHandler();
@@ -255,7 +322,7 @@ export default function ScheduleScreen() {
   const [isOfflineData, setIsOfflineData] = useState(false);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
 
-  // States cho CRUD lịch học thủ công / thực hành đột xuất
+  // States cho CRUD lịch học thủ công / thực hành đột xuất có ngày cụ thể
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | number | null>(null);
@@ -264,6 +331,8 @@ export default function ScheduleScreen() {
   const [formCourse, setFormCourse] = useState("");
   const [formType, setFormType] = useState<"dot_xuat" | "hoc_bu" | "kiem_tra" | "khac">("dot_xuat");
   const [formDayNum, setFormDayNum] = useState<number>(todayDayNum);
+  const [formDate, setFormDate] = useState("");
+  const [formWeekRange, setFormWeekRange] = useState("");
   const [formTime, setFormTime] = useState("Tiết 7-10");
   const [formRoom, setFormRoom] = useState("");
   const [formLecturer, setFormLecturer] = useState("");
@@ -272,12 +341,49 @@ export default function ScheduleScreen() {
   const [periodDropdownOpen, setPeriodDropdownOpen] = useState(false);
   const [isCustomTime, setIsCustomTime] = useState(false);
 
+  // Danh sách các ngày trong tuần đang xem kèm ngày tháng cụ thể (DD/MM)
+  const weekDates = useMemo<WeekDateItem[]>(() => {
+    const { startDate } = parseWeekRangeDates(weekRangeText);
+    if (!startDate) {
+      const now = new Date();
+      const jsDay = now.getDay();
+      const distToMon = (jsDay + 6) % 7;
+      const mon = new Date(now);
+      mon.setDate(now.getDate() - distToMon);
+      return [2, 3, 4, 5, 6, 7, 1].map((num, idx) => {
+        const d = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + idx);
+        return {
+          num,
+          label: num === 1 ? "CN" : `Thứ ${num}`,
+          dateStr: formatDateVN(d),
+          dateShort: formatDateShort(d),
+          dateObj: d,
+        };
+      });
+    }
+    return [2, 3, 4, 5, 6, 7, 1].map((num, idx) => {
+      const d = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + idx);
+      return {
+        num,
+        label: num === 1 ? "CN" : `Thứ ${num}`,
+        dateStr: formatDateVN(d),
+        dateShort: formatDateShort(d),
+        dateObj: d,
+      };
+    });
+  }, [weekRangeText]);
+
   const resetForm = (targetDay?: number) => {
     setIsEditing(false);
     setEditingId(null);
     setFormCourse("");
     setFormType("dot_xuat");
-    setFormDayNum(targetDay || selectedDay);
+    const target = targetDay || selectedDay;
+    setFormDayNum(target);
+    const matchedDate = weekDates.find((w) => w.num === target);
+    const initDate = matchedDate ? matchedDate.dateStr : formatDateVN(new Date());
+    setFormDate(initDate);
+    setFormWeekRange(weekRangeText);
     setFormTime("Tiết 7-10");
     setFormRoom("");
     setFormLecturer("");
@@ -298,6 +404,9 @@ export default function ScheduleScreen() {
     setFormCourse(item.course);
     setFormType((item.type as any) || "dot_xuat");
     setFormDayNum(item.dayNum);
+    const matchedDate = weekDates.find((w) => w.num === item.dayNum);
+    setFormDate(item.date || item.ngay_hoc || (matchedDate ? matchedDate.dateStr : formatDateVN(new Date())));
+    setFormWeekRange(item.week_range || weekRangeText);
     setFormTime(item.time || "Tiết 7-10");
     setFormRoom(item.room);
     setFormLecturer(item.lecturer || "");
@@ -307,6 +416,23 @@ export default function ScheduleScreen() {
     const matchedPreset = PERIOD_OPTIONS.some((p) => p.label === item.time);
     setIsCustomTime(!matchedPreset && !!item.time);
     setModalVisible(true);
+  };
+
+  const handleSelectDate = (dateStr: string) => {
+    setFormDate(dateStr);
+    const parsed = parseDateVN(dateStr);
+    if (parsed) {
+      const computedDayNum = getDayNumFromDate(parsed);
+      setFormDayNum(computedDayNum);
+      const computedWeek = getWeekRangeFromDate(parsed);
+      setFormWeekRange(computedWeek);
+    }
+  };
+
+  const handleShiftDate = (daysOffset: number) => {
+    const cur = parseDateVN(formDate) || new Date();
+    const next = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + daysOffset);
+    handleSelectDate(formatDateVN(next));
   };
 
   const handleSaveSchedule = async () => {
@@ -320,11 +446,12 @@ export default function ScheduleScreen() {
     }
 
     const dayObj = DAYS.find((d) => d.num === formDayNum) || DAYS[0];
-    const thuStr = dayObj.label;
+    const thuStr = dayObj.num === 1 ? "CN" : dayObj.label;
+    const cleanDate = formDate.trim();
 
     setSubmitting(true);
     try {
-      const payload = {
+      const payload: CustomSchedulePayload = {
         ten_hp: formCourse.trim(),
         thu: thuStr,
         tiet: formTime.trim(),
@@ -332,6 +459,8 @@ export default function ScheduleScreen() {
         giang_vien: formLecturer.trim(),
         ghi_chu: formNote.trim(),
         loai_lich: formType,
+        ngay_hoc: cleanDate || undefined,
+        week_range: formWeekRange || undefined,
       };
 
       if (isEditing && editingId !== null) {
@@ -349,6 +478,10 @@ export default function ScheduleScreen() {
               lecturer: formLecturer.trim() || "Chưa có GV",
               note: formNote.trim(),
               type: formType,
+              date: cleanDate,
+              dateShort: cleanDate ? cleanDate.substring(0, 5) : undefined,
+              ngay_hoc: cleanDate,
+              week_range: formWeekRange,
               direction: parseRoomDirections(formRoom.trim()),
             };
           }
@@ -356,7 +489,7 @@ export default function ScheduleScreen() {
         });
         setScheduleList(updatedList);
         setSelectedDay(formDayNum);
-        Alert.alert("Thành công", "Đã cập nhật lịch học.");
+        Alert.alert("Thành công", `Đã cập nhật lịch học ngày ${cleanDate || thuStr}.`);
       } else {
         const res = await apiCreateCustomSchedule(payload);
         const newId = res?.data?.id || `custom-${Date.now()}`;
@@ -372,12 +505,31 @@ export default function ScheduleScreen() {
           isCustom: true,
           note: formNote.trim(),
           type: formType,
+          date: cleanDate,
+          dateShort: cleanDate ? cleanDate.substring(0, 5) : undefined,
+          ngay_hoc: cleanDate,
+          week_range: formWeekRange,
           direction: parseRoomDirections(formRoom.trim()),
         };
-        const newList = [...scheduleList, newItem];
-        setScheduleList(newList);
-        setSelectedDay(formDayNum);
-        Alert.alert("Thành công", `Đã thêm lịch vào ${thuStr}.`);
+
+        // Kiểm tra xem ngày thêm có thuộc tuần đang xem hay không
+        const range = parseWeekRangeDates(weekRangeText);
+        const targetD = parseDateVN(cleanDate);
+        const isInsideCurrentWeek = targetD && range.startDate && range.endDate
+          ? (targetD >= range.startDate && targetD <= range.endDate)
+          : true;
+
+        if (isInsideCurrentWeek) {
+          const newList = [...scheduleList, newItem];
+          setScheduleList(newList);
+          setSelectedDay(formDayNum);
+          Alert.alert("Thành công", `Đã thêm lịch vào ${thuStr}, ngày ${cleanDate}.`);
+        } else {
+          Alert.alert(
+            "Đã thêm lịch học",
+            `Lịch học đã được lưu thành công vào ngày ${cleanDate} (${formWeekRange}). Bạn có thể chuyển sang tuần tương ứng để theo dõi.`
+          );
+        }
       }
 
       setModalVisible(false);
@@ -684,20 +836,25 @@ export default function ScheduleScreen() {
         </View>
       )}
 
-      <View style={{ paddingVertical: 12, backgroundColor: AppColors.cardBg, borderBottomWidth: 1, borderColor: AppColors.cardBorder }}>
+      <View style={{ paddingVertical: 10, backgroundColor: AppColors.cardBg, borderBottomWidth: 1, borderColor: AppColors.cardBorder }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
           {DAYS.map((d) => {
             const isSelected = d.num === selectedDay;
-            const isToday = d.num === todayDayNum;
+            const isToday = d.num === todayDayNum && (selectedWeekIndex === currentWeekIndex);
+            const matchedDate = weekDates.find((w) => w.num === d.num);
+            const dateShort = matchedDate?.dateShort;
             return (
               <TouchableOpacity
                 key={d.num}
                 onPress={() => setSelectedDay(d.num)}
                 activeOpacity={0.7}
                 style={{
-                  paddingVertical: 8,
-                  paddingHorizontal: 16,
-                  borderRadius: 20,
+                  paddingVertical: 6,
+                  paddingHorizontal: 14,
+                  borderRadius: 16,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minWidth: 54,
                   backgroundColor: isSelected
                     ? AppColors.primary
                     : isToday
@@ -718,8 +875,24 @@ export default function ScheduleScreen() {
                       : AppColors.textSecondary,
                   }}
                 >
-                  {d.label}{isToday ? "" : ""}
+                  {d.label}
                 </Text>
+                {dateShort && (
+                  <Text
+                    style={{
+                      fontSize: 10,
+                      fontWeight: "600",
+                      marginTop: 1,
+                      color: isSelected
+                        ? "rgba(255, 255, 255, 0.85)"
+                        : isToday
+                        ? AppColors.primary
+                        : AppColors.textMuted,
+                    }}
+                  >
+                    {dateShort}
+                  </Text>
+                )}
               </TouchableOpacity>
             );
           })}
@@ -910,6 +1083,12 @@ export default function ScheduleScreen() {
                     {item.isCustom && (
                       <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: "#F1F5F9" }}>
                         <Text style={{ fontSize: 10, color: "#64748B", fontWeight: "600" }}>Tự thêm</Text>
+                      </View>
+                    )}
+                    {(item.date || item.ngay_hoc) && (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: "#EFF6FF" }}>
+                        <Feather name="calendar" size={10} color={AppColors.primary} />
+                        <Text style={{ fontSize: 10, color: AppColors.primary, fontWeight: "600" }}>{item.date || item.ngay_hoc}</Text>
                       </View>
                     )}
                   </View>
@@ -1217,6 +1396,131 @@ export default function ScheduleScreen() {
                 </View>
               </View>
 
+              {/* Ô CHỌN NGÀY HỌC RÕ RÀNG TRÁNH LẪN LỘN GIỮA CÁC TUẦN */}
+              <View
+                style={{
+                  backgroundColor: "#F8FAFC",
+                  borderRadius: 16,
+                  padding: 14,
+                  borderWidth: 1,
+                  borderColor: AppColors.cardBorder,
+                  gap: 10,
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1, marginRight: 6 }}>
+                    <View
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 10,
+                        backgroundColor: "#EEF2FF",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Feather name="calendar" size={16} color={AppColors.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text }}>
+                        Ngày học <Text style={{ color: "#EF4444" }}>*</Text>
+                      </Text>
+                      <Text style={{ fontSize: 11, color: AppColors.textMuted }} numberOfLines={1}>
+                        {formDate ? (() => {
+                          const p = parseDateVN(formDate);
+                          return p ? `${getDayLabelFromDate(p)}, ngày ${formDate}` : formDate;
+                        })() : "Chọn ngày diễn ra ca học"}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Nút lùi / hôm nay / tiến ngày */}
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                    <TouchableOpacity
+                      onPress={() => handleShiftDate(-1)}
+                      activeOpacity={0.7}
+                      style={{ padding: 6, borderRadius: 8, backgroundColor: "#EDF2F7" }}
+                    >
+                      <Feather name="chevron-left" size={14} color={AppColors.textSecondary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleSelectDate(formatDateVN(new Date()))}
+                      activeOpacity={0.7}
+                      style={{ paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, backgroundColor: "#EDF2F7" }}
+                    >
+                      <Text style={{ fontSize: 11, fontWeight: "700", color: AppColors.textSecondary }}>Hôm nay</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleShiftDate(1)}
+                      activeOpacity={0.7}
+                      style={{ padding: 6, borderRadius: 8, backgroundColor: "#EDF2F7" }}
+                    >
+                      <Feather name="chevron-right" size={14} color={AppColors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Thanh chọn nhanh 7 ngày trong tuần */}
+                <View>
+                  <Text style={{ fontSize: 11, fontWeight: "600", color: AppColors.textMuted, marginBottom: 6 }}>
+                    Chọn nhanh các ngày trong tuần:
+                  </Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                    {weekDates.map((w) => {
+                      const isSel = formDate === w.dateStr;
+                      return (
+                        <TouchableOpacity
+                          key={w.num}
+                          onPress={() => handleSelectDate(w.dateStr)}
+                          activeOpacity={0.7}
+                          style={{
+                            paddingVertical: 6,
+                            paddingHorizontal: 10,
+                            borderRadius: 10,
+                            backgroundColor: isSel ? AppColors.primary : "#FFFFFF",
+                            borderWidth: 1,
+                            borderColor: isSel ? AppColors.primary : "#E2E8F0",
+                            alignItems: "center",
+                          }}
+                        >
+                          <Text style={{ fontSize: 11, fontWeight: "700", color: isSel ? "#FFFFFF" : AppColors.text }}>
+                            {w.label}
+                          </Text>
+                          <Text style={{ fontSize: 10, color: isSel ? "rgba(255,255,255,0.85)" : AppColors.textMuted }}>
+                            {w.dateShort}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+
+                {/* Ô nhập ngày tùy chỉnh */}
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: AppColors.textSecondary }}>
+                    Nhập ngày:
+                  </Text>
+                  <TextInput
+                    value={formDate}
+                    onChangeText={(txt) => handleSelectDate(txt)}
+                    placeholder="DD/MM/YYYY"
+                    placeholderTextColor={AppColors.textMuted}
+                    style={{
+                      flex: 1,
+                      backgroundColor: "#FFFFFF",
+                      borderWidth: 1,
+                      borderColor: AppColors.cardBorder,
+                      borderRadius: 10,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      fontSize: 13,
+                      fontWeight: "600",
+                      color: AppColors.text,
+                    }}
+                  />
+                </View>
+              </View>
+
               {/* Thứ và Tiết - 2 cột cạnh nhau có ô chọn dropdown đè lên thay vì đẩy xuống */}
               <View
                 style={{
@@ -1307,6 +1611,11 @@ export default function ScheduleScreen() {
                                 key={d.num}
                                 onPress={() => {
                                   setFormDayNum(d.num);
+                                  const matched = weekDates.find((w) => w.num === d.num);
+                                  if (matched) {
+                                    setFormDate(matched.dateStr);
+                                    setFormWeekRange(weekRangeText);
+                                  }
                                   setDayDropdownOpen(false);
                                 }}
                                 activeOpacity={0.7}

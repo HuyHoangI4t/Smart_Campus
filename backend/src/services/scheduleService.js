@@ -159,6 +159,92 @@ const DAYS_OF_WEEK = [
   { label: 'CN', num: 1 },
 ];
 
+// Bóc tách ngày bắt đầu và kết thúc từ chuỗi khoảng tuần
+function parseWeekRangeDates(rangeText) {
+  if (!rangeText) return { startDate: null, endDate: null };
+  const match = rangeText.match(/Từ ngày\s+(\d{1,2})\/(\d{1,2})\/(\d{4})\s+đến ngày\s+(\d{1,2})\/(\d{1,2})\/(\d{4})/i);
+  if (!match) return { startDate: null, endDate: null };
+  const [_, sD, sM, sY, eD, eM, eY] = match;
+  const startDate = new Date(Number(sY), Number(sM) - 1, Number(sD), 0, 0, 0);
+  const endDate = new Date(Number(eY), Number(eM) - 1, Number(eD), 23, 59, 59, 999);
+  return { startDate, endDate };
+}
+
+// Chuẩn hóa định dạng ngày về DD/MM/YYYY
+function normalizeDateVN(dateInput) {
+  if (!dateInput) return '';
+  const str = String(dateInput).trim();
+  const m1 = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m1) {
+    return `${m1[1].padStart(2, '0')}/${m1[2].padStart(2, '0')}/${m1[3]}`;
+  }
+  const m2 = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m2) {
+    return `${m2[3].padStart(2, '0')}/${m2[2].padStart(2, '0')}/${m2[1]}`;
+  }
+  return str;
+}
+
+// Chuyển chuỗi ngày DD/MM/YYYY hoặc YYYY-MM-DD sang Date object
+function parseDateVN(dateInput) {
+  const norm = normalizeDateVN(dateInput);
+  const m = norm.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return null;
+  return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), 12, 0, 0);
+}
+
+// Xác định khoảng tuần chuẩn từ 1 ngày cụ thể
+function getWeekRangeFromDate(dateInput) {
+  const dObj = parseDateVN(dateInput);
+  if (!dObj) return null;
+  const day = dObj.getDay();
+  const distToMon = (day + 6) % 7;
+  const mon = new Date(dObj);
+  mon.setDate(dObj.getDate() - distToMon);
+  mon.setHours(0, 0, 0, 0);
+  const sun = new Date(mon);
+  sun.setDate(mon.getDate() + 6);
+  sun.setHours(23, 59, 59, 999);
+  const pad = (n) => String(n).padStart(2, '0');
+  const sStr = `${pad(mon.getDate())}/${pad(mon.getMonth() + 1)}/${mon.getFullYear()}`;
+  const eStr = `${pad(sun.getDate())}/${pad(sun.getMonth() + 1)}/${sun.getFullYear()}`;
+  return `Từ ngày ${sStr} đến ngày ${eStr}`;
+}
+
+// Xác định tên Thứ từ ngày
+function getDayNameFromDate(dateInput) {
+  const dObj = parseDateVN(dateInput);
+  if (!dObj) return null;
+  const jsDay = dObj.getDay();
+  if (jsDay === 0) return 'CN';
+  return `Thứ ${jsDay + 1}`;
+}
+
+// Lọc lịch học thủ công cho một tuần cụ thể, tránh việc lịch tuần này hiện sang tuần khác
+function filterCustomItemsForWeek(customItems, weekRangeText, isCurrentWeek = false) {
+  if (!Array.isArray(customItems) || customItems.length === 0) return [];
+  const { startDate, endDate } = parseWeekRangeDates(weekRangeText);
+
+  return customItems.filter((c) => {
+    // 1. Nếu có ngày học xác định
+    if (c.ngay_hoc) {
+      const cDate = parseDateVN(c.ngay_hoc);
+      if (cDate && startDate && endDate) {
+        return cDate >= startDate && cDate <= endDate;
+      }
+    }
+    // 2. Nếu có week_range xác định
+    if (c.week_range && weekRangeText) {
+      if (c.week_range.trim().toLowerCase() === weekRangeText.trim().toLowerCase()) {
+        return true;
+      }
+      return false;
+    }
+    // 3. Lịch cũ chưa có ngày và chưa có week_range: chỉ hiện ở tuần hiện tại
+    return isCurrentWeek;
+  });
+}
+
 /**
  * Xử lý dữ liệu bảng thời khóa biểu thô:
  * - Chuyển sang mảng danh sách lịch học chuẩn ScheduleItem
@@ -167,6 +253,23 @@ const DAYS_OF_WEEK = [
  * - Tự động gắn hướng dẫn chỉ đường cho từng phòng học
  */
 function processSchedulePayload(rawTables, weekRangeText, customItems = [], options = {}) {
+  const rangeDates = parseWeekRangeDates(weekRangeText);
+  const startDate = rangeDates.startDate;
+
+  const daysWithDates = DAYS_OF_WEEK.map((d) => {
+    if (!startDate) return { ...d };
+    const offset = d.num === 1 ? 6 : d.num - 2;
+    const dObj = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + offset);
+    const pad = (n) => String(n).padStart(2, '0');
+    const dateFormatted = `${pad(dObj.getDate())}/${pad(dObj.getMonth() + 1)}/${dObj.getFullYear()}`;
+    const dateShort = `${pad(dObj.getDate())}/${pad(dObj.getMonth() + 1)}`;
+    return {
+      ...d,
+      date: dateFormatted,
+      dateShort,
+    };
+  });
+
   const parsed = [];
   const groupedByDay = {
     1: [],
@@ -192,6 +295,10 @@ function processSchedulePayload(rawTables, weekRangeText, customItems = [], opti
 
           const direction = parseRoomDirections(room);
 
+          const dayMeta = daysWithDates.find((d) => d.num === dayNum);
+          const itemDate = dayMeta?.date || null;
+          const itemDateShort = dayMeta?.dateShort || null;
+
           const item = {
             id: `sc-${idx + 1}`,
             course,
@@ -200,6 +307,8 @@ function processSchedulePayload(rawTables, weekRangeText, customItems = [], opti
             room,
             day: dayStr,
             dayNum,
+            date: itemDate,
+            dateShort: itemDateShort,
             lecturer,
             direction,
             isCustom: false,
@@ -214,9 +323,10 @@ function processSchedulePayload(rawTables, weekRangeText, customItems = [], opti
     }
   }
 
-  // Tích hợp danh sách lịch học thủ công / thực hành đột xuất
-  if (Array.isArray(customItems) && customItems.length > 0) {
-    customItems.forEach((c) => {
+  // Tích hợp danh sách lịch học thủ công / thực hành đột xuất (chỉ lấy lịch thuộc tuần này)
+  const filteredCustom = filterCustomItemsForWeek(customItems, weekRangeText, options.isCurrentWeek ?? false);
+  if (Array.isArray(filteredCustom) && filteredCustom.length > 0) {
+    filteredCustom.forEach((c) => {
       const dayStr = c.thu || c.day || 'Thứ 2';
       const dayNum = c.dayNum || getDayNumber(dayStr);
       const course = c.ten_hp || c.course || 'Lịch thực hành đột xuất';
@@ -229,6 +339,10 @@ function processSchedulePayload(rawTables, weekRangeText, customItems = [], opti
       const lecturer = c.giang_vien || c.lecturer || 'Giảng viên hướng dẫn';
       const direction = c.direction || parseRoomDirections(room);
 
+      const dayMeta = daysWithDates.find((d) => d.num === dayNum);
+      const itemDate = c.ngay_hoc ? normalizeDateVN(c.ngay_hoc) : (dayMeta?.date || null);
+      const itemDateShort = itemDate ? itemDate.substring(0, 5) : (dayMeta?.dateShort || null);
+
       const item = {
         id: c.id,
         course,
@@ -237,11 +351,15 @@ function processSchedulePayload(rawTables, weekRangeText, customItems = [], opti
         room,
         day: dayStr,
         dayNum,
+        date: itemDate,
+        dateShort: itemDateShort,
         lecturer,
         direction,
         isCustom: true,
         note: c.ghi_chu || c.note || '',
-        type: c.loai_lich || c.type || 'thuc_hanh',
+        type: c.loai_lich || c.type || 'dot_xuat',
+        ngay_hoc: itemDate,
+        week_range: c.week_range || weekRangeText || null,
       };
 
       parsed.push(item);
@@ -396,7 +514,7 @@ function processSchedulePayload(rawTables, weekRangeText, customItems = [], opti
 
   return {
     weekRange: weekRangeText || 'Từ ngày 28/09/2026 đến ngày 04/10/2026',
-    days: DAYS_OF_WEEK,
+    days: daysWithDates,
     currentDayNum,
     schedules: parsed,
     groupedByDay,
@@ -411,4 +529,10 @@ module.exports = {
   getDayNumber,
   DAYS_OF_WEEK,
   processSchedulePayload,
+  parseWeekRangeDates,
+  normalizeDateVN,
+  parseDateVN,
+  getWeekRangeFromDate,
+  getDayNameFromDate,
+  filterCustomItemsForWeek,
 };

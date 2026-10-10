@@ -339,6 +339,8 @@ export interface CustomSchedulePayload {
   giang_vien?: string;
   ghi_chu?: string;
   loai_lich?: string;
+  ngay_hoc?: string;
+  week_range?: string;
 }
 
 export async function apiCreateCustomSchedule(payload: CustomSchedulePayload) {

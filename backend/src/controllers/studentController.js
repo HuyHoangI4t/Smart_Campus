@@ -420,7 +420,7 @@ exports.getSchedule = async (req, res) => {
     let customItems = [];
     try {
       const [customRows] = await db.query(
-        'SELECT id, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich FROM student_schedules WHERE (mssv = ? OR mssv = "guest") AND is_custom = 1 ORDER BY id ASC',
+        'SELECT id, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich, week_range, ngay_hoc FROM student_schedules WHERE (mssv = ? OR mssv = "guest") AND is_custom = 1 ORDER BY id ASC',
         [mssv]
       );
       customItems = customRows || [];
@@ -476,8 +476,8 @@ exports.getSchedule = async (req, res) => {
       ["Thứ 6", "Ngoại ngữ chuyên ngành", "1-4", "2.20", "Khoa Ngoại ngữ"],
     ];
 
-    const processedWeek0 = scheduleService.processSchedulePayload([{ tableIndex: 1, rows: week0Rows }], week0Range, customItems);
-    const processedWeek1 = scheduleService.processSchedulePayload([{ tableIndex: 1, rows: week1Rows }], week1Range, customItems);
+    const processedWeek0 = scheduleService.processSchedulePayload([{ tableIndex: 1, rows: week0Rows }], week0Range, customItems, { isCurrentWeek: true });
+    const processedWeek1 = scheduleService.processSchedulePayload([{ tableIndex: 1, rows: week1Rows }], week1Range, customItems, { isCurrentWeek: false });
 
     const availableWeeks = [
       {
@@ -540,7 +540,7 @@ exports.getSchedule = async (req, res) => {
   let customItems = [];
   try {
     const [customRows] = await db.query(
-      'SELECT id, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich FROM student_schedules WHERE (mssv = ? OR mssv = "guest") AND is_custom = 1 ORDER BY id ASC',
+      'SELECT id, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich, week_range, ngay_hoc FROM student_schedules WHERE (mssv = ? OR mssv = "guest") AND is_custom = 1 ORDER BY id ASC',
       [mssv]
     );
     customItems = customRows || [];
@@ -550,7 +550,7 @@ exports.getSchedule = async (req, res) => {
   if (!forceRefresh && mssv && !isGuestOrEmail(mssv)) {
     try {
       const [dbSchedules] = await db.query(
-        'SELECT id, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich, week_range FROM student_schedules WHERE mssv = ? ORDER BY id ASC',
+        'SELECT id, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich, week_range, ngay_hoc FROM student_schedules WHERE mssv = ? ORDER BY id ASC',
         [mssv]
       );
       if (dbSchedules && dbSchedules.length > 0) {
@@ -600,7 +600,7 @@ exports.getSchedule = async (req, res) => {
           if (hasCurrentOrFuture) {
             // Cache hợp lệ, xử lý và trả về ngay
             const processedWeeks = dbWeeks.map(w => {
-              const proc = scheduleService.processSchedulePayload([{ tableIndex: 1, rows: w.rows }], w.weekRange, customItems);
+              const proc = scheduleService.processSchedulePayload([{ tableIndex: 1, rows: w.rows }], w.weekRange, customItems, { isCurrentWeek: w.index === curWeekIdx });
               return {
                 index: w.index,
                 weekRange: w.weekRange,
@@ -628,7 +628,7 @@ exports.getSchedule = async (req, res) => {
               [{ tableIndex: 1, rows: targetWeekData.rows }],
               targetWeekData.weekRange,
               customItems,
-              { nextWeekSchedule, isSunday }
+              { nextWeekSchedule, isSunday, isCurrentWeek: selectedWeekIdx === curWeekIdx }
             );
 
             return res.json({
@@ -749,7 +749,7 @@ exports.getSchedule = async (req, res) => {
 
     // Xử lý danh sách tuần để trả về giao diện
     const availableWeeks = parsedWeeks.map(w => {
-      const proc = scheduleService.processSchedulePayload([{ tableIndex: 1, rows: w.rows }], w.weekRangeText, customItems);
+      const proc = scheduleService.processSchedulePayload([{ tableIndex: 1, rows: w.rows }], w.weekRangeText, customItems, { isCurrentWeek: w.index === curWeekIdx });
       return {
         index: w.index,
         weekRange: w.weekRangeText,
@@ -777,7 +777,7 @@ exports.getSchedule = async (req, res) => {
       [{ tableIndex: 1, rows: targetWeekData.rows }],
       targetWeekData.weekRangeText,
       customItems,
-      { nextWeekSchedule, isSunday }
+      { nextWeekSchedule, isSunday, isCurrentWeek: selectedWeekIdx === curWeekIdx }
     );
 
     return res.json({
@@ -800,7 +800,7 @@ exports.getSchedule = async (req, res) => {
   if (mssv && !isGuestOrEmail(mssv)) {
     try {
       const [dbSchedules] = await db.query(
-        'SELECT id, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich FROM student_schedules WHERE mssv = ? ORDER BY id ASC',
+        'SELECT id, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich, week_range, ngay_hoc FROM student_schedules WHERE mssv = ? ORDER BY id ASC',
         [mssv]
       );
       if (dbSchedules && dbSchedules.length > 0) {
@@ -820,7 +820,7 @@ exports.getSchedule = async (req, res) => {
           }
         }
         const rawTables = [{ tableIndex: 1, rows: cachedRows }];
-        const processed = scheduleService.processSchedulePayload(rawTables, "Lịch học đã lưu từ cổng đào tạo", customItems);
+        const processed = scheduleService.processSchedulePayload(rawTables, "Lịch học đã lưu từ cổng đào tạo", customItems, { isCurrentWeek: true });
         return res.json({
           success: true,
           mssv: mssv,
@@ -838,7 +838,7 @@ exports.getSchedule = async (req, res) => {
   if (mssv) {
     try {
       const [cRows] = await db.query(
-        'SELECT id, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich FROM student_schedules WHERE (mssv = ? OR mssv = "guest") AND is_custom = 1 ORDER BY id ASC',
+        'SELECT id, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich, week_range, ngay_hoc FROM student_schedules WHERE (mssv = ? OR mssv = "guest") AND is_custom = 1 ORDER BY id ASC',
         [mssv]
       );
       fallbackCustom = cRows || [];
@@ -1054,35 +1054,50 @@ exports.updateProfile = async (req, res) => {
 exports.createCustomSchedule = async (req, res) => {
   try {
     const mssv = await getMssvFromReq(req);
-    const { ten_hp, thu, tiet, phong, giang_vien, ghi_chu, loai_lich } = req.body || {};
+    const { ten_hp, thu, tiet, phong, giang_vien, ghi_chu, loai_lich, ngay_hoc, week_range } = req.body || {};
 
-    if (!ten_hp || !thu || !phong) {
+    if (!ten_hp || !phong) {
       return res.status(400).json({
         success: false,
-        message: 'Vui lòng cung cấp đầy đủ tên môn/hoạt động, thứ trong tuần và phòng học.'
+        message: 'Vui lòng cung cấp đầy đủ tên môn/hoạt động và phòng học.'
       });
     }
 
+    const normNgay = scheduleService.normalizeDateVN(ngay_hoc);
+    let finalThu = thu ? thu.trim() : '';
+    if (!finalThu && normNgay) {
+      finalThu = scheduleService.getDayNameFromDate(normNgay) || 'Thứ 2';
+    } else if (!finalThu) {
+      finalThu = 'Thứ 2';
+    }
+
+    let finalWeekRange = week_range ? week_range.trim() : null;
+    if (!finalWeekRange && normNgay) {
+      finalWeekRange = scheduleService.getWeekRangeFromDate(normNgay);
+    }
+
     const [result] = await db.query(
-      `INSERT INTO student_schedules (mssv, ma_hp, ten_hp, thu, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+      `INSERT INTO student_schedules (mssv, ma_hp, ten_hp, thu, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich, week_range, ngay_hoc)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`,
       [
         mssv || 'guest',
         'TH-CUSTOM',
         ten_hp.trim(),
-        thu.trim(),
+        finalThu,
         (tiet || 'Ca học').trim(),
         phong.trim(),
         (giang_vien || '').trim(),
         'HK1 (2025-2026)',
         (ghi_chu || '').trim(),
-        (loai_lich || 'dot_xuat').trim()
+        (loai_lich || 'dot_xuat').trim(),
+        finalWeekRange,
+        normNgay || null
       ]
     );
 
     const newId = result.insertId;
     const direction = scheduleService.parseRoomDirections(phong);
-    const dayNum = scheduleService.getDayNumber(thu);
+    const dayNum = scheduleService.getDayNumber(finalThu);
     const cleanTime = (raw) => {
       let s = String(raw || 'Ca học').trim();
       while (/^tiết\s+tiết/i.test(s)) {
@@ -1093,20 +1108,23 @@ exports.createCustomSchedule = async (req, res) => {
 
     return res.json({
       success: true,
-      message: 'Thêm lịch học đột xuất/thủ công thành công!',
+      message: 'Thêm lịch học thành công!',
       data: {
         id: newId,
         course: ten_hp.trim(),
-        code: thu.trim(),
+        code: finalThu,
         time: cleanTime(tiet),
         room: phong.trim(),
-        day: thu.trim(),
+        day: finalThu,
         dayNum,
         lecturer: (giang_vien || '').trim(),
         direction,
         isCustom: true,
         note: (ghi_chu || '').trim(),
-        type: (loai_lich || 'dot_xuat').trim()
+        type: (loai_lich || 'dot_xuat').trim(),
+        ngay_hoc: normNgay || null,
+        date: normNgay || null,
+        week_range: finalWeekRange || null
       }
     });
   } catch (error) {
@@ -1125,10 +1143,20 @@ exports.updateCustomSchedule = async (req, res) => {
   try {
     const { id } = req.params;
     const mssv = await getMssvFromReq(req);
-    const { ten_hp, thu, tiet, phong, giang_vien, ghi_chu, loai_lich } = req.body || {};
+    const { ten_hp, thu, tiet, phong, giang_vien, ghi_chu, loai_lich, ngay_hoc, week_range } = req.body || {};
 
     if (!id) {
       return res.status(400).json({ success: false, message: 'Thiếu ID lịch học cần cập nhật' });
+    }
+
+    const normNgay = ngay_hoc !== undefined ? scheduleService.normalizeDateVN(ngay_hoc) : undefined;
+    let finalThu = thu !== undefined ? thu.trim() : undefined;
+    if (finalThu === undefined && normNgay) {
+      finalThu = scheduleService.getDayNameFromDate(normNgay);
+    }
+    let finalWeekRange = week_range !== undefined ? week_range.trim() : undefined;
+    if (finalWeekRange === undefined && normNgay) {
+      finalWeekRange = scheduleService.getWeekRangeFromDate(normNgay);
     }
 
     let query = `UPDATE student_schedules SET 
@@ -1138,16 +1166,20 @@ exports.updateCustomSchedule = async (req, res) => {
       phong = COALESCE(?, phong),
       giang_vien = COALESCE(?, giang_vien),
       ghi_chu = COALESCE(?, ghi_chu),
-      loai_lich = COALESCE(?, loai_lich)
+      loai_lich = COALESCE(?, loai_lich),
+      ngay_hoc = COALESCE(?, ngay_hoc),
+      week_range = COALESCE(?, week_range)
       WHERE id = ? AND is_custom = 1`;
     let params = [
       ten_hp !== undefined ? ten_hp.trim() : null,
-      thu !== undefined ? thu.trim() : null,
+      finalThu !== undefined ? finalThu : null,
       tiet !== undefined ? tiet.trim() : null,
       phong !== undefined ? phong.trim() : null,
       giang_vien !== undefined ? giang_vien.trim() : null,
       ghi_chu !== undefined ? ghi_chu.trim() : null,
       loai_lich !== undefined ? loai_lich.trim() : null,
+      normNgay !== undefined ? normNgay : null,
+      finalWeekRange !== undefined ? finalWeekRange : null,
       id
     ];
 
@@ -1191,7 +1223,10 @@ exports.updateCustomSchedule = async (req, res) => {
         direction,
         isCustom: true,
         note: updated.ghi_chu || '',
-        type: updated.loai_lich || 'dot_xuat'
+        type: updated.loai_lich || 'dot_xuat',
+        ngay_hoc: updated.ngay_hoc || null,
+        date: updated.ngay_hoc || null,
+        week_range: updated.week_range || null
       }
     });
   } catch (error) {

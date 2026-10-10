@@ -373,11 +373,18 @@ const LocationsModule = {
   },
 
   updateTotalBadges() {
+    const count = this.locations.length;
     const badgeEl = document.getElementById('totalLocationsCount');
-    if (badgeEl) badgeEl.textContent = this.locations.length;
+    if (badgeEl) badgeEl.textContent = count;
 
     const dashStat = document.getElementById('statTotalLocations');
-    if (dashStat) dashStat.textContent = this.locations.length;
+    if (dashStat) dashStat.textContent = count.toLocaleString();
+
+    const kpiBadge = document.getElementById('kpiLocationBadge');
+    if (kpiBadge) kpiBadge.textContent = `${count} điểm`;
+
+    const teamBadge = document.getElementById('statTeamLocationsCount');
+    if (teamBadge) teamBadge.textContent = `${count} Điểm ghim`;
   },
 
   applyFilter() {
