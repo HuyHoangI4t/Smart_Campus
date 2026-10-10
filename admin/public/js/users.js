@@ -30,6 +30,17 @@ const UsersModule = {
         this.applyFilter();
       });
     }
+
+    const avtInput = document.getElementById('modalAvatarInput');
+    if (avtInput) {
+      avtInput.addEventListener('input', (e) => {
+        const val = e.target.value.trim();
+        const avtPreview = document.getElementById('modalAvatarPreview');
+        if (avtPreview) {
+          avtPreview.src = val || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+        }
+      });
+    }
   },
 
   async loadUsers() {
@@ -89,14 +100,24 @@ const UsersModule = {
 
     tbody.innerHTML = this.filteredUsers.map((u, idx) => {
       const isStudent = u.role === 'sinh_vien' || !u.role;
+      const firstLetter = (u.ho_ten || 'U').charAt(0).toUpperCase();
+      const hasAvatar = !!(u.avatar && typeof u.avatar === 'string' && u.avatar.trim().length > 0);
+      
+      const avatarHtml = hasAvatar
+        ? `<div class="w-9 h-9 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center shadow-xs">
+             <img src="${u.avatar}" alt="${escapeHtml(u.ho_ten || '')}" class="w-full h-full object-cover"
+               onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\\'font-bold text-xs text-brand-800\\'>${firstLetter}</span>';" />
+           </div>`
+        : `<div class="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-brand-800 shrink-0">
+             ${firstLetter}
+           </div>`;
+
       return `
         <tr class="hover:bg-slate-50 transition border-b border-slate-100">
           <td class="text-center font-semibold text-slate-400 text-xs">${idx + 1}</td>
           <td>
             <div class="flex items-center gap-3">
-              <div class="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-brand-800">
-                ${(u.ho_ten || 'U').charAt(0).toUpperCase()}
-              </div>
+              ${avatarHtml}
               <div>
                 <p class="font-bold text-xs sm:text-sm text-slate-900">${escapeHtml(u.ho_ten || 'Chưa cập nhật')}</p>
                 <p class="text-xs text-slate-400 font-mono">${escapeHtml(u.email || '')}</p>
@@ -147,6 +168,12 @@ const UsersModule = {
     document.getElementById('modalMssvInput').readOnly = false;
     document.getElementById('modalPasswordHelp').classList.add('hidden');
     document.getElementById('modalPasswordInput').required = true;
+    
+    const avtInput = document.getElementById('modalAvatarInput');
+    const avtPreview = document.getElementById('modalAvatarPreview');
+    if (avtInput) avtInput.value = '';
+    if (avtPreview) avtPreview.src = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+
     this.editingUserId = null;
     openModal('userModal');
   },
@@ -167,6 +194,12 @@ const UsersModule = {
     document.getElementById('modalFacultyInput').value = user.khoa || '';
     document.getElementById('modalRoleInput').value = user.role || 'sinh_vien';
     
+    const avtInput = document.getElementById('modalAvatarInput');
+    const avtPreview = document.getElementById('modalAvatarPreview');
+    const defaultAvt = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+    if (avtInput) avtInput.value = user.avatar || '';
+    if (avtPreview) avtPreview.src = user.avatar || defaultAvt;
+
     const pwdInput = document.getElementById('modalPasswordInput');
     pwdInput.value = '';
     pwdInput.required = false;
@@ -175,12 +208,31 @@ const UsersModule = {
     openModal('userModal');
   },
 
+  handleAvatarFileChange(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      if (window.App) window.App.showToast('Vui lòng chọn ảnh kích thước dưới 2MB', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target.result;
+      const avtInput = document.getElementById('modalAvatarInput');
+      const avtPreview = document.getElementById('modalAvatarPreview');
+      if (avtInput) avtInput.value = base64;
+      if (avtPreview) avtPreview.src = base64;
+    };
+    reader.readAsDataURL(file);
+  },
+
   async handleSaveUser(e) {
     e.preventDefault();
     const btn = document.getElementById('saveUserBtn');
     btn.disabled = true;
     btn.innerHTML = '<span class="inline-block animate-spin mr-2">⟳</span> Đang lưu...';
 
+    const avtInput = document.getElementById('modalAvatarInput');
     const payload = {
       mssv: document.getElementById('modalMssvInput').value.trim(),
       ho_ten: document.getElementById('modalNameInput').value.trim(),
@@ -189,6 +241,7 @@ const UsersModule = {
       lop: document.getElementById('modalClassInput').value.trim(),
       khoa: document.getElementById('modalFacultyInput').value.trim(),
       role: document.getElementById('modalRoleInput').value,
+      avatar: avtInput ? avtInput.value.trim() : undefined,
     };
 
     const newPwd = document.getElementById('modalPasswordInput').value.trim();

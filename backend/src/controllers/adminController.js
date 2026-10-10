@@ -246,7 +246,7 @@ exports.getUsers = async (req, res) => {
 };
 
 exports.createUser = async (req, res) => {
-  const { mssv, ho_ten, email, password, role, so_dien_thoai, lop, khoa } = req.body;
+  const { mssv, ho_ten, email, password, role, so_dien_thoai, lop, khoa, avatar } = req.body;
 
   if (!mssv || !password) {
     return res.status(400).json({ success: false, message: 'MSSV và mật khẩu là bắt buộc.' });
@@ -262,8 +262,8 @@ exports.createUser = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     await db.query(`
-      INSERT INTO users (mssv, ho_ten, email, password, role, so_dien_thoai, lop, khoa)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO users (mssv, ho_ten, email, password, role, so_dien_thoai, lop, khoa, avatar)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       mssv.trim(),
       ho_ten ? ho_ten.trim() : ('Sinh viên ' + mssv),
@@ -272,7 +272,8 @@ exports.createUser = async (req, res) => {
       role || 'sinh_vien',
       so_dien_thoai || '',
       lop || 'Kỹ thuật phần mềm K23',
-      khoa || 'Công nghệ Thông tin'
+      khoa || 'Công nghệ Thông tin',
+      avatar ? avatar.trim() : 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'
     ]);
 
     res.status(201).json({
@@ -287,7 +288,7 @@ exports.createUser = async (req, res) => {
 
 exports.updateUser = async (req, res) => {
   const { id } = req.params;
-  const { ho_ten, email, role, so_dien_thoai, lop, khoa, password } = req.body;
+  const { ho_ten, email, role, so_dien_thoai, lop, khoa, password, avatar } = req.body;
 
   try {
     const [existing] = await db.query('SELECT * FROM users WHERE id = ?', [id]);
@@ -302,6 +303,7 @@ exports.updateUser = async (req, res) => {
     const newPhone = so_dien_thoai !== undefined ? so_dien_thoai : u.so_dien_thoai;
     const newLop = lop !== undefined ? lop : u.lop;
     const newKhoa = khoa !== undefined ? khoa : u.khoa;
+    const newAvatar = avatar !== undefined ? (avatar ? avatar.trim() : null) : u.avatar;
 
     let newPasswordHash = u.password;
     if (password && password.trim().length > 0) {
@@ -311,14 +313,14 @@ exports.updateUser = async (req, res) => {
 
     await db.query(`
       UPDATE users 
-      SET ho_ten = ?, email = ?, role = ?, so_dien_thoai = ?, lop = ?, khoa = ?, password = ?
+      SET ho_ten = ?, email = ?, role = ?, so_dien_thoai = ?, lop = ?, khoa = ?, password = ?, avatar = ?
       WHERE id = ?
-    `, [newName, newEmail, newRole, newPhone, newLop, newKhoa, newPasswordHash, id]);
+    `, [newName, newEmail, newRole, newPhone, newLop, newKhoa, newPasswordHash, newAvatar, id]);
 
     res.json({
       success: true,
       message: 'Cập nhật thông tin người dùng thành công.',
-      user: { id, mssv: u.mssv, ho_ten: newName, email: newEmail, role: newRole }
+      user: { id, mssv: u.mssv, ho_ten: newName, email: newEmail, role: newRole, avatar: newAvatar }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi cập nhật người dùng: ' + error.message });
