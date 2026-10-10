@@ -253,7 +253,8 @@ function parseWeekRangeDates(rangeText: string) {
   if (!rangeText) return { startDate: null, endDate: null };
   const match = rangeText.match(/Từ ngày\s+(\d{1,2})\/(\d{1,2})\/(\d{4})\s+đến ngày\s+(\d{1,2})\/(\d{1,2})\/(\d{4})/i);
   if (!match) return { startDate: null, endDate: null };
-  const [_, sD, sM, sY, eD, eM, eY] = match;
+  // const [_, sD, sM, sY, eD, eM, eY] = match;
+  const [/* _ */, sD, sM, sY, eD, eM, eY] = match;
   const startDate = new Date(Number(sY), Number(sM) - 1, Number(sD), 0, 0, 0);
   const endDate = new Date(Number(eY), Number(eM) - 1, Number(eD), 23, 59, 59, 999);
   return { startDate, endDate };
@@ -337,6 +338,7 @@ export default function ScheduleScreen() {
   const [formRoom, setFormRoom] = useState("");
   const [formLecturer, setFormLecturer] = useState("");
   const [formNote, setFormNote] = useState("");
+  // const [dayDropdownOpen, setDayDropdownOpen] = useState(false); // Thứ đã tự động đồng bộ theo ngày học
   const [periodDropdownOpen, setPeriodDropdownOpen] = useState(false);
   const [isCustomTime, setIsCustomTime] = useState(false);
 

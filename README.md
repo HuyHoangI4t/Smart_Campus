@@ -6,17 +6,20 @@
   <img src="https://img.shields.io/badge/TypeScript-5.9-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Node.js-18+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" />
   <img src="https://img.shields.io/badge/Express.js-4.21-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express" />
+  <img src="https://img.shields.io/badge/Socket.io-4.8-010101?style=for-the-badge&logo=socketdotio&logoColor=white" alt="Socket.IO" />
   <img src="https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL" />
+  <img src="https://img.shields.io/badge/Leaflet-1.9-199900?style=for-the-badge&logo=leaflet&logoColor=white" alt="Leaflet" />
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="MIT License" />
 </p>
 
-> **Smart Campus** là giải pháp ứng dụng di động toàn diện hỗ trợ sinh viên trường **Đại học Tây Nguyên** trong việc tra cứu điểm học tập, theo dõi thời khóa biểu, định vị địa điểm trong khuôn viên và kết nối các dịch vụ hỗ trợ sinh viên nhanh chóng, tiện lợi mọi lúc mọi nơi.
->
-> 🔗 **Kho mã nguồn GitHub:** [https://github.com/HuyHoangI4t/Smart_Campus](https://github.com/HuyHoangI4t/Smart_Campus)
+> **Smart Campus** là giải pháp hệ sinh thái ứng dụng toàn diện hỗ trợ sinh viên trường **Đại học Tây Nguyên**:
+> - 📱 **Ứng dụng di động (Mobile App):** Tra cứu điểm số, thời khóa biểu thông minh, bản đồ khuôn viên với dẫn đường nội bộ (thuật toán Dijkstra), la bàn định hướng và các tiện ích sinh viên.
+> - 💻 **Cổng quản trị (Admin Portal):** Quản lý tài khoản sinh viên (hỗ trợ avatar), duyệt phản hồi, cảnh báo SOS thời gian thực qua Socket.IO, chỉnh sửa 37 địa điểm và vẽ mạng lưới đường nội bộ trực tiếp trên bản đồ số.
+> - ⚡ **Khởi động 1 chạm:** Kèm sẵn script `start_all.bat` khởi chạy đồng thời Backend, Admin Portal và Mobile App.
 
 ---
 
-## 📸 2. Ảnh minh họa & Giao diện ứng dụng (Screenshots / Demo)
+## 📸 1. Ảnh minh họa & Giao diện ứng dụng (Screenshots / Demo)
 
 <p align="center">
   <img src="frontend/assets/images/images.jpg" alt="Khuôn viên trường Đại học Tây Nguyên" width="720" style="border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
@@ -29,367 +32,218 @@
 | 🔐 Đăng nhập hệ thống | 📝 Đăng ký tài khoản | 📩 Xác thực OTP Email |
 | :---: | :---: | :---: |
 | <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100158.png" width="240" alt="Đăng nhập" /> | <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100245.png" width="240" alt="Đăng ký" /> | <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100326.png" width="240" alt="Xác thực OTP Email" /> |
-| *Đăng nhập bằng MSSV / Email* | *Đăng ký tài khoản sinh viên* | *Gửi & xác thực OTP qua Email trường* |
+| *Đăng nhập bằng MSSV / Email hoặc Khách* | *Đăng ký tài khoản sinh viên* | *Gửi & xác thực OTP qua Email trường* |
 
-| 🏠 Trang chủ (Dashboard) | 📅 Thời khóa biểu theo tuần | 🧭 Chỉ đường phòng học |
+| 🏠 Trang chủ (Dashboard) | 📅 Thời khóa biểu theo tuần | 🧭 Chỉ đường & Bản đồ số |
 | :---: | :---: | :---: |
 | <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100501.png" width="240" alt="Trang chủ" /> | <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100509.png" width="240" alt="Thời khóa biểu" /> | <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100515.png" width="240" alt="Chỉ đường phòng học" /> |
-| *Lớp học tiếp theo, tin tức & lối tắt* | *Lịch học theo tuần, xem phòng & GV* | *Lộ trình di chuyển & tiện ích phòng* |
+| *Lớp học tiếp theo, tin tức & lối tắt* | *Lịch học theo tuần, xem phòng & GV* | *Dẫn đường Dijkstra, xoay theo góc đường* |
 
 | 📊 Kết quả học tập (Điểm) | 👤 Hồ sơ sinh viên | 🔒 Đổi mật khẩu |
 | :---: | :---: | :---: |
 | <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100524.png" width="240" alt="Kết quả học tập" /> | <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100544.png" width="240" alt="Hồ sơ sinh viên" /> | <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100555.png" width="240" alt="Đổi mật khẩu" /> |
 | *GPA hệ 10 & 4, tín chỉ & lọc kỳ* | *Thông tin sinh viên & avatar* | *Cập nhật mật khẩu bảo mật* |
 
-<p align="center">
-  <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100601.png" width="240" alt="Cập nhật hồ sơ sinh viên" />
-  <br>
-  <em>Chỉnh sửa thông tin hồ sơ sinh viên & liên hệ</em>
-</p>
-
 ---
 
-## ✨ 3. Tính năng nổi bật (Key Features)
+## ✨ 2. Tính năng nổi bật (Key Features)
 
-- **🔐 Xác thực & Quản lý tài khoản:**
-  - Đăng ký tài khoản sinh viên với MSSV, họ tên, email và số điện thoại.
-  - Đăng nhập bảo mật với mã hóa mật khẩu `bcryptjs`.
-  - Khôi phục mật khẩu an toàn thông qua mã OTP gửi trực tiếp về email sinh viên (Nodemailer).
-  - Tự động ghi nhớ phiên đăng nhập với `AsyncStorage`.
-
-- **🏠 Trang chủ cá nhân hóa (Dashboard):**
-  - Hiển thị lời chào theo thời gian, thông tin sinh viên và mã sinh viên.
-  - Thẻ tóm tắt học tập nhanh: Điểm trung bình tích lũy (GPA 10 & GPA 4), tổng số tín chỉ đã tích lũy.
-  - Lịch học môn kế tiếp trong ngày, danh mục tiện ích nhanh và bảng tin thông báo nhà trường.
-
-- **📊 Quản lý học tập & Tra cứu điểm số:**
-  - Tra cứu điểm chi tiết theo từng học kỳ: Điểm chuyên cần, kiểm tra, thi, điểm tổng kết.
-  - Quy đổi tự động chuẩn điểm chữ: `A, B, C, D, F, P, X` sang thang điểm 4.0.
-  - Bộ tính toán chuẩn xác ở backend: Tự động loại bỏ các môn chưa hoàn thành khỏi tín chỉ tích lũy.
-
+### 📱 Ứng dụng Di động (Mobile App):
+- **🔐 Xác thực linh hoạt:**
+  - Đăng nhập bằng MSSV / Mật khẩu (bảo mật `bcryptjs`).
+  - Hỗ trợ **Chế độ Khách (Guest Mode)**: Trải nghiệm bản đồ và thông tin trường mà không bị làm phiền bởi các thông báo xin quyền vị trí, bộ nhớ, camera.
+  - Quên mật khẩu & gửi mã OTP xác thực qua Email sinh viên (`@sv.ttn.edu.vn`).
+- **🗺️ Bản đồ & Dẫn đường thông minh (Campus Map & Navigation):**
+  - **Thuật toán Dijkstra:** Tìm tuyến đường đi bộ ngắn nhất giữa các tòa nhà trong trường dựa trên mạng lưới đường nội bộ.
+  - **Trải nghiệm như Google Maps:** Khi bấm bắt đầu chỉ đường, bản đồ tự động zoom cận cảnh và xoay theo hướng đường di chuyển.
+  - **Biểu tượng vị trí hình tam giác:** Tích hợp la bàn (Compass / Heading) hiển thị hướng nhìn thực tế của người dùng và đưa vị trí về tâm màn hình.
+  - **Lọc rung lắc cảm biến:** Thuật toán làm mịn góc quay (ngưỡng lệch $\ge 8^\circ$ và giới hạn tối thiểu 450ms) giúp tiết kiệm pin và chống giật.
+  - **Tự động ẩn thanh điều hướng (Bottom Tabs):** Tối ưu hóa toàn bộ diện tích màn hình khi đang trong chế độ dẫn đường.
+  - **37 Địa điểm trọng điểm:** Tòa nhà điều hành, Thư viện, Giảng đường A1-A6, B1-B3, Ký túc xá, Sân vận động, Căn tin...
 - **📅 Thời khóa biểu thông minh (Schedule):**
-  - Xem lịch học trực quan theo ngày, theo tuần.
-  - Chi tiết từng ca học: Mã học phần, tên môn học, giảng viên phụ trách, phòng học và thời gian bắt đầu/kết thúc.
+  - Xem lịch học theo tuần và ngày, hiển thị phòng học, tiết học, giảng viên.
+  - Thêm / chỉnh sửa lịch học bù, thực hành đột xuất: Giao diện thẻ **Ngày học** tự động đồng bộ thứ trong tuần, ô **Tiết học** full-width với danh sách chọn nhanh mượt mà.
+- **📊 Kết quả học tập (Grades):**
+  - Tra cứu điểm thành phần, chuyên cần, thi, điểm chữ.
+  - Tự động tính toán điểm trung bình tích lũy GPA (thang 10 & thang 4), tổng tín chỉ đạt.
+- **🚨 Tiện ích sinh viên:**
+  - Gửi ý kiến phản hồi (Feedback) về cơ sở vật chất, dịch vụ đào tạo.
+  - Nút cấp cứu khẩn cấp **SOS Alert** truyền tọa độ tức thời về ban an ninh.
+  - Quản lý hồ sơ cá nhân: Cập nhật số điện thoại, lớp, đổi ảnh đại diện (camera, thư viện hoặc URL).
 
-- **🗺️ Bản đồ trường học (Campus Map):**
-  - Bản đồ tương tác định vị các khu vực trong khuôn viên: Giảng đường, Khu hiệu bộ, Thư viện, Nhà thi đấu, Ký túc xá, Căng tin.
-  - Hỗ trợ xem thông tin mô tả và chỉ đường nhanh đến từng địa điểm.
-
-- **🚨 Tiện ích & Hỗ trợ sinh viên:**
-  - **Gửi phản hồi (Feedback):** Gửi ý kiến đóng góp cho nhà trường với các chủ đề học tập, cơ sở vật chất.
-  - **Khảo sát (Surveys) & Hỗ trợ (Tickets):** Trả lời phiếu khảo sát ý kiến và tạo yêu cầu trợ giúp.
-  - **Báo động khẩn cấp (SOS Alert):** Nút gửi tín hiệu cấp cứu và vị trí tức thời đến đội ngũ an ninh trường.
-
-- **👤 Quản lý hồ sơ cá nhân:**
-  - Xem và cập nhật thông tin liên hệ: Email, số điện thoại, khoa, lớp.
-  - Cập nhật ảnh đại diện linh hoạt: Chụp trực tiếp từ camera, tải ảnh từ thư viện thiết bị, nhập liên kết ảnh hoặc chọn bộ avatar sinh viên mẫu có sẵn.
-  - Đổi mật khẩu tài khoản trực tiếp trong ứng dụng.
-
----
-
-## 🛠️ 4. Công nghệ sử dụng (Tech Stack)
-
-### Frontend (Ứng dụng di động)
-- **Framework:** [React Native](https://reactnative.dev/) `v0.81.5` kết hợp [Expo SDK](https://expo.dev/) `v54`
-- **Routing:** [Expo Router](https://docs.expo.dev/router/introduction/) `v6` (File-based routing)
-- **Ngôn ngữ:** [TypeScript](https://www.typescriptlang.org/) `v5.9`
-- **Giao diện & Biểu tượng:** `@expo/vector-icons` (Feather Icons), `react-native-safe-area-context`
-- **Đa phương tiện & Lưu trữ:** `expo-image-picker`, `expo-image`, `@react-native-async-storage/async-storage`
-
-### Backend (REST API Server)
-- **Nền tảng:** [Node.js](https://nodejs.org/) (ES6+) & [Express.js](https://expressjs.com/) `v4.21`
-- **Cơ sở dữ liệu:** [MySQL 8.0](https://www.mysql.com/) thông qua `mysql2` (Connection Pool)
-- **Xác thực & Bảo mật:** `bcryptjs`, CORS middleware, Dotenv
-- **Dịch vụ Email:** `nodemailer` (SMTP Google Mail gửi OTP)
-- **Cào dữ liệu & Tích hợp:** `cheerio`, `axios` (Hỗ trợ truy xuất dữ liệu từ cổng thông tin đào tạo)
-- **Tài liệu API:** [Swagger UI](https://swagger.io/) (`swagger-ui-express`, `swagger-jsdoc`)
+### 💻 Trang Quản trị viên (Admin Portal - Port 5001):
+- **📊 Bảng điều khiển (Dashboard):** Biểu đồ tương tác thời gian thực, thống kê người dùng, phản hồi, cảnh báo SOS.
+- **👥 Quản lý người dùng (Users):**
+  - Xem danh sách sinh viên & quản trị viên với **Avatar thực tế** (ảnh URL và ảnh Base64).
+  - Modal thêm/sửa tài khoản tích hợp **xem trước và tải ảnh đại diện** trực quan.
+  - Tìm kiếm đa năng theo MSSV, Họ tên, Email, Lớp, Khoa.
+- **🗺️ Quản lý bản đồ & đường nội bộ:**
+  - Thêm, sửa, xóa 37 địa điểm khuôn viên trường.
+  - Trực tiếp vẽ, chỉnh sửa và khôi phục mạng lưới đường đi bộ nội bộ (Campus Paths) trên bản đồ Leaflet.
+- **⚡ Kết nối Realtime (Socket.IO):** Cập nhật ngay lập tức các phản hồi và tín hiệu SOS của sinh viên mà không cần tải lại trang.
 
 ---
 
-## 🚀 5. Hướng dẫn cài đặt & Chạy dự án (Getting Started)
+## 🛠️ 3. Công nghệ sử dụng (Tech Stack)
 
-### Yêu cầu tiên quyết (Prerequisites)
-- [Node.js](https://nodejs.org/) (Phiên bản khuyến nghị: `>= 18.x`)
-- [MySQL Server](https://www.mysql.com/) hoặc [XAMPP](https://www.apachefriends.org/) (chạy MySQL cổng mặc định `3306`)
-- Ứng dụng **Expo Go** trên điện thoại (tải từ Google Play / App Store) hoặc máy ảo Android Studio / iOS Simulator.
+| Phân hệ | Công nghệ & Thư viện chính |
+| :--- | :--- |
+| **Frontend** | React Native `0.81.5`, Expo SDK `54`, TypeScript `5.9`, Expo Router `v6`, React Native WebView, Leaflet `1.9`, Reanimated `4.1` |
+| **Backend** | Node.js (ES6+), Express.js `4.21`, Socket.IO `4.8`, MySQL2 (Connection Pool), bcryptjs, Nodemailer, Cheerio, Axios |
+| **Database** | MySQL 8.0 (Cơ chế tự động tạo schema & nạp seeders khi khởi động) |
+| **Admin Portal** | HTML5 / Vanilla JS (ES6 Modules), Tailwind CSS, Lucide Icons, Leaflet.js |
+| **Tài liệu API** | OpenAPI 3.0 / Swagger UI (`swagger-ui-express`) |
 
 ---
 
-### Bước 1: Clone kho mã nguồn
+## 🚀 4. Hướng dẫn khởi chạy nhanh (Quick Start)
 
-```bash
-git clone https://github.com/HuyHoangI4t/Smart_Campus.git
-cd Smart_Campus
+### Yêu cầu hệ thống:
+- [Node.js](https://nodejs.org/) (Phiên bản `>= 18.x`)
+- [MySQL Server](https://www.mysql.com/) hoặc [XAMPP](https://www.apachefriends.org/) (chạy cổng `3306`)
+- Ứng dụng **Expo Go** trên điện thoại Android / iOS (để test Mobile App)
+
+---
+
+### ⚡ CÁCH 1: Khởi động 1 chạm bằng file `.bat` (Khuyên dùng trên Windows)
+
+Chỉ cần **nhấp đúp chuột (Double Click)** vào file:
+👉 **[start_all.bat](file:///e:/LTDDDNT/start_all.bat)** (hoặc `run.bat`)
+
+File sẽ tự động mở 3 cửa sổ console chạy đồng thời:
+1. `BACKEND API (Port 5000)`: Khởi chạy Node.js server, kết nối MySQL và Socket.IO.
+2. `ADMIN PORTAL (Port 5001)`: Khởi chạy máy chủ giao diện Web Admin.
+3. `FRONTEND APP (Expo)`: Khởi chạy Expo Metro bundler, hiển thị mã QR để quét bằng điện thoại.
+
+---
+
+### 🛠️ CÁCH 2: Khởi động thủ công từng phần bằng Terminal
+
+#### Bước 1: Khởi tạo Cơ sở dữ liệu MySQL
+Mở MySQL CLI, phpMyAdmin hoặc Navicat và tạo database:
+```sql
+CREATE DATABASE smartcampus CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
----
+#### Bước 2: Chạy Backend Server
+```bash
+cd backend
+npm install
+npm run dev
+```
+> 💡 **Tự động hóa:** File `src/server.js` sẽ tự động kết nối MySQL, tạo toàn bộ 13 bảng dữ liệu và chèn sẵn tài khoản admin, 37 địa điểm và đường nội bộ mà bạn không cần import file SQL thủ công.
+- **API Health:** `http://localhost:5000/api/health`
+- **Swagger Docs:** `http://localhost:5000/api-docs`
 
-### Bước 2: Thiết lập và khởi chạy Backend
+#### Bước 3: Chạy Admin Portal
+```bash
+cd admin
+npm install
+npm start
+```
+- Truy cập trình duyệt: `http://localhost:5001`
+- Tài khoản quản trị mặc định: `admin` / Mật khẩu: `123456`
 
-1. **Tạo cơ sở dữ liệu MySQL:**
-   Mở MySQL CLI, phpMyAdmin hoặc MySQL Workbench và tạo database:
-   ```sql
-   CREATE DATABASE smartcampus CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-   ```
-
-2. **Cấu hình biến môi trường (`.env`):**
-   Vào thư mục `backend`, tạo file `.env` (hoặc chỉnh sửa từ mẫu có sẵn):
-   ```dotenv
-   # Cấu hình Database MySQL
-   DB_HOST=localhost
-   DB_USER=root
-   DB_PASSWORD=your_mysql_password
-   DB_NAME=smartcampus
-   DB_PORT=3306
-   
-   # Cổng chạy Backend Server
-   PORT=5000
-   
-   # Cấu hình gửi mail OTP qua Gmail (Tùy chọn)
-   SMTP_HOST=smtp.gmail.com
-   SMTP_PORT=587
-   SMTP_USER=your_email@gmail.com
-   SMTP_PASS=your_gmail_app_password
-   ```
-
-3. **Cài đặt thư viện và khởi động server:**
-   ```bash
-   cd backend
-   npm install
-   npm run dev
-   ```
-   > 💡 **Ghi chú:** Khi server khởi chạy lần đầu, tệp `src/config/initDb.js` sẽ tự động khởi tạo cấu trúc bảng (`users`, `feedback`, `sos_alerts`, `map_locations`, `notifications`, `surveys`, `support_tickets`) và chèn dữ liệu mẫu ban đầu.
-
-4. **Kiểm tra trạng thái backend:**
-   - Kiểm tra sức khỏe API: `http://localhost:5000/api/health`
-   - Tài liệu OpenAPI / Swagger: `http://localhost:5000/api-docs`
+#### Bước 4: Chạy Mobile App (Frontend)
+```bash
+cd frontend
+npm install
+npx expo start
+```
+- Mở ứng dụng **Expo Go** trên điện thoại, quét mã QR trên màn hình console để trải nghiệm app.
 
 ---
 
-### Bước 3: Thiết lập và khởi chạy Ứng dụng di động (Frontend)
-
-1. Mở một cửa sổ Terminal mới:
-   ```bash
-   cd frontend
-   npm install
-   ```
-
-2. **Cấu hình kết nối API:**
-   Ứng dụng sử dụng cấu hình tự động nhận diện IP máy chủ trong file `frontend/src/services/api.ts`:
-   - Trên **Trình duyệt Web**: Tự động dùng `http://localhost:5000/api`.
-   - Trên **Thiết bị thật (Expo Go)**: Tự động trích xuất IP LAN của máy tính đang chạy Expo server.
-   *(Nếu bạn chạy thiết bị thật mà không kết nối được, hãy đảm bảo điện thoại và máy tính cùng chung một mạng Wi-Fi và tường lửa Windows mở cổng `5000`)*.
-
-3. **Khởi chạy ứng dụng với Expo:**
-   ```bash
-   npx expo start
-   ```
-
-4. **Trải nghiệm ứng dụng:**
-   - **Android / iOS thật:** Mở ứng dụng **Expo Go**, quét mã QR hiển thị trên màn hình terminal.
-   - **Android Emulator:** Nhấn phím `a` trên bàn phím.
-   - **Trình duyệt Web:** Nhấn phím `w` trên bàn phím.
-
----
-
-### Bước 4: Thiết lập và khởi chạy Trang Quản trị viên (Admin Portal)
-
-1. Mở một cửa sổ Terminal mới:
-   ```bash
-   cd admin
-   npm install
-   npm start
-   ```
-2. Truy cập cổng quản trị trên trình duyệt:
-   - Địa chỉ: `http://localhost:5001`
-   - Quản lý tin tức, duyệt danh sách địa điểm bản đồ, thống kê cảnh báo SOS, phản hồi và tài khoản sinh viên.
-
----
-
-## 📁 6. Cấu trúc thư mục (Project Structure)
+## 📁 5. Cấu trúc thư mục dự án (Project Structure)
 
 ```text
-Smart_Campus/
-├── admin/                              # Web Portal Quản trị viên (HTML/CSS/JS + Node.js)
-│   ├── public/                         # Giao diện trang quản trị tĩnh
-│   │   ├── css/
-│   │   │   └── style.css               # Phong cách giao diện Admin Portal
+LTDDDNT/
+├── start_all.bat                       # Script khởi động 1 chạm cả 3 hệ thống
+├── run.bat                             # Shortcut chạy start_all.bat
+│
+├── admin/                              # Web Portal Quản trị viên (Port 5001)
+│   ├── public/                         # Mã nguồn giao diện Admin tĩnh
+│   │   ├── css/style.css               # Phong cách giao diện Admin
 │   │   ├── js/
-│   │   │   ├── api.js                  # Gọi API kết nối backend
-│   │   │   ├── app.js                  # Khởi tạo và điều phối các module
-│   │   │   ├── dashboard.js            # Thống kê tổng quan hệ thống
-│   │   │   ├── feedback.js             # Quản lý & duyệt ý kiến phản hồi
-│   │   │   ├── locations.js            # Quản lý tọa độ & địa điểm bản đồ
-│   │   │   ├── notifications.js        # Đăng & phát thông báo toàn trường
-│   │   │   ├── sos.js                  # Giám sát cảnh báo khẩn cấp SOS
-│   │   │   └── users.js                # Quản lý tài khoản sinh viên & phân quyền
-│   │   └── index.html                  # Giao diện chính của Dashboard Admin
-│   ├── .env                            # Biến môi trường Admin (được gitignore)
-│   ├── .env.example
-│   ├── .gitignore                      # Quy tắc bỏ qua file của Admin
-│   ├── package.json                    # Cấu hình gói & script Admin
-│   ├── package-lock.json
-│   └── server.js                       # HTTP Server phục vụ Admin Portal (Port 3000)
+│   │   │   ├── api.js                  # Gọi REST API kết nối Backend
+│   │   │   ├── app.js                  # Điều phối chung, Realtime Socket.IO
+│   │   │   ├── dashboard.js            # Thống kê & biểu đồ hoạt động
+│   │   │   ├── feedback.js             # Quản lý & duyệt phản hồi
+│   │   │   ├── locations.js            # Quản lý 37 địa điểm khuôn viên
+│   │   │   ├── notifications.js        # Phát thông báo toàn trường
+│   │   │   ├── sos.js                  # Xử lý cảnh báo khẩn cấp SOS
+│   │   │   └── users.js                # Quản lý sinh viên/admin, ảnh đại diện
+│   │   └── index.html                  # Giao diện chính Admin Dashboard
+│   ├── package.json                    # Cấu hình gói Admin
+│   └── server.js                       # HTTP server phục vụ Admin Portal
 │
-├── backend/                            # REST API Server & Xử lý nghiệp vụ (Node.js/Express)
+├── backend/                            # REST API Server & Xử lý nghiệp vụ (Port 5000)
 │   ├── src/
-│   │   ├── config/                     # Cấu hình hệ thống & kết nối
-│   │   │   ├── db.js                   # Kết nối MySQL Pool (smartcampus)
-│   │   │   ├── initDb.js               # Khởi tạo bảng dữ liệu & seed mặc định
-│   │   │   └── swagger.js              # Cấu hình tài liệu OpenAPI / Swagger UI
-│   │   ├── controllers/                # Tầng điều khiển nghiệp vụ (Controllers)
-│   │   │   ├── adminController.js      # API dành cho Admin (QL user, SOS, tin tức, map)
-│   │   │   ├── authController.js       # Đăng nhập, đăng ký, OTP email, đổi mật khẩu
-│   │   │   ├── campusController.js     # Bản đồ khuôn viên, phản hồi, cảnh báo SOS
-│   │   │   ├── generalController.js    # Thông báo, khảo sát, hỗ trợ sinh viên
-│   │   │   ├── newsController.js       # Tin tức, sự kiện nhà trường
-│   │   │   └── studentController.js    # Điểm số, GPA, thời khóa biểu, CRUD lịch học
-│   │   ├── database/                   # Quản lý CSDL tập trung & chuẩn hóa
-│   │   │   ├── tables.js               # 1 file duy nhất chứa toàn bộ DDL 13 bảng & migrations
-│   │   │   ├── seedData.js             # Dữ liệu sẵn tách biệt (Admin, 37 địa điểm, paths...)
-│   │   │   ├── seeders.js              # Các hàm cập nhật, nạp dữ liệu ban đầu & bảo trì
-│   │   │   └── index.js                # Điều phối trung tâm khởi tạo Database
-│   │   ├── middlewares/                # Bộ lọc & kiểm tra trung gian
-│   │   │   └── authMiddleware.js       # Xác thực JWT Token & kiểm tra quyền
-│   │   ├── models/                     # Mô hình dữ liệu
-│   │   │   └── userModel.js            # Thao tác dữ liệu người dùng
-│   │   ├── routes/                     # Định tuyến API endpoints
-│   │   │   ├── adminRoutes.js          # /api/admin/*
-│   │   │   ├── authRoutes.js           # /api/auth/*
-│   │   │   ├── campusRoutes.js         # /api/campus/*
-│   │   │   ├── generalRoutes.js        # /api/general/*
-│   │   │   ├── newsRoutes.js           # /api/news/*
-│   │   │   └── studentRoutes.js        # /api/student/* (Lịch học, điểm, hồ sơ)
-│   │   ├── services/                   # Tầng dịch vụ chuyên sâu
-│   │   │   ├── cronService.js          # Lập lịch tác vụ nền tự động
-│   │   │   ├── gradeService.js         # Tính toán bảng điểm, GPA thang 4 & thang 10
-│   │   │   ├── newsService.js          # Thu thập & xử lý tin tức trường
-│   │   │   ├── scheduleService.js      # Phân tích TKB, chỉ đường phòng học, gom nhóm
-│   │   │   └── studentSyncService.js   # Đồng bộ dữ liệu đào tạo & bảo lưu lịch tự tạo
-│   │   └── server.js                   # Điểm khởi chạy chính Backend Server (Port 5000)
-│   ├── env.example                     # Mẫu biến môi trường backend
-│   ├── package.json
-│   ├── package-lock.json
-│   └── README.md
+│   │   ├── config/                     # Cấu hình CSDL, Swagger UI
+│   │   │   ├── db.js                   # Kết nối MySQL Pool (hỗ trợ DB_SSL)
+│   │   │   ├── initDb.js               # Điểm kết nối khởi tạo tự động
+│   │   │   └── swagger.js              # Tài liệu OpenAPI / Swagger
+│   │   ├── controllers/                # Bộ điều khiển nghiệp vụ
+│   │   │   ├── adminController.js      # CRUD người dùng (hỗ trợ avatar), map, SOS
+│   │   │   ├── authController.js       # Đăng nhập, đăng ký, OTP Email, profile
+│   │   │   ├── campusController.js     # Bản đồ, định tuyến đường, phản hồi, SOS
+│   │   │   ├── generalController.js    # Thông báo, khảo sát
+│   │   │   ├── newsController.js       # Tin tức trường học
+│   │   │   └── studentController.js    # Bảng điểm, TKB, lịch thực hành
+│   │   ├── database/                   # Quản lý schema CSDL tập trung
+│   │   │   ├── tables.js               # Định nghĩa DDL toàn bộ 13 bảng
+│   │   │   ├── seedData.js             # 37 địa điểm, tài khoản mẫu, đường nội bộ
+│   │   │   ├── seeders.js              # Hàm nạp dữ liệu mặc định
+│   │   │   └── index.js                # Điều phối khởi tạo CSDL
+│   │   ├── middlewares/                # Middleware xác thực JWT & quyền Admin
+│   │   ├── routes/                     # Định tuyến API
+│   │   ├── services/                   # Dịch vụ nền (Cron sync, Grade, Schedule)
+│   │   └── server.js                   # Entry point máy chủ Express & Socket.IO
+│   ├── .env.example                    # Mẫu cấu hình môi trường backend
+│   └── package.json
 │
-├── frontend/                           # Ứng dụng di động (React Native / Expo SDK 54 / TS)
-│   ├── app/                            # Điều hướng & các màn hình (Expo Router)
-│   │   ├── (auth)/                     # Phân hệ Xác thực tài khoản
-│   │   │   ├── _layout.tsx             # Layout nhóm xác thực
-│   │   │   ├── index.tsx               # Màn hình Đăng nhập
-│   │   │   └── forgot-password.tsx     # Quên mật khẩu & xác thực OTP qua Email
-│   │   ├── (main)/                     # Phân hệ Ứng dụng chính (Bottom Tabs Navigation)
-│   │   │   ├── _layout.tsx             # Cấu hình thanh điều hướng Bottom Tab
-│   │   │   ├── feedback/
-│   │   │   │   └── index.tsx           # Gửi ý kiến phản hồi & góp ý
-│   │   │   ├── grades/
-│   │   │   │   ├── index.tsx           # Bảng điểm tổng quan & GPA các kỳ
-│   │   │   │   └── grades_detail.tsx   # Chi tiết môn học & điểm thành phần
-│   │   │   ├── home/
-│   │   │   │   ├── index.tsx           # Trang chủ Dashboard sinh viên
-│   │   │   │   ├── home_detail.tsx     # Chi tiết bài viết / tin tức
-│   │   │   │   └── all_articles.tsx    # Danh sách tất cả bài viết & thông báo
-│   │   │   ├── map/
-│   │   │   │   └── index.tsx           # Bản đồ số khuôn viên trường tương tác
-│   │   │   ├── profile/
-│   │   │   │   ├── index.tsx           # Hồ sơ cá nhân, thông tin liên hệ, avatar
-│   │   │   │   └── change_password.tsx # Đổi mật khẩu tài khoản
-│   │   │   ├── schedule/
-│   │   │   │   └── index.tsx           # Thời khóa biểu thông minh & CRUD lịch học
-│   │   │   └── sos/
-│   │   │       └── index.tsx           # Cảnh báo khẩn cấp SOS tới an ninh trường
-│   │   ├── _layout.tsx                 # Root layout toàn ứng dụng & Theme Provider
-│   │   └── index.tsx                   # Màn hình Splash / Điều phối phiên đăng nhập
-│   ├── assets/                         # Tài nguyên tĩnh
-│   │   └── images/
-│   │       ├── favicon.png             # Icon ứng dụng
-│   │       └── images.jpg              # Ảnh bìa khuôn viên trường Đại học Tây Nguyên
+├── frontend/                           # Ứng dụng di động Expo / React Native
+│   ├── app/                            # Expo Router (Cấu trúc định tuyến màn hình)
+│   │   ├── (auth)/                     # Đăng nhập, đăng ký, quên mật khẩu
+│   │   ├── (main)/                     # Các tab chính ứng dụng
+│   │   │   ├── home/                   # Trang chủ Dashboard sinh viên
+│   │   │   ├── map/                    # Bản đồ Leaflet, dẫn đường Dijkstra
+│   │   │   ├── schedule/               # Thời khóa biểu & thêm lịch học
+│   │   │   ├── grades/                 # Kết quả học tập & tra cứu GPA
+│   │   │   ├── profile/                # Hồ sơ cá nhân & đổi mật khẩu
+│   │   │   ├── feedback/               # Gửi ý kiến đóng góp
+│   │   │   └── sos/                    # Nút báo động khẩn cấp
+│   │   └── _layout.tsx                 # Root layout toàn ứng dụng
 │   ├── src/
-│   │   ├── components/                 # Thành phần giao diện tái sử dụng
-│   │   │   ├── AuthHeader.tsx          # Tiêu đề form đăng nhập / đăng ký
-│   │   │   ├── LoginRequiredCard.tsx   # Thẻ nhắc đăng nhập khi chưa có phiên
-│   │   │   ├── MainTabs.tsx            # Thanh tab điều hướng tùy biến
-│   │   │   └── NavHeader.tsx           # Header điều hướng trang con
-│   │   ├── constants/                  # Hằng số toàn cục
-│   │   │   ├── appColors.ts            # Bảng màu chủ đạo của ứng dụng
-│   │   │   └── globalStyles.ts         # Kiểu dáng dùng chung toàn hệ thống
-│   │   ├── features/                   # Tính năng chuyên biệt
-│   │   │   └── map/                    # Module Bản đồ số Leaflet tích hợp WebView
-│   │   │       ├── components/         # Giao diện bản đồ đã Memoized tránh re-render
-│   │   │       │   ├── MapControlsOverlay.tsx     # Nút điều khiển xoay la bàn, layer, zoom
-│   │   │       │   ├── MapLocationDetailCard.tsx  # Thẻ thông tin chi tiết địa điểm & chỉ đường
-│   │   │       │   ├── MapLocationPickerModal.tsx # Modal chọn GPS thực tế hoặc vị trí test
-│   │   │       │   └── MapSearchBar.tsx           # Thanh tìm kiếm địa điểm có gợi ý tức thì
-│   │   │       ├── hooks/              # Custom Hooks tối ưu CPU, RAM & chu kỳ GPS
-│   │   │       │   ├── useMapData.ts              # Quản lý nạp dữ liệu, tìm kiếm & khoảng cách
-│   │   │       │   └── useMapGps.ts               # Xử lý GPS 1-lần, la bàn throttle & hủy khi blur
-│   │   │       ├── services/           # Dịch vụ đệm dữ liệu siêu tốc & tải ngầm
-│   │   │       │   └── mapCache.ts                # Cache bộ nhớ 5 phút + Offline AsyncStorage
-│   │   │       ├── constants.ts        # Hằng số bản đồ, ranh giới khuôn viên & 37 địa điểm
-│   │   │       ├── index.ts            # Entry point xuất module bản đồ
-│   │   │       ├── leafletBundle.ts    # Bundle thư viện Leaflet offline
-│   │   │       ├── leafletHtml.ts      # Template HTML render bản đồ, requestAnimationFrame clip
-│   │   │       ├── types.ts            # Kiểu dữ liệu TypeScript cho địa điểm & đường đi
-│   │   │       └── utils.ts            # Tiện ích tính khoảng cách Haversine & phân tích phòng học
-│   │   ├── services/                   # Tầng gọi API kết nối máy chủ
-│   │   │   ├── api.ts                  # Axios client, tự động nhận diện IP, token
-│   │   │   └── get_IPv4.ts             # Tiện ích phát hiện IP LAN máy chủ
-│   │   └── styles/                     # Định nghĩa giao diện & chủ đề
-│   │       ├── common.styles.ts        # Styles chung
-│   │       ├── index.ts                # Tổng hợp styles
-│   │       ├── screen.styles.ts        # Styles các màn hình
-│   │       └── theme.ts                # Theme màu sắc, typography
+│   │   ├── components/                 # Header, MainTabs đồng bộ giao diện
+│   │   ├── features/map/               # Module bản đồ chuyên sâu
+│   │   │   ├── hooks/useMapGps.ts      # Xử lý GPS, la bàn hướng nhìn
+│   │   │   ├── leafletHtml.ts          # Template bản đồ tương tác
+│   │   │   └── utils.ts                # Thuật toán tìm đường & phòng học
+│   │   └── services/                   # Kết nối API, phân quyền khách
 │   ├── app.json                        # Cấu hình dự án Expo
-│   ├── package.json                    # Danh sách thư viện & scripts Expo
-│   ├── package-lock.json
-│   ├── tsconfig.json                   # Cấu hình TypeScript
-│   ├── eslint.config.js                # Cấu hình ESLint
-│   └── README.md
-│
-├── .gitignore                          # Cấu hình bỏ qua tệp tin Git
-└── README.md                           # Tài liệu hướng dẫn & tổng quan dự án
+│   └── package.json
+└── README.md
 ```
 
 ---
 
-## 👥 7. Tác giả & Thành viên thực hiện (Authors & Contributors)
+## 👥 6. Tác giả & Thành viên thực hiện (Authors)
 
 Dự án được thực hiện phục vụ học phần **Lập trình ứng dụng đa nền tảng (LTUDDNT)** - Trường **Đại học Tây Nguyên**:
 
 | STT | Họ và tên | Mã sinh viên | Vai trò | Email liên hệ |
 |:---:|:---|:---:|:---|:---|
 | 1 | **Nguyễn Huy Hoàng** | **23103023** | **Trưởng nhóm (Leader)** | [huyhoangpro187@gmail.com](mailto:huyhoangpro187@gmail.com) |
-| 2 | **Lê Xuân Hoàng** | **23103022** | | |
-| 3 | **Nguyễn Thị Mỹ Duyên** | **23103095** | | |
-| 4 | **Mai Đàm Thế Kiên** | **23103035** | | |
-
-- **Học phần:** Lập trình ứng dụng đa nền tảng (LTUDDNT).
-- **Trường:** Đại học Tây Nguyên (Tay Nguyen University).
-- **GitHub Repository:** [https://github.com/HuyHoangI4t/Smart_Campus](https://github.com/HuyHoangI4t/Smart_Campus)
+| 2 | **Lê Xuân Hoàng** | **23103022** | Thành viên | |
+| 3 | **Nguyễn Thị Mỹ Duyên** | **23103095** | Thành viên | |
+| 4 | **Mai Đàm Thế Kiên** | **23103035** | Thành viên | |
 
 ---
 
-## 📄 8. Giấy phép (License)
+## 📄 7. Giấy phép (License)
 
-Dự án được phân phối dưới giấy phép mã nguồn mở **MIT License**. Chi tiết xem tại tệp [LICENSE](LICENSE) hoặc tham khảo nội dung tóm tắt bên dưới:
-
-```text
-MIT License
-
-Copyright (c) 2026 Smart Campus Team - Đại học Tây Nguyên
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-```
-
----
+Dự án được phân phối dưới giấy phép **MIT License**.
 
 <p align="center">
   Made with ❤️ by <strong>Smart Campus Team</strong> • Đại học Tây Nguyên

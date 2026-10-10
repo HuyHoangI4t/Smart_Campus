@@ -32,6 +32,7 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
   const isTabFocusedRef = useRef<boolean>(true);
   const compassModeRef = useRef<boolean>(false);
   const lastSentHeadingRef = useRef<number>(0);
+  // const lastSentBearingRef = useRef<number>(0); // Giữ lại dưới dạng comment để dự phòng
   const lastHeadingTimeRef = useRef<number>(0);
 
   // Lấy vị trí GPS thật (tối ưu hóa pin và phản hồi tức thời, trả về tọa độ để tránh closure stale state)
