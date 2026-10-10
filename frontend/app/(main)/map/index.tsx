@@ -74,7 +74,7 @@ export default function MapScreen() {
   const [mapLayer, setMapLayer] = useState<"osm" | "satellite">("satellite");
 
   // Kiểm tra đăng nhập
-  const checkAuth = useCallback(async () => {
+  const checkAuth = useCallback(async (): Promise<boolean> => {
     try {
       const userStr = await AsyncStorage.getItem("@auth_user");
       if (userStr) {
@@ -82,12 +82,14 @@ export default function MapScreen() {
         const mssv = u.mssv || u.masv || "";
         if (mssv && mssv !== "guest") {
           setIsLoggedIn(true);
-          return;
+          return true;
         }
       }
       setIsLoggedIn(false);
+      return false;
     } catch {
       setIsLoggedIn(false);
+      return false;
     }
   }, []);
 
@@ -195,13 +197,14 @@ export default function MapScreen() {
     },
   });
 
-  // Tự động kiểm tra quyền, khôi phục tab bar & lấy vị trí GPS nền (nếu máy chưa có)
+  // Tự động kiểm tra quyền, khôi phục tab bar & lấy vị trí GPS nền (chỉ cho tài khoản đã đăng nhập)
   useFocusEffect(
     useCallback(() => {
-      checkAuth();
-      if (!userLocation) {
-        fetchRealGpsLocation(false, true);
-      }
+      checkAuth().then((isAuthed) => {
+        if (isAuthed && !userLocation) {
+          fetchRealGpsLocation(false, true);
+        }
+      });
       return () => {
         setTabBarVisible(true);
       };

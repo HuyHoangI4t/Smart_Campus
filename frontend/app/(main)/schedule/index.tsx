@@ -337,7 +337,6 @@ export default function ScheduleScreen() {
   const [formRoom, setFormRoom] = useState("");
   const [formLecturer, setFormLecturer] = useState("");
   const [formNote, setFormNote] = useState("");
-  const [dayDropdownOpen, setDayDropdownOpen] = useState(false);
   const [periodDropdownOpen, setPeriodDropdownOpen] = useState(false);
   const [isCustomTime, setIsCustomTime] = useState(false);
 
@@ -388,7 +387,6 @@ export default function ScheduleScreen() {
     setFormRoom("");
     setFormLecturer("");
     setFormNote("");
-    setDayDropdownOpen(false);
     setPeriodDropdownOpen(false);
     setIsCustomTime(false);
   };
@@ -411,7 +409,6 @@ export default function ScheduleScreen() {
     setFormRoom(item.room);
     setFormLecturer(item.lecturer || "");
     setFormNote(item.note || "");
-    setDayDropdownOpen(false);
     setPeriodDropdownOpen(false);
     const matchedPreset = PERIOD_OPTIONS.some((p) => p.label === item.time);
     setIsCustomTime(!matchedPreset && !!item.time);
@@ -1521,294 +1518,170 @@ export default function ScheduleScreen() {
                 </View>
               </View>
 
-              {/* Thứ và Tiết - 2 cột cạnh nhau có ô chọn dropdown đè lên thay vì đẩy xuống */}
+              {/* Tiết học - Dropdown chọn ca học */}
               <View
                 style={{
-                  flexDirection: "row",
-                  gap: 12,
-                  alignItems: "flex-start",
                   position: "relative",
-                  zIndex: (dayDropdownOpen || periodDropdownOpen) ? 1000 : 1,
-                  elevation: (dayDropdownOpen || periodDropdownOpen) ? 20 : 1,
+                  zIndex: periodDropdownOpen ? 1000 : 1,
+                  elevation: periodDropdownOpen ? 20 : 1,
                 }}
               >
-                {/* Cột 1: Thứ */}
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text, marginBottom: 6 }}>
-                    Thứ <Text style={{ color: "#EF4444" }}>*</Text>
-                  </Text>
-                  <View style={{ position: "relative", zIndex: dayDropdownOpen ? 1001 : 1 }}>
-                    <TouchableOpacity
-                      onPress={() => {
-                        setDayDropdownOpen(!dayDropdownOpen);
-                        setPeriodDropdownOpen(false);
-                      }}
-                      activeOpacity={0.7}
+                <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text, marginBottom: 6 }}>
+                  Tiết học <Text style={{ color: "#EF4444" }}>*</Text>
+                </Text>
+                <View style={{ position: "relative", zIndex: periodDropdownOpen ? 1001 : 1 }}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setPeriodDropdownOpen(!periodDropdownOpen);
+                    }}
+                    activeOpacity={0.7}
+                    style={{
+                      backgroundColor: "#F8FAFC",
+                      borderWidth: 1,
+                      borderColor: periodDropdownOpen ? AppColors.primary : AppColors.cardBorder,
+                      borderRadius: 12,
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
+                      <Feather name="clock" size={14} color={AppColors.primary} />
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          fontWeight: "600",
+                          color: formTime ? AppColors.text : AppColors.textMuted,
+                        }}
+                        numberOfLines={1}
+                      >
+                        {formTime || "Chọn tiết"}
+                      </Text>
+                    </View>
+                    <Feather
+                      name={periodDropdownOpen ? "chevron-up" : "chevron-down"}
+                      size={16}
+                      color={AppColors.textSecondary}
+                    />
+                  </TouchableOpacity>
+
+                  {/* Dropdown danh sách Tiết - Đè lên nội dung bên dưới */}
+                  {periodDropdownOpen && (
+                    <View
                       style={{
-                        backgroundColor: "#F8FAFC",
-                        borderWidth: 1,
-                        borderColor: dayDropdownOpen ? AppColors.primary : AppColors.cardBorder,
+                        position: "absolute",
+                        top: "100%",
+                        marginTop: 4,
+                        left: 0,
+                        right: 0,
+                        backgroundColor: "#FFFFFF",
                         borderRadius: 12,
-                        paddingHorizontal: 12,
-                        paddingVertical: 10,
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "space-between",
+                        borderWidth: 1,
+                        borderColor: AppColors.cardBorder,
+                        maxHeight: 240,
+                        overflow: "hidden",
+                        elevation: 25,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 6 },
+                        shadowOpacity: 0.18,
+                        shadowRadius: 10,
+                        zIndex: 9999,
                       }}
                     >
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
-                        <Feather name="calendar" size={14} color={AppColors.primary} />
-                        <Text
-                          style={{
-                            fontSize: 13,
-                            fontWeight: "600",
-                            color: AppColors.text,
-                          }}
-                          numberOfLines={1}
-                        >
-                          {(() => {
-                            const d = DAYS.find((item) => item.num === formDayNum);
-                            return d ? (d.num === 1 ? "Chủ nhật" : d.label) : "Thứ 2";
-                          })()}
-                        </Text>
-                      </View>
-                      <Feather
-                        name={dayDropdownOpen ? "chevron-up" : "chevron-down"}
-                        size={16}
-                        color={AppColors.textSecondary}
-                      />
-                    </TouchableOpacity>
-
-                    {/* Dropdown danh sách Thứ - Đè lên nội dung bên dưới */}
-                    {dayDropdownOpen && (
-                      <View
-                        style={{
-                          position: "absolute",
-                          top: "100%",
-                          marginTop: 4,
-                          left: 0,
-                          right: 0,
-                          backgroundColor: "#FFFFFF",
-                          borderRadius: 12,
-                          borderWidth: 1,
-                          borderColor: AppColors.cardBorder,
-                          maxHeight: 240,
-                          overflow: "hidden",
-                          elevation: 25,
-                          shadowColor: "#000",
-                          shadowOffset: { width: 0, height: 6 },
-                          shadowOpacity: 0.18,
-                          shadowRadius: 10,
-                          zIndex: 9999,
-                        }}
-                      >
-                        <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
-                          {DAYS.map((d) => {
-                            const isSel = formDayNum === d.num;
-                            const label = d.num === 1 ? "Chủ nhật" : d.label;
-                            return (
-                              <TouchableOpacity
-                                key={d.num}
-                                onPress={() => {
-                                  setFormDayNum(d.num);
-                                  const matched = weekDates.find((w) => w.num === d.num);
-                                  if (matched) {
-                                    setFormDate(matched.dateStr);
-                                    setFormWeekRange(weekRangeText);
-                                  }
-                                  setDayDropdownOpen(false);
-                                }}
-                                activeOpacity={0.7}
-                                style={{
-                                  flexDirection: "row",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  paddingHorizontal: 12,
-                                  paddingVertical: 9,
-                                  backgroundColor: isSel ? "#EEF2FF" : "#FFFFFF",
-                                  borderBottomWidth: 1,
-                                  borderBottomColor: "#F1F5F9",
-                                }}
-                              >
+                      <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={true}>
+                        {PERIOD_OPTIONS.map((p) => {
+                          const isSel = formTime === p.label;
+                          return (
+                            <TouchableOpacity
+                              key={p.label}
+                              onPress={() => {
+                                setFormTime(p.label);
+                                setIsCustomTime(false);
+                                setPeriodDropdownOpen(false);
+                              }}
+                              activeOpacity={0.7}
+                              style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                paddingHorizontal: 12,
+                                paddingVertical: 8,
+                                backgroundColor: isSel ? "#EEF2FF" : "#FFFFFF",
+                                borderBottomWidth: 1,
+                                borderBottomColor: "#F1F5F9",
+                              }}
+                            >
+                              <View>
                                 <Text
                                   style={{
-                                    fontSize: 13,
-                                    fontWeight: isSel ? "700" : "500",
+                                    fontSize: 12.5,
+                                    fontWeight: isSel ? "700" : "600",
                                     color: isSel ? AppColors.primary : AppColors.text,
                                   }}
                                 >
-                                  {label}
+                                  {p.label}
                                 </Text>
-                                {isSel && <Feather name="check" size={14} color={AppColors.primary} />}
-                              </TouchableOpacity>
-                            );
-                          })}
-                        </ScrollView>
-                      </View>
-                    )}
-                  </View>
-                </View>
-
-                {/* Cột 2: Tiết */}
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text, marginBottom: 6 }}>
-                    Tiết học <Text style={{ color: "#EF4444" }}>*</Text>
-                  </Text>
-                  <View style={{ position: "relative", zIndex: periodDropdownOpen ? 1001 : 1 }}>
-                    <TouchableOpacity
-                      onPress={() => {
-                        setPeriodDropdownOpen(!periodDropdownOpen);
-                        setDayDropdownOpen(false);
-                      }}
-                      activeOpacity={0.7}
-                      style={{
-                        backgroundColor: "#F8FAFC",
-                        borderWidth: 1,
-                        borderColor: periodDropdownOpen ? AppColors.primary : AppColors.cardBorder,
-                        borderRadius: 12,
-                        paddingHorizontal: 12,
-                        paddingVertical: 10,
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
-                        <Feather name="clock" size={14} color={AppColors.primary} />
-                        <Text
-                          style={{
-                            fontSize: 13,
-                            fontWeight: "600",
-                            color: formTime ? AppColors.text : AppColors.textMuted,
+                                <Text style={{ fontSize: 10, color: AppColors.textMuted, marginTop: 1 }}>
+                                  {p.desc}
+                                </Text>
+                              </View>
+                              {isSel && <Feather name="check" size={13} color={AppColors.primary} />}
+                            </TouchableOpacity>
+                          );
+                        })}
+                        <TouchableOpacity
+                          onPress={() => {
+                            setIsCustomTime(true);
+                            setPeriodDropdownOpen(false);
                           }}
-                          numberOfLines={1}
+                          activeOpacity={0.7}
+                          style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 9,
+                            backgroundColor: isCustomTime ? "#EEF2FF" : "#FAFAFA",
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
                         >
-                          {formTime || "Chọn tiết"}
-                        </Text>
-                      </View>
-                      <Feather
-                        name={periodDropdownOpen ? "chevron-up" : "chevron-down"}
-                        size={16}
-                        color={AppColors.textSecondary}
-                      />
-                    </TouchableOpacity>
-
-                    {/* Dropdown danh sách Tiết - Đè lên nội dung bên dưới */}
-                    {periodDropdownOpen && (
-                      <View
-                        style={{
-                          position: "absolute",
-                          top: "100%",
-                          marginTop: 4,
-                          left: 0,
-                          right: 0,
-                          backgroundColor: "#FFFFFF",
-                          borderRadius: 12,
-                          borderWidth: 1,
-                          borderColor: AppColors.cardBorder,
-                          maxHeight: 240,
-                          overflow: "hidden",
-                          elevation: 25,
-                          shadowColor: "#000",
-                          shadowOffset: { width: 0, height: 6 },
-                          shadowOpacity: 0.18,
-                          shadowRadius: 10,
-                          zIndex: 9999,
-                        }}
-                      >
-                        <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={true}>
-                          {PERIOD_OPTIONS.map((p) => {
-                            const isSel = formTime === p.label;
-                            return (
-                              <TouchableOpacity
-                                key={p.label}
-                                onPress={() => {
-                                  setFormTime(p.label);
-                                  setIsCustomTime(false);
-                                  setPeriodDropdownOpen(false);
-                                }}
-                                activeOpacity={0.7}
-                                style={{
-                                  flexDirection: "row",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  paddingHorizontal: 12,
-                                  paddingVertical: 8,
-                                  backgroundColor: isSel ? "#EEF2FF" : "#FFFFFF",
-                                  borderBottomWidth: 1,
-                                  borderBottomColor: "#F1F5F9",
-                                }}
-                              >
-                                <View>
-                                  <Text
-                                    style={{
-                                      fontSize: 12.5,
-                                      fontWeight: isSel ? "700" : "600",
-                                      color: isSel ? AppColors.primary : AppColors.text,
-                                    }}
-                                  >
-                                    {p.label}
-                                  </Text>
-                                  <Text style={{ fontSize: 10, color: AppColors.textMuted, marginTop: 1 }}>
-                                    {p.desc}
-                                  </Text>
-                                </View>
-                                {isSel && <Feather name="check" size={13} color={AppColors.primary} />}
-                              </TouchableOpacity>
-                            );
-                          })}
-                          <TouchableOpacity
-                            onPress={() => {
-                              setIsCustomTime(true);
-                              setPeriodDropdownOpen(false);
-                            }}
-                            activeOpacity={0.7}
+                          <Feather name="edit-2" size={12} color={AppColors.primary} />
+                          <Text
                             style={{
-                              paddingHorizontal: 12,
-                              paddingVertical: 9,
-                              backgroundColor: isCustomTime ? "#EEF2FF" : "#FAFAFA",
-                              flexDirection: "row",
-                              alignItems: "center",
-                              gap: 6,
+                              fontSize: 12,
+                              fontWeight: "600",
+                              color: AppColors.primary,
                             }}
                           >
-                            <Feather name="edit-2" size={12} color={AppColors.primary} />
-                            <Text
-                              style={{
-                                fontSize: 12,
-                                fontWeight: "600",
-                                color: AppColors.primary,
-                              }}
-                            >
-                              Tự nhập khác...
-                            </Text>
-                          </TouchableOpacity>
-                        </ScrollView>
-                      </View>
-                    )}
+                            Tự nhập khác...
+                          </Text>
+                        </TouchableOpacity>
+                      </ScrollView>
+                    </View>
+                  )}
 
-                    {/* Ô nhập custom tiết nếu chọn "Tự nhập khác..." */}
-                    {isCustomTime && (
-                      <TextInput
-                        value={formTime}
-                        onChangeText={setFormTime}
-                        placeholder="Ví dụ: 13:50 - 15:30"
-                        placeholderTextColor={AppColors.textMuted}
-                        autoFocus
-                        style={{
-                          marginTop: 6,
-                          backgroundColor: "#F8FAFC",
-                          borderWidth: 1,
-                          borderColor: AppColors.primary,
-                          borderRadius: 10,
-                          paddingHorizontal: 10,
-                          paddingVertical: 6,
-                          fontSize: 12.5,
-                          color: AppColors.text,
-                        }}
-                      />
-                    )}
-                  </View>
+                  {/* Ô nhập custom tiết nếu chọn "Tự nhập khác..." */}
+                  {isCustomTime && (
+                    <TextInput
+                      value={formTime}
+                      onChangeText={setFormTime}
+                      placeholder="Ví dụ: 13:50 - 15:30"
+                      placeholderTextColor={AppColors.textMuted}
+                      autoFocus
+                      style={{
+                        marginTop: 6,
+                        backgroundColor: "#F8FAFC",
+                        borderWidth: 1,
+                        borderColor: AppColors.primary,
+                        borderRadius: 10,
+                        paddingHorizontal: 10,
+                        paddingVertical: 6,
+                        fontSize: 12.5,
+                        color: AppColors.text,
+                      }}
+                    />
+                  )}
                 </View>
               </View>
 

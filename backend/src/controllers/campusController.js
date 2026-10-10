@@ -258,7 +258,7 @@ exports.getDashboard = async (req, res) => {
         variant: isResolved ? 'success' : 'warning',
         icon: isResolved ? 'check' : 'alert-triangle',
         title: isResolved
-          ? 'Tín hiệu SOS: Đã được lực lượng an ninh xử lý an toàn'
+          ? 'Tín hiệu SOS: Đã được xử lý an toàn'
           : `Tín hiệu SOS: ${userSos.status || 'Đang hỗ trợ'}`,
         subtitle: formatDateStr(userSos.created_at),
         date: formatDateStr(userSos.created_at),
@@ -286,19 +286,11 @@ exports.getDashboard = async (req, res) => {
       });
     });
 
-    const stats = [
-      { label: "Ghế Thư viện", value: "34", sub: "Còn trống", icon: "book-open", color: "#10B981" },
-      { label: "Căng tin", value: "8 phút", sub: "Thời gian chờ", icon: "coffee", color: "#F59E0B" },
-      { label: "Tiện ích số", value: "24/7", sub: "Hoạt động", icon: "wifi", color: "#3B82F6" },
-      { label: "Trạng thái", value: "Bình thường", sub: "Toàn khuôn viên", icon: "check-circle", color: "#8B5CF6" },
-    ];
-
     res.json({
       success: true,
       student: studentInfo,
       alerts: notificationAlerts,
       notificationAlerts,
-      stats,
       quickActions: [
         { icon: "navigation", label: "Bản đồ", screen: "map", bg: "#F3F4F6", fg: "#0284C7" },
         { icon: "calendar", label: "Lịch học", screen: "schedule", bg: "#DBEAFE", fg: "#2563EB" },

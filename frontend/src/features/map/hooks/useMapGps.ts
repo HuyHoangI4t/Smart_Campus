@@ -4,6 +4,7 @@ import * as Location from "expo-location";
 import { useFocusEffect } from "expo-router";
 import { calculateDistanceKm } from "../utils";
 import { TNU_CAMPUS_CENTER, TNU_SAMPLE_TEST_LOCATIONS } from "../constants";
+import { isGuestUser } from "../../../services/permissionService";
 
 export interface UserCoords {
   latitude: number;
@@ -31,10 +32,8 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
   const isTabFocusedRef = useRef<boolean>(true);
   const compassModeRef = useRef<boolean>(false);
   const lastSentHeadingRef = useRef<number>(0);
-  const lastSentBearingRef = useRef<number>(0);
   const lastHeadingTimeRef = useRef<number>(0);
 
-  // Lấy vị trí GPS thật (tối ưu hóa pin và phản hồi tức thời)
   // Lấy vị trí GPS thật (tối ưu hóa pin và phản hồi tức thời, trả về tọa độ để tránh closure stale state)
   const fetchRealGpsLocation = useCallback(
     async (centerOnUser = true, silent = false): Promise<UserCoords | null> => {
@@ -45,6 +44,12 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
       let resultCoords: UserCoords | null = null;
 
       try {
+        // Ở chế độ khách, tuyệt đối không hỏi quyền vị trí GPS
+        if (await isGuestUser()) {
+          setLocationLoading(false);
+          return null;
+        }
+
         const permission = await Location.requestForegroundPermissionsAsync();
         if (!isTabFocusedRef.current) return null;
 
@@ -98,7 +103,7 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
           return resultCoords;
         }
 
-        // Nếu chưa có cache, chờ tối đa 2.5s (thay vì 7s) để phản hồi siêu tốc không bị treo
+        // Nếu chưa có cache, chờ tối đa 2.5s để lấy vị trí mới, nếu quá thời gian này thì trả về null
         const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500));
         const freshLoc = (await Promise.race([positionPromise, timeoutPromise])) as Location.LocationObject | null;
 
@@ -156,6 +161,11 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
   const startHeadingTracking = useCallback(async () => {
     if (!isTabFocusedRef.current) return;
     try {
+      // Ở chế độ khách, tuyệt đối không hỏi quyền cảm biến vị trí / la bàn
+      if (await isGuestUser()) {
+        return;
+      }
+
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (!isTabFocusedRef.current || status !== "granted") return;
 
@@ -195,7 +205,7 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
       });
 
       headingSubscriptionRef.current = sub;
-    } catch (err) {
+    } catch {
       // Thiết bị có thể không có cảm biến từ trường
     }
   }, [onHeadingUpdated, onBearingUpdated]);

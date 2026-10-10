@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { AppColors } from '../constants/appColors';
 import { tabBarStyles } from '../constants/globalStyles';
@@ -16,16 +16,16 @@ export type CustomBottomNavProps = BottomTabBarProps | StandaloneNavProps;
 interface TabItemConfig {
   route: string;
   label: string;
-  icon: keyof typeof MaterialIcons.glyphMap;
+  icon: keyof typeof Feather.glyphMap;
   isCenter?: boolean;
 }
 
 const TAB_ITEMS: TabItemConfig[] = [
   { route: 'home/index', label: 'Trang chủ', icon: 'home' },
-  { route: 'schedule/index', label: 'Lịch học', icon: 'calendar-today' },
-  { route: 'map/index', label: 'Bản đồ', icon: 'map', isCenter: true },
-  { route: 'grades/index', label: 'Điểm', icon: 'assessment' },
-  { route: 'profile/index', label: 'Hồ sơ', icon: 'person-outline' },
+  { route: 'schedule/index', label: 'Lịch học', icon: 'calendar' },
+  { route: 'map/index', label: 'Bản đồ', icon: 'navigation', isCenter: true },
+  { route: 'grades/index', label: 'Điểm', icon: 'bar-chart-2' },
+  { route: 'profile/index', label: 'Hồ sơ', icon: 'user' },
 ];
 
 type TabBarVisibilityListener = (visible: boolean) => void;
@@ -228,9 +228,9 @@ export function CustomBottomNav(props: CustomBottomNavProps) {
                     isSelected && tabBarStyles.centerIconSelected,
                   ]}
                 >
-                  <MaterialIcons
+                  <Feather
                     name={item.icon}
-                    size={26}
+                    size={22}
                     color="#FFFFFF"
                   />
                 </View>
@@ -262,9 +262,9 @@ export function CustomBottomNav(props: CustomBottomNavProps) {
                   isSelected && tabBarStyles.selectedIconContainer,
                 ]}
               >
-                <MaterialIcons
+                <Feather
                   name={item.icon}
-                  size={24}
+                  size={20}
                   color={isSelected ? AppColors.primary : AppColors.textMuted}
                 />
               </View>

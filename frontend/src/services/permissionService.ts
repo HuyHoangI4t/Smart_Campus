@@ -1,12 +1,34 @@
 import { Platform, PermissionsAndroid, Alert, Linking } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+/**
+ * Kiểm tra xem phiên hiện tại có phải là người dùng "Khách" hay không.
+ * Chế độ khách: chưa đăng nhập hoặc có mssv === 'guest'.
+ */
+export async function isGuestUser(): Promise<boolean> {
+  try {
+    const userStr = await AsyncStorage.getItem("@auth_user");
+    if (!userStr) return true;
+    const user = JSON.parse(userStr);
+    const mssv = user.mssv || user.masv || "";
+    return !mssv || mssv === "guest";
+  } catch {
+    return true;
+  }
+}
 
 /**
  * 1. Yêu cầu quyền truy cập bộ nhớ khi mở ứng dụng (Startup Permission)
  * Tự động yêu cầu quyền bộ nhớ / lưu trữ tài liệu và ảnh phù hợp với từng phiên bản Android & iOS
+ * Chế độ khách (guest): Bỏ qua hoàn toàn, tuyệt đối không hỏi quyền bộ nhớ
  */
 export async function requestAppStartupStoragePermission(): Promise<boolean> {
   try {
+    if (await isGuestUser()) {
+      return false;
+    }
+
     if (Platform.OS === "android") {
       const androidVersion = typeof Platform.Version === "number" ? Platform.Version : parseInt(String(Platform.Version), 10) || 30;
 
@@ -75,6 +97,10 @@ export async function requestAppStartupStoragePermission(): Promise<boolean> {
  */
 export async function requestPhotoLibraryPermission(): Promise<boolean> {
   try {
+    if (await isGuestUser()) {
+      return false;
+    }
+
     if (Platform.OS === "android") {
       const androidVersion = typeof Platform.Version === "number" ? Platform.Version : parseInt(String(Platform.Version), 10) || 30;
 
@@ -143,6 +169,10 @@ export async function requestPhotoLibraryPermission(): Promise<boolean> {
  */
 export async function requestCameraPermission(): Promise<boolean> {
   try {
+    if (await isGuestUser()) {
+      return false;
+    }
+
     if (Platform.OS === "android") {
       const hasCamera = await PermissionsAndroid.check(
         PermissionsAndroid.PERMISSIONS.CAMERA
