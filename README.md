@@ -28,22 +28,48 @@
   <em>Khuôn viên trường Đại học Tây Nguyên (Tay Nguyen University)</em>
 </p>
 
-### 📱 Giao diện chính của ứng dụng di động Smart Campus
+### 📱 Giao diện ứng dụng di động Smart Campus
 
-| 🔐 Đăng nhập hệ thống | 📝 Đăng ký tài khoản | 📩 Xác thực OTP Email |
+#### 🔐 1. Xác thực & Đăng ký tài khoản (Authentication & OTP)
+| 🔐 Đăng nhập hệ thống | 📝 Đăng ký tài khoản | 📩 Xác thực OTP Email (60s) |
 | :---: | :---: | :---: |
-| <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100158.png" width="240" alt="Đăng nhập" /> | <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100245.png" width="240" alt="Đăng ký" /> | <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100326.png" width="240" alt="Xác thực OTP Email" /> |
-| *Đăng nhập bằng MSSV / Email hoặc Khách* | *Đăng ký tài khoản sinh viên* | *Gửi & xác thực OTP qua Email trường* |
+| <img src="frontend/assets/Screenshots%20_Demo/01_auth_login.jpg" width="240" alt="Đăng nhập" /> | <img src="frontend/assets/Screenshots%20_Demo/02_auth_register.jpg" width="240" alt="Đăng ký" /> | <img src="frontend/assets/Screenshots%20_Demo/03_auth_otp_verify.jpg" width="240" alt="Xác thực OTP Email" /> |
+| *Đăng nhập bằng MSSV / Email hoặc Chế độ Khách* | *Đăng ký tài khoản sinh viên mới* | *Xác thực mã OTP 6 số & nút gửi lại sau 60s* |
 
-| 🏠 Trang chủ (Dashboard) | 📅 Thời khóa biểu theo tuần | 🧭 Chỉ đường & Bản đồ số |
-| :---: | :---: | :---: |
-| <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100501.png" width="240" alt="Trang chủ" /> | <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100509.png" width="240" alt="Thời khóa biểu" /> | <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100515.png" width="240" alt="Chỉ đường phòng học" /> |
-| *Lớp học tiếp theo, tin tức & lối tắt* | *Lịch học theo tuần, xem phòng & GV* | *Dẫn đường Dijkstra, xoay theo góc đường* |
+#### 🏠 2. Trang chủ & Tin tức nhà trường (Home Dashboard & News)
+| 🏠 Trang chủ (Dashboard) | 📢 Thông báo & Tin tức |
+| :---: | :---: |
+| <img src="frontend/assets/Screenshots%20_Demo/04_home_dashboard.jpg" width="240" alt="Trang chủ Dashboard" /> | <img src="frontend/assets/Screenshots%20_Demo/05_home_announcements_news.jpg" width="240" alt="Thông báo & Tin tức" /> |
+| *Lớp học kế tiếp, GPA, tác vụ nhanh & cảnh báo* | *Thông báo sinh viên & tin tức hoạt động* |
 
-| 📊 Kết quả học tập (Điểm) | 👤 Hồ sơ sinh viên | 🔒 Đổi mật khẩu |
+#### 📅 3. Thời khóa biểu thông minh (Smart Schedule)
+| 📅 Lịch học theo tuần & ngày | 🧭 Chỉ đường tới phòng học | ➕ Thêm lịch bù / thực hành |
 | :---: | :---: | :---: |
-| <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100524.png" width="240" alt="Kết quả học tập" /> | <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100544.png" width="240" alt="Hồ sơ sinh viên" /> | <img src="frontend/assets/Screenshots%20_Demo/Screenshot%202026-10-09%20100555.png" width="240" alt="Đổi mật khẩu" /> |
-| *GPA hệ 10 & 4, tín chỉ & lọc kỳ* | *Thông tin sinh viên & avatar* | *Cập nhật mật khẩu bảo mật* |
+| <img src="frontend/assets/Screenshots%20_Demo/06_schedule_weekly.jpg" width="240" alt="Lịch học theo tuần" /> | <img src="frontend/assets/Screenshots%20_Demo/07_schedule_room_directions.jpg" width="240" alt="Chỉ dẫn phòng học" /> | <img src="frontend/assets/Screenshots%20_Demo/08_schedule_add_custom.jpg" width="240" alt="Thêm lịch học cá nhân" /> |
+| *Lịch học theo tuần, xem phòng, tiết & GV* | *Lộ trình di chuyển chi tiết từ cổng tới phòng* | *Tùy chỉnh lịch học bù, thực hành đột xuất* |
+
+#### 🗺️ 4. Bản đồ số & Dẫn đường nội bộ (Campus Map & Navigation)
+| 🗺️ Tổng quan khuôn viên 37 địa điểm | 🧭 Dẫn đường Dijkstra & Đổi cổng vào |
+| :---: | :---: |
+| <img src="frontend/assets/Screenshots%20_Demo/09_map_campus_overview.jpg" width="240" alt="Bản đồ khuôn viên" /> | <img src="frontend/assets/Screenshots%20_Demo/10_map_routing_navigation.jpg" width="240" alt="Dẫn đường Dijkstra" /> |
+| *Tìm kiếm tòa nhà, chip lọc loại & thẻ chi tiết* | *Đường đi bộ Dijkstra, đổi cổng & thanh trạng thái đáy* |
+
+#### 📊 5. Kết quả học tập (Grades & Academic)
+| 📊 Bảng điểm tổng quan & GPA | 📑 Chi tiết điểm thành phần |
+| :---: | :---: |
+| <img src="frontend/assets/Screenshots%20_Demo/11_grades_overview.jpg" width="240" alt="Kết quả học tập" /> | <img src="frontend/assets/Screenshots%20_Demo/12_grades_detail.jpg" width="240" alt="Chi tiết bảng điểm" /> |
+| *GPA hệ 10 & 4, tín chỉ tích lũy & lọc học kỳ* | *Điểm quá trình, thực hành, thi 1, thi 2 & học phần* |
+
+#### 👤 6. Hồ sơ sinh viên & Bảo mật tài khoản (Profile & Security)
+| 👤 Hồ sơ sinh viên | ⚙️ Cài đặt & Đăng xuất | ✏️ Cập nhật hồ sơ & Avatar |
+| :---: | :---: | :---: |
+| <img src="frontend/assets/Screenshots%20_Demo/13_profile_overview.jpg" width="240" alt="Hồ sơ sinh viên" /> | <img src="frontend/assets/Screenshots%20_Demo/14_profile_security.jpg" width="240" alt="Cài đặt & Bảo mật" /> | <img src="frontend/assets/Screenshots%20_Demo/15_profile_edit.jpg" width="240" alt="Cập nhật hồ sơ" /> |
+| *Thông tin sinh viên, khoa, lớp, email & SĐT* | *Bảo mật tài khoản & nút đăng xuất thiết bị* | *Chỉnh sửa thông tin liên hệ & đổi ảnh đại diện* |
+
+| 🔒 Đổi mật khẩu tài khoản | 🚪 Xác nhận đăng xuất |
+| :---: | :---: |
+| <img src="frontend/assets/Screenshots%20_Demo/16_profile_change_password.jpg" width="240" alt="Đổi mật khẩu" /> | <img src="frontend/assets/Screenshots%20_Demo/17_profile_logout_confirm.jpg" width="240" alt="Xác nhận đăng xuất" /> |
+| *Cập nhật mật khẩu mới an toàn* | *Hộp thoại xác nhận đăng xuất khỏi thiết bị* |
 
 ---
 
