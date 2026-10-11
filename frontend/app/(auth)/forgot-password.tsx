@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -28,15 +28,32 @@ export default function ForgotPasswordScreen() {
 
   const router = useRouter();
 
-  // Handle individual OTP digit change
+  // Handle individual OTP digit change or full paste
   const handleOtpChange = (text: string, index: number) => {
-    const digit = text.replace(/[^0-9]/g, '').slice(-1);
+    const cleaned = text.replace(/[^0-9]/g, '');
+    if (!cleaned) {
+      const newValues = [...otpValues];
+      newValues[index] = '';
+      setOtpValues(newValues);
+      return;
+    }
+
+    if (cleaned.length > 1) {
+      const newValues = [...otpValues];
+      const digits = cleaned.split('').slice(0, 6);
+      digits.forEach((d, i) => {
+        newValues[i] = d;
+      });
+      setOtpValues(newValues);
+      inputRefs.current[Math.min(digits.length - 1, 5)]?.focus();
+      return;
+    }
+
     const newValues = [...otpValues];
-    newValues[index] = digit;
+    newValues[index] = cleaned;
     setOtpValues(newValues);
 
-    // Auto-focus next input
-    if (digit && index < 5) {
+    if (cleaned && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   };
@@ -48,8 +65,36 @@ export default function ForgotPasswordScreen() {
     }
   };
 
+  const [resendCountdown, setResendCountdown] = useState(0);
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startCountdown = useCallback(() => {
+    setResendCountdown(60);
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+    }
+    countdownIntervalRef.current = setInterval(() => {
+      setResendCountdown((prev) => {
+        if (prev <= 1) {
+          if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+      }
+    };
+  }, []);
+
   // Step 1: Request OTP
   const handleRequestOtp = async () => {
+    if (resendCountdown > 0 && step === 2) return;
     setError('');
     setSuccessMsg('');
 
@@ -64,8 +109,10 @@ export default function ForgotPasswordScreen() {
       if (res.success) {
         setMssv(res.mssv || identifier.trim());
         setEmailSentTo(res.email || `${res.mssv || identifier.trim()}@sv.ttn.edu.vn`);
-        setSuccessMsg(res.message || 'Mã OTP đã được gửi đến email. Vui lòng kiểm tra hộp thư (có thể mất 1-3 giây).');
+        setSuccessMsg(res.message || 'Mã OTP đã được gửi đến email. Vui lòng kiểm tra hộp thư.');
+        setOtpValues(['', '', '', '', '', '']);
         setStep(2);
+        startCountdown();
       } else {
         setError(res.message || 'Không tìm thấy tài khoản.');
       }
@@ -274,7 +321,7 @@ export default function ForgotPasswordScreen() {
                       onChangeText={(text) => handleOtpChange(text, index)}
                       onKeyPress={(e) => handleKeyPress(e, index)}
                       keyboardType="number-pad"
-                      maxLength={1}
+                      maxLength={6}
                       selectTextOnFocus
                     />
                   ))}
@@ -294,11 +341,26 @@ export default function ForgotPasswordScreen() {
                 </TouchableOpacity>
 
                 <View style={{ height: 24, alignItems: 'center' }}>
-                  <TouchableOpacity onPress={handleRequestOtp} disabled={loading} style={{ padding: 8 }}>
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: AppColors.accent }}>
-                      Gửi lại mã OTP
-                    </Text>
-                  </TouchableOpacity>
+                  {resendCountdown > 0 ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, opacity: 0.85, paddingVertical: 6 }}>
+                      <Feather name="clock" size={14} color={AppColors.textMuted} />
+                      <Text style={{ fontSize: 13, color: AppColors.textMuted, fontWeight: '600' }}>
+                        Gửi lại mã sau <Text style={{ color: AppColors.primary, fontWeight: '800' }}>{resendCountdown}s</Text>
+                      </Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={handleRequestOtp}
+                      disabled={loading}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 14, backgroundColor: '#EEF2FF', borderRadius: 99 }}
+                      activeOpacity={0.7}
+                    >
+                      <Feather name="rotate-cw" size={13} color={AppColors.primary} />
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: AppColors.primary }}>
+                        Gửi lại mã OTP
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </>
             )}

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, Feather } from '@expo/vector-icons';
@@ -46,17 +46,35 @@ export default function AuthScreen() {
   // 6 individual OTP digit states for registration
   const [otpValues, setOtpValues] = useState(['', '', '', '', '', '']);
   const inputRefs = useRef<(TextInput | null)[]>([]);
-
   const router = useRouter();
 
-  // Handle individual OTP digit change
+  // Handle individual OTP digit change or full paste
   const handleOtpChange = (text: string, index: number) => {
-    const digit = text.replace(/[^0-9]/g, '').slice(-1);
+    const cleaned = text.replace(/[^0-9]/g, '');
+    if (!cleaned) {
+      const newValues = [...otpValues];
+      newValues[index] = '';
+      setOtpValues(newValues);
+      return;
+    }
+
+    // Nếu người dùng dán (paste) cả chuỗi mã OTP (vd: 734331)
+    if (cleaned.length > 1) {
+      const newValues = [...otpValues];
+      const digits = cleaned.split('').slice(0, 6);
+      digits.forEach((d, i) => {
+        newValues[i] = d;
+      });
+      setOtpValues(newValues);
+      inputRefs.current[Math.min(digits.length - 1, 5)]?.focus();
+      return;
+    }
+
     const newValues = [...otpValues];
-    newValues[index] = digit;
+    newValues[index] = cleaned;
     setOtpValues(newValues);
 
-    if (digit && index < 5) {
+    if (cleaned && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   };
@@ -64,6 +82,70 @@ export default function AuthScreen() {
   const handleKeyPress = (e: any, index: number) => {
     if (e.nativeEvent.key === 'Backspace' && !otpValues[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const [resendCountdown, setResendCountdown] = useState(0);
+  const [resending, setResending] = useState(false);
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Khởi động đếm ngược 60 giây gửi lại OTP
+  const startCountdown = useCallback(() => {
+    setResendCountdown(60);
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+    }
+    countdownIntervalRef.current = setInterval(() => {
+      setResendCountdown((prev) => {
+        if (prev <= 1) {
+          if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
+  // Hủy interval khi unmount component
+  useEffect(() => {
+    return () => {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+      }
+    };
+  }, []);
+
+  // Xử lý gửi lại mã OTP đăng ký
+  const handleResendOtp = async () => {
+    if (resendCountdown > 0 || resending) return;
+    setError('');
+    setSuccessMsg('');
+    setResending(true);
+    try {
+      const fullFullName = `${firstName.trim()} ${lastName.trim()}`;
+      const fullEmail = `${studentId.trim().toLowerCase()}@sv.ttn.edu.vn`;
+      const res = await apiRegister({
+        mssv: studentId.trim(),
+        password: regPassword,
+        fullName: fullFullName,
+        email: fullEmail,
+      });
+
+      if (res.success) {
+        setEmailSentTo(res.email || fullEmail);
+        setSuccessMsg(res.message || 'Mã OTP mới đã được gửi đến email!');
+        setOtpValues(['', '', '', '', '', '']);
+        startCountdown();
+        setTimeout(() => {
+          inputRefs.current[0]?.focus();
+        }, 100);
+      } else {
+        setError(res.message || 'Không thể gửi lại mã OTP.');
+      }
+    } catch {
+      setError('Lỗi kết nối đến server.');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -153,8 +235,9 @@ export default function AuthScreen() {
 
           if (res.success) {
             setEmailSentTo(res.email || fullEmail);
-            setSuccessMsg(res.message || 'Mã OTP xác thực đã được gửi đến email.');
+            setSuccessMsg(res.message || 'Mã OTP đã được gửi đến email.');
             setRegStep(2);
+            startCountdown();
           } else {
             setError(res.message || 'Đăng ký thất bại.');
           }
@@ -381,7 +464,7 @@ export default function AuthScreen() {
                         onChangeText={(text) => handleOtpChange(text, index)}
                         onKeyPress={(e) => handleKeyPress(e, index)}
                         keyboardType="number-pad"
-                        maxLength={1}
+                        maxLength={6}
                         selectTextOnFocus
                       />
                     ))}
@@ -389,7 +472,37 @@ export default function AuthScreen() {
 
                   <View style={{ height: 16 }} />
 
-                  <TouchableOpacity onPress={() => setRegStep(1)} activeOpacity={0.7} style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  {/* Nút gửi lại OTP với đếm ngược 60 giây */}
+                  <View style={{ alignItems: 'center', marginVertical: 4 }}>
+                    {resendCountdown > 0 ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, opacity: 0.85, paddingVertical: 6 }}>
+                        <Feather name="clock" size={14} color={AppColors.textMuted} />
+                        <Text style={{ fontSize: 13, color: AppColors.textMuted, fontWeight: '600' }}>
+                          Gửi lại mã sau <Text style={{ color: AppColors.primary, fontWeight: '800' }}>{resendCountdown}s</Text>
+                        </Text>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        onPress={handleResendOtp}
+                        disabled={resending}
+                        activeOpacity={0.7}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 14, backgroundColor: '#EEF2FF', borderRadius: 99 }}
+                      >
+                        {resending ? (
+                          <ActivityIndicator size="small" color={AppColors.primary} />
+                        ) : (
+                          <Feather name="rotate-cw" size={13} color={AppColors.primary} />
+                        )}
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: AppColors.primary }}>
+                          {resending ? 'Đang gửi mã...' : 'Gửi lại mã OTP'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  <View style={{ height: 12 }} />
+
+                  <TouchableOpacity onPress={() => { setRegStep(1); setError(''); }} activeOpacity={0.7} style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                     <Feather name="arrow-left" size={13} color={AppColors.accent} />
                     <Text style={{ fontSize: 13, fontWeight: '700', color: AppColors.accent }}>
                       Quay lại

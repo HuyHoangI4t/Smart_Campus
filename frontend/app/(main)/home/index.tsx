@@ -12,6 +12,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTabBarScrollHandler } from "../../../src/components/MainTabs";
+import { AppColors } from "../../../src/constants/appColors";
 import { HomeSkeleton } from "../../../src/components/Skeleton";
 import { getHeaderTopPadding } from "../../../src/utils/safeArea";
 import {
@@ -366,8 +367,8 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
-      <StatusBar barStyle="light-content" backgroundColor="#0F2964" translucent={Platform.OS === "android"} />
+    <View style={{ flex: 1, backgroundColor: AppColors.background }}>
+      <StatusBar barStyle="light-content" backgroundColor={AppColors.primary} translucent={Platform.OS === "android"} />
 
       {/* ─── 1. HEADER NAVY BLUE ─── */}
       <HomeHeader
@@ -387,8 +388,8 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#0F2964"
-            colors={["#0F2964"]}
+            tintColor={AppColors.primary}
+            colors={[AppColors.primary]}
           />
         }
       >

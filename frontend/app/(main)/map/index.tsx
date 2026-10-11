@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useMemo, useEffect } from "react";
-import { View, Text, TouchableOpacity, Platform, Linking, Keyboard } from "react-native";
+import { View, Platform, Linking, Keyboard } from "react-native";
 import { WebView } from "react-native-webview";
-import { Feather } from "@expo/vector-icons";
+//import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -12,6 +12,7 @@ import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
 import { MapSkeleton } from "../../../src/components/Skeleton";
 import {
   LocationItem,
+  UserCoords,
   CampusPath,
   CampusGate,
   TAY_NGUYEN_CAMPUS_LOCATIONS,
@@ -28,6 +29,7 @@ import {
   MapLocationDetailCard,
   MapLocationPickerModal,
   MapRouteStatusCard,
+  MapTopGateSelector,
   useMapGps,
   useMapData,
 } from "../../../src/features/map";
@@ -110,8 +112,10 @@ export default function MapScreen() {
     rotateStep,
     setBearing,
     stopCompassTracking,
+    startPositionWatch,
+    stopPositionWatch,
   } = useMapGps({
-    onLocationUpdated: (coords, accuracy, centerOnUser) => {
+    onLocationUpdated: useCallback((coords: UserCoords, accuracy: number, centerOnUser: boolean) => {
       webViewRef.current?.postMessage(
         JSON.stringify({
           type: "UPDATE_USER_LOCATION",
@@ -129,8 +133,8 @@ export default function MapScreen() {
           })
         );
       }
-    },
-    onBearingUpdated: (b, animated) => {
+    }, []),
+    onBearingUpdated: useCallback((b: number, animated: boolean) => {
       webViewRef.current?.postMessage(
         JSON.stringify({
           type: "SET_BEARING",
@@ -138,15 +142,15 @@ export default function MapScreen() {
           animated: animated,
         })
       );
-    },
-    onHeadingUpdated: (h) => {
+    }, []),
+    onHeadingUpdated: useCallback((h: number) => {
       webViewRef.current?.postMessage(
         JSON.stringify({
           type: "UPDATE_USER_HEADING",
           heading: h,
         })
       );
-    },
+    }, []),
   });
 
   // Hook quản lý dữ liệu bản đồ, đường đi bộ, tìm kiếm & khoảng cách (Có Memory Cache + Storage)
@@ -491,18 +495,21 @@ export default function MapScreen() {
       (computedDistanceKm !== null ? Math.round(computedDistanceKm * 1000) : undefined);
     const initialMin = selectedLocRouteDistance?.durationMinutes ?? computedWalkingMinutes ?? 1;
 
+    const gateToUse = safeGateId || selectedGateId;
+    const gateObj = gateToUse ? TNU_CAMPUS_GATES.find((g) => g.id === gateToUse) : null;
+
     if (initialDist !== undefined) {
       setActiveRoute({
         distanceMeters: initialDist,
         durationMinutes: initialMin,
         gateId: safeGateId || selectedGateId || undefined,
+        gateName: gateObj?.name,
       });
     }
 
     setIsRoutingActive(true);
     setTabBarVisible(false);
-
-    const gateToUse = safeGateId || selectedGateId;
+    startPositionWatch();
 
     webViewRef.current?.postMessage(
       JSON.stringify({
@@ -514,11 +521,16 @@ export default function MapScreen() {
         gateId: typeof gateToUse === "string" ? gateToUse : undefined,
       })
     );
-  }, [selectedLoc, userLocation, fetchRealGpsLocation, selectedLocRouteDistance, computedDistanceKm, computedWalkingMinutes, currentLocationName, selectedGateId]);
+  }, [selectedLoc, userLocation, fetchRealGpsLocation, startPositionWatch, selectedLocRouteDistance, computedDistanceKm, computedWalkingMinutes, currentLocationName, selectedGateId]);
 
   // Đổi cổng vào khác khi dẫn đường từ ngoài trường (Lê Duẩn <-> Y Wang <-> Bệnh viện)
-  const handleSwitchGate = useCallback(() => {
+  const handleSwitchGate = useCallback((targetGateId?: string) => {
     if (!selectedLoc) return;
+    if (typeof targetGateId === "string") {
+      setSelectedGateId(targetGateId);
+      handleStartInAppDirections(targetGateId);
+      return;
+    }
     const gateIds = TNU_CAMPUS_GATES.map((g) => g.id);
     const currentId = activeRoute?.gateId || selectedGateId || gateIds[0];
     const currentIndex = gateIds.indexOf(currentId);
@@ -534,8 +546,9 @@ export default function MapScreen() {
     setSelectedGateId(null);
     setSelectedLocRouteDistance(null);
     setTabBarVisible(true);
+    stopPositionWatch();
     webViewRef.current?.postMessage(JSON.stringify({ type: "CLEAR_ROUTE" }));
-  }, []);
+  }, [stopPositionWatch]);
 
   // Mở app Google Maps bên ngoài
   const handleOpenExternalGoogleMaps = useCallback(() => {
@@ -592,6 +605,50 @@ export default function MapScreen() {
     };
   }, []);
 
+  // Memoized handlers cho MapSearchBar và MapControlsOverlay (chống re-render thừa khi GPS cập nhật tọa độ)
+  const handleSearchChange = useCallback((text: string) => {
+    setSearch(text);
+    setShowSuggestions(true);
+  }, [setSearch, setShowSuggestions]);
+
+  const handleClearSearch = useCallback(() => {
+    Keyboard.dismiss();
+    setSearch("");
+    setShowSuggestions(false);
+  }, [setSearch, setShowSuggestions]);
+
+  const handleSearchFocus = useCallback(() => {
+    setShowSuggestions(true);
+  }, [setShowSuggestions]);
+
+  const handleCompassPress = useCallback(() => {
+    if (bearing !== 0 && !compassMode) {
+      resetBearing();
+    } else {
+      toggleCompassMode();
+    }
+  }, [bearing, compassMode, resetBearing, toggleCompassMode]);
+
+  const handleUserLocationPress = useCallback(() => {
+    if (userLocation) {
+      webViewRef.current?.postMessage(
+        JSON.stringify({
+          type: "FOCUS_LOCATION",
+          lat: userLocation.latitude,
+          lng: userLocation.longitude,
+          zoom: 18,
+        })
+      );
+      fetchRealGpsLocation(false, true);
+    } else {
+      fetchRealGpsLocation(true);
+    }
+  }, [userLocation, fetchRealGpsLocation]);
+
+  const handleUserLocationLongPress = useCallback(() => {
+    setShowLocationPicker(true);
+  }, [setShowLocationPicker]);
+
   return (
     <View style={{ flex: 1, backgroundColor: AppColors.background }}>
       {/* ─── THANH TIÊU ĐỀ NAV HEADER ─────────────────────────────────── */}
@@ -643,6 +700,17 @@ export default function MapScreen() {
             renderLoading={() => <MapSkeleton />}
           />
 
+          {/* ── THANH CHUYỂN CỔNG NỔI PHÍA TRÊN (DƯỚI HEADER) KHI ĐANG CHỈ ĐƯỜNG ── */}
+          {isRoutingActive && (
+            <MapTopGateSelector
+              currentGateId={activeRoute?.gateId || selectedGateId || "front_gate"}
+              currentGateName={activeRoute?.gateName}
+              onSelectGate={(gateId) => {
+                handleSwitchGate(gateId);
+              }}
+            />
+          )}
+
           {/* ─── THANH TÌM KIẾM NỔI & DANH MỤC LỌC NHANH (Memoized) ─────── */}
           {!isRoutingActive && (
             <MapSearchBar
@@ -651,16 +719,9 @@ export default function MapScreen() {
               searchResults={searchResults}
               selectedCategory={selectedCategory}
               totalLocations={locations.length}
-              onSearchChange={(text) => {
-                setSearch(text);
-                setShowSuggestions(true);
-              }}
-              onClearSearch={() => {
-                Keyboard.dismiss();
-                setSearch("");
-                setShowSuggestions(false);
-              }}
-              onFocus={() => setShowSuggestions(true)}
+              onSearchChange={handleSearchChange}
+              onClearSearch={handleClearSearch}
+              onFocus={handleSearchFocus}
               onSelectLocation={handleSelectLocation}
               onSelectCategory={handleSelectCategory}
               onSubmitSearch={handleSearchSubmit}
@@ -678,30 +739,10 @@ export default function MapScreen() {
               activeRoute={activeRoute}
               isRoutingActive={isRoutingActive}
               onToggleLayer={handleToggleLayer}
-              onCompassPress={() => {
-                if (bearing !== 0 && !compassMode) {
-                  resetBearing();
-                } else {
-                  toggleCompassMode();
-                }
-              }}
+              onCompassPress={handleCompassPress}
               onResetBearing={resetBearing}
-              onUserLocationPress={() => {
-                if (userLocation) {
-                  webViewRef.current?.postMessage(
-                    JSON.stringify({
-                      type: "FOCUS_LOCATION",
-                      lat: userLocation.latitude,
-                      lng: userLocation.longitude,
-                      zoom: 18,
-                    })
-                  );
-                  fetchRealGpsLocation(false, true);
-                } else {
-                  fetchRealGpsLocation(true);
-                }
-              }}
-              onUserLocationLongPress={() => setShowLocationPicker(true)}
+              onUserLocationPress={handleUserLocationPress}
+              onUserLocationLongPress={handleUserLocationLongPress}
               onResetView={handleResetView}
               onRotateStep={rotateStep}
               onClearRoute={handleClearRoute}
@@ -731,7 +772,7 @@ export default function MapScreen() {
           {/* ── THANH TRẠNG THÁI DẪN ĐƯỜNG TỐI GIẢN (KHI ĐANG CHỈ ĐƯỜNG) ── */}
           {isRoutingActive && (
             <MapRouteStatusCard
-              bottomOffset={Math.max(insets.bottom, 16) + 96}
+              bottomOffset={Math.max(insets.bottom, 14)}
               activeRoute={activeRoute}
               targetRoom={targetRoom}
               currentParsed={currentParsed}

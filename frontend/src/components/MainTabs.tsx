@@ -277,6 +277,7 @@ export function CustomBottomNav(props: CustomBottomNavProps) {
               style={tabBarStyles.tabItem}
             >
               <View
+                collapsable={false}
                 style={[
                   tabBarStyles.iconContainer,
                   isSelected && tabBarStyles.selectedIconContainer,

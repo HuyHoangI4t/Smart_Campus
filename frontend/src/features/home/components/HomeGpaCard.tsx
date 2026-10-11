@@ -1,6 +1,8 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { AppColors } from "../../../constants/appColors";
 import { GpaSummary } from "../types";
 
 export interface HomeGpaCardProps {
@@ -8,55 +10,72 @@ export interface HomeGpaCardProps {
   onPress: () => void;
 }
 
+/**
+ * Thẻ Tổng kết GPA (HomeGpaCard) - Ngôn ngữ thiết kế Hybrid Android 16 & iOS HIG
+ * Kết hợp cấu trúc Grouped Inset Card, nền Tonal Surface Container,
+ * xếp loại dạng viên con nhộng (Pill capsule) và viền hairline siêu mỏng.
+ */
 export const HomeGpaCard = React.memo(function HomeGpaCard({
   gpaSummary,
   onPress,
 }: HomeGpaCardProps) {
   if (!gpaSummary) return null;
 
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    onPress();
+  };
+
+  const rankColor = gpaSummary.rankColor || AppColors.accent;
+
   return (
-    <TouchableOpacity
-      activeOpacity={0.85}
-      onPress={onPress}
-      style={styles.card}
+    <Pressable
+      onPress={handlePress}
+      style={({ pressed }) => [
+        styles.card,
+        pressed && styles.cardPressed,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={`Kết quả học tập: GPA hệ 4 là ${gpaSummary.gpa4}, GPA hệ 10 là ${gpaSummary.gpa10}, tích lũy ${gpaSummary.totalCredits} tín chỉ. Xếp loại ${gpaSummary.rank}.`}
     >
-      {/* Header: Title + Rank Badge + Link */}
+      {/* ── HEADER: BIỂU TƯỢNG + TIÊU ĐỀ + PILL XẾP LOẠI + CHEVRON ── */}
       <View style={styles.headerRow}>
         <View style={styles.titleGroup}>
           <View style={styles.iconBox}>
-            <Feather name="award" size={17} color="#4F46E5" />
+            <Feather name="award" size={17} color={AppColors.accent} />
           </View>
           <View>
             <Text style={styles.titleText}>Kết quả học tập</Text>
-            <Text style={styles.subtitleText}>Tích lũy toàn khóa</Text>
+            <Text style={styles.subtitleText}>Tích lũy toàn khóa đào tạo</Text>
           </View>
         </View>
 
         <View style={styles.rankGroup}>
           <View
             style={[
-              styles.rankBadge,
+              styles.rankPill,
               {
-                backgroundColor: `${gpaSummary.rankColor}15`,
-                borderColor: `${gpaSummary.rankColor}40`,
+                backgroundColor: `${rankColor}1A`, // 10% alpha tonal tint
+                borderColor: `${rankColor}40`,     // 25% alpha border
               },
             ]}
           >
-            <Text style={[styles.rankText, { color: gpaSummary.rankColor }]}>
+            <View style={[styles.rankDot, { backgroundColor: rankColor }]} />
+            <Text style={[styles.rankText, { color: rankColor }]}>
               {gpaSummary.rank}
             </Text>
           </View>
-          <Feather name="chevron-right" size={16} color="#94A3B8" />
+          <Feather name="chevron-right" size={16} color={AppColors.textSubtle} />
         </View>
       </View>
 
-      {/* Stats Row: GPA Hệ 4 | GPA Hệ 10 | Tín chỉ */}
-      <View style={styles.statsRow}>
+      {/* ── BẢNG THỐNG KÊ TONAL SURFACE (TONAL CONTAINER) ── */}
+      <View style={styles.tonalContainer}>
         {/* GPA Hệ 4 */}
         <View style={styles.statCol}>
-          <Text style={styles.statLabel}>GPA Hệ 4</Text>
+          <Text style={styles.statLabel}>GPA HỆ 4</Text>
           <View style={styles.scoreRow}>
-            <Text style={[styles.scoreValue, { color: "#0284C7" }]}>
+            <Text style={[styles.scoreValue, { color: AppColors.info }]}>
               {gpaSummary.gpa4}
             </Text>
             <Text style={styles.scoreScale}>/4.0</Text>
@@ -67,9 +86,9 @@ export const HomeGpaCard = React.memo(function HomeGpaCard({
 
         {/* GPA Hệ 10 */}
         <View style={styles.statCol}>
-          <Text style={styles.statLabel}>GPA Hệ 10</Text>
+          <Text style={styles.statLabel}>GPA HỆ 10</Text>
           <View style={styles.scoreRow}>
-            <Text style={[styles.scoreValue, { color: "#4F46E5" }]}>
+            <Text style={[styles.scoreValue, { color: AppColors.accent }]}>
               {gpaSummary.gpa10}
             </Text>
             <Text style={styles.scoreScale}>/10</Text>
@@ -80,32 +99,36 @@ export const HomeGpaCard = React.memo(function HomeGpaCard({
 
         {/* Tín chỉ tích lũy */}
         <View style={styles.statCol}>
-          <Text style={styles.statLabel}>Tín chỉ tích lũy</Text>
+          <Text style={styles.statLabel}>TÍN CHỈ</Text>
           <View style={styles.scoreRow}>
-            <Text style={[styles.scoreValue, { color: "#10B981" }]}>
+            <Text style={[styles.scoreValue, { color: AppColors.success }]}>
               {gpaSummary.totalCredits}
             </Text>
             <Text style={styles.scoreScale}>TC</Text>
           </View>
         </View>
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 });
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
+    backgroundColor: AppColors.cardBg,
+    borderRadius: 22, // Squircle bo góc lớn
     padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
+    marginBottom: 16, // Hệ số 8pt
+    borderWidth: 1, // Viền Hairline siêu mỏng
+    borderColor: AppColors.cardBorder,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.05,
-    shadowRadius: 6,
+    shadowRadius: 10,
     elevation: 2,
+  },
+  cardPressed: {
+    opacity: 0.94,
+    transform: [{ scale: 0.975 }], // Co giãn lò xo mượt mà
   },
   headerRow: {
     flexDirection: "row",
@@ -116,78 +139,92 @@ const styles = StyleSheet.create({
   titleGroup: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
   },
   iconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: "#EEF2FF",
+    width: 38,
+    height: 38,
+    borderRadius: 14, // Squircle nhỏ
+    backgroundColor: `${AppColors.accent}14`,
     alignItems: "center",
     justifyContent: "center",
   },
   titleText: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#0F172A",
+    fontSize: 15.5,
+    fontWeight: "900",
+    color: AppColors.text,
+    letterSpacing: -0.2,
   },
   subtitleText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "500",
-    color: "#64748B",
+    color: AppColors.textSecondary,
+    marginTop: 1,
   },
   rankGroup: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
   },
-  rankBadge: {
-    paddingHorizontal: 9,
-    paddingVertical: 3.5,
-    borderRadius: 10,
+  rankPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999, // Pill capsule
     borderWidth: 1,
   },
-  rankText: {
-    fontSize: 11,
-    fontWeight: "800",
+  rankDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 999,
   },
-  statsRow: {
+  rankText: {
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 0.2,
+  },
+  tonalContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#F8FAFC",
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
+    backgroundColor: AppColors.muted, // Tonal Surface Container
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 0.8,
+    borderColor: AppColors.border,
   },
   statCol: {
-    flex: 1,
     alignItems: "center",
+    flex: 1,
   },
   statLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#64748B",
-    marginBottom: 3,
+    fontSize: 10.5,
+    fontWeight: "800",
+    color: AppColors.textSecondary,
+    marginBottom: 4,
+    letterSpacing: 0.5,
   },
   scoreRow: {
     flexDirection: "row",
     alignItems: "baseline",
+    gap: 2,
   },
   scoreValue: {
-    fontSize: 19,
+    fontSize: 20,
     fontWeight: "900",
+    letterSpacing: -0.5,
   },
   scoreScale: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#94A3B8",
-    marginLeft: 2,
+    color: AppColors.textSubtle,
   },
   divider: {
     width: 1,
     height: 26,
-    backgroundColor: "#E2E8F0",
+    backgroundColor: AppColors.border,
   },
 });
-

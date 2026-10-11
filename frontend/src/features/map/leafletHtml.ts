@@ -10,7 +10,16 @@ export function generateLeafletMapHtml(
   gates: CampusGate[] = TNU_CAMPUS_GATES
 ): string {
   const safeJson = (data: any) => JSON.stringify(data).replace(/</g, "\\u003c").replace(/>/g, "\\u003e");
-  const locationsJson = safeJson(locations);
+  // Tối ưu hóa: Chỉ gửi metadata gọn nhẹ (id, lat, lng, icon, color, category) vào WebView
+  const lightweightLocations = locations.map((l) => ({
+    id: l.id,
+    lat: l.lat,
+    lng: l.lng,
+    icon: l.icon,
+    color: l.color,
+    category: l.category,
+  }));
+  const locationsJson = safeJson(lightweightLocations);
   const boundaryJson = safeJson(boundary);
   const centerJson = safeJson(center);
   const campusPathsJson = safeJson(campusPaths);
@@ -256,6 +265,23 @@ ${LEAFLET_JS}
       display: block;
       overflow: visible;
     }
+    /* Thu gọn marker khi zoom xa (< 16) để giảm tải layout & animation DOM */
+    .zoomed-out .marker-pin-badge {
+      width: 14px;
+      height: 14px;
+      border-width: 1.5px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    .zoomed-out .marker-pin-badge svg {
+      display: none;
+    }
+    .zoomed-out .custom-marker.active .marker-pin-badge {
+      width: 32px;
+      height: 32px;
+    }
+    .zoomed-out .custom-marker.active .marker-pin-badge svg {
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -319,7 +345,18 @@ ${LEAFLET_JS}
 
     map.whenReady(function() {
       applyBearing(0, false);
+      handleZoomOptimization();
     });
+
+    function handleZoomOptimization() {
+      var z = map.getZoom();
+      if (z < 16) {
+        document.body.classList.add('zoomed-out');
+      } else {
+        document.body.classList.remove('zoomed-out');
+      }
+    }
+    map.on('zoomend', handleZoomOptimization);
 
     // ── XỬ LÝ KÉO DI CHUYỂN BẢN ĐỒ KHI BẢN ĐỒ ĐANG XOAY ──────────────────
     if (L.Draggable && L.Draggable.prototype._onMove) {
@@ -801,8 +838,12 @@ ${LEAFLET_JS}
       return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
     }
 
-    // Thuật toán Dijkstra tìm đường đi bộ tối ưu qua mạng lưới lối đi nội bộ trường
-    function findCampusWalkwayRoute(origLat, origLng, destLat, destLng) {
+    // Bộ nhớ đệm đồ thị giao lộ và kết quả tìm đường trong WebView
+    var campusGraphCache = null;
+    var webviewRouteCache = {};
+
+    function getCampusGraph() {
+      if (campusGraphCache) return campusGraphCache;
       if (!campusPathsData || !campusPathsData.length) return null;
 
       var vertices = [];
@@ -843,6 +884,23 @@ ${LEAFLET_JS}
           }
         }
       }
+
+      campusGraphCache = { vertices: vertices, adj: adj };
+      return campusGraphCache;
+    }
+
+    // Thuật toán Dijkstra tìm đường đi bộ tối ưu qua mạng lưới lối đi nội bộ trường
+    function findCampusWalkwayRoute(origLat, origLng, destLat, destLng) {
+      var routeKey = origLat.toFixed(5) + ',' + origLng.toFixed(5) + '->' + destLat.toFixed(5) + ',' + destLng.toFixed(5);
+      if (webviewRouteCache[routeKey]) {
+        return webviewRouteCache[routeKey];
+      }
+
+      var graph = getCampusGraph();
+      if (!graph) return null;
+
+      var vertices = graph.vertices;
+      var adj = graph.adj;
 
       // Tìm mốc gần nhất tới Origin và Destination
       var startNode = -1;
@@ -916,11 +974,13 @@ ${LEAFLET_JS}
       var totalDistMeters = Math.round(startMinDist + dist[endNode] + endMinDist);
       var durMinutes = Math.max(1, Math.round(totalDistMeters / 75)); // ~75m/phút đi bộ
 
-      return {
+      var result = {
         coordinates: routeCoords,
         distanceMeters: totalDistMeters,
         durationMinutes: durMinutes
       };
+      webviewRouteCache[routeKey] = result;
+      return result;
     }
 
     // Kiểm tra tọa độ có nằm bên trong tường bao khuôn viên trường không (Ray-casting)
@@ -1346,6 +1406,8 @@ ${LEAFLET_JS}
           case 'SET_CAMPUS_PATHS':
             if (msg.paths && Array.isArray(msg.paths)) {
               campusPathsData = msg.paths;
+              campusGraphCache = null;
+              webviewRouteCache = {};
               renderCampusPathsNetwork(campusPathsData);
             }
             break;

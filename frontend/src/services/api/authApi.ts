@@ -89,7 +89,16 @@ export async function apiVerifyOtp(mssv: string, otpCode: string) {
 }
 
 export async function apiVerifyRegisterOtp(mssv: string, otpCode: string) {
-  return apiVerifyOtp(mssv, otpCode);
+  try {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/auth/register-verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mssv, otpCode }),
+    });
+    return await handleResponse(response);
+  } catch {
+    return { success: false, message: `Không thể kết nối đến server (${API_BASE_URL}).` };
+  }
 }
 
 export async function apiResetPassword(payload: { mssv: string; token?: string; otpCode?: string; newPassword: string }) {

@@ -1,6 +1,8 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { AppColors } from "../../../constants/appColors";
 import { LoginRequiredCard } from "../../../components/LoginRequiredCard";
 import { NotificationAlertItem } from "../types";
 
@@ -15,6 +17,11 @@ export const HomeAlertsSection = React.memo(function HomeAlertsSection({
   notificationAlerts,
   onSelectAlert,
 }: HomeAlertsSectionProps) {
+  const handleAlertPress = (item: NotificationAlertItem) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    onSelectAlert(item);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
@@ -36,33 +43,35 @@ export const HomeAlertsSection = React.memo(function HomeAlertsSection({
           {notificationAlerts.map((item) => {
             let bg = "#F0FDF4";
             let border = "#BBF7D0";
-            let iconColor = "#10B981";
+            let iconColor = AppColors.success;
             let iconName: keyof typeof Feather.glyphMap = "check";
 
             if (item.variant === "warning") {
               bg = "#FFFBEB";
               border = "#FDE68A";
-              iconColor = "#D97706";
+              iconColor = AppColors.warning;
               iconName = "alert-triangle";
             } else if (item.variant === "info") {
               bg = "#EFF6FF";
               border = "#BFDBFE";
-              iconColor = "#2563EB";
+              iconColor = AppColors.info;
               iconName = "info";
             }
 
             return (
-              <TouchableOpacity
+              <Pressable
                 key={item.id}
-                onPress={() => onSelectAlert(item)}
-                activeOpacity={0.7}
-                style={[
+                onPress={() => handleAlertPress(item)}
+                style={({ pressed }) => [
                   styles.itemCard,
                   {
                     backgroundColor: bg,
                     borderColor: border,
                   },
+                  pressed && styles.itemCardPressed,
                 ]}
+                accessibilityRole="button"
+                accessibilityLabel={`Thông báo: ${item.title}`}
               >
                 <Feather name={iconName} size={18} color={iconColor} />
                 <View style={styles.itemContent}>
@@ -73,14 +82,14 @@ export const HomeAlertsSection = React.memo(function HomeAlertsSection({
                     {item.date || item.subtitle || "Hôm nay"}
                   </Text>
                 </View>
-                <Feather name="chevron-right" size={16} color="#94A3B8" />
-              </TouchableOpacity>
+                <Feather name="chevron-right" size={16} color={AppColors.textSubtle} />
+              </Pressable>
             );
           })}
         </View>
       ) : (
         <View style={styles.emptyCard}>
-          <Feather name="bell-off" size={16} color="#94A3B8" />
+          <Feather name="bell-off" size={16} color={AppColors.textSubtle} />
           <Text style={styles.emptyText}>Chưa có thông báo từ trường</Text>
         </View>
       )}
@@ -90,24 +99,24 @@ export const HomeAlertsSection = React.memo(function HomeAlertsSection({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 20,
+    marginBottom: 24, // Hệ số 8pt
   },
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
   },
   title: {
     fontSize: 16,
     fontWeight: "900",
-    color: "#0F172A",
+    color: AppColors.text,
   },
   countBadge: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#2563EB",
+    color: AppColors.info,
   },
   list: {
     gap: 10,
@@ -120,6 +129,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     gap: 12,
+    minHeight: 56, // Touch target đảm bảo >= 44pt
+  },
+  itemCardPressed: {
+    opacity: 0.88,
+    transform: [{ scale: 0.985 }],
   },
   itemContent: {
     flex: 1,
@@ -127,20 +141,20 @@ const styles = StyleSheet.create({
   itemTitle: {
     fontSize: 13.5,
     fontWeight: "700",
-    color: "#0F172A",
+    color: AppColors.text,
     marginBottom: 3,
   },
   itemDate: {
     fontSize: 11,
-    color: "#64748B",
+    color: AppColors.textSecondary,
     fontWeight: "500",
   },
   emptyCard: {
-    backgroundColor: "#F8FAFC",
+    backgroundColor: AppColors.cardBg,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: AppColors.cardBorder,
     borderRadius: 16,
-    paddingVertical: 14,
+    paddingVertical: 18,
     paddingHorizontal: 16,
     alignItems: "center",
     justifyContent: "center",
@@ -149,8 +163,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 13,
-    color: "#64748B",
+    color: AppColors.textSecondary,
     fontWeight: "500",
   },
 });
-

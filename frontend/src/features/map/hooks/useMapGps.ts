@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Alert, Platform } from "react-native";
 import * as Location from "expo-location";
 import { useFocusEffect } from "expo-router";
@@ -27,35 +27,72 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
 
   const [bearing, setBearing] = useState<number>(0);
   const [compassMode, setCompassMode] = useState<boolean>(false);
+  const [isWatchingPosition, setIsWatchingPosition] = useState<boolean>(false);
 
-  const headingSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
+  // Refs quản lý Subscriptions ngăn chặn hoàn toàn Memory Leak
+  const isMountedRef = useRef<boolean>(true);
   const isTabFocusedRef = useRef<boolean>(true);
+  const headingSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
+  const positionSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
+
   const compassModeRef = useRef<boolean>(false);
   const lastSentHeadingRef = useRef<number>(0);
-  // const lastSentBearingRef = useRef<number>(0); // Giữ lại dưới dạng comment để dự phòng
   const lastHeadingTimeRef = useRef<number>(0);
+  const lastPositionTimeRef = useRef<number>(0);
 
-  // Lấy vị trí GPS thật (tối ưu hóa pin và phản hồi tức thời, trả về tọa độ để tránh closure stale state)
+  // Dọn dẹp an toàn watcher vị trí
+  const stopPositionWatch = useCallback(() => {
+    if (positionSubscriptionRef.current) {
+      positionSubscriptionRef.current.remove();
+      positionSubscriptionRef.current = null;
+    }
+    if (isMountedRef.current) {
+      setIsWatchingPosition(false);
+    }
+  }, []);
+
+  // Dọn dẹp an toàn watcher la bàn
+  const stopCompassTracking = useCallback(() => {
+    compassModeRef.current = false;
+    if (isMountedRef.current) {
+      setCompassMode(false);
+    }
+  }, []);
+
+  const stopHeadingTracking = useCallback(() => {
+    if (headingSubscriptionRef.current) {
+      headingSubscriptionRef.current.remove();
+      headingSubscriptionRef.current = null;
+    }
+    stopCompassTracking();
+  }, [stopCompassTracking]);
+
+  // Dọn dẹp toàn bộ cảm biến khi unmount hoặc unfocus
+  const stopAllTracking = useCallback(() => {
+    stopHeadingTracking();
+    stopPositionWatch();
+  }, [stopHeadingTracking, stopPositionWatch]);
+
+  // Lấy vị trí GPS thật (tối ưu hóa pin và phản hồi tức thời)
   const fetchRealGpsLocation = useCallback(
     async (centerOnUser = true, silent = false): Promise<UserCoords | null> => {
-      if (!isTabFocusedRef.current) return null;
+      if (!isTabFocusedRef.current || !isMountedRef.current) return null;
       setShowLocationPicker(false);
       setLocationLoading(true);
 
       let resultCoords: UserCoords | null = null;
 
       try {
-        // Ở chế độ khách, tuyệt đối không hỏi quyền vị trí GPS
         if (await isGuestUser()) {
-          setLocationLoading(false);
+          if (isMountedRef.current) setLocationLoading(false);
           return null;
         }
 
         const permission = await Location.requestForegroundPermissionsAsync();
-        if (!isTabFocusedRef.current) return null;
+        if (!isTabFocusedRef.current || !isMountedRef.current) return null;
 
         if (permission.status !== "granted") {
-          setLocationLoading(false);
+          if (isMountedRef.current) setLocationLoading(false);
           if (!silent) {
             Alert.alert(
               "Quyền vị trí GPS",
@@ -72,10 +109,10 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
           );
         }
 
-        // Bước 1: Thử lấy vị trí cache gần nhất để phản hồi ngay 0ms
+        // Bước 1: Đọc nhanh từ cache OS (0ms)
         try {
           const lastLoc = await Location.getLastKnownPositionAsync({ maxAge: 60000 });
-          if (isTabFocusedRef.current && lastLoc && lastLoc.coords) {
+          if (isTabFocusedRef.current && isMountedRef.current && lastLoc && lastLoc.coords) {
             const cached = { latitude: lastLoc.coords.latitude, longitude: lastLoc.coords.longitude };
             resultCoords = cached;
             setUserLocation(cached);
@@ -83,19 +120,18 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
             onLocationUpdated?.(cached, lastLoc.coords.accuracy || 15, centerOnUser);
           }
         } catch {
-          // Bỏ qua nếu chưa có cache
+          // Bỏ qua
         }
 
-        // Bước 2: Quét GPS vệ tinh mới
+        // Bước 2: Quét GPS vệ tinh
         const positionPromise = Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.High,
           mayShowUserSettingsDialog: !silent,
         });
 
-        // Nếu đã có vị trí cache sẵn, trả về ngay 0ms tức thì để bấm chỉ đường phản hồi ngay lập tức
         if (resultCoords) {
           positionPromise.then((freshLoc) => {
-            if (isTabFocusedRef.current && freshLoc && freshLoc.coords) {
+            if (isTabFocusedRef.current && isMountedRef.current && freshLoc && freshLoc.coords) {
               const freshCoords = { latitude: freshLoc.coords.latitude, longitude: freshLoc.coords.longitude };
               setUserLocation(freshCoords);
               onLocationUpdated?.(freshCoords, freshLoc.coords.accuracy || 10, false);
@@ -104,11 +140,10 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
           return resultCoords;
         }
 
-        // Nếu chưa có cache, chờ tối đa 2.5s để lấy vị trí mới, nếu quá thời gian này thì trả về null
         const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500));
         const freshLoc = (await Promise.race([positionPromise, timeoutPromise])) as Location.LocationObject | null;
 
-        if (!isTabFocusedRef.current) return resultCoords;
+        if (!isTabFocusedRef.current || !isMountedRef.current) return resultCoords;
 
         if (freshLoc && freshLoc.coords) {
           const freshCoords = { latitude: freshLoc.coords.latitude, longitude: freshLoc.coords.longitude };
@@ -132,19 +167,56 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
         }
       } catch (err) {
         console.warn("Lỗi vị trí GPS:", err);
-        if (!silent) {
+        if (!silent && isMountedRef.current) {
           Alert.alert(
             "Chưa lấy được GPS",
             "Hãy bật định vị trong Cài đặt máy hoặc chọn một 'Vị trí mẫu' tại trường để test bản đồ."
           );
         }
       } finally {
-        setLocationLoading(false);
+        if (isMountedRef.current) {
+          setLocationLoading(false);
+        }
       }
       return resultCoords;
     },
     [onLocationUpdated]
   );
+
+  // Bắt đầu theo dõi vị trí liên tục khi đang dẫn đường (watchPositionAsync)
+  const startPositionWatch = useCallback(async () => {
+    if (!isTabFocusedRef.current || !isMountedRef.current) return;
+    try {
+      if (await isGuestUser()) return;
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (!isTabFocusedRef.current || !isMountedRef.current || status !== "granted") return;
+
+      if (positionSubscriptionRef.current) return;
+
+      const sub = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          distanceInterval: 4, // Chỉ cập nhật khi di chuyển >= 4 mét
+          timeInterval: 2000,  // Tối thiểu 2 giây/lần để tiết kiệm pin
+        },
+        (loc) => {
+          if (!isTabFocusedRef.current || !isMountedRef.current || !loc.coords) return;
+          const now = Date.now();
+          if (now - lastPositionTimeRef.current < 1500) return;
+          lastPositionTimeRef.current = now;
+
+          const coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+          setUserLocation(coords);
+          onLocationUpdated?.(coords, loc.coords.accuracy || 10, false);
+        }
+      );
+
+      positionSubscriptionRef.current = sub;
+      if (isMountedRef.current) setIsWatchingPosition(true);
+    } catch {
+      // Bỏ qua lỗi
+    }
+  }, [onLocationUpdated]);
 
   // Chọn vị trí mẫu
   const handleSelectSampleLocation = useCallback(
@@ -158,45 +230,36 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
     [onLocationUpdated]
   );
 
-  // Theo dõi La bàn / Hướng nhìn (Cập nhật hình tam giác người dùng + xoay bản đồ nếu bật compassMode)
+  // Theo dõi La bàn / Hướng nhìn (watchHeadingAsync)
   const startHeadingTracking = useCallback(async () => {
-    if (!isTabFocusedRef.current) return;
+    if (!isTabFocusedRef.current || !isMountedRef.current) return;
     try {
-      // Ở chế độ khách, tuyệt đối không hỏi quyền cảm biến vị trí / la bàn
-      if (await isGuestUser()) {
-        return;
-      }
+      if (await isGuestUser()) return;
 
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (!isTabFocusedRef.current || status !== "granted") return;
+      if (!isTabFocusedRef.current || !isMountedRef.current || status !== "granted") return;
 
-      if (headingSubscriptionRef.current) {
-        return;
-      }
+      if (headingSubscriptionRef.current) return;
 
       const sub = await Location.watchHeadingAsync((headingData) => {
-        if (!isTabFocusedRef.current) return;
+        if (!isTabFocusedRef.current || !isMountedRef.current) return;
         const h = headingData.trueHeading >= 0 ? headingData.trueHeading : headingData.magHeading;
         if (h !== undefined && h !== null && !isNaN(h) && h >= 0) {
           const rounded = Math.round(h);
           const now = Date.now();
 
-          // Giảm tần suất sử dụng la bàn: tối thiểu 450ms giữa 2 lần cập nhật để tiết kiệm pin và tránh giật
-          if (now - lastHeadingTimeRef.current < 450) {
-            return;
-          }
+          // Throttling 450ms
+          if (now - lastHeadingTimeRef.current < 450) return;
 
-          // Tính khoảng cách góc ngắn nhất (shortest angular difference)
           let diff = Math.abs(rounded - lastSentHeadingRef.current);
           if (diff > 180) diff = 360 - diff;
 
-          // Giảm độ nhạy: Chỉ cập nhật khi góc lệch >= 8 độ để triệt tiêu hoàn toàn rung lắc tự nhiên của tay
+          // Chống rung tay: Chỉ gửi khi góc thay đổi >= 8 độ
           if (diff >= 8) {
             lastSentHeadingRef.current = rounded;
             lastHeadingTimeRef.current = now;
             onHeadingUpdated?.(rounded);
 
-            // Nếu người dùng đang kích hoạt chế độ La bàn xoay cả bản đồ:
             if (compassModeRef.current) {
               setBearing(rounded);
               onBearingUpdated?.(rounded, true);
@@ -207,22 +270,9 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
 
       headingSubscriptionRef.current = sub;
     } catch {
-      // Thiết bị có thể không có cảm biến từ trường
+      // Thiết bị không có cảm biến la bàn
     }
   }, [onHeadingUpdated, onBearingUpdated]);
-
-  const stopCompassTracking = useCallback(() => {
-    compassModeRef.current = false;
-    setCompassMode(false);
-  }, []);
-
-  const stopHeadingTracking = useCallback(() => {
-    if (headingSubscriptionRef.current) {
-      headingSubscriptionRef.current.remove();
-      headingSubscriptionRef.current = null;
-    }
-    stopCompassTracking();
-  }, [stopCompassTracking]);
 
   const toggleCompassMode = useCallback(() => {
     if (compassMode) {
@@ -261,7 +311,7 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
     [onBearingUpdated]
   );
 
-  // Tự động khởi động / ngắt cảm biến khi tab đóng mở
+  // Quản lý vòng đời khi chuyển Tab
   useFocusEffect(
     useCallback(() => {
       isTabFocusedRef.current = true;
@@ -270,10 +320,19 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
         isTabFocusedRef.current = false;
         setLocationLoading(false);
         setShowLocationPicker(false);
-        stopHeadingTracking();
+        stopAllTracking();
       };
-    }, [startHeadingTracking, stopHeadingTracking])
+    }, [startHeadingTracking, stopAllTracking])
   );
+
+  // Quản lý vòng đời khi Component Unmount hoàn toàn (Ngăn chặn Memory Leak)
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      stopAllTracking();
+    };
+  }, [stopAllTracking]);
 
   return {
     userLocation,
@@ -283,7 +342,10 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
     currentLocationName,
     bearing,
     compassMode,
+    isWatchingPosition,
     fetchRealGpsLocation,
+    startPositionWatch,
+    stopPositionWatch,
     handleSelectSampleLocation,
     toggleCompassMode,
     resetBearing,

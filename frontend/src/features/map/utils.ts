@@ -344,28 +344,19 @@ export function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2
   return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-// Bộ nhớ đệm Memory LRU Cache tối ưu hiệu năng tính toán Dijkstra đường đi bộ
-const walkwayDistanceCache = new Map<string, number | null>();
-const MAX_WALKWAY_CACHE_ENTRIES = 250;
+// Tích hợp bộ nhớ đệm LRU Cache & Graph Cache chuyên biệt
+import {
+  distanceLRUCache,
+  getCachedCampusGraph,
+  CampusGraph,
+  generateRouteKey,
+} from "./services/pathCache";
 
 /**
- * Thuật toán Dijkstra tính khoảng cách đi bộ thực tế (mét) theo mạng lưới đường nội bộ
- * Có Memory Caching giúp giảm 99% chi phí CPU khi tính lặp lại
+ * Xây dựng đồ thị giao lộ từ các tuyến đường nội bộ trường
+ * (Chỉ chạy 1 lần duy nhất cho mỗi tập campusPaths, sau đó được cache lại)
  */
-export function findWalkwayDistanceMeters(
-  origLat: number,
-  origLng: number,
-  destLat: number,
-  destLng: number,
-  campusPaths: any[]
-): number | null {
-  if (!campusPaths || campusPaths.length === 0) return null;
-
-  const cacheKey = `${origLat.toFixed(5)},${origLng.toFixed(5)}->${destLat.toFixed(5)},${destLng.toFixed(5)}_${campusPaths.length}`;
-  if (walkwayDistanceCache.has(cacheKey)) {
-    return walkwayDistanceCache.get(cacheKey)!;
-  }
-
+export function buildCampusGraph(campusPaths: any[]): CampusGraph {
   const vertices: [number, number][] = [];
   const adj: Record<number, { node: number; weight: number }[]> = {};
 
@@ -398,8 +389,6 @@ export function findWalkwayDistanceMeters(
     });
   });
 
-  if (vertices.length < 2) return null;
-
   // Nối các giao lộ (điểm thuộc các tuyến khác nhau cách nhau <= 12m)
   for (let i = 0; i < vertices.length; i++) {
     for (let j = i + 1; j < vertices.length; j++) {
@@ -414,6 +403,36 @@ export function findWalkwayDistanceMeters(
       }
     }
   }
+
+  return {
+    vertices,
+    adj,
+    pathCount: campusPaths.length,
+  };
+}
+
+/**
+ * Thuật toán Dijkstra tính khoảng cách đi bộ thực tế (mét) theo mạng lưới đường nội bộ
+ * Tối ưu hóa:
+ * 1. Tận dụng LRU Cache (O(1)) loại bỏ tính lặp lại.
+ * 2. Tận dụng Graph Memoization không dựng lại đồ thị.
+ */
+export function findWalkwayDistanceMeters(
+  origLat: number,
+  origLng: number,
+  destLat: number,
+  destLng: number,
+  campusPaths: any[]
+): number | null {
+  if (!campusPaths || campusPaths.length === 0) return null;
+
+  const cacheKey = generateRouteKey(origLat, origLng, destLat, destLng, String(campusPaths.length));
+  if (distanceLRUCache.has(cacheKey)) {
+    return distanceLRUCache.get(cacheKey)!;
+  }
+
+  const { vertices, adj } = getCachedCampusGraph(campusPaths, buildCampusGraph);
+  if (vertices.length < 2) return null;
 
   // Tìm đỉnh gần nhất tới Origin và Destination
   let startNode = -1;
@@ -435,6 +454,7 @@ export function findWalkwayDistanceMeters(
   }
 
   if (endMinDist > 500 || endNode === -1) {
+    distanceLRUCache.set(cacheKey, null);
     return null;
   }
 
@@ -475,6 +495,7 @@ export function findWalkwayDistanceMeters(
   }
 
   if (startNode === -1) {
+    distanceLRUCache.set(cacheKey, null);
     return null;
   }
 
@@ -507,21 +528,32 @@ export function findWalkwayDistanceMeters(
   }
 
   if (dist[endNode] === undefined) {
-    if (walkwayDistanceCache.size >= MAX_WALKWAY_CACHE_ENTRIES) {
-      const firstKey = walkwayDistanceCache.keys().next().value;
-      if (firstKey) walkwayDistanceCache.delete(firstKey);
-    }
-    walkwayDistanceCache.set(cacheKey, null);
+    distanceLRUCache.set(cacheKey, null);
     return null;
   }
 
   const finalMeters = Math.round(extraStartMeters + startMinDist + dist[endNode] + endMinDist);
-  if (walkwayDistanceCache.size >= MAX_WALKWAY_CACHE_ENTRIES) {
-    const firstKey = walkwayDistanceCache.keys().next().value;
-    if (firstKey) walkwayDistanceCache.delete(firstKey);
-  }
-  walkwayDistanceCache.set(cacheKey, finalMeters);
+  distanceLRUCache.set(cacheKey, finalMeters);
   return finalMeters;
 }
+
+/**
+ * Phiên bản bất đồng bộ của Dijkstra giúp giải phóng UI Thread,
+ * ngăn chặn hiện tượng khựng khung hình (jank/drop frame)
+ */
+export async function findWalkwayDistanceMetersAsync(
+  origLat: number,
+  origLng: number,
+  destLat: number,
+  destLng: number,
+  campusPaths: any[]
+): Promise<number | null> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(findWalkwayDistanceMeters(origLat, origLng, destLat, destLng, campusPaths));
+    }, 0);
+  });
+}
+
 
 

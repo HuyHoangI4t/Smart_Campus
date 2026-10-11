@@ -1,6 +1,7 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { AppColors } from "../../../constants/appColors";
 import { LocationItem, ParsedCampusRoom } from "../types";
 
@@ -15,13 +16,14 @@ export interface MapRouteStatusCardProps {
   targetRoom: string;
   currentParsed: ParsedCampusRoom | null;
   selectedLoc: LocationItem | null;
-  onSwitchGate: () => void;
+  onSwitchGate?: () => void;
   onClearRoute: () => void;
 }
 
 /**
- * Thẻ trạng thái chỉ dẫn đường bộ nội bộ khuôn viên trường
- * Hỗ trợ hiển thị cổng trường, đổi cổng, wireframe skeleton và nút Dừng
+ * Thẻ trạng thái chỉ dẫn đường bộ nội bộ (MapRouteStatusCard) - Ngôn ngữ thiết kế Hybrid Android 16 & iOS HIG
+ * Bo góc Squircle 22pt, nền kính mờ Glassmorphism, các huy hiệu và nút bấm dạng Pill Capsule (borderRadius 999),
+ * cùng phản hồi xúc giác co giãn lò xo mượt mà.
  */
 export const MapRouteStatusCard = React.memo(function MapRouteStatusCard({
   bottomOffset,
@@ -29,9 +31,13 @@ export const MapRouteStatusCard = React.memo(function MapRouteStatusCard({
   targetRoom,
   currentParsed,
   selectedLoc,
-  onSwitchGate,
   onClearRoute,
 }: MapRouteStatusCardProps) {
+  const handleStop = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    onClearRoute();
+  };
+
   return (
     <View
       style={[
@@ -44,27 +50,20 @@ export const MapRouteStatusCard = React.memo(function MapRouteStatusCard({
       <View style={styles.contentRow}>
         <View style={styles.leftInfoGroup}>
           <View style={styles.iconCircle}>
-            <Feather name="navigation" size={22} color={AppColors.primary} />
+            <Feather name="navigation" size={20} color={AppColors.primary} />
           </View>
           <View style={styles.textGroup}>
             <View style={styles.gateTagRow}>
               {activeRoute?.gateName ? (
-                <Text style={styles.gateNameText}>
-                  {`Qua ${activeRoute.gateName}`}
-                </Text>
+                <View style={styles.gatePillBadge}>
+                  <Feather name="log-in" size={10} color={AppColors.success} />
+                  <Text style={styles.gateNameText} numberOfLines={1}>
+                    {`CỔNG: ${activeRoute.gateName.toUpperCase()}`}
+                  </Text>
+                </View>
               ) : (
                 <View style={styles.gateWireframePlaceholder} />
               )}
-              {activeRoute?.gateName ? (
-                <TouchableOpacity
-                  onPress={onSwitchGate}
-                  activeOpacity={0.7}
-                  style={styles.switchGateButton}
-                >
-                  <Feather name="refresh-cw" size={9} color={AppColors.primary} />
-                  <Text style={styles.switchGateButtonText}>Đổi cổng</Text>
-                </TouchableOpacity>
-              ) : null}
             </View>
 
             {!activeRoute?.distanceMeters ? (
@@ -85,14 +84,19 @@ export const MapRouteStatusCard = React.memo(function MapRouteStatusCard({
           </View>
         </View>
 
-        <TouchableOpacity
-          onPress={onClearRoute}
-          activeOpacity={0.8}
-          style={styles.stopButton}
+        <Pressable
+          onPress={handleStop}
+          style={({ pressed }) => [
+            styles.stopPillButton,
+            pressed && styles.stopButtonPressed,
+          ]}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Dừng chỉ đường"
         >
-          <Feather name="x-circle" size={16} color="#DC2626" />
+          <Feather name="x-circle" size={17} color={AppColors.danger} />
           <Text style={styles.stopButtonText}>Dừng</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </View>
   );
@@ -104,17 +108,17 @@ const styles = StyleSheet.create({
     left: 14,
     right: 14,
     zIndex: 999,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 22,
+    backgroundColor: "rgba(255, 255, 255, 0.96)", // Glassmorphic surface
+    borderRadius: 22, // Squircle bo góc lớn
     paddingVertical: 14,
     paddingHorizontal: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
+    shadowOpacity: 0.14,
     shadowRadius: 16,
-    elevation: 16,
-    borderWidth: 1,
-    borderColor: "rgba(226, 232, 240, 0.9)",
+    elevation: 8,
+    borderWidth: 1, // Viền Hairline siêu mỏng
+    borderColor: "rgba(226, 232, 240, 0.95)",
   },
   contentRow: {
     flexDirection: "row",
@@ -129,14 +133,14 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   iconCircle: {
-    width: 44,
+    width: 44, // Touch target chuẩn
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#EFF6FF",
+    backgroundColor: `${AppColors.primary}12`,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: "#BFDBFE",
+    borderColor: `${AppColors.primary}26`,
   },
   textGroup: {
     flex: 1,
@@ -144,78 +148,81 @@ const styles = StyleSheet.create({
   gateTagRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    marginBottom: 2,
+  },
+  gatePillBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: `${AppColors.success}1A`, // Tonal Surface Tint
+    paddingHorizontal: 8,
+    paddingVertical: 2.5,
+    borderRadius: 999, // Pill capsule
+    borderWidth: 0.8,
+    borderColor: `${AppColors.success}33`,
   },
   gateNameText: {
-    fontSize: 10.5,
-    fontWeight: "800",
-    color: "#64748B",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+    fontSize: 10,
+    fontWeight: "900",
+    color: AppColors.success,
+    letterSpacing: 0.4,
   },
   gateWireframePlaceholder: {
     width: 75,
     height: 10,
-    backgroundColor: "#E2E8F0",
-    borderRadius: 5,
+    backgroundColor: AppColors.muted,
+    borderRadius: 999,
     marginVertical: 2,
-  },
-  switchGateButton: {
-    backgroundColor: "#EEF2FF",
-    paddingHorizontal: 6,
-    paddingVertical: 1.5,
-    borderRadius: 6,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-  },
-  switchGateButtonText: {
-    fontSize: 9.5,
-    fontWeight: "800",
-    color: AppColors.primary,
   },
   loadingWireframeContainer: {
     gap: 6,
     marginTop: 4,
   },
   wireframeBarLarge: {
-    width: "80%",
+    width: "75%",
     height: 14,
-    backgroundColor: "#E2E8F0",
-    borderRadius: 4,
+    backgroundColor: "#CBD5E1",
+    borderRadius: 6,
   },
   wireframeBarSmall: {
-    width: "50%",
-    height: 12,
-    backgroundColor: "#E2E8F0",
-    borderRadius: 4,
+    width: "48%",
+    height: 11,
+    backgroundColor: AppColors.muted,
+    borderRadius: 5,
   },
   destinationTitle: {
-    fontSize: 15,
+    fontSize: 15.5,
     fontWeight: "900",
-    color: "#0F172A",
+    color: AppColors.text,
     marginTop: 1,
+    letterSpacing: -0.2,
   },
   distanceDurationText: {
     fontSize: 12.5,
     fontWeight: "800",
-    color: "#059669",
+    color: AppColors.success,
     marginTop: 2,
   },
-  stopButton: {
-    backgroundColor: "#FEE2E2",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 14,
+  stopPillButton: {
+    minWidth: 44,
+    minHeight: 44,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    backgroundColor: "#FEE2E2",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999, // Pill capsule
     borderWidth: 1,
     borderColor: "#FECACA",
   },
+  stopButtonPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.94 }], // Co giãn lò xo mượt mà
+  },
   stopButtonText: {
+    color: AppColors.danger,
     fontSize: 13,
-    fontWeight: "800",
-    color: "#DC2626",
+    fontWeight: "900",
   },
 });

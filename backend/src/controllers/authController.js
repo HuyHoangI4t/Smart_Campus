@@ -107,11 +107,12 @@ exports.registerRequest = async (req, res) => {
     console.log(`[REGISTRATION OTP] MSSV: ${mssv}, Email: ${userEmail}, OTP CODE: ${otpCode}`);
     console.log('========================================');
 
-    await db.query('DELETE FROM registration_otps WHERE mssv = ?', [mssv]);
+    await db.query('DELETE FROM registration_otps WHERE mssv = ?', [mssv.trim()]);
     await db.query(
       'INSERT INTO registration_otps (mssv, ho_ten, email, password, otp_code, expires_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [mssv, finalFullName, userEmail, hashedPassword, otpCode, expiresAt]
+      [mssv.trim(), finalFullName, userEmail, hashedPassword, otpCode, expiresAt]
     );
+    clearOtpAttempts(`reg_${mssv.trim()}`);
 
     if (process.env.SMTP_USER && process.env.SMTP_PASS) {
       try {

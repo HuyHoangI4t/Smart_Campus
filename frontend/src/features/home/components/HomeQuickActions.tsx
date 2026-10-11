@@ -1,6 +1,8 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { AppColors } from "../../../constants/appColors";
 
 export interface QuickActionItem {
   icon: keyof typeof Feather.glyphMap;
@@ -27,17 +29,27 @@ export const HomeQuickActions = React.memo(function HomeQuickActions({
   onNavigate,
   actions = DEFAULT_QUICK_ACTIONS,
 }: HomeQuickActionsProps) {
+  const handleActionPress = (screen: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    onNavigate(screen);
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Tác vụ nhanh</Text>
 
       <View style={styles.gridRow}>
         {actions.map((qa) => (
-          <TouchableOpacity
+          <Pressable
             key={qa.label}
-            onPress={() => onNavigate(qa.screen)}
-            activeOpacity={0.7}
-            style={styles.actionItem}
+            onPress={() => handleActionPress(qa.screen)}
+            style={({ pressed }) => [
+              styles.actionItem,
+              pressed && styles.actionItemPressed,
+            ]}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel={`Mở tác vụ ${qa.label}`}
           >
             <View
               style={[
@@ -51,7 +63,7 @@ export const HomeQuickActions = React.memo(function HomeQuickActions({
               <Feather name={qa.icon} size={22} color={qa.fg} />
             </View>
             <Text style={styles.actionLabel}>{qa.label}</Text>
-          </TouchableOpacity>
+          </Pressable>
         ))}
       </View>
     </View>
@@ -60,14 +72,14 @@ export const HomeQuickActions = React.memo(function HomeQuickActions({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 20,
+    marginBottom: 24, // Hệ số 8pt
   },
   title: {
     fontSize: 16,
     fontWeight: "900",
-    color: "#0F172A",
+    color: AppColors.text,
     marginBottom: 12,
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
   },
   gridRow: {
     flexDirection: "row",
@@ -76,11 +88,16 @@ const styles = StyleSheet.create({
   actionItem: {
     alignItems: "center",
     width: "22%",
+    minHeight: 80,
+  },
+  actionItemPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.94 }],
   },
   iconBox: {
-    width: 58,
-    height: 58,
-    borderRadius: 16,
+    width: 60,
+    height: 60,
+    borderRadius: 18,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
@@ -94,8 +111,7 @@ const styles = StyleSheet.create({
   actionLabel: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#334155",
+    color: AppColors.textSecondary,
     textAlign: "center",
   },
 });
-

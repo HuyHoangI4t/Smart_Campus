@@ -3,16 +3,17 @@ import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
+  Pressable,
   RefreshControl,
   Linking,
   Alert,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { AppColors } from "../../../src/constants/appColors";
 import { NavHeader } from "../../../src/components/NavHeader";
-import { SkeletonBox } from "../../../src/components/Skeleton";
+import { ScheduleSkeleton } from "../../../src/components/Skeleton";
 import { useTabBarScrollHandler } from "../../../src/components/MainTabs";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
@@ -452,24 +453,32 @@ export default function ScheduleScreen() {
         title="Thời khóa biểu"
         subtitle={subtitle}
         rightElement={
-          <TouchableOpacity
-            onPress={() => handleOpenAddModal(selectedDay)}
-            activeOpacity={0.8}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 5,
-              backgroundColor: "rgba(255, 255, 255, 0.2)",
-              paddingHorizontal: 12,
-              paddingVertical: 7,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: "rgba(255, 255, 255, 0.35)",
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              handleOpenAddModal(selectedDay);
             }}
+            style={({ pressed }) => [
+              {
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 5,
+                backgroundColor: "rgba(255, 255, 255, 0.2)",
+                paddingHorizontal: 12,
+                paddingVertical: 7,
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: "rgba(255, 255, 255, 0.35)",
+              },
+              pressed && { opacity: 0.75, transform: [{ scale: 0.96 }] },
+            ]}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel="Thêm lịch học mới"
           >
             <Feather name="plus-circle" size={15} color="#FFFFFF" />
             <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "700" }}>Thêm lịch</Text>
-          </TouchableOpacity>
+          </Pressable>
         }
       />
 
@@ -522,71 +531,55 @@ export default function ScheduleScreen() {
         )}
 
         {loading || refreshing ? (
-          <View style={{ gap: 12 }}>
-            {[1, 2, 3].map((i) => (
-              <View
-                key={i}
-                style={{
-                  backgroundColor: AppColors.cardBg,
-                  borderRadius: 14,
-                  padding: 16,
-                  borderWidth: 1,
-                  borderColor: AppColors.cardBorder,
-                }}
-              >
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                  <SkeletonBox width={90} height={22} borderRadius={6} backgroundColor="#CBD5E1" />
-                  <SkeletonBox width={65} height={22} borderRadius={6} />
-                </View>
-                <SkeletonBox width="85%" height={18} borderRadius={4} style={{ marginBottom: 10 }} />
-                <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
-                  <SkeletonBox width={80} height={16} borderRadius={4} />
-                  <SkeletonBox width={120} height={16} borderRadius={4} />
-                </View>
-                <SkeletonBox width={140} height={14} borderRadius={4} style={{ marginBottom: 14 }} />
-                <View style={{ borderTopWidth: 1, borderTopColor: "#EEF2F6", paddingTop: 10, flexDirection: "row", justifyContent: "space-between" }}>
-                  <SkeletonBox width={110} height={30} borderRadius={6} />
-                  <SkeletonBox width={90} height={30} borderRadius={6} />
-                </View>
-              </View>
-            ))}
-          </View>
+          <ScheduleSkeleton />
         ) : filtered.length === 0 ? (
           <View style={{ paddingVertical: 50, alignItems: "center" }}>
             <Feather name="calendar" size={48} color={AppColors.cardBorder} />
             <Text style={{ marginTop: 12, fontSize: 15, fontWeight: "700", color: AppColors.text }}>Không có tiết học</Text>
             <Text style={{ marginTop: 4, fontSize: 13, color: AppColors.textMuted }}>Bạn được nghỉ trong ngày này!</Text>
-            <TouchableOpacity
-              onPress={() => handleOpenAddModal(selectedDay)}
-              activeOpacity={0.8}
-              style={{
-                marginTop: 16,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 8,
-                backgroundColor: AppColors.primary,
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                borderRadius: 12,
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                handleOpenAddModal(selectedDay);
               }}
+              style={({ pressed }) => [
+                {
+                  marginTop: 16,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  backgroundColor: AppColors.primary,
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderRadius: 12,
+                  minHeight: 44, // Touch target >= 44pt
+                },
+                pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Thêm lịch học cho ngày được chọn"
             >
               <Feather name="plus-circle" size={16} color="#FFFFFF" />
               <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "700" }}>
                 Thêm lịch cho {DAYS.find((d) => d.num === selectedDay)?.label || "hôm nay"}
               </Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         ) : (
           <View style={{ gap: 12 }}>
-            {filtered.map((item) => (
-              <ScheduleCard
-                key={item.id}
-                item={item}
-                onSelectDirection={setSelectedScheduleForDirection}
-                onEdit={handleOpenEditModal}
-                onDelete={handleDeleteSchedule}
-              />
-            ))}
+            {filtered.map((item) => {
+              const matchedDate = weekDates.find((w) => w.num === selectedDay);
+              return (
+                <ScheduleCard
+                  key={item.id}
+                  item={item}
+                  currentViewDate={item.date || item.ngay_hoc || matchedDate?.dateObj || matchedDate?.dateStr}
+                  onSelectDirection={setSelectedScheduleForDirection}
+                  onEdit={handleOpenEditModal}
+                  onDelete={handleDeleteSchedule}
+                />
+              );
+            })}
           </View>
         )}
 
@@ -606,10 +599,10 @@ export default function ScheduleScreen() {
             <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text }}>Lưu ý tiết học</Text>
           </View>
           <Text style={{ fontSize: 12, color: AppColors.textSecondary, lineHeight: 18, marginBottom: 4 }}>
-            • Buổi sáng: Tiết 1 bắt đầu từ 07:00, Tiết 5 kết thúc lúc 11:30.
+            • Buổi sáng: Tiết 1 bắt đầu từ 06:45, Tiết 4 kết thúc lúc 10:30.
           </Text>
           <Text style={{ fontSize: 12, color: AppColors.textSecondary, lineHeight: 18, marginBottom: 4 }}>
-            • Buổi chiều: Tiết 7 bắt đầu từ 13:00, Tiết 12 kết thúc lúc 17:30.
+            • Buổi chiều: Tiết 7 bắt đầu từ 13:45, Tiết 10 kết thúc lúc 16:30.
           </Text>
           <Text style={{ fontSize: 12, color: AppColors.textSecondary, lineHeight: 18 }}>
             • Bấm &quot;Chỉ đường tới phòng&quot; để xem chỉ dẫn chi tiết và vị trí tòa nhà trên bản đồ trường.

@@ -154,15 +154,6 @@ export const ScheduleRoomDirectionModal = React.memo(function ScheduleRoomDirect
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  onPress={() => onOpenGoogleMaps(direction.building)}
-                  activeOpacity={0.8}
-                  style={styles.mapSecondaryBtn}
-                >
-                  <Feather name="external-link" size={15} color={AppColors.primary} />
-                  <Text style={styles.mapSecondaryBtnText}>Mở vị trí ngoài Google Maps</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
                   onPress={onClose}
                   activeOpacity={0.7}
                   style={styles.closeModalBtn}

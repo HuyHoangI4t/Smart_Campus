@@ -3,57 +3,82 @@ import { LocationItem, CampusPath } from "../types";
 import { TAY_NGUYEN_CAMPUS_LOCATIONS } from "../constants";
 import { apiGetMapLocations, apiGetCampusPaths } from "../../../services/api";
 
-const LOCATIONS_CACHE_KEY = "@offline_map_locations";
-const PATHS_CACHE_KEY = "@offline_campus_paths";
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 phút
+const LOCATIONS_CACHE_KEY = "@offline_map_locations_v2";
+const PATHS_CACHE_KEY = "@offline_campus_paths_v2";
+const DEFAULT_CACHE_TTL_MS = 30 * 60 * 1000; // 30 phút TTL
 
-interface CacheItem<T> {
+interface CacheEnvelope<T> {
   data: T;
   timestamp: number;
 }
 
 class MapDataCache {
-  private memLocations: CacheItem<LocationItem[]> | null = null;
-  private memPaths: CacheItem<CampusPath[]> | null = null;
+  private memLocations: CacheEnvelope<LocationItem[]> | null = null;
+  private memPaths: CacheEnvelope<CampusPath[]> | null = null;
   private inflightLocationsPromise: Promise<LocationItem[]> | null = null;
   private inflightPathsPromise: Promise<CampusPath[]> | null = null;
+  private ttlMs: number = DEFAULT_CACHE_TTL_MS;
+
+  constructor(ttlMs: number = DEFAULT_CACHE_TTL_MS) {
+    this.ttlMs = ttlMs;
+  }
 
   /**
-   * Lấy danh sách địa điểm (Ưu tiên Memory Cache -> AsyncStorage -> API)
-   * Tốc độ: 0ms nếu có trong memory cache
+   * Kiểm tra xem Memory Cache có còn hợp lệ trong khoảng TTL không
+   */
+  isLocationsCacheFresh(): boolean {
+    if (!this.memLocations) return false;
+    return Date.now() - this.memLocations.timestamp < this.ttlMs;
+  }
+
+  isPathsCacheFresh(): boolean {
+    if (!this.memPaths) return false;
+    return Date.now() - this.memPaths.timestamp < this.ttlMs;
+  }
+
+  /**
+   * Lấy danh sách 37+ địa điểm trường:
+   * 1. RAM Cache (0ms) nếu còn trong TTL
+   * 2. AsyncStorage nếu còn trong TTL (tránh network call khi đổi tab)
+   * 3. API Backend nếu cache đã hết hạn hoặc chưa có
+   * 4. Fallback hằng số nếu offline hoàn toàn
    */
   async getLocations(forceRefresh = false): Promise<LocationItem[]> {
     const now = Date.now();
-    if (!forceRefresh && this.memLocations && now - this.memLocations.timestamp < CACHE_TTL_MS) {
+
+    // 1. Kiểm tra RAM Cache
+    if (!forceRefresh && this.memLocations && now - this.memLocations.timestamp < this.ttlMs) {
       return this.memLocations.data;
     }
 
+    // 2. Chống request bão hòa trùng lặp (Inflight deduplication)
     if (this.inflightLocationsPromise) {
       return this.inflightLocationsPromise;
     }
 
     this.inflightLocationsPromise = (async () => {
-      // 1. Thử đọc nhanh từ AsyncStorage nếu chưa có trong RAM
-      if (!this.memLocations) {
+      // 3. Đọc từ AsyncStorage nếu chưa có trong RAM
+      if (!forceRefresh) {
         try {
           const stored = await AsyncStorage.getItem(LOCATIONS_CACHE_KEY);
           if (stored) {
-            const parsed = JSON.parse(stored);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              this.memLocations = { data: parsed, timestamp: now };
-              // Nếu không bị forceRefresh, trả về ngay lập tức để render tức thì
-              if (!forceRefresh) {
-                this.revalidateLocationsInBackground();
-                return parsed;
-              }
+            const envelope: CacheEnvelope<LocationItem[]> = JSON.parse(stored);
+            if (
+              envelope &&
+              Array.isArray(envelope.data) &&
+              envelope.data.length > 0 &&
+              now - envelope.timestamp < this.ttlMs
+            ) {
+              this.memLocations = envelope;
+              return envelope.data;
             }
           }
         } catch {
-          // Bỏ qua lỗi đọc cache
+          // Bỏ qua lỗi đọc AsyncStorage
         }
       }
 
-      // 2. Tải từ API Backend
+      // 4. Tải từ API Backend
       try {
         const res = await apiGetMapLocations();
         if (res && res.locations && Array.isArray(res.locations) && res.locations.length > 0) {
@@ -72,14 +97,19 @@ class MapDataCache {
             color: String(l.color || "#2563EB"),
           }));
 
-          this.memLocations = { data: normalized, timestamp: Date.now() };
-          AsyncStorage.setItem(LOCATIONS_CACHE_KEY, JSON.stringify(normalized)).catch(() => {});
+          const envelope: CacheEnvelope<LocationItem[]> = {
+            data: normalized,
+            timestamp: Date.now(),
+          };
+          this.memLocations = envelope;
+          AsyncStorage.setItem(LOCATIONS_CACHE_KEY, JSON.stringify(envelope)).catch(() => {});
           return normalized;
         }
       } catch {
-        // Dự phòng: nếu API lỗi và chưa có gì, trả về 37 địa điểm mặc định
+        // Dự phòng khi mạng mất
       }
 
+      // 5. Fallback dữ liệu nội bộ
       const fallback = this.memLocations ? this.memLocations.data : TAY_NGUYEN_CAMPUS_LOCATIONS;
       this.memLocations = { data: fallback, timestamp: Date.now() };
       return fallback;
@@ -91,11 +121,13 @@ class MapDataCache {
   }
 
   /**
-   * Lấy mạng lưới đường đi nội bộ khuôn viên
+   * Lấy mạng lưới đường đi nội bộ khuôn viên trường:
+   * Có TTL & AsyncStorage caching, tránh re-fetch trên mỗi lượt mở tab
    */
   async getPaths(forceRefresh = false): Promise<CampusPath[]> {
     const now = Date.now();
-    if (!forceRefresh && this.memPaths && now - this.memPaths.timestamp < CACHE_TTL_MS) {
+
+    if (!forceRefresh && this.memPaths && now - this.memPaths.timestamp < this.ttlMs) {
       return this.memPaths.data;
     }
 
@@ -104,17 +136,19 @@ class MapDataCache {
     }
 
     this.inflightPathsPromise = (async () => {
-      if (!this.memPaths) {
+      if (!forceRefresh) {
         try {
           const stored = await AsyncStorage.getItem(PATHS_CACHE_KEY);
           if (stored) {
-            const parsed = JSON.parse(stored);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              this.memPaths = { data: parsed, timestamp: now };
-              if (!forceRefresh) {
-                this.revalidatePathsInBackground();
-                return parsed;
-              }
+            const envelope: CacheEnvelope<CampusPath[]> = JSON.parse(stored);
+            if (
+              envelope &&
+              Array.isArray(envelope.data) &&
+              envelope.data.length > 0 &&
+              now - envelope.timestamp < this.ttlMs
+            ) {
+              this.memPaths = envelope;
+              return envelope.data;
             }
           }
         } catch {
@@ -124,7 +158,7 @@ class MapDataCache {
 
       try {
         const pathsRes = await apiGetCampusPaths();
-        if (pathsRes && pathsRes.paths && Array.isArray(pathsRes.paths)) {
+        if (pathsRes && pathsRes.paths && Array.isArray(pathsRes.paths) && pathsRes.paths.length > 0) {
           const normalized: CampusPath[] = pathsRes.paths.map((p: any) => ({
             id: Number(p.id),
             name: String(p.name || ""),
@@ -136,8 +170,12 @@ class MapDataCache {
               : [],
           }));
 
-          this.memPaths = { data: normalized, timestamp: Date.now() };
-          AsyncStorage.setItem(PATHS_CACHE_KEY, JSON.stringify(normalized)).catch(() => {});
+          const envelope: CacheEnvelope<CampusPath[]> = {
+            data: normalized,
+            timestamp: Date.now(),
+          };
+          this.memPaths = envelope;
+          AsyncStorage.setItem(PATHS_CACHE_KEY, JSON.stringify(envelope)).catch(() => {});
           return normalized;
         }
       } catch {
@@ -152,58 +190,17 @@ class MapDataCache {
     return this.inflightPathsPromise;
   }
 
-  private revalidateLocationsInBackground() {
-    setTimeout(async () => {
-      try {
-        const res = await apiGetMapLocations();
-        if (res && res.locations && Array.isArray(res.locations) && res.locations.length > 0) {
-          const normalized: LocationItem[] = res.locations.map((l: any) => ({
-            id: Number(l.id),
-            name: String(l.name || ""),
-            category: String(l.category || "Địa điểm"),
-            building: String(l.building || l.name || ""),
-            floor: String(l.floor || ""),
-            description: String(l.description || ""),
-            lat: Number(l.lat || 12.65067),
-            lng: Number(l.lng || 108.02621),
-            icon: String(l.icon || "map-pin"),
-            x: Number(l.x ?? 50),
-            y: Number(l.y ?? 50),
-            color: String(l.color || "#2563EB"),
-          }));
-          this.memLocations = { data: normalized, timestamp: Date.now() };
-          AsyncStorage.setItem(LOCATIONS_CACHE_KEY, JSON.stringify(normalized)).catch(() => {});
-        }
-      } catch {
-        // Im lặng khi chạy ngầm
-      }
-    }, 1000);
-  }
-
-  private revalidatePathsInBackground() {
-    setTimeout(async () => {
-      try {
-        const pathsRes = await apiGetCampusPaths();
-        if (pathsRes && pathsRes.paths && Array.isArray(pathsRes.paths)) {
-          const normalized: CampusPath[] = pathsRes.paths.map((p: any) => ({
-            id: Number(p.id),
-            name: String(p.name || ""),
-            path_type: String(p.path_type || "walkway"),
-            coordinates: Array.isArray(p.coordinates)
-              ? p.coordinates
-              : typeof p.coordinates === "string"
-              ? JSON.parse(p.coordinates)
-              : [],
-          }));
-          this.memPaths = { data: normalized, timestamp: Date.now() };
-          AsyncStorage.setItem(PATHS_CACHE_KEY, JSON.stringify(normalized)).catch(() => {});
-        }
-      } catch {
-        // Im lặng khi chạy ngầm
-      }
-    }, 1500);
+  /**
+   * Xóa sạch cache trong bộ nhớ và AsyncStorage khi cần làm mới dữ liệu
+   */
+  async clearCache(): Promise<void> {
+    this.memLocations = null;
+    this.memPaths = null;
+    await Promise.all([
+      AsyncStorage.removeItem(LOCATIONS_CACHE_KEY).catch(() => {}),
+      AsyncStorage.removeItem(PATHS_CACHE_KEY).catch(() => {}),
+    ]);
   }
 }
 
 export const mapCache = new MapDataCache();
-

@@ -1,6 +1,8 @@
 import React from "react";
-import { View, Text, TouchableOpacity, Image, StyleSheet } from "react-native";
+import { View, Text, Pressable, Image, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { AppColors } from "../../../constants/appColors";
 import { StudentInfo } from "../types";
 
 export interface HomeHeaderProps {
@@ -14,6 +16,16 @@ export const HomeHeader = React.memo(function HomeHeader({
   topPadding,
   onNavigate,
 }: HomeHeaderProps) {
+  const handleSosPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    onNavigate("sos");
+  };
+
+  const handleProfilePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    onNavigate("profile");
+  };
+
   return (
     <View
       style={[
@@ -36,17 +48,28 @@ export const HomeHeader = React.memo(function HomeHeader({
         </View>
 
         <View style={styles.actions}>
-          <TouchableOpacity
-            onPress={() => onNavigate("sos")}
-            activeOpacity={0.8}
-            style={styles.sosBtn}
+          <Pressable
+            onPress={handleSosPress}
+            style={({ pressed }) => [
+              styles.sosBtn,
+              pressed && styles.buttonPressed,
+            ]}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel="Nút khẩn cấp SOS"
           >
-            <Feather name="shield" size={17} color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => onNavigate("profile")}
-            activeOpacity={0.8}
-            style={styles.profileBtn}
+            <Feather name="shield" size={18} color="#FFFFFF" />
+          </Pressable>
+
+          <Pressable
+            onPress={handleProfilePress}
+            style={({ pressed }) => [
+              styles.profileBtn,
+              pressed && styles.buttonPressed,
+            ]}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel="Hồ sơ cá nhân"
           >
             {student.avatar ? (
               <Image
@@ -54,9 +77,9 @@ export const HomeHeader = React.memo(function HomeHeader({
                 style={styles.avatar}
               />
             ) : (
-              <Feather name="user" size={18} color="#fff" />
+              <Feather name="user" size={19} color="#FFFFFF" />
             )}
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
     </View>
@@ -65,13 +88,13 @@ export const HomeHeader = React.memo(function HomeHeader({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#0F2964",
-    paddingBottom: 14,
+    backgroundColor: AppColors.primary,
+    paddingBottom: 16,
     paddingHorizontal: 20,
     zIndex: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.15,
     shadowRadius: 10,
     elevation: 5,
   },
@@ -102,23 +125,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
   },
+  buttonPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.94 }],
+  },
   sosBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "#EF4444",
+    width: 44, // Touch target tối thiểu 44pt
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: AppColors.danger,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#EF4444",
+    shadowColor: AppColors.danger,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    shadowOpacity: 0.35,
+    shadowRadius: 5,
     elevation: 3,
   },
   profileBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 44, // Touch target tối thiểu 44pt
+    height: 44,
+    borderRadius: 22,
     backgroundColor: "rgba(255,255,255,0.16)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.25)",
@@ -127,9 +154,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   avatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
 });
-

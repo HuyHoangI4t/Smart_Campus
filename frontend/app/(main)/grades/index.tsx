@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from "react-native";
+import { View, Text, ScrollView, Pressable, RefreshControl } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
@@ -8,7 +9,7 @@ import { NavHeader } from "../../../src/components/NavHeader";
 import { apiGetGrades, readLocalCache } from "../../../src/services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTabBarScrollHandler } from "../../../src/components/MainTabs";
-import { SkeletonBox } from "../../../src/components/Skeleton";
+import { GradesSkeleton } from "../../../src/components/Skeleton";
 
 interface CourseGrade {
   code: string;
@@ -166,21 +167,31 @@ export default function GradesScreen() {
         title="Kết quả học tập"
         subtitle={subtitle}
         rightElement={
-          <TouchableOpacity
-            onPress={() => router.push("/(main)/grades/grades_detail")}
-            style={{
-              paddingHorizontal: 10,
-              paddingVertical: 5,
-              borderRadius: 12,
-              backgroundColor: "rgba(255,255,255,0.2)",
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 4,
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              router.push("/(main)/grades/grades_detail");
             }}
+            style={({ pressed }) => [
+              {
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 14,
+                backgroundColor: "rgba(255,255,255,0.2)",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+                minHeight: 36,
+              },
+              pressed && { opacity: 0.75, transform: [{ scale: 0.96 }] },
+            ]}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel="Xem chi tiết bảng điểm"
           >
-            <Feather name="file-text" size={12} color="#FFFFFF" />
-            <Text style={{ fontSize: 11, fontWeight: "700", color: "#FFFFFF" }}>Chi tiết</Text>
-          </TouchableOpacity>
+            <Feather name="file-text" size={13} color="#FFFFFF" />
+            <Text style={{ fontSize: 11.5, fontWeight: "700", color: "#FFFFFF" }}>Chi tiết</Text>
+          </Pressable>
         }
       />
 
@@ -263,23 +274,31 @@ export default function GradesScreen() {
             </View>
           </View>
 
-          <TouchableOpacity
-            onPress={() => router.push("/(main)/grades/grades_detail")}
-            activeOpacity={0.8}
-            style={{
-              marginTop: 16,
-              paddingVertical: 10,
-              borderRadius: 12,
-              backgroundColor: "rgba(255, 255, 255, 0.15)",
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              router.push("/(main)/grades/grades_detail");
             }}
+            style={({ pressed }) => [
+              {
+                marginTop: 16,
+                paddingVertical: 12,
+                borderRadius: 14,
+                backgroundColor: "rgba(255, 255, 255, 0.16)",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                minHeight: 44, // Touch target >= 44pt
+              },
+              pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Xem bảng điểm chi tiết thành phần"
           >
             <Text style={{ fontSize: 13, fontWeight: "700", color: "#FFFFFF" }}>Xem bảng điểm chi tiết thành phần</Text>
             <Feather name="chevron-right" size={16} color="#FFFFFF" />
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
         {/* Bộ lọc học kỳ */}
@@ -292,28 +311,39 @@ export default function GradesScreen() {
           {semesters.map((sem) => {
             const isSelected = sem === selectedSemester;
             return (
-              <TouchableOpacity
+              <Pressable
                 key={sem}
-                onPress={() => setSelectedSemester(sem)}
-                style={{
-                  paddingVertical: 7,
-                  paddingHorizontal: 14,
-                  borderRadius: 18,
-                  backgroundColor: isSelected ? AppColors.primary : AppColors.cardBg,
-                  borderWidth: 1,
-                  borderColor: isSelected ? AppColors.primary : AppColors.cardBorder,
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                  setSelectedSemester(sem);
                 }}
+                style={({ pressed }) => [
+                  {
+                    paddingVertical: 8,
+                    paddingHorizontal: 16,
+                    borderRadius: 20,
+                    backgroundColor: isSelected ? AppColors.primary : AppColors.cardBg,
+                    borderWidth: 1,
+                    borderColor: isSelected ? AppColors.primary : AppColors.cardBorder,
+                    minHeight: 38,
+                    justifyContent: "center",
+                  },
+                  pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] },
+                ]}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel={`Học kỳ ${sem}`}
               >
                 <Text
                   style={{
-                    fontSize: 12,
-                    fontWeight: isSelected ? "700" : "500",
+                    fontSize: 12.5,
+                    fontWeight: isSelected ? "800" : "600",
                     color: isSelected ? "#FFFFFF" : AppColors.textSecondary,
                   }}
                 >
                   {sem}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             );
           })}
         </ScrollView>
@@ -327,38 +357,64 @@ export default function GradesScreen() {
         </View>
 
         {loading || refreshing ? (
-          <View style={{ gap: 10 }}>
-            {[1, 2, 3, 4].map((i) => (
-              <View
-                key={i}
-                style={{
-                  padding: 16,
-                  borderRadius: 16,
-                  backgroundColor: AppColors.cardBg,
-                  borderWidth: 1,
-                  borderColor: AppColors.cardBorder,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <View style={{ flex: 1, gap: 8, marginRight: 12 }}>
-                  <SkeletonBox width="85%" height={16} borderRadius={4} />
-                  <View style={{ flexDirection: "row", gap: 10 }}>
-                    <SkeletonBox width={70} height={14} borderRadius={4} />
-                    <SkeletonBox width={60} height={14} borderRadius={4} />
-                  </View>
-                </View>
-                <SkeletonBox width={46} height={36} borderRadius={8} />
-              </View>
-            ))}
-          </View>
+          <GradesSkeleton />
         ) : displayedGrades.length === 0 ? (
-          <View style={{ paddingVertical: 40, alignItems: "center" }}>
-            <Feather name="inbox" size={40} color={AppColors.textMuted} />
-            <Text style={{ marginTop: 12, color: AppColors.textMuted, fontSize: 14 }}>
-              Không có học phần nào trong học kỳ này
+          <View
+            style={{
+              paddingVertical: 40,
+              paddingHorizontal: 24,
+              backgroundColor: AppColors.cardBg,
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: AppColors.cardBorder,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                backgroundColor: AppColors.muted,
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 10,
+              }}
+            >
+              <Feather name="inbox" size={24} color={AppColors.textSubtle} />
+            </View>
+            <Text style={{ fontSize: 14, fontWeight: "700", color: AppColors.text, marginBottom: 4 }}>
+              Không có học phần nào
             </Text>
+            <Text style={{ color: AppColors.textSecondary, fontSize: 12, textAlign: "center", marginBottom: 14 }}>
+              Không tìm thấy điểm của học kỳ này. Bạn có thể chọn xem tất cả học kỳ.
+            </Text>
+            {selectedSemester !== "Tất cả" && (
+              <Pressable
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                  setSelectedSemester("Tất cả");
+                }}
+                style={({ pressed }) => [
+                  {
+                    backgroundColor: `${AppColors.primary}12`,
+                    borderWidth: 1,
+                    borderColor: `${AppColors.primary}30`,
+                    paddingHorizontal: 16,
+                    paddingVertical: 9,
+                    borderRadius: 12,
+                    minHeight: 44, // Touch target >= 44pt
+                    justifyContent: "center",
+                  },
+                  pressed && { opacity: 0.8 },
+                ]}
+              >
+                <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.primary }}>
+                  Xem tất cả học kỳ
+                </Text>
+              </Pressable>
+            )}
           </View>
         ) : (
           <View style={{ gap: 10 }}>

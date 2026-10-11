@@ -320,14 +320,18 @@ export const tabBarStyles = StyleSheet.create({
     transform: [{ scale: 1.06 }],
   },
   iconContainer: {
-    paddingHorizontal: 14,
-    paddingVertical: 5,
+    minWidth: 48,
+    height: 32,
+    paddingHorizontal: 12,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   selectedIconContainer: {
     backgroundColor: '#EEF2FF',
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   label: {
     fontSize: 11.5,

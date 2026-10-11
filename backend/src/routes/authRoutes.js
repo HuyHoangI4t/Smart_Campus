@@ -69,6 +69,7 @@ router.post('/register', authController.register);
  *         description: Đăng ký thành công và đã lưu vào cơ sở dữ liệu
  */
 router.post('/register-verify', authController.verifyRegisterOtp);
+router.post('/verify-register-otp', authController.verifyRegisterOtp);
 
 /**
  * @swagger

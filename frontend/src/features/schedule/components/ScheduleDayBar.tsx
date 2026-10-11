@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
+import * as Haptics from "expo-haptics";
 import { AppColors } from "../../../constants/appColors";
 import { DAYS } from "../constants";
 import { WeekDateItem } from "../types";
@@ -12,6 +13,11 @@ export interface ScheduleDayBarProps {
   onSelectDay: (dayNum: number) => void;
 }
 
+/**
+ * Thanh chọn thứ trong tuần (ScheduleDayBar) - Ngôn ngữ thiết kế Hybrid Android 16 & iOS HIG
+ * Các chip con nhộng (Pill capsule: borderRadius 999),
+ * hiệu ứng chuyển nền đậm kèm rung xúc giác (Light Haptics), touch target đạt chuẩn >= 44pt.
+ */
 export const ScheduleDayBar = React.memo(function ScheduleDayBar({
   selectedDay,
   todayDayNum,
@@ -19,6 +25,11 @@ export const ScheduleDayBar = React.memo(function ScheduleDayBar({
   weekDates,
   onSelectDay,
 }: ScheduleDayBarProps) {
+  const handleSelectDay = (dayNum: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    onSelectDay(dayNum);
+  };
+
   return (
     <View style={styles.dayContainer}>
       <ScrollView
@@ -33,32 +44,38 @@ export const ScheduleDayBar = React.memo(function ScheduleDayBar({
           const dateShort = matchedDate?.dateShort;
 
           return (
-            <TouchableOpacity
+            <Pressable
               key={d.num}
-              onPress={() => onSelectDay(d.num)}
-              activeOpacity={0.7}
-              style={[
-                styles.dayChip,
+              onPress={() => handleSelectDay(d.num)}
+              style={({ pressed }) => [
+                styles.dayPill,
                 {
                   backgroundColor: isSelected
                     ? AppColors.primary
                     : isToday
-                    ? "#EFF6FF"
-                    : AppColors.muted,
-                  borderWidth: isToday && !isSelected ? 1.5 : 0,
-                  borderColor: isToday && !isSelected ? AppColors.primary : "transparent",
+                    ? `${AppColors.primary}12`
+                    : AppColors.cardBg,
+                  borderWidth: isSelected ? 0 : 1,
+                  borderColor: isToday
+                    ? AppColors.primary
+                    : AppColors.cardBorder,
                 },
+                pressed && styles.dayPillPressed,
               ]}
+              hitSlop={4}
+              accessibilityRole="button"
+              accessibilityLabel={`${d.label}${dateShort ? `, ngày ${dateShort}` : ""}${isToday ? ", hôm nay" : ""}${isSelected ? ", đang chọn" : ""}`}
             >
               <Text
                 style={{
                   fontSize: 13,
-                  fontWeight: "700",
+                  fontWeight: "900",
                   color: isSelected
                     ? "#FFFFFF"
                     : isToday
                     ? AppColors.primary
-                    : AppColors.textSecondary,
+                    : AppColors.text,
+                  letterSpacing: -0.2,
                 }}
               >
                 {d.label}
@@ -66,11 +83,11 @@ export const ScheduleDayBar = React.memo(function ScheduleDayBar({
               {dateShort && (
                 <Text
                   style={{
-                    fontSize: 10,
-                    fontWeight: "600",
+                    fontSize: 10.5,
+                    fontWeight: "700",
                     marginTop: 1,
                     color: isSelected
-                      ? "rgba(255, 255, 255, 0.85)"
+                      ? "rgba(255, 255, 255, 0.9)"
                       : isToday
                       ? AppColors.primary
                       : AppColors.textMuted,
@@ -79,7 +96,7 @@ export const ScheduleDayBar = React.memo(function ScheduleDayBar({
                   {dateShort}
                 </Text>
               )}
-            </TouchableOpacity>
+            </Pressable>
           );
         })}
       </ScrollView>
@@ -98,13 +115,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     gap: 8,
   },
-  dayChip: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 16,
+  dayPill: {
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 999, // Pill capsule hoàn hảo
     alignItems: "center",
     justifyContent: "center",
-    minWidth: 54,
+    minWidth: 58,
+    minHeight: 46, // Touch target chuẩn >= 44pt
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  dayPillPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.94 }],
   },
 });
-
