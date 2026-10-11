@@ -27,6 +27,7 @@ import {
   MapControlsOverlay,
   MapLocationDetailCard,
   MapLocationPickerModal,
+  MapRouteStatusCard,
   useMapGps,
   useMapData,
 } from "../../../src/features/map";
@@ -729,140 +730,15 @@ export default function MapScreen() {
 
           {/* ── THANH TRẠNG THÁI DẪN ĐƯỜNG TỐI GIẢN (KHI ĐANG CHỈ ĐƯỜNG) ── */}
           {isRoutingActive && (
-            <View
-              style={{
-                position: "absolute",
-                bottom: Math.max(insets.bottom, 16) + 96,
-                left: 14,
-                right: 14,
-                zIndex: 999,
-                backgroundColor: "#FFFFFF",
-                borderRadius: 22,
-                paddingVertical: 14,
-                paddingHorizontal: 16,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.18,
-                shadowRadius: 16,
-                elevation: 16,
-                borderWidth: 1,
-                borderColor: "rgba(226, 232, 240, 0.9)",
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1, marginRight: 10 }}>
-                  <View
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 22,
-                      backgroundColor: "#EFF6FF",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderWidth: 1.5,
-                      borderColor: "#BFDBFE",
-                    }}
-                  >
-                    <Feather name="navigation" size={22} color={AppColors.primary} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                      {activeRoute?.gateName ? (
-                        <Text
-                          style={{
-                            fontSize: 10.5,
-                            fontWeight: "800",
-                            color: "#64748B",
-                            textTransform: "uppercase",
-                            letterSpacing: 0.5,
-                          }}
-                        >
-                          {`Qua ${activeRoute.gateName}`}
-                        </Text>
-                      ) : (
-                        <View
-                          style={{
-                            width: 75,
-                            height: 10,
-                            backgroundColor: "#E2E8F0",
-                            borderRadius: 5,
-                            marginVertical: 2,
-                          }}
-                        />
-                      )}
-                      {activeRoute?.gateName ? (
-                        <TouchableOpacity
-                          onPress={handleSwitchGate}
-                          activeOpacity={0.7}
-                          style={{
-                            backgroundColor: "#EEF2FF",
-                            paddingHorizontal: 6,
-                            paddingVertical: 1.5,
-                            borderRadius: 6,
-                            flexDirection: "row",
-                            alignItems: "center",
-                            gap: 3,
-                          }}
-                        >
-                          <Feather name="refresh-cw" size={9} color={AppColors.primary} />
-                          <Text style={{ fontSize: 9.5, fontWeight: "800", color: AppColors.primary }}>Đổi cổng</Text>
-                        </TouchableOpacity>
-                      ) : null}
-                    </View>
-
-                    {!activeRoute?.distanceMeters ? (
-                      <View style={{ gap: 6, marginTop: 4 }}>
-                        <View style={{ width: "80%", height: 14, backgroundColor: "#E2E8F0", borderRadius: 4 }} />
-                        <View style={{ width: "50%", height: 12, backgroundColor: "#E2E8F0", borderRadius: 4 }} />
-                      </View>
-                    ) : (
-                      <>
-                        <Text
-                          style={{
-                            fontSize: 15,
-                            fontWeight: "900",
-                            color: "#0F172A",
-                            marginTop: 1,
-                          }}
-                          numberOfLines={1}
-                        >
-                          {targetRoom && currentParsed ? currentParsed.fullDisplay : selectedLoc?.name || "Điểm đến"}
-                        </Text>
-                        <Text
-                          style={{
-                            fontSize: 12.5,
-                            fontWeight: "800",
-                            color: "#059669",
-                            marginTop: 2,
-                          }}
-                        >
-                          {`~${activeRoute.distanceMeters}m • ~${activeRoute.durationMinutes || 1} phút đi bộ`}
-                        </Text>
-                      </>
-                    )}
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  onPress={handleClearRoute}
-                  activeOpacity={0.8}
-                  style={{
-                    backgroundColor: "#FEE2E2",
-                    paddingVertical: 10,
-                    paddingHorizontal: 16,
-                    borderRadius: 14,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 6,
-                    borderWidth: 1,
-                    borderColor: "#FECACA",
-                  }}
-                >
-                  <Feather name="x-circle" size={16} color="#DC2626" />
-                  <Text style={{ fontSize: 13, fontWeight: "800", color: "#DC2626" }}>Dừng</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+            <MapRouteStatusCard
+              bottomOffset={Math.max(insets.bottom, 16) + 96}
+              activeRoute={activeRoute}
+              targetRoom={targetRoom}
+              currentParsed={currentParsed}
+              selectedLoc={selectedLoc}
+              onSwitchGate={handleSwitchGate}
+              onClearRoute={handleClearRoute}
+            />
           )}
 
           {/* ── MODAL CHỌN ĐỊNH VỊ (GPS THỰC TẾ HOẶC VỊ TRÍ MẪU ĐỂ TEST) ── */}

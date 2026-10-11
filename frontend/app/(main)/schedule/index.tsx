@@ -1,23 +1,20 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  ActivityIndicator,
-  Modal,
   Linking,
-  TextInput,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { AppColors } from "../../../src/constants/appColors";
-import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
+import { SkeletonBox } from "../../../src/components/Skeleton";
+import { useTabBarScrollHandler } from "../../../src/components/MainTabs";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   apiGetSchedule,
   readLocalCache,
@@ -26,288 +23,35 @@ import {
   apiDeleteCustomSchedule,
   CustomSchedulePayload,
 } from "../../../src/services/api";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useTabBarScrollHandler } from "../../../src/components/MainTabs";
-import { SkeletonBox } from "../../../src/components/Skeleton";
 
-interface DirectionStep {
-  step: number;
-  title: string;
-  desc: string;
-  icon: keyof typeof Feather.glyphMap;
-}
-
-interface RoomDirectionInfo {
-  room: string;
-  building: string;
-  buildingCode: string;
-  floor: string;
-  mapQuery: string;
-  steps: DirectionStep[];
-  tips: string[];
-}
-
-interface AvailableWeekItem {
-  index: number;
-  weekRange: string;
-  label: string;
-  isCurrent?: boolean;
-  isNext?: boolean;
-  schedules?: ScheduleItem[];
-}
-
-interface WeekDateItem {
-  num: number;
-  label: string;
-  dateStr: string;
-  dateShort: string;
-  dateObj: Date;
-}
-
-interface ScheduleItem {
-  id: string | number;
-  course: string;
-  code: string;
-  room: string;
-  time: string;
-  day: string;
-  dayNum: number;
-  lecturer: string;
-  isCustom?: boolean;
-  note?: string;
-  type?: string;
-  date?: string;
-  dateShort?: string;
-  ngay_hoc?: string;
-  week_range?: string;
-  direction?: RoomDirectionInfo;
-}
-
-export function parseRoomDirections(roomRaw: string): RoomDirectionInfo {
-  const room = (roomRaw || "").trim();
-  const upper = room.toUpperCase();
-
-  let building = "Nhà học số 2";
-  let buildingCode = "Nhà 2";
-  let floor = "";
-  let mapQuery = "Nhà 2";
-  let roomDisplay = room || "Khu giảng đường";
-
-  // 1. Dạng 3 phần: X.Y.Z (vd: 7.3.18 -> Nhà 7, Tầng 3, Phòng 18)
-  const match3 = upper.match(/^(\d+)\s*\.\s*(\d+)\s*\.\s*([0-9A-Z_-]+)(.*)/i);
-  if (match3) {
-    const bNum = match3[1];
-    const fNum = match3[2];
-    const rNum = match3[3];
-    const extra = match3[4] ? match3[4].trim() : "";
-    buildingCode = `Nhà ${bNum}`;
-    building = `Nhà học số ${bNum}`;
-    floor = `Tầng ${fNum}`;
-    roomDisplay = `Phòng ${rNum}${extra ? ` ${extra}` : ""}`;
-    mapQuery = buildingCode;
-  } else {
-    // 2. Dạng 2 phần: X.Z (vd: 2.20 -> Nhà 2, Phòng 20; 2.21 (CLC) -> Nhà 2, Phòng 21 (CLC))
-    const match2 = upper.match(/^(\d+)\s*\.\s*([0-9A-Z_-]+)(.*)/i);
-    if (match2) {
-      const bNum = match2[1];
-      const rNum = match2[2];
-      const extra = match2[3] ? match2[3].trim() : "";
-      buildingCode = `Nhà ${bNum}`;
-      building = `Nhà học số ${bNum}`;
-      floor = "";
-      roomDisplay = `Phòng ${rNum}${extra ? ` ${extra}` : ""}`;
-      mapQuery = buildingCode;
-    } else if (upper.includes("400")) {
-      building = "Giảng đường 400 chỗ";
-      buildingCode = "GĐ 400";
-      mapQuery = "Giảng đường 400 chỗ";
-      roomDisplay = "Hội trường lớn 400 chỗ";
-    } else if (upper.includes("200")) {
-      building = "Giảng đường 200 chỗ";
-      buildingCode = "GĐ 200";
-      mapQuery = "Giảng đường 200 chỗ";
-      roomDisplay = "Hội trường vừa 200 chỗ";
-    } else if (upper.includes("THƯ VIỆN") || upper.includes("THU VIEN")) {
-      building = "Thư viện Trung tâm";
-      buildingCode = "Thư viện";
-      mapQuery = "Thư viện Trung tâm";
-    } else if (upper.includes("QUỐC PHÒNG") || upper.includes("GDQP") || upper.includes("QP-AN")) {
-      building = "Trung tâm Giáo dục Quốc phòng và An ninh";
-      buildingCode = "TT GDQP";
-      mapQuery = "Trung tâm Giáo dục Quốc phòng và An ninh";
-    } else if (upper.includes("Y DƯỢC") || upper.includes("Y DUOC")) {
-      building = "Nhà học số 5 - Khoa Y Dược";
-      buildingCode = "Nhà 5";
-      mapQuery = "Nhà học số 5";
-    } else if (upper.includes("KINH TẾ") || upper.includes("KINH TE")) {
-      building = "Nhà học số 7 - Khoa Kinh tế";
-      buildingCode = "Nhà 7";
-      mapQuery = "Nhà học số 7";
-    } else if (upper.includes("SƯ PHẠM") || upper.includes("SU PHAM")) {
-      building = "Nhà học số 8 - Khoa Sư phạm";
-      buildingCode = "Nhà 8";
-      mapQuery = "Nhà học số 8";
-    } else if (upper.includes("CÔNG NGHỆ") || upper.includes("CNTT") || upper.includes("TỰ NHIÊN")) {
-      building = "Nhà học số 9 - Khoa KHTN & Công nghệ";
-      buildingCode = "Nhà 9";
-      mapQuery = "Nhà học số 9";
-    } else {
-      const bMatch = upper.match(/NHÀ\s*(\d+)/i);
-      if (bMatch) {
-        buildingCode = `Nhà ${bMatch[1]}`;
-        building = `Nhà học số ${bMatch[1]}`;
-        mapQuery = buildingCode;
-      }
-    }
-  }
-
-  const steps: DirectionStep[] = [
-    {
-      step: 1,
-      title: "Cổng trường",
-      desc: `Từ cổng đi thẳng qua trục đường trung tâm hướng về phía ${buildingCode}.`,
-      icon: "compass",
-    },
-    {
-      step: 2,
-      title: `Vào sảnh chính ${buildingCode}`,
-      desc: `Bước vào sảnh chính ${buildingCode}, có thể tra cứu sơ đồ phân phòng tại bảng thông báo sảnh.`,
-      icon: "home",
-    },
-  ];
-
-  if (floor) {
-    steps.push({
-      step: 3,
-      title: `Lên ${floor}`,
-      desc: `Sử dụng thang bộ để di chuyển lên ${floor}.`,
-      icon: "arrow-up-circle",
-    });
-    steps.push({
-      step: 4,
-      title: `Đến ${roomDisplay}`,
-      desc: `Rẽ theo biển báo số phòng dọc hành lang ${floor}, ${roomDisplay} nằm ở vị trí tương ứng.`,
-      icon: "map-pin",
-    });
-  } else {
-    steps.push({
-      step: 3,
-      title: `Đến ${roomDisplay}`,
-      desc: `Đi theo biển chỉ dẫn số phòng tại khu vực ${buildingCode}, ${roomDisplay} nằm ở vị trí tương ứng.`,
-      icon: "map-pin",
-    });
-  }
-
-  const tips = [
-    `Nhà xe thường đông vào đầu ca học, bạn có thể thử nhà xe khác để nhanh hơn.`,
-    `Nên đến trước giờ vào lớp 5 - 10 phút để ổn định vị trí và điểm danh.`,
-  ];
-
-  return {
-    room: roomDisplay,
-    building,
-    buildingCode,
-    floor,
-    mapQuery,
-    steps,
-    tips,
-  };
-}
-
-const FALLBACK_SCHEDULE: ScheduleItem[] = [
-  { id: '1', course: "Lập trình thiết bị di động", code: "Thứ 2", room: "9.2.04", time: "Tiết 1-4 (07:00 – 10:40)", day: "Thứ 2", dayNum: 2, lecturer: "TS. Hoàng Minh" },
-  { id: '2', course: "Lịch sử Đảng Cộng sản VN", code: "Thứ 3", room: "2.21 (CLC)", time: "Tiết 1-4 (07:00 – 10:40)", day: "Thứ 3", dayNum: 3, lecturer: "ThS. Đoàn Văn Kỳ" },
-  { id: '3', course: "Cấu trúc dữ liệu & Giải thuật", code: "Thứ 4", room: "9.3.01", time: "Tiết 7-10 (13:50 – 17:30)", day: "Thứ 4", dayNum: 4, lecturer: "ThS. Lê Thị B" },
-  { id: '4', course: "Hệ cơ sở dữ liệu", code: "Thứ 5", room: "7.3.18", time: "Tiết 1-4 (07:00 – 10:40)", day: "Thứ 5", dayNum: 5, lecturer: "TS. Nguyễn C" },
-  { id: '5', course: "Mạng máy tính", code: "Thứ 6", room: "9.1.02", time: "Tiết 7-10 (13:50 – 17:30)", day: "Thứ 6", dayNum: 6, lecturer: "ThS. Phạm D" },
-  { id: '6', course: "Ngoại ngữ chuyên ngành", code: "Thứ 7", room: "2.20", time: "Tiết 1-4 (07:00 – 10:40)", day: "Thứ 7", dayNum: 7, lecturer: "Khoa Ngoại ngữ" },
-];
-
-const DAYS = [
-  { label: "Thứ 2", num: 2 },
-  { label: "Thứ 3", num: 3 },
-  { label: "Thứ 4", num: 4 },
-  { label: "Thứ 5", num: 5 },
-  { label: "Thứ 6", num: 6 },
-  { label: "Thứ 7", num: 7 },
-  { label: "CN", num: 1 },
-];
-
-const PERIOD_OPTIONS = [
-  { label: "Tiết 1-2", desc: "07:00 – 08:40" },
-  { label: "Tiết 1-4", desc: "07:00 – 10:40" },
-  { label: "Tiết 3-4", desc: "08:50 – 10:40" },
-  { label: "Tiết 5-6", desc: "10:50 – 12:30" },
-  { label: "Tiết 7-8", desc: "13:50 – 15:30" },
-  { label: "Tiết 7-10", desc: "13:50 – 17:30" },
-  { label: "Tiết 9-10", desc: "15:40 – 17:30" },
-  { label: "Tiết 11-12", desc: "17:40 – 19:20" },
-];
-
-const getTodayDayNum = () => {
-  const jsDay = new Date().getDay();
-  return jsDay === 0 ? 1 : jsDay + 1; // 1: CN, 2: T2, 3: T3, 4: T4...
-};
-
-function parseWeekRangeDates(rangeText: string) {
-  if (!rangeText) return { startDate: null, endDate: null };
-  const match = rangeText.match(/Từ ngày\s+(\d{1,2})\/(\d{1,2})\/(\d{4})\s+đến ngày\s+(\d{1,2})\/(\d{1,2})\/(\d{4})/i);
-  if (!match) return { startDate: null, endDate: null };
-  // const [_, sD, sM, sY, eD, eM, eY] = match;
-  const [/* _ */, sD, sM, sY, eD, eM, eY] = match;
-  const startDate = new Date(Number(sY), Number(sM) - 1, Number(sD), 0, 0, 0);
-  const endDate = new Date(Number(eY), Number(eM) - 1, Number(eD), 23, 59, 59, 999);
-  return { startDate, endDate };
-}
-
-function formatDateVN(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
-}
-
-function formatDateShort(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
-}
-
-function parseDateVN(str: string): Date | null {
-  if (!str) return null;
-  const s = str.trim();
-  const m1 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (m1) {
-    return new Date(Number(m1[3]), Number(m1[2]) - 1, Number(m1[1]), 12, 0, 0);
-  }
-  const m2 = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (m2) {
-    return new Date(Number(m2[1]), Number(m2[2]) - 1, Number(m2[3]), 12, 0, 0);
-  }
-  return null;
-}
-
-function getDayNumFromDate(d: Date): number {
-  const jsDay = d.getDay();
-  return jsDay === 0 ? 1 : jsDay + 1; // 1: CN, 2: T2, 3: T3, ... 7: T7
-}
-
-function getDayLabelFromDate(d: Date): string {
-  const num = getDayNumFromDate(d);
-  return num === 1 ? "Chủ nhật" : `Thứ ${num}`;
-}
-
-function getWeekRangeFromDate(d: Date): string {
-  const jsDay = d.getDay();
-  const distToMon = (jsDay + 6) % 7;
-  const mon = new Date(d);
-  mon.setDate(d.getDate() - distToMon);
-  const sun = new Date(mon);
-  sun.setDate(mon.getDate() + 6);
-  return `Từ ngày ${formatDateVN(mon)} đến ngày ${formatDateVN(sun)}`;
-}
+import {
+  ScheduleItem,
+  AvailableWeekItem,
+  WeekDateItem,
+  CustomScheduleType,
+  DAYS,
+  PERIOD_OPTIONS,
+  FALLBACK_SCHEDULE,
+  getTodayDayNum,
+  parseWeekRangeDates,
+  formatDateVN,
+  formatDateShort,
+  parseDateVN,
+  getDayNumFromDate,
+  getWeekRangeFromDate,
+  parseRoomDirections,
+  ScheduleWeekBar,
+  ScheduleDayBar,
+  ScheduleCard,
+  ScheduleCustomModal,
+  ScheduleRoomDirectionModal,
+} from "../../../src/features/schedule";
 
 export default function ScheduleScreen() {
   const router = useRouter();
   const { onScroll: onTabBarScroll, bottomPadding } = useTabBarScrollHandler();
   const todayDayNum = getTodayDayNum();
+
   const [selectedDay, setSelectedDay] = useState(todayDayNum);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -323,14 +67,14 @@ export default function ScheduleScreen() {
   const [isOfflineData, setIsOfflineData] = useState(false);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
 
-  // States cho CRUD lịch học thủ công / thực hành đột xuất có ngày cụ thể
+  // States cho CRUD lịch học thủ công / thực hành đột xuất
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | number | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const [formCourse, setFormCourse] = useState("");
-  const [formType, setFormType] = useState<"dot_xuat" | "hoc_bu" | "kiem_tra" | "khac">("dot_xuat");
+  const [formType, setFormType] = useState<CustomScheduleType>("dot_xuat");
   const [formDayNum, setFormDayNum] = useState<number>(todayDayNum);
   const [formDate, setFormDate] = useState("");
   const [formWeekRange, setFormWeekRange] = useState("");
@@ -338,7 +82,6 @@ export default function ScheduleScreen() {
   const [formRoom, setFormRoom] = useState("");
   const [formLecturer, setFormLecturer] = useState("");
   const [formNote, setFormNote] = useState("");
-  // const [dayDropdownOpen, setDayDropdownOpen] = useState(false); // Thứ đã tự động đồng bộ theo ngày học
   const [periodDropdownOpen, setPeriodDropdownOpen] = useState(false);
   const [isCustomTime, setIsCustomTime] = useState(false);
 
@@ -374,7 +117,7 @@ export default function ScheduleScreen() {
     });
   }, [weekRangeText]);
 
-  const resetForm = (targetDay?: number) => {
+  const resetForm = useCallback((targetDay?: number) => {
     setIsEditing(false);
     setEditingId(null);
     setFormCourse("");
@@ -391,7 +134,7 @@ export default function ScheduleScreen() {
     setFormNote("");
     setPeriodDropdownOpen(false);
     setIsCustomTime(false);
-  };
+  }, [selectedDay, weekDates, weekRangeText]);
 
   const handleOpenAddModal = (targetDay?: number) => {
     resetForm(targetDay);
@@ -402,7 +145,7 @@ export default function ScheduleScreen() {
     setIsEditing(true);
     setEditingId(item.id);
     setFormCourse(item.course);
-    setFormType((item.type as any) || "dot_xuat");
+    setFormType((item.type as CustomScheduleType) || "dot_xuat");
     setFormDayNum(item.dayNum);
     const matchedDate = weekDates.find((w) => w.num === item.dayNum);
     setFormDate(item.date || item.ngay_hoc || (matchedDate ? matchedDate.dateStr : formatDateVN(new Date())));
@@ -511,7 +254,6 @@ export default function ScheduleScreen() {
           direction: parseRoomDirections(formRoom.trim()),
         };
 
-        // Kiểm tra xem ngày thêm có thuộc tuần đang xem hay không
         const range = parseWeekRangeDates(weekRangeText);
         const targetD = parseDateVN(cleanDate);
         const isInsideCurrentWeek = targetD && range.startDate && range.endDate
@@ -578,6 +320,7 @@ export default function ScheduleScreen() {
 
       const isRealAccount = mssv && mssv !== "guest";
       const cacheKey = `@offline_schedule_${isRealAccount ? mssv : 'current'}`;
+
       if (!forceReload && !weekOpts) {
         const cached = await readLocalCache<any>(cacheKey);
         if (cached && cached.data) {
@@ -614,7 +357,6 @@ export default function ScheduleScreen() {
         if (res.nextWeekIndex !== undefined) setNextWeekIndex(res.nextWeekIndex);
         if (res.selectedWeekIndex !== undefined) {
           setSelectedWeekIndex(res.selectedWeekIndex);
-          // Nếu vào Chủ nhật và đang hiển thị Tuần sau, chuyển sang Thứ 2 nếu CN không có tiết
           if (res.isSunday && res.selectedWeekIndex === res.nextWeekIndex && selectedDay === 1) {
             const scheds = res.schedules || [];
             const hasSundayClass = scheds.some((s: any) => s.dayNum === 1);
@@ -645,7 +387,6 @@ export default function ScheduleScreen() {
     setWeekRangeText(w.weekRange);
     if (w.schedules && Array.isArray(w.schedules) && w.schedules.length > 0) {
       setScheduleList(w.schedules);
-      // Nếu chọn tuần sau vào Chủ nhật, ưu tiên chọn Thứ 2 nếu CN không có môn
       if (isSunday && w.isNext && selectedDay === 1) {
         const hasSundayClass = w.schedules.some((s) => s.dayNum === 1);
         if (!hasSundayClass) {
@@ -732,172 +473,26 @@ export default function ScheduleScreen() {
         }
       />
 
-      {/* 1. THANH CHỌN TUẦN HỌC (Tuần này / Tuần sau / ...) */}
-      {availableWeeks && availableWeeks.length > 0 && (
-        <View style={{ backgroundColor: "#F8FAFC", paddingVertical: 10, borderBottomWidth: 1, borderColor: "#E2E8F0" }}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, alignItems: "center" }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginRight: 2 }}>
-              <Feather name="calendar" size={13} color={AppColors.primary} />
-              <Text style={{ fontSize: 12, fontWeight: "700", color: AppColors.textSecondary }}>Tuần học:</Text>
-            </View>
+      {/* 1. THANH CHỌN TUẦN HỌC */}
+      <ScheduleWeekBar
+        availableWeeks={availableWeeks}
+        selectedWeekIndex={selectedWeekIndex}
+        currentWeekIndex={currentWeekIndex}
+        nextWeekIndex={nextWeekIndex}
+        isSunday={isSunday}
+        onSelectWeek={handleSelectWeek}
+      />
 
-            {availableWeeks.map((w) => {
-              const isSelectedWeek = w.index === selectedWeekIndex;
-              const matchDates = w.weekRange.match(/(\d{2}\/\d{2})\/\d{4}.*?(\d{2}\/\d{2})\/\d{4}/);
-              const shortDates = matchDates ? `${matchDates[1]} - ${matchDates[2]}` : "";
-              const displayLabel = w.label ? `${w.label}${shortDates ? ` (${shortDates})` : ""}` : (shortDates || `Tuần ${w.index + 1}`);
+      {/* 2. THANH CHỌN THỨ TRONG TUẦN */}
+      <ScheduleDayBar
+        selectedDay={selectedDay}
+        todayDayNum={todayDayNum}
+        isViewingCurrentWeek={selectedWeekIndex === currentWeekIndex}
+        weekDates={weekDates}
+        onSelectDay={setSelectedDay}
+      />
 
-              return (
-                <TouchableOpacity
-                  key={w.index}
-                  onPress={() => handleSelectWeek(w)}
-                  activeOpacity={0.7}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 6,
-                    paddingVertical: 6,
-                    paddingHorizontal: 12,
-                    borderRadius: 16,
-                    backgroundColor: isSelectedWeek ? AppColors.primary : "#FFFFFF",
-                    borderWidth: 1,
-                    borderColor: isSelectedWeek ? AppColors.primary : "#CBD5E1",
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: isSelectedWeek ? 0.15 : 0.04,
-                    shadowRadius: 2,
-                    elevation: isSelectedWeek ? 2 : 1,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: isSelectedWeek ? "700" : "600",
-                      color: isSelectedWeek ? "#FFFFFF" : AppColors.text,
-                    }}
-                  >
-                    {displayLabel}
-                  </Text>
-                  {w.isNext && isSunday && (
-                    <View
-                      style={{
-                        backgroundColor: isSelectedWeek ? "rgba(255,255,255,0.25)" : "#FEF3C7",
-                        paddingHorizontal: 5,
-                        paddingVertical: 1,
-                        borderRadius: 8,
-                      }}
-                    >
-                      <Text style={{ fontSize: 10, fontWeight: "700", color: isSelectedWeek ? "#FFFFFF" : "#D97706" }}>
-                        Tuần tới
-                      </Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-      )}
-
-      {/* 2. THÔNG BÁO THÔNG MINH KHI ĐANG LÀ CHỦ NHẬT */}
-      {isSunday && selectedWeekIndex === nextWeekIndex && (
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            backgroundColor: "#EFF6FF",
-            paddingVertical: 8,
-            paddingHorizontal: 16,
-            borderBottomWidth: 1,
-            borderColor: "#BFDBFE",
-          }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
-            <Feather name="info" size={14} color="#2563EB" />
-            <Text style={{ fontSize: 12, color: "#1D4ED8", fontWeight: "600", flex: 1 }}>
-              Hôm nay là Chủ nhật: Đang xem trước lịch học Tuần sau
-            </Text>
-          </View>
-          {availableWeeks[currentWeekIndex] && (
-            <TouchableOpacity
-              onPress={() => handleSelectWeek(availableWeeks[currentWeekIndex])}
-              style={{
-                backgroundColor: "#DBEAFE",
-                paddingHorizontal: 8,
-                paddingVertical: 4,
-                borderRadius: 8,
-              }}
-            >
-              <Text style={{ fontSize: 11, fontWeight: "700", color: "#1E40AF" }}>Xem tuần này</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-
-      <View style={{ paddingVertical: 10, backgroundColor: AppColors.cardBg, borderBottomWidth: 1, borderColor: AppColors.cardBorder }}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
-          {DAYS.map((d) => {
-            const isSelected = d.num === selectedDay;
-            const isToday = d.num === todayDayNum && (selectedWeekIndex === currentWeekIndex);
-            const matchedDate = weekDates.find((w) => w.num === d.num);
-            const dateShort = matchedDate?.dateShort;
-            return (
-              <TouchableOpacity
-                key={d.num}
-                onPress={() => setSelectedDay(d.num)}
-                activeOpacity={0.7}
-                style={{
-                  paddingVertical: 6,
-                  paddingHorizontal: 14,
-                  borderRadius: 16,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  minWidth: 54,
-                  backgroundColor: isSelected
-                    ? AppColors.primary
-                    : isToday
-                    ? "#EFF6FF"
-                    : AppColors.muted,
-                  borderWidth: isToday && !isSelected ? 1.5 : 0,
-                  borderColor: isToday && !isSelected ? AppColors.primary : "transparent",
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 13,
-                    fontWeight: "700",
-                    color: isSelected
-                      ? "#FFFFFF"
-                      : isToday
-                      ? AppColors.primary
-                      : AppColors.textSecondary,
-                  }}
-                >
-                  {d.label}
-                </Text>
-                {dateShort && (
-                  <Text
-                    style={{
-                      fontSize: 10,
-                      fontWeight: "600",
-                      marginTop: 1,
-                      color: isSelected
-                        ? "rgba(255, 255, 255, 0.85)"
-                        : isToday
-                        ? AppColors.primary
-                        : AppColors.textMuted,
-                    }}
-                  >
-                    {dateShort}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
+      {/* 3. DANH SÁCH LỊCH HỌC */}
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: 16, paddingBottom: bottomPadding }}
@@ -984,1134 +579,82 @@ export default function ScheduleScreen() {
         ) : (
           <View style={{ gap: 12 }}>
             {filtered.map((item) => (
-              <View
+              <ScheduleCard
                 key={item.id}
-                style={{
-                  padding: 16,
-                  borderRadius: 16,
-                  backgroundColor: AppColors.cardBg,
-                  borderWidth: 1,
-                  borderColor: item.isCustom ? "#FDE68A" : AppColors.cardBorder,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 3,
-                  elevation: 2,
-                }}
-              >
-                {/* Header row: Code & Time & Custom badge */}
-                <View style={[s.row, s.between, { marginBottom: 8, alignItems: "center" }]}>
-                  <View style={[s.row, { gap: 6, alignItems: "center" }]}>
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 5,
-                        paddingHorizontal: 8,
-                        paddingVertical: 4,
-                        borderRadius: 8,
-                        backgroundColor: item.isCustom
-                          ? item.type === "hoc_bu"
-                            ? "#EFF6FF"
-                            : item.type === "kiem_tra"
-                            ? "#FEE2E2"
-                            : item.type === "khac"
-                            ? "#D1FAE5"
-                            : "#FEF3C7"
-                          : "#EEF2FF",
-                      }}
-                    >
-                      {item.isCustom ? (
-                        <>
-                          <Feather
-                            name={
-                              item.type === "hoc_bu"
-                                ? "zap"
-                                : item.type === "kiem_tra"
-                                ? "file-text"
-                                : item.type === "khac"
-                                ? "bookmark"
-                                : "activity"
-                            }
-                            size={12}
-                            color={
-                              item.type === "hoc_bu"
-                                ? "#2563EB"
-                                : item.type === "kiem_tra"
-                                ? "#DC2626"
-                                : item.type === "khac"
-                                ? "#059669"
-                                : "#D97706"
-                            }
-                          />
-                          <Text
-                            style={{
-                              fontSize: 11,
-                              fontWeight: "700",
-                              color:
-                                item.type === "hoc_bu"
-                                  ? "#2563EB"
-                                  : item.type === "kiem_tra"
-                                  ? "#DC2626"
-                                  : item.type === "khac"
-                                  ? "#059669"
-                                  : "#D97706",
-                            }}
-                          >
-                            {item.type === "hoc_bu"
-                              ? "Học bù"
-                              : item.type === "kiem_tra"
-                              ? "Kiểm tra"
-                              : item.type === "khac"
-                              ? "Lịch tự tạo"
-                              : "Thực hành"}
-                          </Text>
-                        </>
-                      ) : (
-                        <Text
-                          style={{
-                            fontSize: 11,
-                            fontWeight: "700",
-                            color: AppColors.primary,
-                          }}
-                        >
-                          {item.code}
-                        </Text>
-                      )}
-                    </View>
-                    {item.isCustom && (
-                      <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: "#F1F5F9" }}>
-                        <Text style={{ fontSize: 10, color: "#64748B", fontWeight: "600" }}>Tự thêm</Text>
-                      </View>
-                    )}
-                    {(item.date || item.ngay_hoc) && (
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: "#EFF6FF" }}>
-                        <Feather name="calendar" size={10} color={AppColors.primary} />
-                        <Text style={{ fontSize: 10, color: AppColors.primary, fontWeight: "600" }}>{item.date || item.ngay_hoc}</Text>
-                      </View>
-                    )}
-                  </View>
-                  <View style={[s.row, { gap: 6, alignItems: "center" }]}>
-                    <Feather name="clock" size={13} color={AppColors.textMuted} />
-                    <Text style={{ fontSize: 12, fontWeight: "600", color: AppColors.textSecondary }}>{item.time}</Text>
-                  </View>
-                </View>
-
-                {/* Course Title */}
-                <Text style={{ fontSize: 16, fontWeight: "800", color: AppColors.text, marginBottom: 6 }}>
-                  {item.course}
-                </Text>
-
-                {/* Ghi chú nếu có */}
-                {item.note ? (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8, backgroundColor: "#F8FAFC", paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8 }}>
-                    <Feather name="info" size={12} color="#64748B" />
-                    <Text style={{ fontSize: 12, color: "#475569", flex: 1 }} numberOfLines={2}>
-                      {item.note}
-                    </Text>
-                  </View>
-                ) : null}
-
-                {/* Bottom Row: Room & Lecturer info + Action buttons */}
-                <View
-                  style={[
-                    s.row,
-                    s.between,
-                    {
-                      paddingTop: 10,
-                      borderTopWidth: 1,
-                      borderColor: AppColors.cardBorder,
-                      alignItems: "center",
-                    },
-                  ]}
-                >
-                  <View style={{ flex: 1, gap: 4, marginRight: 8 }}>
-                    <TouchableOpacity
-                      onPress={() => setSelectedScheduleForDirection(item)}
-                      activeOpacity={0.7}
-                      style={[s.row, { gap: 6, alignItems: "center" }]}
-                    >
-                      <Feather name="map-pin" size={14} color={AppColors.primary} />
-                      <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text }}>
-                        {item.room}
-                      </Text>
-                      <Feather name="info" size={12} color={AppColors.primaryLight} />
-                    </TouchableOpacity>
-
-                    <View style={[s.row, { gap: 6, alignItems: "center" }]}>
-                      <Feather name="user" size={12} color={AppColors.textMuted} />
-                      <Text style={{ fontSize: 12, color: AppColors.textMuted }} numberOfLines={1}>
-                        {item.lecturer}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Nhóm nút hành động */}
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    {item.isCustom && (
-                      <>
-                        {/* Nút sửa */}
-                        <TouchableOpacity
-                          onPress={() => handleOpenEditModal(item)}
-                          activeOpacity={0.7}
-                          style={{
-                            width: 34,
-                            height: 34,
-                            borderRadius: 10,
-                            backgroundColor: "#F1F5F9",
-                            borderWidth: 1,
-                            borderColor: "#E2E8F0",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          <Feather name="edit-2" size={14} color="#475569" />
-                        </TouchableOpacity>
-
-                        {/* Nút xóa */}
-                        <TouchableOpacity
-                          onPress={() => handleDeleteSchedule(item)}
-                          activeOpacity={0.7}
-                          style={{
-                            width: 34,
-                            height: 34,
-                            borderRadius: 10,
-                            backgroundColor: "#FEE2E2",
-                            borderWidth: 1,
-                            borderColor: "#FECACA",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          <Feather name="trash-2" size={14} color="#EF4444" />
-                        </TouchableOpacity>
-                      </>
-                    )}
-
-                    {/* Nút chỉ đường */}
-                    <TouchableOpacity
-                      onPress={() => setSelectedScheduleForDirection(item)}
-                      activeOpacity={0.7}
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 6,
-                        paddingHorizontal: 12,
-                        paddingVertical: 8,
-                        borderRadius: 10,
-                        backgroundColor: "#EEF2FF",
-                        borderWidth: 1,
-                        borderColor: "#C7D2FE",
-                      }}
-                    >
-                      <Feather name="navigation" size={13} color={AppColors.primary} />
-                      <Text style={{ fontSize: 12, fontWeight: "700", color: AppColors.primary }}>
-                        Chỉ đường
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
+                item={item}
+                onSelectDirection={setSelectedScheduleForDirection}
+                onEdit={handleOpenEditModal}
+                onDelete={handleDeleteSchedule}
+              />
             ))}
           </View>
         )}
-      </ScrollView>
 
-      {/* MODAL THÊM / CHỈNH SỬA LỊCH HỌC THỦ CÔNG */}
-      <Modal
-        visible={modalVisible}
-        transparent={true}
-        statusBarTranslucent
-        animationType="slide"
-        onRequestClose={() => {
-          if (!submitting) setModalVisible(false);
-        }}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(15, 23, 42, 0.5)",
-            justifyContent: "flex-end",
-          }}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={() => {
-              if (!submitting) setModalVisible(false);
-            }}
-            style={{ flex: 1 }}
-          />
-
-          <View
-            style={{
-              backgroundColor: AppColors.cardBg,
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              paddingTop: 16,
-              paddingBottom: 24,
-              maxHeight: "90%",
-            }}
-          >
-            {/* Header Modal */}
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                paddingHorizontal: 20,
-                paddingBottom: 14,
-                borderBottomWidth: 1,
-                borderColor: AppColors.cardBorder,
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                <View
-                  style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: 19,
-                    backgroundColor: "#FEF3C7",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Feather name={isEditing ? "edit" : "plus-circle"} size={18} color="#D97706" />
-                </View>
-                <View>
-                  <Text style={{ fontSize: 16, fontWeight: "800", color: AppColors.text }}>
-                    {isEditing ? "Chỉnh sửa lịch học" : "Thêm lịch học / Thực hành"}
-                  </Text>
-                  <Text style={{ fontSize: 12, color: AppColors.textMuted }}>
-                    {isEditing ? "Cập nhật thông tin ca học" : "Lịch thực hành đột xuất, học bù, kiểm tra"}
-                  </Text>
-                </View>
-              </View>
-
-              <TouchableOpacity
-                onPress={() => setModalVisible(false)}
-                disabled={submitting}
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
-                  backgroundColor: AppColors.muted,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Feather name="x" size={16} color={AppColors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView
-              contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20, gap: 14 }}
-              showsVerticalScrollIndicator={false}
-            >
-              {/* Tên môn học */}
-              <View>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text, marginBottom: 6 }}>
-                  Tên môn học<Text style={{ color: "#EF4444" }}>*</Text>
-                </Text>
-                <TextInput
-                  value={formCourse}
-                  onChangeText={setFormCourse}
-                  placeholder=""
-                  placeholderTextColor={AppColors.textMuted}
-                  style={{
-                    backgroundColor: "#F8FAFC",
-                    borderWidth: 1,
-                    borderColor: AppColors.cardBorder,
-                    borderRadius: 12,
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                    fontSize: 14,
-                    color: AppColors.text,
-                  }}
-                />
-              </View>
-
-              {/* Loại lịch - Hiển thị dạng lưới thẻ 2x2 trực quan */}
-              <View>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text, marginBottom: 8 }}>
-                  Phân loại lịch
-                </Text>
-                <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 10 }}>
-                  {[
-                    { key: "dot_xuat", label: "Thực hành", icon: "activity", color: "#D97706", bg: "#FEF3C7", lightBg: "#FFFBEB" },
-                    { key: "hoc_bu", label: "Học bù", icon: "zap", color: "#2563EB", bg: "#EFF6FF", lightBg: "#EFF6FF" },
-                    { key: "kiem_tra", label: "Kiểm tra / Thi", icon: "file-text", color: "#DC2626", bg: "#FEE2E2", lightBg: "#FEF2F2" },
-                    { key: "khac", label: "Khác", icon: "bookmark", color: "#059669", bg: "#D1FAE5", lightBg: "#F0FDF4" },
-                  ].map((t) => {
-                    const isSel = formType === t.key;
-                    return (
-                      <TouchableOpacity
-                        key={t.key}
-                        onPress={() => setFormType(t.key as any)}
-                        activeOpacity={0.7}
-                        style={{
-                          width: "48.5%",
-                          flexDirection: "row",
-                          alignItems: "center",
-                          paddingVertical: 10,
-                          paddingHorizontal: 10,
-                          borderRadius: 14,
-                          backgroundColor: isSel ? t.lightBg : "#F8FAFC",
-                          borderWidth: isSel ? 1.5 : 1,
-                          borderColor: isSel ? t.color : "#E2E8F0",
-                          gap: 8,
-                        }}
-                      >
-                        <View
-                          style={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: 10,
-                            backgroundColor: isSel ? t.bg : "#EDF2F7",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          <Feather name={t.icon as any} size={15} color={isSel ? t.color : "#64748B"} />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text
-                            style={{
-                              fontSize: 12,
-                              fontWeight: isSel ? "700" : "600",
-                              color: isSel ? t.color : AppColors.text,
-                            }}
-                            numberOfLines={1}
-                          >
-                            {t.label}
-                          </Text>
-                        </View>
-                        {isSel && (
-                          <Feather name="check" size={14} color={t.color} />
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-
-              {/* Ô CHỌN NGÀY HỌC RÕ RÀNG TRÁNH LẪN LỘN GIỮA CÁC TUẦN */}
-              <View
-                style={{
-                  backgroundColor: "#F8FAFC",
-                  borderRadius: 16,
-                  padding: 14,
-                  borderWidth: 1,
-                  borderColor: AppColors.cardBorder,
-                  gap: 10,
-                }}
-              >
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1, marginRight: 6 }}>
-                    <View
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 10,
-                        backgroundColor: "#EEF2FF",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Feather name="calendar" size={16} color={AppColors.primary} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text }}>
-                        Ngày học <Text style={{ color: "#EF4444" }}>*</Text>
-                      </Text>
-                      <Text style={{ fontSize: 11, color: AppColors.textMuted }} numberOfLines={1}>
-                        {formDate ? (() => {
-                          const p = parseDateVN(formDate);
-                          return p ? `${getDayLabelFromDate(p)}, ngày ${formDate}` : formDate;
-                        })() : "Chọn ngày diễn ra ca học"}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Nút lùi / hôm nay / tiến ngày */}
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                    <TouchableOpacity
-                      onPress={() => handleShiftDate(-1)}
-                      activeOpacity={0.7}
-                      style={{ padding: 6, borderRadius: 8, backgroundColor: "#EDF2F7" }}
-                    >
-                      <Feather name="chevron-left" size={14} color={AppColors.textSecondary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => handleSelectDate(formatDateVN(new Date()))}
-                      activeOpacity={0.7}
-                      style={{ paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, backgroundColor: "#EDF2F7" }}
-                    >
-                      <Text style={{ fontSize: 11, fontWeight: "700", color: AppColors.textSecondary }}>Hôm nay</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => handleShiftDate(1)}
-                      activeOpacity={0.7}
-                      style={{ padding: 6, borderRadius: 8, backgroundColor: "#EDF2F7" }}
-                    >
-                      <Feather name="chevron-right" size={14} color={AppColors.textSecondary} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                {/* Thanh chọn nhanh 7 ngày trong tuần */}
-                <View>
-                  <Text style={{ fontSize: 11, fontWeight: "600", color: AppColors.textMuted, marginBottom: 6 }}>
-                    Chọn nhanh các ngày trong tuần:
-                  </Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-                    {weekDates.map((w) => {
-                      const isSel = formDate === w.dateStr;
-                      return (
-                        <TouchableOpacity
-                          key={w.num}
-                          onPress={() => handleSelectDate(w.dateStr)}
-                          activeOpacity={0.7}
-                          style={{
-                            paddingVertical: 6,
-                            paddingHorizontal: 10,
-                            borderRadius: 10,
-                            backgroundColor: isSel ? AppColors.primary : "#FFFFFF",
-                            borderWidth: 1,
-                            borderColor: isSel ? AppColors.primary : "#E2E8F0",
-                            alignItems: "center",
-                          }}
-                        >
-                          <Text style={{ fontSize: 11, fontWeight: "700", color: isSel ? "#FFFFFF" : AppColors.text }}>
-                            {w.label}
-                          </Text>
-                          <Text style={{ fontSize: 10, color: isSel ? "rgba(255,255,255,0.85)" : AppColors.textMuted }}>
-                            {w.dateShort}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-
-                {/* Ô nhập ngày tùy chỉnh */}
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: AppColors.textSecondary }}>
-                    Nhập ngày:
-                  </Text>
-                  <TextInput
-                    value={formDate}
-                    onChangeText={(txt) => handleSelectDate(txt)}
-                    placeholder="DD/MM/YYYY"
-                    placeholderTextColor={AppColors.textMuted}
-                    style={{
-                      flex: 1,
-                      backgroundColor: "#FFFFFF",
-                      borderWidth: 1,
-                      borderColor: AppColors.cardBorder,
-                      borderRadius: 10,
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      fontSize: 13,
-                      fontWeight: "600",
-                      color: AppColors.text,
-                    }}
-                  />
-                </View>
-              </View>
-
-              {/* Tiết học - Dropdown chọn ca học */}
-              <View
-                style={{
-                  position: "relative",
-                  zIndex: periodDropdownOpen ? 1000 : 1,
-                  elevation: periodDropdownOpen ? 20 : 1,
-                }}
-              >
-                <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text, marginBottom: 6 }}>
-                  Tiết học <Text style={{ color: "#EF4444" }}>*</Text>
-                </Text>
-                <View style={{ position: "relative", zIndex: periodDropdownOpen ? 1001 : 1 }}>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setPeriodDropdownOpen(!periodDropdownOpen);
-                    }}
-                    activeOpacity={0.7}
-                    style={{
-                      backgroundColor: "#F8FAFC",
-                      borderWidth: 1,
-                      borderColor: periodDropdownOpen ? AppColors.primary : AppColors.cardBorder,
-                      borderRadius: 12,
-                      paddingHorizontal: 12,
-                      paddingVertical: 10,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
-                      <Feather name="clock" size={14} color={AppColors.primary} />
-                      <Text
-                        style={{
-                          fontSize: 13,
-                          fontWeight: "600",
-                          color: formTime ? AppColors.text : AppColors.textMuted,
-                        }}
-                        numberOfLines={1}
-                      >
-                        {formTime || "Chọn tiết"}
-                      </Text>
-                    </View>
-                    <Feather
-                      name={periodDropdownOpen ? "chevron-up" : "chevron-down"}
-                      size={16}
-                      color={AppColors.textSecondary}
-                    />
-                  </TouchableOpacity>
-
-                  {/* Dropdown danh sách Tiết - Đè lên nội dung bên dưới */}
-                  {periodDropdownOpen && (
-                    <View
-                      style={{
-                        position: "absolute",
-                        top: "100%",
-                        marginTop: 4,
-                        left: 0,
-                        right: 0,
-                        backgroundColor: "#FFFFFF",
-                        borderRadius: 12,
-                        borderWidth: 1,
-                        borderColor: AppColors.cardBorder,
-                        maxHeight: 240,
-                        overflow: "hidden",
-                        elevation: 25,
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 6 },
-                        shadowOpacity: 0.18,
-                        shadowRadius: 10,
-                        zIndex: 9999,
-                      }}
-                    >
-                      <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={true}>
-                        {PERIOD_OPTIONS.map((p) => {
-                          const isSel = formTime === p.label;
-                          return (
-                            <TouchableOpacity
-                              key={p.label}
-                              onPress={() => {
-                                setFormTime(p.label);
-                                setIsCustomTime(false);
-                                setPeriodDropdownOpen(false);
-                              }}
-                              activeOpacity={0.7}
-                              style={{
-                                flexDirection: "row",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                paddingHorizontal: 12,
-                                paddingVertical: 8,
-                                backgroundColor: isSel ? "#EEF2FF" : "#FFFFFF",
-                                borderBottomWidth: 1,
-                                borderBottomColor: "#F1F5F9",
-                              }}
-                            >
-                              <View>
-                                <Text
-                                  style={{
-                                    fontSize: 12.5,
-                                    fontWeight: isSel ? "700" : "600",
-                                    color: isSel ? AppColors.primary : AppColors.text,
-                                  }}
-                                >
-                                  {p.label}
-                                </Text>
-                                <Text style={{ fontSize: 10, color: AppColors.textMuted, marginTop: 1 }}>
-                                  {p.desc}
-                                </Text>
-                              </View>
-                              {isSel && <Feather name="check" size={13} color={AppColors.primary} />}
-                            </TouchableOpacity>
-                          );
-                        })}
-                        <TouchableOpacity
-                          onPress={() => {
-                            setIsCustomTime(true);
-                            setPeriodDropdownOpen(false);
-                          }}
-                          activeOpacity={0.7}
-                          style={{
-                            paddingHorizontal: 12,
-                            paddingVertical: 9,
-                            backgroundColor: isCustomTime ? "#EEF2FF" : "#FAFAFA",
-                            flexDirection: "row",
-                            alignItems: "center",
-                            gap: 6,
-                          }}
-                        >
-                          <Feather name="edit-2" size={12} color={AppColors.primary} />
-                          <Text
-                            style={{
-                              fontSize: 12,
-                              fontWeight: "600",
-                              color: AppColors.primary,
-                            }}
-                          >
-                            Tự nhập khác...
-                          </Text>
-                        </TouchableOpacity>
-                      </ScrollView>
-                    </View>
-                  )}
-
-                  {/* Ô nhập custom tiết nếu chọn "Tự nhập khác..." */}
-                  {isCustomTime && (
-                    <TextInput
-                      value={formTime}
-                      onChangeText={setFormTime}
-                      placeholder="Ví dụ: 13:50 - 15:30"
-                      placeholderTextColor={AppColors.textMuted}
-                      autoFocus
-                      style={{
-                        marginTop: 6,
-                        backgroundColor: "#F8FAFC",
-                        borderWidth: 1,
-                        borderColor: AppColors.primary,
-                        borderRadius: 10,
-                        paddingHorizontal: 10,
-                        paddingVertical: 6,
-                        fontSize: 12.5,
-                        color: AppColors.text,
-                      }}
-                    />
-                  )}
-                </View>
-              </View>
-
-              {/* Phòng học */}
-              <View>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text, marginBottom: 6 }}>
-                  Phòng <Text style={{ color: "#EF4444" }}>*</Text>
-                </Text>
-                <TextInput
-                  value={formRoom}
-                  onChangeText={setFormRoom}
-                  placeholder="Phòng học"
-                  placeholderTextColor={AppColors.textMuted}
-                  style={{
-                    backgroundColor: "#F8FAFC",
-                    borderWidth: 1,
-                    borderColor: AppColors.cardBorder,
-                    borderRadius: 12,
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                    fontSize: 14,
-                    color: AppColors.text,
-                    marginBottom: 8,
-                  }}
-                />
-              </View>
-
-              {/* Giảng viên */}
-              <View>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text, marginBottom: 6 }}>
-                  Giảng viên
-                </Text>
-                <TextInput
-                  value={formLecturer}
-                  onChangeText={setFormLecturer}
-                  placeholder="Tên giảng viên"
-                  placeholderTextColor={AppColors.textMuted}
-                  style={{
-                    backgroundColor: "#F8FAFC",
-                    borderWidth: 1,
-                    borderColor: AppColors.cardBorder,
-                    borderRadius: 12,
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                    fontSize: 14,
-                    color: AppColors.text,
-                  }}
-                />
-              </View>
-
-              {/* Ghi chú */}
-              <View>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text, marginBottom: 6 }}>
-                  Ghi chú cho ca học
-                </Text>
-                <TextInput
-                  value={formNote}
-                  onChangeText={setFormNote}
-                  placeholder=""
-                  placeholderTextColor={AppColors.textMuted}
-                  multiline
-                  numberOfLines={2}
-                  style={{
-                    backgroundColor: "#F8FAFC",
-                    borderWidth: 1,
-                    borderColor: AppColors.cardBorder,
-                    borderRadius: 12,
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                    fontSize: 14,
-                    color: AppColors.text,
-                    minHeight: 50,
-                  }}
-                />
-              </View>
-
-              {/* Buttons */}
-              <View style={{ marginTop: 8, gap: 10 }}>
-                <TouchableOpacity
-                  onPress={handleSaveSchedule}
-                  disabled={submitting}
-                  activeOpacity={0.8}
-                  style={{
-                    backgroundColor: AppColors.primary,
-                    paddingVertical: 13,
-                    borderRadius: 14,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexDirection: "row",
-                    gap: 8,
-                  }}
-                >
-                  {submitting ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <>
-                      <Feather name="check-circle" size={16} color="#FFFFFF" />
-                      <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFFFFF" }}>
-                        {isEditing ? "Cập nhật lịch học" : "Lưu vào thời khóa biểu"}
-                      </Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => setModalVisible(false)}
-                  disabled={submitting}
-                  activeOpacity={0.7}
-                  style={{
-                    paddingVertical: 11,
-                    borderRadius: 14,
-                    backgroundColor: "#F1F5F9",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Text style={{ fontSize: 13, fontWeight: "600", color: AppColors.textSecondary }}>
-                    Hủy bỏ
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      {/* MODAL CHỈ ĐƯỜNG TỚI PHÒNG HỌC */}
-      <Modal
-        visible={!!selectedScheduleForDirection}
-        transparent={true}
-        statusBarTranslucent
-        animationType="slide"
-        onRequestClose={() => setSelectedScheduleForDirection(null)}
-      >
+        {/* Chú thích thông minh */}
         <View
           style={{
-            flex: 1,
-            backgroundColor: "rgba(15, 23, 42, 0.45)",
-            justifyContent: "flex-end",
+            marginTop: 20,
+            padding: 14,
+            backgroundColor: "#F8FAFC",
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: "#E2E8F0",
           }}
         >
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={() => setSelectedScheduleForDirection(null)}
-            style={{ flex: 1 }}
-          />
-          <View
-            style={{
-              backgroundColor: AppColors.cardBg,
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              paddingTop: 16,
-              paddingBottom: 28,
-              maxHeight: "88%",
-            }}
-          >
-            {/* Modal Header */}
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                paddingHorizontal: 20,
-                paddingBottom: 14,
-                borderBottomWidth: 1,
-                borderColor: AppColors.cardBorder,
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                <View
-                  style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: 19,
-                    backgroundColor: "#EEF2FF",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Feather name="navigation" size={18} color={AppColors.primary} />
-                </View>
-                <View>
-                  <Text style={{ fontSize: 16, fontWeight: "800", color: AppColors.text }}>
-                    Chỉ đường phòng học
-                  </Text>
-                </View>
-              </View>
-              <TouchableOpacity
-                onPress={() => setSelectedScheduleForDirection(null)}
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
-                  backgroundColor: AppColors.muted,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Feather name="x" size={18} color={AppColors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Modal Body */}
-            <ScrollView
-              contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 10 }}
-              showsVerticalScrollIndicator={false}
-            >
-              {selectedScheduleForDirection && currentDirection && (
-                <View style={{ gap: 16 }}>
-                  {/* Card thông tin môn học & phòng */}
-                  <View
-                    style={{
-                      padding: 16,
-                      borderRadius: 16,
-                      backgroundColor: "#F8FAFC",
-                      borderWidth: 1,
-                      borderColor: "#E2E8F0",
-                    }}
-                  >
-                    <Text style={{ fontSize: 15, fontWeight: "800", color: AppColors.text, marginBottom: 6 }}>
-                      {selectedScheduleForDirection.course}
-                    </Text>
-
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
-                      <View
-                        style={{
-                          paddingHorizontal: 8,
-                          paddingVertical: 3,
-                          borderRadius: 8,
-                          backgroundColor: AppColors.primary,
-                        }}
-                      >
-                        <Text style={{ fontSize: 11, fontWeight: "700", color: "#FFFFFF" }}>
-                          {currentDirection.room}
-                        </Text>
-                      </View>
-                      <View
-                        style={{
-                          paddingHorizontal: 8,
-                          paddingVertical: 3,
-                          borderRadius: 8,
-                          backgroundColor: "#EEF2FF",
-                        }}
-                      >
-                        <Text style={{ fontSize: 11, fontWeight: "700", color: AppColors.primary }}>
-                          {currentDirection.floor}
-                        </Text>
-                      </View>
-                      <View
-                        style={{
-                          paddingHorizontal: 8,
-                          paddingVertical: 3,
-                          borderRadius: 8,
-                          backgroundColor: AppColors.muted,
-                        }}
-                      >
-                        <Text style={{ fontSize: 11, fontWeight: "600", color: AppColors.textSecondary }}>
-                          {currentDirection.buildingCode}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={{ gap: 4 }}>
-                      <View style={[s.row, { gap: 6, alignItems: "center" }]}>
-                        <Feather name="clock" size={12} color={AppColors.textMuted} />
-                        <Text style={{ fontSize: 12, color: AppColors.textSecondary }}>
-                          {selectedScheduleForDirection.time}
-                        </Text>
-                      </View>
-                      <View style={[s.row, { gap: 6, alignItems: "center" }]}>
-                        <Feather name="user" size={12} color={AppColors.textMuted} />
-                        <Text style={{ fontSize: 12, color: AppColors.textSecondary }}>
-                          {selectedScheduleForDirection.lecturer}
-                        </Text>
-                      </View>
-                      <View style={[s.row, { gap: 6, alignItems: "center" }]}>
-                        <Feather name="map" size={12} color={AppColors.primary} />
-                        <Text style={{ fontSize: 12, fontWeight: "600", color: AppColors.primary }}>
-                          {currentDirection.building}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Lộ trình từng bước */}
-                  <View>
-                    <Text style={{ fontSize: 14, fontWeight: "800", color: AppColors.text, marginBottom: 12 }}>
-                      Lộ trình di chuyển chi tiết
-                    </Text>
-
-                    <View style={{ gap: 14 }}>
-                      {currentDirection.steps.map((step: any, idx: number) => (
-                        <View key={step.step} style={{ flexDirection: "row", gap: 12 }}>
-                          {/* Timeline icon & vertical connector line */}
-                          <View style={{ alignItems: "center" }}>
-                            <View
-                              style={{
-                                width: 30,
-                                height: 30,
-                                borderRadius: 15,
-                                backgroundColor: idx === 0 ? AppColors.primary : "#EEF2FF",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                borderWidth: 1,
-                                borderColor: idx === 0 ? AppColors.primary : "#C7D2FE",
-                              }}
-                            >
-                              <Feather
-                                name={step.icon}
-                                size={14}
-                                color={idx === 0 ? "#FFFFFF" : AppColors.primary}
-                              />
-                            </View>
-                            {idx < currentDirection.steps.length - 1 && (
-                              <View
-                                style={{
-                                  width: 2,
-                                  height: 38,
-                                  backgroundColor: "#E2E8F0",
-                                  marginTop: 4,
-                                }}
-                              />
-                            )}
-                          </View>
-
-                          {/* Content */}
-                          <View style={{ flex: 1, paddingTop: 3 }}>
-                            <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text }}>
-                              {step.step}. {step.title}
-                            </Text>
-                            <Text style={{ fontSize: 12, color: AppColors.textSecondary, marginTop: 2, lineHeight: 17 }}>
-                              {step.desc}
-                            </Text>
-                          </View>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-
-                  {/* Lưu ý & tiện ích gần phòng */}
-                  <View
-                    style={{
-                      padding: 14,
-                      borderRadius: 14,
-                      backgroundColor: "#F0FDF4",
-                      borderWidth: 1,
-                      borderColor: "#BBF7D0",
-                      gap: 6,
-                    }}
-                  >
-                    <View style={[s.row, { gap: 6, alignItems: "center" }]}>
-                      <Feather name="check-circle" size={14} color="#16A34A" />
-                      <Text style={{ fontSize: 13, fontWeight: "700", color: "#16A34A" }}>
-                        Tiện ích & Lưu ý
-                      </Text>
-                    </View>
-                    {currentDirection.tips.map((tip: string, idx: number) => (
-                      <View key={idx} style={[s.row, { gap: 6, alignItems: "flex-start" }]}>
-                        <Text style={{ color: "#16A34A", fontSize: 12, lineHeight: 17 }}>•</Text>
-                        <Text style={{ flex: 1, fontSize: 12, color: "#15803D", lineHeight: 17 }}>
-                          {tip}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-
-                  {/* Nút hành động */}
-                  <View style={{ gap: 10, marginTop: 4 }}>
-                    <TouchableOpacity
-                      onPress={() => handleOpenCampusMap()}
-                      activeOpacity={0.8}
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 8,
-                        paddingVertical: 13,
-                        borderRadius: 14,
-                        backgroundColor: AppColors.primary,
-                      }}
-                    >
-                      <Feather name="map" size={16} color="#FFFFFF" />
-                      <Text style={{ fontSize: 14, fontWeight: "700", color: "#FFFFFF" }}>
-                        Xem trên Bản đồ trường
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      onPress={() => handleOpenGoogleMaps(currentDirection.building)}
-                      activeOpacity={0.8}
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 8,
-                        paddingVertical: 12,
-                        borderRadius: 14,
-                        backgroundColor: "#FFFFFF",
-                        borderWidth: 1.5,
-                        borderColor: AppColors.primary,
-                      }}
-                    >
-                      <Feather name="external-link" size={15} color={AppColors.primary} />
-                      <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.primary }}>
-                        Mở vị trí ngoài Google Maps
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      onPress={() => setSelectedScheduleForDirection(null)}
-                      activeOpacity={0.7}
-                      style={{
-                        paddingVertical: 10,
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Text style={{ fontSize: 13, fontWeight: "600", color: AppColors.textSecondary }}>
-                        Đóng lại
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-            </ScrollView>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
+            <Feather name="info" size={14} color={AppColors.primary} />
+            <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text }}>Lưu ý tiết học</Text>
           </View>
+          <Text style={{ fontSize: 12, color: AppColors.textSecondary, lineHeight: 18, marginBottom: 4 }}>
+            • Buổi sáng: Tiết 1 bắt đầu từ 07:00, Tiết 5 kết thúc lúc 11:30.
+          </Text>
+          <Text style={{ fontSize: 12, color: AppColors.textSecondary, lineHeight: 18, marginBottom: 4 }}>
+            • Buổi chiều: Tiết 7 bắt đầu từ 13:00, Tiết 12 kết thúc lúc 17:30.
+          </Text>
+          <Text style={{ fontSize: 12, color: AppColors.textSecondary, lineHeight: 18 }}>
+            • Bấm &quot;Chỉ đường tới phòng&quot; để xem chỉ dẫn chi tiết và vị trí tòa nhà trên bản đồ trường.
+          </Text>
         </View>
-      </Modal>
+      </ScrollView>
+
+      {/* 4. MODAL THÊM / SỬA LỊCH HỌC TÙY CHỈNH */}
+      <ScheduleCustomModal
+        visible={modalVisible}
+        isEditing={isEditing}
+        submitting={submitting}
+        formCourse={formCourse}
+        setFormCourse={setFormCourse}
+        formType={formType}
+        setFormType={setFormType}
+        formDate={formDate}
+        formTime={formTime}
+        setFormTime={setFormTime}
+        formRoom={formRoom}
+        setFormRoom={setFormRoom}
+        formLecturer={formLecturer}
+        setFormLecturer={setFormLecturer}
+        formNote={formNote}
+        setFormNote={setFormNote}
+        periodDropdownOpen={periodDropdownOpen}
+        setPeriodDropdownOpen={setPeriodDropdownOpen}
+        isCustomTime={isCustomTime}
+        setIsCustomTime={setIsCustomTime}
+        weekDates={weekDates}
+        onSelectDate={handleSelectDate}
+        onShiftDate={handleShiftDate}
+        onSave={handleSaveSchedule}
+        onClose={() => setModalVisible(false)}
+      />
+
+      {/* 5. MODAL HƯỚNG DẪN ĐƯỜNG ĐI CHI TIẾT */}
+      <ScheduleRoomDirectionModal
+        visible={!!selectedScheduleForDirection}
+        item={selectedScheduleForDirection}
+        direction={currentDirection}
+        onClose={() => setSelectedScheduleForDirection(null)}
+        onOpenCampusMap={handleOpenCampusMap}
+        onOpenGoogleMaps={handleOpenGoogleMaps}
+      />
     </View>
   );
 }

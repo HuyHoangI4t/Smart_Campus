@@ -3,22 +3,15 @@ import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   RefreshControl,
   StatusBar,
   Platform,
-  Image,
-  Modal,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
-//import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { AppColors } from "../../../src/constants/appColors";
-import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { useTabBarScrollHandler } from "../../../src/components/MainTabs";
-import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
 import { HomeSkeleton } from "../../../src/components/Skeleton";
 import { getHeaderTopPadding } from "../../../src/utils/safeArea";
 import {
@@ -29,366 +22,24 @@ import {
   readLocalCache,
   NewsOrAnnouncementItem,
   getNewsImageUrl,
-  CAMPUS_FALLBACK_IMAGES,
 } from "../../../src/services/api";
 
-interface StudentInfo {
-  mssv?: string;
-  ho_ten?: string;
-  fullName?: string;
-  email?: string;
-  lop?: string;
-  khoa?: string;
-  avatar?: string;
-}
-
-interface NextClassInfo {
-  subject: string;
-  room: string;
-  time: string;
-  lecturer?: string;
-  dayText: string;
-  status: 'IN_PROGRESS' | 'UPCOMING_TODAY' | 'NEXT_DAY';
-  statusLabel: string;
-  statusBadgeColor: string;
-}
-
-interface GpaSummary {
-  gpa4: string;
-  gpa10: string;
-  totalCredits: number;
-  rank: string;
-  rankColor: string;
-}
-
-const convertTo4Scale = (score10: number): number => {
-  if (score10 >= 8.5) return 4.0;
-  if (score10 >= 7.0) return 3.0;
-  if (score10 >= 5.5) return 2.0;
-  if (score10 >= 4.0) return 1.0;
-  return 0.0;
-};
-
-const getAcademicRank = (gpa4Value: number) => {
-  if (gpa4Value >= 3.6) return { label: "Xuất sắc", color: "#10B981" };
-  if (gpa4Value >= 3.2) return { label: "Giỏi", color: "#3B82F6" };
-  if (gpa4Value >= 2.5) return { label: "Khá", color: "#F59E0B" };
-  if (gpa4Value >= 2.0) return { label: "Trung bình", color: "#6B7280" };
-  return { label: "Yếu", color: "#EF4444" };
-};
-
-const parseGpaSummary = (gradeItems: any[]): GpaSummary | null => {
-  if (!Array.isArray(gradeItems) || gradeItems.length === 0) return null;
-  const graded = gradeItems.filter((item: any) => {
-    const letter = (item.diem_chu || item.gradeLetter || "").toUpperCase();
-    const score10 =
-      item.diem_hp !== null && item.diem_hp !== undefined && !isNaN(Number(item.diem_hp))
-        ? Number(item.diem_hp)
-        : (item.grade10 ? Number(item.grade10) : 0);
-    return letter !== "X" && letter !== "P" && score10 > 0;
-  });
-
-  const accumulated = gradeItems.filter((item: any) => {
-    const letter = (item.diem_chu || item.gradeLetter || "").toUpperCase();
-    const score10 =
-      item.diem_hp !== null && item.diem_hp !== undefined && !isNaN(Number(item.diem_hp))
-        ? Number(item.diem_hp)
-        : (item.grade10 ? Number(item.grade10) : 0);
-    return letter !== "X" && letter !== "F" && (letter || score10 > 0);
-  });
-
-  const totalCredits = accumulated.reduce(
-    (acc, c) => acc + Number(c.so_tin_chi || c.credits || 0),
-    0
-  );
-  const totalGradedCredits = graded.reduce(
-    (acc, c) => acc + Number(c.so_tin_chi || c.credits || 0),
-    0
-  );
-
-  if (totalGradedCredits === 0) return null;
-
-  const sum10 = graded.reduce((acc, c) => {
-    const score10 =
-      c.diem_hp !== null && c.diem_hp !== undefined && !isNaN(Number(c.diem_hp))
-        ? Number(c.diem_hp)
-        : (c.grade10 ? Number(c.grade10) : 0);
-    const cred = Number(c.so_tin_chi || c.credits || 0);
-    return acc + score10 * cred;
-  }, 0);
-
-  const sum4 = graded.reduce((acc, c) => {
-    const score10 =
-      c.diem_hp !== null && c.diem_hp !== undefined && !isNaN(Number(c.diem_hp))
-        ? Number(c.diem_hp)
-        : (c.grade10 ? Number(c.grade10) : 0);
-    const cred = Number(c.so_tin_chi || c.credits || 0);
-    return acc + convertTo4Scale(score10) * cred;
-  }, 0);
-
-  const gpa10Val = (sum10 / totalGradedCredits).toFixed(2);
-  const gpa4Val = (sum4 / totalGradedCredits).toFixed(2);
-  const rankObj = getAcademicRank(Number(gpa4Val));
-
-  return {
-    gpa4: gpa4Val,
-    gpa10: gpa10Val,
-    totalCredits,
-    rank: rankObj.label,
-    rankColor: rankObj.color,
-  };
-};
-
-function getPeriodMinutes(startPeriod: number, endPeriod: number) {
-  const periodTimes: Record<number, { start: number; end: number }> = {
-    1: { start: 7 * 60, end: 7 * 60 + 50 },
-    2: { start: 7 * 60 + 50, end: 8 * 60 + 40 },
-    3: { start: 8 * 60 + 50, end: 9 * 60 + 40 },
-    4: { start: 9 * 60 + 50, end: 10 * 60 + 40 },
-    5: { start: 10 * 60 + 40, end: 11 * 60 + 30 },
-    6: { start: 13 * 60, end: 13 * 60 + 50 },
-    7: { start: 13 * 60 + 50, end: 14 * 60 + 40 },
-    8: { start: 14 * 60 + 50, end: 15 * 60 + 40 },
-    9: { start: 15 * 60 + 50, end: 16 * 60 + 40 },
-    10: { start: 16 * 60 + 40, end: 17 * 60 + 30 },
-    11: { start: 17 * 60 + 45, end: 18 * 60 + 35 },
-    12: { start: 18 * 60 + 35, end: 19 * 60 + 25 },
-    13: { start: 19 * 60 + 35, end: 20 * 60 + 25 },
-  };
-
-  const start = periodTimes[startPeriod]?.start || 7 * 60;
-  const end = periodTimes[endPeriod]?.end || (start + 90);
-  return { startMinutes: start, endMinutes: end };
-}
-
-function parseClassTimeRange(timeStr: string): { startMinutes: number; endMinutes: number } {
-  const timeMatch = (timeStr || "").match(/(\d{1,2})[:h](\d{2})\s*[-–—]\s*(\d{1,2})[:h](\d{2})/i);
-  if (timeMatch) {
-    const startH = parseInt(timeMatch[1], 10);
-    const startM = parseInt(timeMatch[2], 10);
-    const endH = parseInt(timeMatch[3], 10);
-    const endM = parseInt(timeMatch[4], 10);
-    return {
-      startMinutes: startH * 60 + startM,
-      endMinutes: endH * 60 + endM,
-    };
-  }
-
-  const periodMatch = (timeStr || "").match(/(\d{1,2})\s*[-–—,]\s*(\d{1,2})/);
-  if (periodMatch) {
-    const startP = parseInt(periodMatch[1], 10);
-    const endP = parseInt(periodMatch[2], 10);
-    return getPeriodMinutes(startP, endP);
-  }
-
-  const singlePeriodMatch = (timeStr || "").match(/tiết\s*(\d{1,2})/i);
-  if (singlePeriodMatch) {
-    const p = parseInt(singlePeriodMatch[1], 10);
-    return getPeriodMinutes(p, p);
-  }
-
-  if ((timeStr || "").toLowerCase().includes("chiều") || (timeStr || "").toLowerCase().includes("tối")) {
-    return { startMinutes: 13 * 60, endMinutes: 17 * 60 };
-  }
-  return { startMinutes: 7 * 60, endMinutes: 11 * 60 + 30 };
-}
-
-function getDayNameFromNum(num: number): string {
-  switch (num) {
-    case 1: return "Chủ Nhật";
-    case 2: return "Thứ Hai";
-    case 3: return "Thứ Ba";
-    case 4: return "Thứ Tư";
-    case 5: return "Thứ Năm";
-    case 6: return "Thứ Sáu";
-    case 7: return "Thứ Bảy";
-    default: return "Thứ Hai";
-  }
-}
-
-function computeNextClass(rawSchedules: any[]): NextClassInfo | null {
-  if (!rawSchedules || rawSchedules.length === 0) return null;
-
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const jsDay = now.getDay();
-  const todayNum = jsDay === 0 ? 1 : jsDay + 1; // 1 (CN), 2 (T2), ..., 7 (T7)
-  const tomorrowNum = (todayNum % 7) + 1; // Thứ ngày mai (1..7)
-
-  const normalized = rawSchedules.map((item, idx) => {
-    let dayNum = item.dayNum;
-    if (!dayNum) {
-      const lowerDay = (item.day || item.code || item.thu || "").toLowerCase();
-      if (lowerDay.includes("thứ 3") || lowerDay.includes("thứ ba")) dayNum = 3;
-      else if (lowerDay.includes("thứ 4") || lowerDay.includes("thứ tư")) dayNum = 4;
-      else if (lowerDay.includes("thứ 5") || lowerDay.includes("thứ năm")) dayNum = 5;
-      else if (lowerDay.includes("thứ 6") || lowerDay.includes("thứ sáu")) dayNum = 6;
-      else if (lowerDay.includes("thứ 7") || lowerDay.includes("thứ bảy")) dayNum = 7;
-      else if (lowerDay.includes("chủ nhật") || lowerDay.includes("cn")) dayNum = 1;
-      else if (lowerDay.includes("thứ 2") || lowerDay.includes("thứ hai")) dayNum = 2;
-      else dayNum = 2;
-    }
-
-    const timeStr = item.time || (item.tiet ? `Tiết ${item.tiet}` : "");
-    const range = parseClassTimeRange(timeStr);
-
-    const rawTiet = item.tiet || item.period || "";
-    let periodText = "";
-    if (rawTiet) {
-      periodText = String(rawTiet).startsWith("Tiết") ? String(rawTiet) : `Tiết ${rawTiet}`;
-    } else if (timeStr) {
-      const match = timeStr.match(/tiết\s*([\d\s*–—-]+)/i);
-      if (match) {
-        periodText = `Tiết ${match[1].replace(/\s+/g, "")}`;
-      } else {
-        const rangeMatch = timeStr.match(/(\d+)\s*[-–—]\s*(\d+)/);
-        if (rangeMatch) {
-          periodText = `Tiết ${rangeMatch[1]}-${rangeMatch[2]}`;
-        } else {
-          periodText = timeStr.startsWith("Tiết") ? timeStr : `Tiết ${timeStr}`;
-        }
-      }
-    } else {
-      periodText = "Tiết 1-4";
-    }
-
-    return {
-      id: item.id || idx,
-      subject: item.course || item.subject || item.ten_hp || "Môn học",
-      room: item.room || item.phong || "Khu giảng đường",
-      time: periodText,
-      period: periodText,
-      dayNum,
-      day: item.day || item.code || item.thu || `Thứ ${dayNum}`,
-      startMinutes: range.startMinutes,
-      endMinutes: range.endMinutes,
-      lecturer: item.lecturer || item.giang_vien || "",
-    };
-  });
-
-  // 1. Kiểm tra các môn của NGÀY HÔM NAY (todayNum)
-  const todayClasses = normalized
-    .filter((c) => c.dayNum === todayNum)
-    .sort((a, b) => a.startMinutes - b.startMinutes);
-
-  // 1A. Môn ĐANG TRONG GIỜ HỌC
-  const inProgressClass = todayClasses.find(
-    (c) => currentMinutes >= c.startMinutes && currentMinutes <= c.endMinutes
-  );
-  if (inProgressClass) {
-    return {
-      subject: inProgressClass.subject,
-      room: inProgressClass.room,
-      time: inProgressClass.time,
-      lecturer: inProgressClass.lecturer,
-      dayText: "Hôm nay",
-      status: "IN_PROGRESS",
-      statusLabel: "ĐANG TRONG GIỜ HỌC",
-      statusBadgeColor: "#10B981", // Xanh lá
-    };
-  }
-
-  // 1B. Hôm nay còn môn chưa học (Lớp kế tiếp hôm nay)
-  const upcomingTodayClass = todayClasses.find(
-    (c) => currentMinutes < c.startMinutes
-  );
-  if (upcomingTodayClass) {
-    return {
-      subject: upcomingTodayClass.subject,
-      room: upcomingTodayClass.room,
-      time: upcomingTodayClass.time,
-      lecturer: upcomingTodayClass.lecturer,
-      dayText: "Hôm nay",
-      status: "UPCOMING_TODAY",
-      statusLabel: "LỚP HỌC KẾ TIẾP",
-      statusBadgeColor: "#3B82F6", // Xanh dương
-    };
-  }
-
-  // 2. NẾU ĐÃ HẾT GIỜ HỌC HÔM NAY HOẶC HÔM NAY KHÔNG CÓ LỊCH:
-  // ƯU TIÊN HIỂN THỊ NGÀY MAI
-  const tomorrowClasses = normalized
-    .filter((c) => c.dayNum === tomorrowNum)
-    .sort((a, b) => a.startMinutes - b.startMinutes);
-
-  if (tomorrowClasses.length > 0) {
-    const firstTomorrowClass = tomorrowClasses[0];
-    const tomorrowDayName = getDayNameFromNum(tomorrowNum);
-    return {
-      subject: firstTomorrowClass.subject,
-      room: firstTomorrowClass.room,
-      time: firstTomorrowClass.time,
-      lecturer: firstTomorrowClass.lecturer,
-      dayText: "Ngày mai",
-      status: "NEXT_DAY",
-      statusLabel: `NGÀY MAI (${tomorrowDayName.toUpperCase()})`,
-      statusBadgeColor: "#A855F7", // Tím
-    };
-  }
-
-  // 3. Nếu ngày mai không có tiết, tìm ngày tiếp theo gần nhất
-  for (let offset = 2; offset <= 7; offset++) {
-    const nextDayNum = ((todayNum - 1 + offset) % 7) + 1;
-    const nextDayClasses = normalized
-      .filter((c) => c.dayNum === nextDayNum)
-      .sort((a, b) => a.startMinutes - b.startMinutes);
-
-    if (nextDayClasses.length > 0) {
-      const firstClassNextDay = nextDayClasses[0];
-      const dayName = getDayNameFromNum(nextDayNum);
-
-      return {
-        subject: firstClassNextDay.subject,
-        room: firstClassNextDay.room,
-        time: firstClassNextDay.time,
-        lecturer: firstClassNextDay.lecturer,
-        dayText: dayName,
-        status: "NEXT_DAY",
-        statusLabel: `LỊCH HỌC ${dayName.toUpperCase()}`,
-        statusBadgeColor: "#8B5CF6", // Tím
-      };
-    }
-  }
-
-  return null;
-}
-
-function NewsCardImage({ imageUrl, index }: { imageUrl?: string; index: number }) {
-  const [currentUri, setCurrentUri] = useState(getNewsImageUrl(imageUrl, index));
-
-  return (
-    <Image
-      source={{
-        uri: currentUri,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        },
-      }}
-      style={{ width: "100%", height: 155, backgroundColor: "#E2E8F0" }}
-      resizeMode="cover"
-      onError={() => {
-        const fallback = CAMPUS_FALLBACK_IMAGES[index % CAMPUS_FALLBACK_IMAGES.length];
-        if (currentUri !== fallback) {
-          setCurrentUri(fallback);
-        }
-      }}
-    />
-  );
-}
-
-export interface NotificationAlertItem {
-  id: string;
-  type: "feedback" | "sos" | "school_notice";
-  variant: "success" | "warning" | "info";
-  icon: "check" | "alert-triangle" | "info";
-  title: string;
-  subtitle?: string;
-  date: string;
-  status: string;
-  content: string;
-  sender?: string;
-  actionScreen?: string;
-}
+import {
+  StudentInfo,
+  NextClassInfo,
+  GpaSummary,
+  NotificationAlertItem,
+  parseGpaSummary,
+  computeNextClass,
+  HomeHeader,
+  HomeNextClassCard,
+  HomeGpaCard,
+  HomeQuickActions,
+  HomeAlertsSection,
+  HomeAnnouncementsSection,
+  HomeNewsSection,
+  HomeNoticeModal,
+} from "../../../src/features/home";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -417,7 +68,7 @@ export default function HomeScreen() {
   const [isOfflineData, setIsOfflineData] = useState(false);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
 
-  // Thông báo & Cảnh báo từ nhà trường (mặc định để trống, chỉ hiện khi có thông báo thực tế)
+  // Thông báo & Cảnh báo từ nhà trường
   const [notificationAlerts, setNotificationAlerts] = useState<NotificationAlertItem[]>([]);
   const [selectedAlertForModal, setSelectedAlertForModal] = useState<NotificationAlertItem | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
@@ -487,7 +138,7 @@ export default function HomeScreen() {
   };
 
   const applyData = (dashRes: any, scheduleRes: any, newsRes: any, isRealAccount = true) => {
-    // 1. Dashboard & Thông báo/Cảnh báo (Chỉ hiện khi có phát thông báo từ trường)
+    // 1. Dashboard & Thông báo/Cảnh báo
     if (dashRes && dashRes.success) {
       if (dashRes.student && isRealAccount) {
         setStudent((prev) => ({ ...prev, ...dashRes.student }));
@@ -552,7 +203,7 @@ export default function HomeScreen() {
       }
     }
 
-    // 3. Thông báo & Tin tức (Sắp xếp ngày mới nhất lên đầu tiên)
+    // 3. Thông báo & Tin tức
     if (newsRes && newsRes.success) {
       let rawAnnouncements: NewsOrAnnouncementItem[] = [];
       if (Array.isArray(newsRes.announcements) && newsRes.announcements.length > 0) {
@@ -613,7 +264,7 @@ export default function HomeScreen() {
       const scheduleCacheKey = `@offline_schedule_${mssv || 'current'}`;
       const gradesCacheKey = `@offline_grades_${isRealAccount ? mssv : 'current'}`;
 
-      // BƯỚC 1: Đọc tức thì từ Cache đã nạp trong lúc nhấn Đăng nhập (0ms render ngay)
+      // BƯỚC 1: Đọc tức thì từ Cache
       const [cachedDash, cachedSchedule, cachedNews, cachedGrades] = await Promise.all([
         readLocalCache('@offline_dashboard'),
         readLocalCache(scheduleCacheKey),
@@ -636,7 +287,7 @@ export default function HomeScreen() {
         setIsInitialLoading(false);
       }
 
-      // BƯỚC 2: Đồng bộ song song cả 4 API từ server để cập nhật dữ liệu mới nhất
+      // BƯỚC 2: Đồng bộ song song cả 4 API từ server
       const [dashRes, scheduleRes, newsRes, gradesRes] = await Promise.all([
         apiGetDashboard(),
         apiGetSchedule(isRealAccount ? mssv : undefined),
@@ -676,8 +327,7 @@ export default function HomeScreen() {
   };
 
   const handleOpenMapDirections = () => {
-    const rawRoom = nextClass?.room || ""; // Ví dụ: "9.2.04" hoặc "7.3.18"
-
+    const rawRoom = nextClass?.room || "";
     router.push({
       pathname: "/(main)/map",
       params: {
@@ -687,7 +337,6 @@ export default function HomeScreen() {
     });
   };
 
-  // Mở màn hình chi tiết bài viết / thông báo
   const openDetail = (item: NewsOrAnnouncementItem, idx = 0) => {
     const finalImgUrl = item.imageUrl ? getNewsImageUrl(item.imageUrl, idx) : "";
     router.push({
@@ -716,113 +365,18 @@ export default function HomeScreen() {
     });
   };
 
-  const quickActions = [
-    { icon: "navigation" as const, label: "Bản đồ", screen: "map", bg: "#EEF2FF", border: "#E0E7FF", fg: "#6366F1" },
-    { icon: "calendar" as const, label: "Lịch học", screen: "schedule", bg: "#E0F2FE", border: "#BAE6FD", fg: "#0284C7" },
-    { icon: "message-square" as const, label: "Phản hồi", screen: "feedback", bg: "#FEF3C7", border: "#FDE68A", fg: "#D97706" },
-    { icon: "bar-chart-2" as const, label: "Kết quả", screen: "grades", bg: "#DCFCE7", border: "#BBF7D0", fg: "#16A34A" },
-  ];
-
   return (
     <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
       <StatusBar barStyle="light-content" backgroundColor="#0F2964" translucent={Platform.OS === "android"} />
 
-      {/* ─── HEADER NAVY BLUE CHỨA THÔNG TIN SINH VIÊN VÀ LỚP HỌC KẾ TIẾP ─── */}
-      <View
-        style={{
-          backgroundColor: "#0F2964",
-          paddingTop: topPadding,
-          paddingBottom: 14,
-          paddingHorizontal: 20,
-          zIndex: 10,
-          // borderBottomLeftRadius: 24,
-          // borderBottomRightRadius: 24,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.12,
-          shadowRadius: 10,
-          elevation: 5,
-        }}
-      >
-        {/* Top user row */}
-        <View style={[s.row, s.between, { alignItems: "center" }]}>
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <Text
-              style={{
-                color: "rgba(255,255,255,0.72)",
-                fontSize: 11,
-                fontWeight: "700",
-                textTransform: "uppercase",
-                letterSpacing: 0.6,
-              }}
-              numberOfLines={1}
-            >
-              {student.mssv && student.mssv !== "guest"
-                ? `SINH VIÊN • ${student.mssv}`
-                : "KHÁCH THAM QUAN"}
-            </Text>
-            <Text
-              style={{
-                color: "#FFFFFF",
-                fontSize: 20,
-                fontWeight: "900",
-                marginTop: 2,
-              }}
-              numberOfLines={1}
-            >
-              {student.ho_ten || student.fullName || "Sinh viên"}
-            </Text>
-          </View>
+      {/* ─── 1. HEADER NAVY BLUE ─── */}
+      <HomeHeader
+        student={student}
+        topPadding={topPadding}
+        onNavigate={onNavigate}
+      />
 
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-            <TouchableOpacity
-              onPress={() => onNavigate("sos")}
-              activeOpacity={0.8}
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 19,
-                backgroundColor: "#EF4444",
-                alignItems: "center",
-                justifyContent: "center",
-                shadowColor: "#EF4444",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.3,
-                shadowRadius: 4,
-                elevation: 3,
-              }}
-            >
-              <Feather name="shield" size={17} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => onNavigate("profile")}
-              activeOpacity={0.8}
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 19,
-                backgroundColor: "rgba(255,255,255,0.16)",
-                borderWidth: 1,
-                borderColor: "rgba(255,255,255,0.25)",
-                overflow: "hidden",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              {student.avatar ? (
-                <Image
-                  source={{ uri: student.avatar }}
-                  style={{ width: 38, height: 38, borderRadius: 19 }}
-                />
-              ) : (
-                <Feather name="user" size={18} color="#fff" />
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-
-      {/* ─── CUỘN NỘI DUNG BÊN DƯỚI HEADER ─────────────────────── */}
+      {/* ─── 2. CUỘN NỘI DUNG BÊN DƯỚI HEADER ─── */}
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: bottomPadding, paddingTop: 12 }}
@@ -842,902 +396,76 @@ export default function HomeScreen() {
           <HomeSkeleton />
         ) : (
           <View style={{ paddingHorizontal: 16 }}>
-          {isOfflineData && (
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                backgroundColor: "#FEF3C7",
-                borderWidth: 1,
-                borderColor: "#FDE68A",
-                paddingVertical: 8,
-                paddingHorizontal: 12,
-                borderRadius: 12,
-                marginBottom: 14,
-              }}
-            >
-              <Feather name="wifi-off" size={15} color="#D97706" style={{ marginRight: 8 }} />
-              <Text style={{ fontSize: 12, color: "#92400E", fontWeight: "600", flex: 1 }}>
-                Đang xem bản lưu ngoại tuyến {cachedAt ? `(lưu lúc ${cachedAt})` : ""}
-              </Text>
-            </View>
-          )}
-
-          {/* ─── LỚP HỌC KẾ TIẾP / NGÀY MAI CARD (ĐẦU TIÊN CỦA PHẦN BODY) ─── */}
-          <TouchableOpacity
-            activeOpacity={0.88}
-            onPress={handleOpenMapDirections}
-            style={{
-              backgroundColor: "#0F2964",
-              borderRadius: 20,
-              padding: 16,
-              marginBottom: 20,
-              shadowColor: "#0F2964",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.18,
-              shadowRadius: 10,
-              elevation: 4,
-            }}
-          >
-            {/* Row 1: dot + statusLabel + Phòng & giờ */}
-            <View style={[s.row, s.between, { alignItems: "center", marginBottom: 8 }]}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <View
-                  style={{
-                    width: 7.5,
-                    height: 7.5,
-                    borderRadius: 4,
-                    backgroundColor: nextClass?.statusBadgeColor || "#A855F7",
-                  }}
-                />
-                <Text
-                  style={{
-                    color: "#FFFFFF",
-                    fontSize: 11,
-                    fontWeight: "800",
-                    letterSpacing: 0.5,
-                  }}
-                >
-                  {nextClass?.statusLabel || "NGÀY MAI"}
-                </Text>
-              </View>
-              <Text style={{ color: "rgba(255,255,255,0.78)", fontSize: 11.5, fontWeight: "700" }}>
-                {nextClass
-                  ? `${nextClass.room ? `${nextClass.room} ` : ""}`
-                  : "Bản đồ trường"}
-              </Text>
-            </View>
-
-            {/* Row 2: Tên môn học + Badge tiết */}
-            <View style={[s.row, s.between, { alignItems: "center", marginBottom: 10 }]}>
-              <Text
-                style={{
-                  color: "#FFFFFF",
-                  fontSize: 16,
-                  fontWeight: "900",
-                  flex: 1,
-                  marginRight: 10,
-                }}
-                numberOfLines={1}
-              >
-                {nextClass?.subject || "Không có ca học nào trong ngày mai"}
-              </Text>
-              <View
-                style={{
-                  backgroundColor: "rgba(255,255,255,0.18)",
-                  paddingHorizontal: 8,
-                  paddingVertical: 3,
-                  borderRadius: 8,
-                }}
-              >
-                <Text style={{ color: "#FFFFFF", fontSize: 11, fontWeight: "800" }}>
-                  {nextClass ? (nextClass.time.startsWith("Tiết") ? nextClass.time : `Tiết ${nextClass.time}`) : "Nghỉ"}
-                </Text>
-              </View>
-            </View>
-
-            {/* Row 3: Giảng viên + Chỉ đường → */}
-            <View style={[s.row, s.between, { alignItems: "center" }]}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1, marginRight: 8 }}>
-                <Feather name="user" size={13} color="rgba(255,255,255,0.7)" />
-                <Text
-                  style={{
-                    color: "rgba(255,255,255,0.85)",
-                    fontSize: 12,
-                    fontWeight: "600",
-                  }}
-                  numberOfLines={1}
-                >
-                  {nextClass?.lecturer ? nextClass.lecturer : (nextClass ? "Giảng viên bộ môn" : "Mở bản đồ trường")}
-                </Text>
-              </View>
-
+            {isOfflineData && (
               <View
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  gap: 4,
-                  backgroundColor: "rgba(255,255,255,0.18)",
-                  paddingHorizontal: 10,
-                  paddingVertical: 4.5,
-                  borderRadius: 12,
-                }}
-              >
-                <Feather name="navigation" size={11.5} color="#93C5FD" />
-                <Text style={{ color: "#93C5FD", fontSize: 12, fontWeight: "800" }}>
-                  Chỉ đường →
-                </Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-
-          {/* TỔNG KẾT GPA HỆ 4 & HỆ 10 */}
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => router.push("/(main)/grades")}
-            style={{
-              backgroundColor: "#FFFFFF",
-              borderRadius: 20,
-              padding: 16,
-              marginBottom: 20,
-              borderWidth: 1,
-              borderColor: "#E2E8F0",
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.05,
-              shadowRadius: 6,
-              elevation: 2,
-            }}
-          >
-            {/* Header: Title + Rank Badge + Link */}
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 14,
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <View
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 10,
-                    backgroundColor: "#EEF2FF",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Feather name="award" size={17} color="#4F46E5" />
-                </View>
-                <View>
-                  <Text style={{ fontSize: 14, fontWeight: "800", color: "#0F172A" }}>
-                    Kết quả học tập
-                  </Text>
-                  <Text style={{ fontSize: 11, fontWeight: "500", color: "#64748B" }}>
-                    Tích lũy toàn khóa
-                  </Text>
-                </View>
-              </View>
-
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <View
-                  style={{
-                    backgroundColor: `${gpaSummary.rankColor}15`,
-                    paddingHorizontal: 9,
-                    paddingVertical: 3.5,
-                    borderRadius: 10,
-                    borderWidth: 1,
-                    borderColor: `${gpaSummary.rankColor}40`,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      fontWeight: "800",
-                      color: gpaSummary.rankColor,
-                    }}
-                  >
-                    {gpaSummary.rank}
-                  </Text>
-                </View>
-                <Feather name="chevron-right" size={16} color="#94A3B8" />
-              </View>
-            </View>
-
-            {/* Stats Row: GPA Hệ 4 | GPA Hệ 10 | Tín chỉ */}
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                backgroundColor: "#F8FAFC",
-                borderRadius: 14,
-                paddingVertical: 12,
-                paddingHorizontal: 10,
-              }}
-            >
-              {/* GPA Hệ 4 */}
-              <View style={{ flex: 1, alignItems: "center" }}>
-                <Text style={{ fontSize: 11, fontWeight: "600", color: "#64748B", marginBottom: 3 }}>
-                  GPA Hệ 4
-                </Text>
-                <View style={{ flexDirection: "row", alignItems: "baseline" }}>
-                  <Text style={{ fontSize: 19, fontWeight: "900", color: "#0284C7" }}>
-                    {gpaSummary.gpa4}
-                  </Text>
-                  <Text style={{ fontSize: 11, fontWeight: "700", color: "#94A3B8", marginLeft: 2 }}>
-                    /4.0
-                  </Text>
-                </View>
-              </View>
-
-              {/* Divider */}
-              <View style={{ width: 1, height: 26, backgroundColor: "#E2E8F0" }} />
-
-              {/* GPA Hệ 10 */}
-              <View style={{ flex: 1, alignItems: "center" }}>
-                <Text style={{ fontSize: 11, fontWeight: "600", color: "#64748B", marginBottom: 3 }}>
-                  GPA Hệ 10
-                </Text>
-                <View style={{ flexDirection: "row", alignItems: "baseline" }}>
-                  <Text style={{ fontSize: 19, fontWeight: "900", color: "#4F46E5" }}>
-                    {gpaSummary.gpa10}
-                  </Text>
-                  <Text style={{ fontSize: 11, fontWeight: "700", color: "#94A3B8", marginLeft: 2 }}>
-                    /10
-                  </Text>
-                </View>
-              </View>
-
-              {/* Divider */}
-              <View style={{ width: 1, height: 26, backgroundColor: "#E2E8F0" }} />
-
-              {/* Tín chỉ tích lũy */}
-              <View style={{ flex: 1, alignItems: "center" }}>
-                <Text style={{ fontSize: 11, fontWeight: "600", color: "#64748B", marginBottom: 3 }}>
-                  Tín chỉ tích lũy
-                </Text>
-                <View style={{ flexDirection: "row", alignItems: "baseline" }}>
-                  <Text style={{ fontSize: 19, fontWeight: "900", color: "#10B981" }}>
-                    {gpaSummary.totalCredits}
-                  </Text>
-                  <Text style={{ fontSize: 11, fontWeight: "700", color: "#94A3B8", marginLeft: 2 }}>
-                    TC
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </TouchableOpacity>
-
-          {/* TÁC VỤ NHANH */}
-          <Text
-            style={{
-              fontSize: 16,
-              fontWeight: "900",
-              color: "#0F172A",
-              marginBottom: 12,
-              paddingHorizontal: 4,
-            }}
-          >
-            Tác vụ nhanh
-          </Text>
-
-          <View style={[s.row, s.between, { marginBottom: 20 }]}>
-            {quickActions.map((qa) => (
-              <TouchableOpacity
-                key={qa.label}
-                onPress={() => onNavigate(qa.screen)}
-                activeOpacity={0.7}
-                style={{ alignItems: "center", width: "22%" }}
-              >
-                <View
-                  style={{
-                    width: 58,
-                    height: 58,
-                    borderRadius: 16,
-                    backgroundColor: qa.bg,
-                    borderWidth: 1,
-                    borderColor: qa.border,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: 6,
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.04,
-                    shadowRadius: 3,
-                    elevation: 1,
-                  }}
-                >
-                  <Feather name={qa.icon} size={22} color={qa.fg} />
-                </View>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontWeight: "700",
-                    color: "#334155",
-                    textAlign: "center",
-                  }}
-                >
-                  {qa.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* ─── THÔNG BÁO & CẢNH BÁO (FEEDBACK, SOS, THÔNG BÁO PHÁT TỪ TRƯỜNG) ─── */}
-          <View style={{ marginBottom: 20 }}>
-            <View style={[s.row, s.between, { alignItems: "center", marginBottom: 12, paddingHorizontal: 4 }]}>
-              <Text style={{ fontSize: 16, fontWeight: "900", color: "#0F172A" }}>
-                Thông báo & Cảnh báo
-              </Text>
-              {isLoggedIn && notificationAlerts && notificationAlerts.length > 0 ? (
-                <Text style={{ fontSize: 13, fontWeight: "700", color: "#2563EB" }}>
-                  {notificationAlerts.length} tin mới
-                </Text>
-              ) : null}
-            </View>
-
-            {!isLoggedIn ? (
-              <LoginRequiredCard
-                mode="card"
-                icon="bell"
-                title="Vui lòng đăng nhập để xem thông báo"
-                message="Đăng nhập tài khoản sinh viên để nhận các thông báo, phản hồi và cảnh báo quan trọng từ nhà trường."
-              />
-            ) : notificationAlerts && notificationAlerts.length > 0 ? (
-              <View style={{ gap: 10 }}>
-                {notificationAlerts.map((item) => {
-                  let bg = "#F0FDF4";
-                  let border = "#BBF7D0";
-                  let iconColor = "#10B981";
-                  let iconName: keyof typeof Feather.glyphMap = "check";
-
-                  if (item.variant === "warning") {
-                    bg = "#FFFBEB";
-                    border = "#FDE68A";
-                    iconColor = "#D97706";
-                    iconName = "alert-triangle";
-                  } else if (item.variant === "info") {
-                    bg = "#EFF6FF";
-                    border = "#BFDBFE";
-                    iconColor = "#2563EB";
-                    iconName = "info";
-                  }
-
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      onPress={() => setSelectedAlertForModal(item)}
-                      activeOpacity={0.7}
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        backgroundColor: bg,
-                        borderWidth: 1,
-                        borderColor: border,
-                        borderRadius: 16,
-                        paddingVertical: 12,
-                        paddingHorizontal: 16,
-                        gap: 12,
-                      }}
-                    >
-                      <Feather name={iconName} size={18} color={iconColor} />
-                      <View style={{ flex: 1 }}>
-                        <Text
-                          style={{
-                            fontSize: 13.5,
-                            fontWeight: "700",
-                            color: "#0F172A",
-                            marginBottom: 3,
-                          }}
-                          numberOfLines={1}
-                        >
-                          {item.title}
-                        </Text>
-                        <Text style={{ fontSize: 11, color: "#64748B", fontWeight: "500" }}>
-                          {item.date || item.subtitle || "Hôm nay"}
-                        </Text>
-                      </View>
-                      <Feather name="chevron-right" size={16} color="#94A3B8" />
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            ) : (
-              <View
-                style={{
-                  backgroundColor: "#F8FAFC",
+                  backgroundColor: "#FEF3C7",
                   borderWidth: 1,
-                  borderColor: "#E2E8F0",
-                  borderRadius: 16,
-                  paddingVertical: 14,
-                  paddingHorizontal: 16,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexDirection: "row",
-                  gap: 8,
+                  borderColor: "#FDE68A",
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderRadius: 12,
+                  marginBottom: 16,
                 }}
               >
-                <Feather name="bell-off" size={16} color="#94A3B8" />
-                <Text style={{ fontSize: 13, color: "#64748B", fontWeight: "500" }}>
-                  Chưa có thông báo từ trường
+                <Feather name="wifi-off" size={15} color="#D97706" style={{ marginRight: 8 }} />
+                <Text style={{ fontSize: 12, color: "#92400E", fontWeight: "600", flex: 1 }}>
+                  Đang xem dữ liệu ngoại tuyến {cachedAt ? `(lưu lúc ${cachedAt})` : ""} • Vuốt xuống để làm mới
                 </Text>
               </View>
             )}
+
+            {/* 3. LỚP HỌC TIẾP THEO HOẶC ĐANG DIỄN RA */}
+            <HomeNextClassCard
+              nextClass={nextClass}
+              onPress={handleOpenMapDirections}
+            />
+
+            {/* 4. TỔNG KẾT GPA HỆ 4 & HỆ 10 */}
+            <HomeGpaCard
+              gpaSummary={gpaSummary}
+              onPress={() => router.push("/(main)/grades")}
+            />
+
+            {/* 5. TÁC VỤ NHANH */}
+            <HomeQuickActions
+              onNavigate={onNavigate}
+            />
+
+            {/* 6. THÔNG BÁO & CẢNH BÁO */}
+            <HomeAlertsSection
+              isLoggedIn={isLoggedIn}
+              notificationAlerts={notificationAlerts}
+              onSelectAlert={setSelectedAlertForModal}
+            />
+
+            {/* 7. THÔNG BÁO SINH VIÊN (RSS THONGBAOSV) */}
+            <HomeAnnouncementsSection
+              isLoggedIn={isLoggedIn}
+              announcements={latestAnnouncements}
+              onViewAll={() => router.push({ pathname: "/(main)/home/all_articles", params: { tab: "announcement" } })}
+              onOpenDetail={openDetail}
+            />
+
+            {/* 8. TIN TỨC & HOẠT ĐỘNG (RSS TINTUC CÓ ẢNH) */}
+            <HomeNewsSection
+              isLoggedIn={isLoggedIn}
+              news={latestNews}
+              onViewAll={() => router.push({ pathname: "/(main)/home/all_articles", params: { tab: "news" } })}
+              onOpenDetail={openDetail}
+            />
           </View>
-
-          {/* ─── THÔNG BÁO SINH VIÊN (RSS THONGBAOSV) ─── */}
-          <View style={{ marginBottom: 20 }}>
-            <View style={[s.row, s.between, { alignItems: "center", marginBottom: 12, paddingHorizontal: 4 }]}>
-              <Text style={{ fontSize: 16, fontWeight: "900", color: "#0F172A" }}>
-                Thông báo Sinh viên
-              </Text>
-              {isLoggedIn ? (
-                <TouchableOpacity
-                  onPress={() => router.push({ pathname: "/(main)/home/all_articles", params: { tab: "announcement" } })}
-                  activeOpacity={0.7}
-                >
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: "#2563EB" }}>
-                    Xem tất cả
-                  </Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
-
-            {!isLoggedIn ? (
-              <LoginRequiredCard
-                mode="card"
-                icon="file-text"
-                title="Vui lòng đăng nhập để xem thông báo sinh viên"
-                message="Đăng nhập tài khoản sinh viên để xem chi tiết các thông báo học vụ, lịch thi và học bổng."
-              />
-            ) : (
-              <View style={{ gap: 10 }}>
-                {latestAnnouncements.slice(0, 3).map((ann, idx) => (
-                  <TouchableOpacity
-                    key={ann.id || idx}
-                    onPress={() => openDetail(ann, idx)}
-                    activeOpacity={0.7}
-                    style={{
-                      backgroundColor: "#FFFFFF",
-                      borderRadius: 16,
-                      borderWidth: 1,
-                      borderColor: "#E2E8F0",
-                      padding: 14,
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 1 },
-                      shadowOpacity: 0.03,
-                      shadowRadius: 3,
-                      elevation: 1,
-                    }}
-                  >
-                    <View style={[s.row, s.between, { alignItems: "center", marginBottom: 6 }]}>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <View
-                          style={{
-                            paddingHorizontal: 7,
-                            paddingVertical: 2,
-                            borderRadius: 6,
-                            backgroundColor: ann.isFallback || ann.badge?.toLowerCase().includes("mẫu") ? "#FEF3C7" : "#ECFDF5",
-                            flexDirection: "row",
-                            alignItems: "center",
-                            gap: 4,
-                          }}
-                        >
-                          <Feather
-                            name={ann.isFallback || ann.badge?.toLowerCase().includes("mẫu") ? "alert-triangle" : "bell"}
-                            size={10}
-                            color={ann.isFallback || ann.badge?.toLowerCase().includes("mẫu") ? "#D97706" : "#059669"}
-                          />
-                          <Text
-                            style={{
-                              fontSize: 10,
-                              fontWeight: "800",
-                              color: ann.isFallback || ann.badge?.toLowerCase().includes("mẫu") ? "#D97706" : "#059669",
-                            }}
-                          >
-                            {ann.isFallback || ann.badge?.toLowerCase().includes("mẫu") ? "Dữ liệu mẫu" : (ann.badge || "Thông báo SV")}
-                          </Text>
-                        </View>
-                        {ann.attachments && ann.attachments.length > 0 ? (
-                          <View
-                            style={{
-                              paddingHorizontal: 6,
-                              paddingVertical: 2,
-                              borderRadius: 6,
-                              backgroundColor: "#F1F5F9",
-                              flexDirection: "row",
-                              alignItems: "center",
-                              gap: 3,
-                            }}
-                          >
-                            <Feather name="paperclip" size={9} color="#475569" />
-                            <Text style={{ fontSize: 10, fontWeight: "700", color: "#475569" }}>
-                              {ann.attachments.length} file
-                            </Text>
-                          </View>
-                        ) : null}
-                      </View>
-                      <Text style={{ fontSize: 10, color: "#64748B", fontWeight: "600" }}>
-                        {ann.date}
-                      </Text>
-                    </View>
-
-                    <Text
-                      style={{
-                        fontSize: 13.5,
-                        fontWeight: "800",
-                        color: "#0F172A",
-                        lineHeight: 19,
-                        marginBottom: 8,
-                      }}
-                      numberOfLines={2}
-                    >
-                      {ann.title}
-                    </Text>
-
-                    <View style={[s.row, s.between, { alignItems: "center", borderTopWidth: 1, borderTopColor: "#F1F5F9", paddingTop: 8 }]}>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flex: 1, marginRight: 8 }}>
-                        <Feather name="home" size={11} color="#64748B" />
-                        <Text style={{ fontSize: 11, color: "#64748B" }} numberOfLines={1}>
-                          {ann.author || ann.sender || "Phòng Công tác SV"}
-                        </Text>
-                      </View>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                        <Text style={{ fontSize: 11, fontWeight: "700", color: "#2563EB" }}>
-                          Chi tiết
-                        </Text>
-                        <Feather name="arrow-right" size={11} color="#2563EB" />
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-          </View>
-
-          {/* ─── TIN TỨC & HOẠT ĐỘNG (RSS TINTUC CÓ ẢNH) ─── */}
-          <View style={{ marginBottom: 20 }}>
-            <View style={[s.row, s.between, { alignItems: "center", marginBottom: 12, paddingHorizontal: 4 }]}>
-              <Text style={{ fontSize: 16, fontWeight: "900", color: "#0F172A" }}>
-                Tin tức & Hoạt động
-              </Text>
-              {isLoggedIn ? (
-                <TouchableOpacity
-                  onPress={() => router.push({ pathname: "/(main)/home/all_articles", params: { tab: "news" } })}
-                  activeOpacity={0.7}
-                >
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: "#2563EB" }}>
-                    Xem tất cả
-                  </Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
-
-            {!isLoggedIn ? (
-              <LoginRequiredCard
-                mode="card"
-                icon="globe"
-                title="Vui lòng đăng nhập để xem tin tức"
-                message="Đăng nhập tài khoản sinh viên để theo dõi các sự kiện, tin tức hoạt động Đoàn - Hội và Nhà trường."
-              />
-            ) : (
-              <View style={{ gap: 12 }}>
-                {latestNews.slice(0, 3).map((item, idx) => (
-                  <TouchableOpacity
-                    key={item.id || idx}
-                    onPress={() => openDetail(item, idx)}
-                    activeOpacity={0.7}
-                    style={{
-                      backgroundColor: "#FFFFFF",
-                      borderRadius: 16,
-                      borderWidth: 1,
-                      borderColor: "#E2E8F0",
-                      overflow: "hidden",
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 1 },
-                      shadowOpacity: 0.03,
-                      shadowRadius: 3,
-                      elevation: 1,
-                    }}
-                  >
-                    <NewsCardImage imageUrl={item.imageUrl} index={idx} />
-
-                    <View style={{ padding: 14 }}>
-                      <View style={[s.row, s.between, { alignItems: "center", marginBottom: 6 }]}>
-                        <View
-                          style={{
-                            paddingHorizontal: 7,
-                            paddingVertical: 2,
-                            borderRadius: 6,
-                            backgroundColor: item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? "#FEF3C7" : "#EFF6FF",
-                            flexDirection: "row",
-                            alignItems: "center",
-                            gap: 4,
-                          }}
-                        >
-                          <Feather
-                            name={item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? "alert-triangle" : "book-open"}
-                            size={10}
-                            color={item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? "#D97706" : "#2563EB"}
-                          />
-                          <Text
-                            style={{
-                              fontSize: 10,
-                              fontWeight: "800",
-                              color: item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? "#D97706" : "#2563EB",
-                            }}
-                          >
-                            {item.isFallback || item.badge?.toLowerCase().includes("mẫu") ? "Dữ liệu mẫu" : (item.badge || "Tin hoạt động")}
-                          </Text>
-                        </View>
-                        <Text style={{ fontSize: 10, color: "#64748B", fontWeight: "600" }}>
-                          {item.date}
-                        </Text>
-                      </View>
-
-                      <Text
-                        style={{
-                          fontSize: 13.5,
-                          fontWeight: "800",
-                          color: "#0F172A",
-                          lineHeight: 19,
-                          marginBottom: 4,
-                        }}
-                        numberOfLines={2}
-                      >
-                        {item.title}
-                      </Text>
-
-                      {item.summary ? (
-                        <Text
-                          style={{
-                            fontSize: 11,
-                            color: "#64748B",
-                            lineHeight: 16,
-                            marginBottom: 8,
-                          }}
-                          numberOfLines={2}
-                        >
-                          {item.summary}
-                        </Text>
-                      ) : null}
-
-                      <View
-                        style={[
-                          s.row,
-                          s.between,
-                          {
-                            alignItems: "center",
-                            borderTopWidth: 1,
-                            borderTopColor: "#F1F5F9",
-                            paddingTop: 8,
-                            marginTop: 4,
-                          },
-                        ]}
-                      >
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flex: 1, marginRight: 8 }}>
-                          <Feather name="globe" size={11} color="#64748B" />
-                          <Text style={{ fontSize: 11, color: "#64748B" }} numberOfLines={1}>
-                            {item.author || item.sourceName || "Ban Biên tập TTN"}
-                          </Text>
-                        </View>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                          <Text style={{ fontSize: 11, fontWeight: "700", color: "#2563EB" }}>
-                            Chi tiết bài viết
-                          </Text>
-                          <Feather name="arrow-right" size={11} color="#2563EB" />
-                        </View>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-          </View>
-        </View>
         )}
       </ScrollView>
 
-      {/* ─── MODAL CHI TIẾT THÔNG BÁO / PHẢN HỒI / CẢNH BÁO ─── */}
-      <Modal
-        visible={!!selectedAlertForModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSelectedAlertForModal(null)}
-      >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.55)",
-            justifyContent: "center",
-            alignItems: "center",
-            padding: 20,
-          }}
-        >
-          <View
-            style={{
-              width: "100%",
-              maxWidth: 360,
-              backgroundColor: "#FFFFFF",
-              borderRadius: 20,
-              padding: 22,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.15,
-              shadowRadius: 12,
-              elevation: 8,
-            }}
-          >
-            {/* Header Modal */}
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 14 }}>
-              <View
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20,
-                  backgroundColor:
-                    selectedAlertForModal?.variant === "success"
-                      ? "#ECFDF5"
-                      : selectedAlertForModal?.variant === "warning"
-                        ? "#FFFBEB"
-                        : "#EFF6FF",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Feather
-                  name={
-                    selectedAlertForModal?.variant === "success"
-                      ? "check-circle"
-                      : selectedAlertForModal?.variant === "warning"
-                        ? "alert-triangle"
-                        : "info"
-                  }
-                  size={20}
-                  color={
-                    selectedAlertForModal?.variant === "success"
-                      ? "#10B981"
-                      : selectedAlertForModal?.variant === "warning"
-                        ? "#D97706"
-                        : "#2563EB"
-                  }
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 16, fontWeight: "900", color: "#1E293B" }}>
-                  {selectedAlertForModal?.type === "feedback"
-                    ? "Trạng thái phản hồi"
-                    : selectedAlertForModal?.type === "sos"
-                      ? "Cảnh báo khẩn cấp"
-                      : "Thông báo từ trường"}
-                </Text>
-                <Text style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>
-                  {selectedAlertForModal?.date || "30/9/2026"}
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => setSelectedAlertForModal(null)}
-                style={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: 15,
-                  backgroundColor: "#F1F5F9",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Feather name="x" size={16} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Trạng thái Badge */}
-            <View
-              style={{
-                alignSelf: "flex-start",
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-                borderRadius: 8,
-                backgroundColor:
-                  selectedAlertForModal?.variant === "success"
-                    ? "#DCFCE7"
-                    : selectedAlertForModal?.variant === "warning"
-                      ? "#FEF3C7"
-                      : "#DBEAFE",
-                marginBottom: 12,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 11,
-                  fontWeight: "800",
-                  color:
-                    selectedAlertForModal?.variant === "success"
-                      ? "#166534"
-                      : selectedAlertForModal?.variant === "warning"
-                        ? "#92400E"
-                        : "#1E40AF",
-                }}
-              >
-                {selectedAlertForModal?.status || "Đã tiếp nhận"}
-              </Text>
-            </View>
-
-            {/* Tiêu đề & Nội dung */}
-            <Text
-              style={{
-                fontSize: 15,
-                fontWeight: "800",
-                color: "#1E293B",
-                lineHeight: 21,
-                marginBottom: 8,
-              }}
-            >
-              {selectedAlertForModal?.title}
-            </Text>
-
-            <Text
-              style={{
-                fontSize: 13,
-                color: "#475569",
-                lineHeight: 20,
-                marginBottom: 20,
-              }}
-            >
-              {selectedAlertForModal?.content}
-            </Text>
-
-            {/* Nút tác vụ */}
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              {selectedAlertForModal?.actionScreen ? (
-                <TouchableOpacity
-                  onPress={() => {
-                    const screen = selectedAlertForModal.actionScreen;
-                    setSelectedAlertForModal(null);
-                    if (screen) onNavigate(screen);
-                  }}
-                  activeOpacity={0.8}
-                  style={{
-                    flex: 1,
-                    backgroundColor: AppColors.primary,
-                    paddingVertical: 12,
-                    borderRadius: 12,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "800" }}>
-                    {selectedAlertForModal.type === "feedback"
-                      ? "Xem / Gửi phản hồi"
-                      : selectedAlertForModal.type === "sos"
-                        ? "Đến trang SOS"
-                        : "Xem chi tiết"}
-                  </Text>
-                </TouchableOpacity>
-              ) : null}
-
-              <TouchableOpacity
-                onPress={() => setSelectedAlertForModal(null)}
-                activeOpacity={0.8}
-                style={{
-                  flex: selectedAlertForModal?.actionScreen ? 0.6 : 1,
-                  backgroundColor: "#F1F5F9",
-                  paddingVertical: 12,
-                  borderRadius: 12,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Text style={{ color: "#475569", fontSize: 13, fontWeight: "700" }}>
-                  Đóng
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {/* ─── 9. MODAL CHI TIẾT THÔNG BÁO / PHẢN HỒI / CẢNH BÁO ─── */}
+      <HomeNoticeModal
+        alert={selectedAlertForModal}
+        onClose={() => setSelectedAlertForModal(null)}
+        onNavigate={onNavigate}
+      />
     </View>
   );
 }

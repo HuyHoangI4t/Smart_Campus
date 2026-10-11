@@ -6,6 +6,7 @@ export * from "./components/MapSearchBar";
 export * from "./components/MapControlsOverlay";
 export * from "./components/MapLocationDetailCard";
 export * from "./components/MapLocationPickerModal";
+export * from "./components/MapRouteStatusCard";
 export * from "./services/mapCache";
 export * from "./hooks/useMapGps";
 export * from "./hooks/useMapData";
