@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LocationItem, CampusPath } from "../types";
 import { TAY_NGUYEN_CAMPUS_LOCATIONS } from "../constants";
+import { DEFAULT_CAMPUS_PATHS } from "../campusPaths";
 import { apiGetMapLocations, apiGetCampusPaths } from "../../../services/api";
 
 const LOCATIONS_CACHE_KEY = "@offline_map_locations_v2";
@@ -182,7 +183,10 @@ class MapDataCache {
         // Bỏ qua lỗi mạng
       }
 
-      return this.memPaths ? this.memPaths.data : [];
+      // 5. Fallback dữ liệu tuyến đường nội bộ (hoàn toàn offline)
+      const fallbackPaths = this.memPaths ? this.memPaths.data : DEFAULT_CAMPUS_PATHS;
+      this.memPaths = { data: fallbackPaths, timestamp: Date.now() };
+      return fallbackPaths;
     })().finally(() => {
       this.inflightPathsPromise = null;
     });

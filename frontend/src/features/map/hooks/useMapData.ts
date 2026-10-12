@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { LocationItem, CampusPath } from "../types";
 import { TAY_NGUYEN_CAMPUS_LOCATIONS } from "../constants";
+import { DEFAULT_CAMPUS_PATHS } from "../campusPaths";
 import { mapCache } from "../services/mapCache";
 import { findLocationByRoomOrQuery, parseCampusRoom, calculateDistanceKm, findWalkwayDistanceMeters } from "../utils";
 
@@ -17,7 +18,7 @@ interface UseMapDataParams {
 
 export function useMapData(params: UseMapDataParams = {}) {
   const [locations, setLocations] = useState<LocationItem[]>(TAY_NGUYEN_CAMPUS_LOCATIONS);
-  const [campusPaths, setCampusPaths] = useState<CampusPath[]>([]);
+  const [campusPaths, setCampusPaths] = useState<CampusPath[]>(DEFAULT_CAMPUS_PATHS);
   const [search, setSearch] = useState<string>(params.search ? String(params.search).trim() : "");
   const [targetRoom, setTargetRoom] = useState<string>(params.room ? String(params.room).trim() : "");
   const [targetSubject, setTargetSubject] = useState<string>(params.subject ? String(params.subject).trim() : "");

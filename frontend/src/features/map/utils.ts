@@ -389,7 +389,7 @@ export function buildCampusGraph(campusPaths: any[]): CampusGraph {
     });
   });
 
-  // Nối các giao lộ (điểm thuộc các tuyến khác nhau cách nhau <= 12m)
+  // 1. Nối các giao lộ (điểm thuộc các tuyến khác nhau cách nhau <= 25m)
   for (let i = 0; i < vertices.length; i++) {
     for (let j = i + 1; j < vertices.length; j++) {
       const d = getDistanceMeters(
@@ -398,10 +398,61 @@ export function buildCampusGraph(campusPaths: any[]): CampusGraph {
         vertices[j][0],
         vertices[j][1]
       );
-      if (d <= 12) {
+      if (d <= 25) {
         addEdge(i, j, Math.max(1, d));
       }
     }
+  }
+
+  // 2. Thuật toán Component Bridging: Liên thông hóa toàn bộ đồ thị đường đi bộ
+  const comp = new Array(vertices.length).fill(-1);
+  const compList: number[][] = [];
+  let cId = 0;
+  for (let cIdx = 0; cIdx < vertices.length; cIdx++) {
+    if (comp[cIdx] === -1) {
+      const curComp: number[] = [];
+      const q: number[] = [cIdx];
+      comp[cIdx] = cId;
+      while (q.length > 0) {
+        const u = q.shift()!;
+        curComp.push(u);
+        const nbrs = adj[u] || [];
+        for (let n = 0; n < nbrs.length; n++) {
+          const v = nbrs[n].node;
+          if (comp[v] === -1) {
+            comp[v] = cId;
+            q.push(v);
+          }
+        }
+      }
+      compList.push(curComp);
+      cId++;
+    }
+  }
+
+  while (compList.length > 1) {
+    const mainComp = compList[0];
+    const otherComp = compList[1];
+    let bestU = -1;
+    let bestV = -1;
+    let bestDist = Infinity;
+    for (let m = 0; m < mainComp.length; m++) {
+      for (let o = 0; o < otherComp.length; o++) {
+        const uNode = mainComp[m];
+        const vNode = otherComp[o];
+        const dUV = getDistanceMeters(vertices[uNode][0], vertices[uNode][1], vertices[vNode][0], vertices[vNode][1]);
+        if (dUV < bestDist) {
+          bestDist = dUV;
+          bestU = uNode;
+          bestV = vNode;
+        }
+      }
+    }
+    if (bestU !== -1 && bestV !== -1 && bestDist <= 85) {
+      addEdge(bestU, bestV, Math.max(1, bestDist));
+    }
+    compList[0] = mainComp.concat(otherComp);
+    compList.splice(1, 1);
   }
 
   return {

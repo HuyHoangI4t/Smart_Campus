@@ -20,6 +20,7 @@ import {
   TNU_CAMPUS_CENTER,
   TNU_CAMPUS_GATES,
   TNU_OSM_WAY_241971731_BOUNDARY,
+  DEFAULT_CAMPUS_PATHS,
   HOUSE_NUM_TO_ID,
   parseCampusRoom,
   findLocationByRoomOrQuery,
@@ -599,7 +600,7 @@ export default function MapScreen() {
         TAY_NGUYEN_CAMPUS_LOCATIONS,
         TNU_OSM_WAY_241971731_BOUNDARY,
         [TNU_CAMPUS_CENTER.lat, TNU_CAMPUS_CENTER.lng],
-        [],
+        DEFAULT_CAMPUS_PATHS,
         TNU_CAMPUS_GATES
       ),
     };
@@ -630,20 +631,9 @@ export default function MapScreen() {
   }, [bearing, compassMode, resetBearing, toggleCompassMode]);
 
   const handleUserLocationPress = useCallback(() => {
-    if (userLocation) {
-      webViewRef.current?.postMessage(
-        JSON.stringify({
-          type: "FOCUS_LOCATION",
-          lat: userLocation.latitude,
-          lng: userLocation.longitude,
-          zoom: 18,
-        })
-      );
-      fetchRealGpsLocation(false, true);
-    } else {
-      fetchRealGpsLocation(true);
-    }
-  }, [userLocation, fetchRealGpsLocation]);
+    fetchRealGpsLocation(true, false);
+    startPositionWatch();
+  }, [fetchRealGpsLocation, startPositionWatch]);
 
   const handleUserLocationLongPress = useCallback(() => {
     setShowLocationPicker(true);

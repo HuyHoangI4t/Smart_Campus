@@ -12,3 +12,4 @@ export * from "./services/mapCache";
 export * from "./services/pathCache";
 export * from "./hooks/useMapGps";
 export * from "./hooks/useMapData";
+export * from "./campusPaths";

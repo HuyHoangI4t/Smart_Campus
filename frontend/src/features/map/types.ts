@@ -25,7 +25,7 @@ export interface ParsedCampusRoom {
 }
 
 export interface CampusPath {
-  id: number;
+  id?: number;
   name: string;
   path_type: 'walkway' | 'main_road' | 'secondary_road' | string;
   coordinates: [number, number][] | [number, number][][] | any;

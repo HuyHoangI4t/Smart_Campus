@@ -696,7 +696,7 @@ ${LEAFLET_JS}
         }
       }
 
-      if (nearStartGate && destIn) {
+      if (!origIn && nearStartGate && destIn) {
         origIn = true;
         origLat = nearStartGate.insidePoint[0];
         origLng = nearStartGate.insidePoint[1];
@@ -875,14 +875,64 @@ ${LEAFLET_JS}
 
       if (vertices.length < 2) return null;
 
-      // Nối các giao lộ (những điểm thuộc các tuyến khác nhau cách nhau <= 12m)
+      // 1. Nối các giao lộ & ngã rẽ giữa các tuyến (những điểm cách nhau <= 25m)
       for (var i = 0; i < vertices.length; i++) {
         for (var j = i + 1; j < vertices.length; j++) {
           var d = getDistanceMeters(vertices[i][0], vertices[i][1], vertices[j][0], vertices[j][1]);
-          if (d <= 12) {
+          if (d <= 25) {
             addEdge(i, j, Math.max(1, d));
           }
         }
+      }
+
+      // 2. Thuật toán liên thông hóa toàn diện (Component Bridging):
+      // Đảm bảo không có bất kỳ cụm đường nào bị cô lập (đặc biệt khu vực Sân thể thao, Sân quần vợt, KTX, Thao trường)
+      // Loại bỏ hoàn toàn lỗi không tìm được đường dẫn đến fallback đường chim bay
+      var comp = new Array(vertices.length).fill(-1);
+      var compList = [];
+      var cId = 0;
+      for (var cIdx = 0; cIdx < vertices.length; cIdx++) {
+        if (comp[cIdx] === -1) {
+          var curComp = [];
+          var q = [cIdx];
+          comp[cIdx] = cId;
+          while (q.length > 0) {
+            var u = q.shift();
+            curComp.push(u);
+            var nbrs = adj[u] || [];
+            for (var n = 0; n < nbrs.length; n++) {
+              var v = nbrs[n].node;
+              if (comp[v] === -1) {
+                comp[v] = cId;
+                q.push(v);
+              }
+            }
+          }
+          compList.push(curComp);
+          cId++;
+        }
+      }
+
+      while (compList.length > 1) {
+        var mainComp = compList[0];
+        var otherComp = compList[1];
+        var bestU = -1, bestV = -1, bestDist = Infinity;
+        for (var m = 0; m < mainComp.length; m++) {
+          for (var o = 0; o < otherComp.length; o++) {
+            var uNode = mainComp[m], vNode = otherComp[o];
+            var dUV = getDistanceMeters(vertices[uNode][0], vertices[uNode][1], vertices[vNode][0], vertices[vNode][1]);
+            if (dUV < bestDist) {
+              bestDist = dUV;
+              bestU = uNode;
+              bestV = vNode;
+            }
+          }
+        }
+        if (bestU !== -1 && bestV !== -1 && bestDist <= 85) {
+          addEdge(bestU, bestV, Math.max(1, bestDist));
+        }
+        compList[0] = mainComp.concat(otherComp);
+        compList.splice(1, 1);
       }
 
       campusGraphCache = { vertices: vertices, adj: adj };
@@ -983,7 +1033,7 @@ ${LEAFLET_JS}
       return result;
     }
 
-    // Kiểm tra tọa độ có nằm bên trong tường bao khuôn viên trường không (Ray-casting)
+    // Kiểm tra tọa độ có nằm bên trong tường bao khuôn viên trường không (Ray-casting + Buffer Zone)
     function isPointInCampus(lat, lng) {
       if (!boundaryData || boundaryData.length < 3) return true;
       var x = lat, y = lng;
@@ -995,7 +1045,15 @@ ${LEAFLET_JS}
           (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
         if (intersect) inside = !inside;
       }
-      return inside;
+      if (inside) return true;
+
+      // Vùng đệm thông minh (Buffer Zone): Nếu tọa độ cách tâm trường <= 550m,
+      // thì chắc chắn người dùng đang ở trong khuôn viên (tránh trường hợp GPS lệch nhẹ qua hàng rào khiến thuật toán ép đi vòng ra Cổng chính ngoài đường)
+      if (centerData && centerData.length >= 2) {
+        var distToCenter = getDistanceMeters(lat, lng, centerData[0], centerData[1]);
+        if (distToCenter <= 550) return true;
+      }
+      return false;
     }
 
     // Chọn Cổng trường tối ưu (Cổng trước Lê Duẩn hoặc Cổng sau Y Wang)
@@ -1178,7 +1236,7 @@ ${LEAFLET_JS}
         }
       }
 
-      if (nearStartGate && destIn) {
+      if (!origIn && nearStartGate && destIn) {
         origIn = true;
         origLat = nearStartGate.insidePoint[0];
         origLng = nearStartGate.insidePoint[1];
