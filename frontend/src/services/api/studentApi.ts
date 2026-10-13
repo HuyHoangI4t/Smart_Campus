@@ -13,6 +13,7 @@ import {
 export async function apiGetProfile(mssv?: string) {
   const targetMssv = mssv || 'self';
   const ttlKey = `profile_${targetMssv}`;
+  const cacheKey = `@offline_profile_${targetMssv}`;
 
   const cached = getTtlCache<any>(ttlKey);
   if (cached) return cached;
@@ -26,11 +27,22 @@ export async function apiGetProfile(mssv?: string) {
       const result = await handleResponse(response);
 
       if (result && result.success) {
-        setTtlCache(ttlKey, result, 60000); // 1 minute TTL
+        const payload = { ...result, isOfflineCache: false };
+        setTtlCache(ttlKey, payload, 60000); // 1 minute TTL
+        await saveLocalCache(cacheKey, result);
+        return payload;
+      }
+      const local = await readLocalCache(cacheKey);
+      if (local && local.data) {
+        return { ...local.data, isOfflineCache: true, cachedAt: local.savedAt };
       }
       return result;
     } catch {
-      return { success: false, message: 'Lỗi tải thông tin sinh viên.' };
+      const local = await readLocalCache(cacheKey);
+      if (local && local.data) {
+        return { ...local.data, isOfflineCache: true, cachedAt: local.savedAt };
+      }
+      return { success: false, message: 'Lỗi tải thông tin sinh viên.', isOfflineCache: true };
     }
   });
 }

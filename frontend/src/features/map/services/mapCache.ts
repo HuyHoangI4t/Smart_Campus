@@ -58,25 +58,25 @@ class MapDataCache {
     }
 
     this.inflightLocationsPromise = (async () => {
+      let diskEnvelope: CacheEnvelope<LocationItem[]> | null = null;
       // 3. Đọc từ AsyncStorage nếu chưa có trong RAM
-      if (!forceRefresh) {
-        try {
-          const stored = await AsyncStorage.getItem(LOCATIONS_CACHE_KEY);
-          if (stored) {
-            const envelope: CacheEnvelope<LocationItem[]> = JSON.parse(stored);
-            if (
-              envelope &&
-              Array.isArray(envelope.data) &&
-              envelope.data.length > 0 &&
-              now - envelope.timestamp < this.ttlMs
-            ) {
-              this.memLocations = envelope;
-              return envelope.data;
-            }
+      try {
+        const stored = await AsyncStorage.getItem(LOCATIONS_CACHE_KEY);
+        if (stored) {
+          diskEnvelope = JSON.parse(stored);
+          if (
+            !forceRefresh &&
+            diskEnvelope &&
+            Array.isArray(diskEnvelope.data) &&
+            diskEnvelope.data.length > 0 &&
+            now - diskEnvelope.timestamp < this.ttlMs
+          ) {
+            this.memLocations = diskEnvelope;
+            return diskEnvelope.data;
           }
-        } catch {
-          // Bỏ qua lỗi đọc AsyncStorage
         }
+      } catch {
+        // Bỏ qua lỗi đọc AsyncStorage
       }
 
       // 4. Tải từ API Backend
@@ -110,8 +110,11 @@ class MapDataCache {
         // Dự phòng khi mạng mất
       }
 
-      // 5. Fallback dữ liệu nội bộ
-      const fallback = this.memLocations ? this.memLocations.data : TAY_NGUYEN_CAMPUS_LOCATIONS;
+      // 5. Fallback dữ liệu: Ưu tiên RAM Cache -> Disk Cache (kể cả quá TTL) -> Hằng số tĩnh
+      const fallback =
+        this.memLocations?.data ||
+        (diskEnvelope && Array.isArray(diskEnvelope.data) && diskEnvelope.data.length > 0 ? diskEnvelope.data : null) ||
+        TAY_NGUYEN_CAMPUS_LOCATIONS;
       this.memLocations = { data: fallback, timestamp: Date.now() };
       return fallback;
     })().finally(() => {
@@ -137,24 +140,24 @@ class MapDataCache {
     }
 
     this.inflightPathsPromise = (async () => {
-      if (!forceRefresh) {
-        try {
-          const stored = await AsyncStorage.getItem(PATHS_CACHE_KEY);
-          if (stored) {
-            const envelope: CacheEnvelope<CampusPath[]> = JSON.parse(stored);
-            if (
-              envelope &&
-              Array.isArray(envelope.data) &&
-              envelope.data.length > 0 &&
-              now - envelope.timestamp < this.ttlMs
-            ) {
-              this.memPaths = envelope;
-              return envelope.data;
-            }
+      let diskEnvelope: CacheEnvelope<CampusPath[]> | null = null;
+      try {
+        const stored = await AsyncStorage.getItem(PATHS_CACHE_KEY);
+        if (stored) {
+          diskEnvelope = JSON.parse(stored);
+          if (
+            !forceRefresh &&
+            diskEnvelope &&
+            Array.isArray(diskEnvelope.data) &&
+            diskEnvelope.data.length > 0 &&
+            now - diskEnvelope.timestamp < this.ttlMs
+          ) {
+            this.memPaths = diskEnvelope;
+            return diskEnvelope.data;
           }
-        } catch {
-          // Bỏ qua lỗi
         }
+      } catch {
+        // Bỏ qua lỗi
       }
 
       try {
@@ -183,8 +186,11 @@ class MapDataCache {
         // Bỏ qua lỗi mạng
       }
 
-      // 5. Fallback dữ liệu tuyến đường nội bộ (hoàn toàn offline)
-      const fallbackPaths = this.memPaths ? this.memPaths.data : DEFAULT_CAMPUS_PATHS;
+      // 5. Fallback dữ liệu tuyến đường nội bộ: RAM -> Disk -> Mặc định
+      const fallbackPaths =
+        this.memPaths?.data ||
+        (diskEnvelope && Array.isArray(diskEnvelope.data) && diskEnvelope.data.length > 0 ? diskEnvelope.data : null) ||
+        DEFAULT_CAMPUS_PATHS;
       this.memPaths = { data: fallbackPaths, timestamp: Date.now() };
       return fallbackPaths;
     })().finally(() => {

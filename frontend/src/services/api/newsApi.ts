@@ -62,21 +62,33 @@ export interface ArticleDetailResponse {
   fullContent: string;
 }
 
-export async function apiGetArticleDetail(url: string): Promise<{ success: boolean; data?: ArticleDetailResponse; message?: string }> {
+export async function apiGetArticleDetail(url: string): Promise<{ success: boolean; data?: ArticleDetailResponse; message?: string; isOfflineCache?: boolean }> {
   try {
     if (!url) return { success: false, message: 'Thiếu url bài viết' };
 
+    const cacheKey = `@offline_article_${encodeURIComponent(url).slice(-70)}`;
     const ttlKey = `article_${url}`;
     const cached = getTtlCache<any>(ttlKey);
     if (cached) return cached;
 
     return deduplicateRequest(ttlKey, async () => {
-      const response = await fetchWithTimeout(`${API_BASE_URL}/news/article-detail?url=${encodeURIComponent(url)}`, {}, 12000);
-      const result = await handleResponse(response);
-      if (result && result.success) {
-        setTtlCache(ttlKey, result, 300000); // 5 mins cache for article content
+      try {
+        const response = await fetchWithTimeout(`${API_BASE_URL}/news/article-detail?url=${encodeURIComponent(url)}`, {}, 6000);
+        const result = await handleResponse(response);
+        if (result && result.success) {
+          const payload = { ...result, isOfflineCache: false };
+          setTtlCache(ttlKey, payload, 300000); // 5 mins cache for article content
+          await saveLocalCache(cacheKey, result);
+          return payload;
+        }
+        const local = await readLocalCache(cacheKey);
+        if (local && local.data) return { ...local.data, isOfflineCache: true };
+        return result;
+      } catch {
+        const local = await readLocalCache(cacheKey);
+        if (local && local.data) return { ...local.data, isOfflineCache: true };
+        return { success: false, message: 'Thiết bị đang ngoại tuyến. Vui lòng kết nối Internet để đọc bài viết này.', isOfflineCache: true };
       }
-      return result;
     });
   } catch (e: any) {
     return { success: false, message: e.message || 'Không thể tải chi tiết bài viết' };

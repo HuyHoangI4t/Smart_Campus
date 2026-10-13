@@ -3,7 +3,15 @@ import { getApiBaseUrl, getCurrentIPv4 } from '../get_IPv4';
 
 export const API_BASE_URL = getApiBaseUrl();
 export const CURRENT_IPV4 = getCurrentIPv4();
-export const REQUEST_TIMEOUT_MS = 8000;
+export const REQUEST_TIMEOUT_MS = 6000;
+
+let isDeviceOnline = true;
+export function getDeviceOnlineStatus() {
+  return isDeviceOnline;
+}
+export function setDeviceOnlineStatus(status: boolean) {
+  isDeviceOnline = status;
+}
 
 export async function fetchWithTimeout(
   url: string,
@@ -18,9 +26,11 @@ export async function fetchWithTimeout(
       signal: controller.signal,
     });
     clearTimeout(id);
+    isDeviceOnline = true;
     return res;
   } catch (err) {
     clearTimeout(id);
+    isDeviceOnline = false;
     throw err;
   }
 }
@@ -101,7 +111,7 @@ export async function saveLocalCache(key: string, data: any) {
   }
 }
 
-export async function readLocalCache<T = any>(key: string): Promise<{ data: T; savedAt?: string } | null> {
+export async function readLocalCache<T = any>(key: string): Promise<{ data: T; savedAt?: string; timestamp?: number } | null> {
   // 1. Đọc ngay từ RAM (0.001ms)
   if (inMemoryCache.has(key)) {
     const item = inMemoryCache.get(key)!;
@@ -113,7 +123,7 @@ export async function readLocalCache<T = any>(key: string): Promise<{ data: T; s
     if (!str) return null;
     const parsed = JSON.parse(str);
     inMemoryCache.set(key, { data: parsed.data, savedAt: parsed.savedAt });
-    return { data: parsed.data as T, savedAt: parsed.savedAt };
+    return { data: parsed.data as T, savedAt: parsed.savedAt, timestamp: parsed.timestamp };
   } catch {
     return null;
   }

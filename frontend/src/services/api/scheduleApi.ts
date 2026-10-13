@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   API_BASE_URL,
   fetchWithTimeout,
@@ -55,6 +56,8 @@ export async function apiGetSchedule(
         const finalResult = { ...result, isOfflineCache: false };
         setTtlCache(ttlKey, finalResult, 30000); // 30s TTL
         await saveLocalCache(cacheKey, result);
+        // Tự động xả hàng đợi đồng bộ các thay đổi lịch đã tạo ngoại tuyến trước đó
+        syncPendingScheduleMutations().catch(() => {});
         return finalResult;
       }
 
@@ -84,18 +87,131 @@ export async function apiGetSchedule(
   });
 }
 
+// ─── OFFLINE MUTATION QUEUE & SYNC ENGINE ─────────────────────────────────────
+export interface PendingScheduleMutation {
+  action: 'CREATE' | 'UPDATE' | 'DELETE';
+  tempId?: string;
+  id?: string | number;
+  payload?: any;
+  createdAt: number;
+}
+
+const MUTATIONS_STORAGE_KEY = '@offline_schedule_mutations';
+
+export async function getPendingScheduleMutations(): Promise<PendingScheduleMutation[]> {
+  try {
+    const raw = await AsyncStorage.getItem(MUTATIONS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function addPendingScheduleMutation(mutation: PendingScheduleMutation): Promise<void> {
+  try {
+    const list = await getPendingScheduleMutations();
+    list.push(mutation);
+    await AsyncStorage.setItem(MUTATIONS_STORAGE_KEY, JSON.stringify(list));
+  } catch {}
+}
+
+export async function clearPendingScheduleMutations(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(MUTATIONS_STORAGE_KEY);
+  } catch {}
+}
+
+export async function syncPendingScheduleMutations(): Promise<number> {
+  const mutations = await getPendingScheduleMutations();
+  if (mutations.length === 0) return 0;
+
+  let syncedCount = 0;
+  const remaining: PendingScheduleMutation[] = [];
+
+  for (const item of mutations) {
+    try {
+      const headers = await getAuthHeaders();
+      if (item.action === 'CREATE' && item.payload) {
+        const res = await fetchWithTimeout(
+          `${API_BASE_URL}/student/schedule/custom`,
+          {
+            method: 'POST',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify(item.payload),
+          },
+          5000
+        );
+        if (res.ok) syncedCount++;
+        else remaining.push(item);
+      } else if (item.action === 'UPDATE' && item.id && item.payload) {
+        const res = await fetchWithTimeout(
+          `${API_BASE_URL}/student/schedule/custom/${item.id}`,
+          {
+            method: 'PUT',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify(item.payload),
+          },
+          5000
+        );
+        if (res.ok) syncedCount++;
+        else remaining.push(item);
+      } else if (item.action === 'DELETE' && item.id) {
+        const res = await fetchWithTimeout(
+          `${API_BASE_URL}/student/schedule/custom/${item.id}`,
+          {
+            method: 'DELETE',
+            headers,
+          },
+          5000
+        );
+        if (res.ok) syncedCount++;
+        else remaining.push(item);
+      }
+    } catch {
+      remaining.push(item);
+    }
+  }
+
+  if (remaining.length > 0) {
+    await AsyncStorage.setItem(MUTATIONS_STORAGE_KEY, JSON.stringify(remaining));
+  } else {
+    await clearPendingScheduleMutations();
+  }
+
+  return syncedCount;
+}
+
 export async function apiCreateCustomSchedule(payload: CustomSchedulePayload) {
   try {
     clearTtlCache('schedule_');
     const headers = await getAuthHeaders();
-    const response = await fetchWithTimeout(`${API_BASE_URL}/student/schedule/custom`, {
-      method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    return await handleResponse(response);
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/student/schedule/custom`,
+      {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      },
+      5000
+    );
+    const result = await handleResponse(response);
+    if (result && result.success) return result;
+    throw new Error(result?.message || 'Lỗi server');
   } catch (err: any) {
-    return { success: false, message: 'Lỗi mạng khi thêm lịch học: ' + (err?.message || '') };
+    // Lưu vào hàng đợi ngoại tuyến để tự động đồng bộ khi có mạng
+    const tempId = `offline_${Date.now()}`;
+    await addPendingScheduleMutation({
+      action: 'CREATE',
+      tempId,
+      payload,
+      createdAt: Date.now(),
+    });
+    return {
+      success: true,
+      isOfflineQueued: true,
+      message: 'Đã lưu lịch học ngoại tuyến (sẽ tự động đồng bộ lên hệ thống khi có mạng).',
+      data: { id: tempId, ...payload },
+    };
   }
 }
 
@@ -103,14 +219,30 @@ export async function apiUpdateCustomSchedule(id: string | number, payload: Part
   try {
     clearTtlCache('schedule_');
     const headers = await getAuthHeaders();
-    const response = await fetchWithTimeout(`${API_BASE_URL}/student/schedule/custom/${id}`, {
-      method: 'PUT',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    return await handleResponse(response);
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/student/schedule/custom/${id}`,
+      {
+        method: 'PUT',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      },
+      5000
+    );
+    const result = await handleResponse(response);
+    if (result && result.success) return result;
+    throw new Error(result?.message || 'Lỗi server');
   } catch (err: any) {
-    return { success: false, message: 'Lỗi mạng khi cập nhật lịch học: ' + (err?.message || '') };
+    await addPendingScheduleMutation({
+      action: 'UPDATE',
+      id,
+      payload,
+      createdAt: Date.now(),
+    });
+    return {
+      success: true,
+      isOfflineQueued: true,
+      message: 'Đã cập nhật lịch học ngoại tuyến (sẽ tự động đồng bộ khi có mạng).',
+    };
   }
 }
 
@@ -118,13 +250,28 @@ export async function apiDeleteCustomSchedule(id: string | number) {
   try {
     clearTtlCache('schedule_');
     const headers = await getAuthHeaders();
-    const response = await fetchWithTimeout(`${API_BASE_URL}/student/schedule/custom/${id}`, {
-      method: 'DELETE',
-      headers,
-    });
-    return await handleResponse(response);
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/student/schedule/custom/${id}`,
+      {
+        method: 'DELETE',
+        headers,
+      },
+      5000
+    );
+    const result = await handleResponse(response);
+    if (result && result.success) return result;
+    throw new Error(result?.message || 'Lỗi server');
   } catch (err: any) {
-    return { success: false, message: 'Lỗi mạng khi xóa lịch học: ' + (err?.message || '') };
+    await addPendingScheduleMutation({
+      action: 'DELETE',
+      id,
+      createdAt: Date.now(),
+    });
+    return {
+      success: true,
+      isOfflineQueued: true,
+      message: 'Đã xóa lịch học ngoại tuyến.',
+    };
   }
 }
 

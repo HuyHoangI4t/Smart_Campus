@@ -30,14 +30,14 @@ const LocationsModule = {
   gates: [
     {
       id: 'front_gate',
-      name: 'Cổng trước (Lê Duẩn)',
+      name: 'Cổng trước',
       gatePoint: [12.651536, 108.023856],
       insidePoint: [12.65144, 108.02395],
       outsidePoint: [12.65154752, 108.02385583]
     },
     {
       id: 'back_gate',
-      name: 'Cổng sau (Y Wang)',
+      name: 'Cổng sau',
       gatePoint: [12.64837195, 108.02804429],
       insidePoint: [12.64850, 108.02798],
       outsidePoint: [12.64837195, 108.02804429]

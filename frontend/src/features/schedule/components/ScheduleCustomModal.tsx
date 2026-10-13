@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   Platform,
   ActivityIndicator,
   StyleSheet,
+  Keyboard,
+  useWindowDimensions,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { AppColors } from "../../../constants/appColors";
@@ -72,6 +74,31 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
   onSave,
   onClose,
 }: ScheduleCustomModalProps) {
+  const { height: windowHeight } = useWindowDimensions();
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const dynamicMaxHeight = keyboardHeight > 0
+    ? Math.max(260, windowHeight - keyboardHeight - (Platform.OS === "ios" ? 40 : 65))
+    : windowHeight * 0.9;
+
   return (
     <Modal
       visible={visible}
@@ -84,7 +111,10 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.keyboardAvoid}
+        style={[
+          styles.keyboardAvoid,
+          Platform.OS === "android" && keyboardHeight > 0 ? { paddingBottom: keyboardHeight } : null,
+        ]}
       >
         <TouchableOpacity
           activeOpacity={1}
@@ -94,7 +124,7 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
           style={{ flex: 1 }}
         />
 
-        <View style={styles.sheetContainer}>
+        <View style={[styles.sheetContainer, { maxHeight: dynamicMaxHeight }]}>
           {/* Header Modal */}
           <View style={styles.headerRow}>
             <View style={styles.headerTitleGroup}>
@@ -121,8 +151,14 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
           </View>
 
           <ScrollView
-            contentContainerStyle={styles.formContent}
+            ref={scrollViewRef}
+            contentContainerStyle={[
+              styles.formContent,
+              { paddingBottom: keyboardHeight > 0 ? 50 : 20 },
+            ]}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
           >
             {/* Tên môn học */}
             <View>
@@ -389,6 +425,11 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
                 onChangeText={setFormRoom}
                 placeholder="Phòng học"
                 placeholderTextColor={AppColors.textMuted}
+                onFocus={() => {
+                  setTimeout(() => {
+                    scrollViewRef.current?.scrollTo({ y: 320, animated: true });
+                  }, 120);
+                }}
                 style={styles.textInput}
               />
             </View>
@@ -401,6 +442,11 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
                 onChangeText={setFormLecturer}
                 placeholder="Tên giảng viên"
                 placeholderTextColor={AppColors.textMuted}
+                onFocus={() => {
+                  setTimeout(() => {
+                    scrollViewRef.current?.scrollTo({ y: 390, animated: true });
+                  }, 120);
+                }}
                 style={styles.textInput}
               />
             </View>
@@ -415,6 +461,11 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
                 placeholderTextColor={AppColors.textMuted}
                 multiline
                 numberOfLines={2}
+                onFocus={() => {
+                  setTimeout(() => {
+                    scrollViewRef.current?.scrollToEnd({ animated: true });
+                  }, 120);
+                }}
                 style={[styles.textInput, { minHeight: 50 }]}
               />
             </View>
