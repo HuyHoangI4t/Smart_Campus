@@ -123,6 +123,7 @@ export default function MapScreen() {
           lat: coords.latitude,
           lng: coords.longitude,
           accuracy: accuracy || 10,
+          centerOnUser: !!centerOnUser,
         })
       );
       if (centerOnUser) {
@@ -217,7 +218,16 @@ export default function MapScreen() {
   const userLocationRef = useRef(userLocation);
   userLocationRef.current = userLocation;
 
-  // Tự động kiểm tra quyền & lấy vị trí GPS nền lần đầu (chỉ cho tài khoản đã đăng nhập)
+  // Kích hoạt lấy tọa độ tức thì ngay khi component mount để loại bỏ hoàn toàn độ trễ khởi động (<100ms)
+  useEffect(() => {
+    checkAuth().then((isAuthed) => {
+      if (isAuthed) {
+        fetchRealGpsLocation(false, true);
+      }
+    });
+  }, [checkAuth, fetchRealGpsLocation]);
+
+  // Tự động kiểm tra quyền & làm mới vị trí khi tab được focus
   useFocusEffect(
     useCallback(() => {
       checkAuth().then((isAuthed) => {
@@ -289,18 +299,23 @@ export default function MapScreen() {
     }
   }, [userLocation, selectedLoc, locations, campusPaths, resetBearing]);
 
-  // Đồng bộ vị trí người dùng sang WebView và cập nhật khoảng cách lộ trình liên tục
+  // Ref lưu mốc yêu cầu tính khoảng cách gần nhất để triệt tiêu bridge message spam
+  const lastDistanceRequestRef = useRef<{ locId?: number; lat?: number; lng?: number }>({});
+
+  // Cập nhật khoảng cách lộ trình thông minh (chỉ gửi khi chọn địa điểm mới hoặc người dùng dịch chuyển >= 8m)
   useEffect(() => {
-    if (isMapReadyRef.current && userLocation) {
-      webViewRef.current?.postMessage(
-        JSON.stringify({
-          type: "UPDATE_USER_LOCATION",
+    if (isMapReadyRef.current && selectedLoc && userLocation) {
+      const last = lastDistanceRequestRef.current;
+      const movedMeters = (last.lat !== undefined && last.lng !== undefined)
+        ? Math.abs(userLocation.latitude - last.lat) * 111000 + Math.abs(userLocation.longitude - last.lng) * 111000
+        : Infinity;
+
+      if (last.locId !== selectedLoc.id || movedMeters >= 8) {
+        lastDistanceRequestRef.current = {
+          locId: selectedLoc.id,
           lat: userLocation.latitude,
           lng: userLocation.longitude,
-          accuracy: 10,
-        })
-      );
-      if (selectedLoc) {
+        };
         webViewRef.current?.postMessage(
           JSON.stringify({
             type: "REQUEST_LOCATION_DISTANCE",

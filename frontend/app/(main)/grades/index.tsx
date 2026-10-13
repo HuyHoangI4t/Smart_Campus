@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { View, Text, ScrollView, Pressable, RefreshControl } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -124,26 +124,43 @@ export default function GradesScreen() {
     return { label: "Yếu", color: "#EF4444" };
   };
 
-  const semesters = ["Tất cả", ...Array.from(new Set(grades.map((g) => g.semester)))];
-  const displayedGrades = grades.filter((g) =>
-    selectedSemester === "Tất cả" ? true : g.semester === selectedSemester
+  const semesters = useMemo(
+    () => ["Tất cả", ...Array.from(new Set(grades.map((g) => g.semester)))],
+    [grades]
   );
 
-  // Chỉ tính GPA trên các môn đã có điểm (bỏ qua môn đang học 'X' và môn điều kiện 'P')
-  const gradedCourses = displayedGrades.filter(
-    (g) => g.gradeLetter !== "X" && g.gradeLetter !== "P" && g.grade10 > 0
+  const displayedGrades = useMemo(
+    () => grades.filter((g) => (selectedSemester === "Tất cả" ? true : g.semester === selectedSemester)),
+    [grades, selectedSemester]
   );
-  const totalGradedCredits = gradedCourses.reduce((acc, curr) => acc + curr.credits, 0);
 
-  // Tín chỉ tích lũy: Bỏ các môn chưa học/đang học ('X') và môn không đạt ('F')
-  const accumulatedCourses = displayedGrades.filter(
-    (g) => g.gradeLetter !== "X" && g.gradeLetter !== "F" && (g.gradeLetter || g.grade10 > 0)
-  );
-  const totalCredits = accumulatedCourses.reduce((acc, curr) => acc + curr.credits, 0);
-  const gpa10 = totalGradedCredits > 0 ? (gradedCourses.reduce((acc, curr) => acc + curr.grade10 * curr.credits, 0) / totalGradedCredits).toFixed(2) : "0.00";
-  const totalPoints4 = gradedCourses.reduce((acc, curr) => acc + convertTo4Scale(curr.grade10) * curr.credits, 0);
-  const gpa4 = totalGradedCredits > 0 ? (totalPoints4 / totalGradedCredits).toFixed(2) : "0.00";
-  const academicRank = getAcademicRank(Number(gpa4));
+  // Chỉ tính toán GPA và xếp loại khi danh sách môn học hoặc học kỳ thay đổi, giải phóng CPU khi cuộn trang
+  const { gpa10, gpa4, totalCredits, academicRank } = useMemo(() => {
+    const gradedCourses = displayedGrades.filter(
+      (g) => g.gradeLetter !== "X" && g.gradeLetter !== "P" && g.grade10 > 0
+    );
+    const totalGradedCredits = gradedCourses.reduce((acc, curr) => acc + curr.credits, 0);
+
+    const accumulatedCourses = displayedGrades.filter(
+      (g) => g.gradeLetter !== "X" && g.gradeLetter !== "F" && (g.gradeLetter || g.grade10 > 0)
+    );
+    const totCreds = accumulatedCourses.reduce((acc, curr) => acc + curr.credits, 0);
+    const calculatedGpa10 =
+      totalGradedCredits > 0
+        ? (gradedCourses.reduce((acc, curr) => acc + curr.grade10 * curr.credits, 0) / totalGradedCredits).toFixed(2)
+        : "0.00";
+    const totalPoints4 = gradedCourses.reduce((acc, curr) => acc + convertTo4Scale(curr.grade10) * curr.credits, 0);
+    const calculatedGpa4 =
+      totalGradedCredits > 0 ? (totalPoints4 / totalGradedCredits).toFixed(2) : "0.00";
+    const rank = getAcademicRank(Number(calculatedGpa4));
+
+    return {
+      gpa10: calculatedGpa10,
+      gpa4: calculatedGpa4,
+      totalCredits: totCreds,
+      academicRank: rank,
+    };
+  }, [displayedGrades]);
 
   const getBadgeColor = (letter: string) => {
     const uc = (letter || "").toUpperCase().trim();

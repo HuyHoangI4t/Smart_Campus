@@ -8,6 +8,7 @@ import {
   getTtlCache,
   setTtlCache,
   clearTtlCache,
+  deduplicateRequest,
 } from './client';
 
 export interface CustomSchedulePayload {
@@ -35,50 +36,52 @@ export async function apiGetSchedule(
     if (memoryHit) return memoryHit;
   }
 
-  try {
-    const headers = await getAuthHeaders();
-    const targetMssv = mssv || (headers['X-MSSV'] !== 'guest' ? headers['X-MSSV'] : undefined);
-    const params = new URLSearchParams();
-    if (reload) params.append('reload', 'true');
-    if (options?.week !== undefined) params.append('week', options.week);
-    if (options?.weekOffset !== undefined) params.append('weekOffset', String(options.weekOffset));
-    if (options?.weekIndex !== undefined) params.append('weekIndex', String(options.weekIndex));
+  return deduplicateRequest(ttlKey, async () => {
+    try {
+      const headers = await getAuthHeaders();
+      const targetMssv = mssv || (headers['X-MSSV'] !== 'guest' ? headers['X-MSSV'] : undefined);
+      const params = new URLSearchParams();
+      if (reload) params.append('reload', 'true');
+      if (options?.week !== undefined) params.append('week', options.week);
+      if (options?.weekOffset !== undefined) params.append('weekOffset', String(options.weekOffset));
+      if (options?.weekIndex !== undefined) params.append('weekIndex', String(options.weekIndex));
 
-    const qs = params.toString() ? `?${params.toString()}` : '';
-    const url = targetMssv ? `${API_BASE_URL}/student/schedule/${targetMssv}${qs}` : `${API_BASE_URL}/student/schedule${qs}`;
-    const response = await fetchWithTimeout(url, { headers });
-    const result = await handleResponse(response);
+      const qs = params.toString() ? `?${params.toString()}` : '';
+      const url = targetMssv ? `${API_BASE_URL}/student/schedule/${targetMssv}${qs}` : `${API_BASE_URL}/student/schedule${qs}`;
+      const response = await fetchWithTimeout(url, { headers });
+      const result = await handleResponse(response);
 
-    if (result && result.success) {
-      const finalResult = { ...result, isOfflineCache: false };
-      setTtlCache(ttlKey, finalResult, 30000); // 30s TTL
-      await saveLocalCache(cacheKey, result);
-      return finalResult;
+      if (result && result.success) {
+        const finalResult = { ...result, isOfflineCache: false };
+        setTtlCache(ttlKey, finalResult, 30000); // 30s TTL
+        await saveLocalCache(cacheKey, result);
+        return finalResult;
+      }
+
+      // Nếu server trả về lỗi, thử đọc từ cache offline
+      const cached = await readLocalCache(cacheKey);
+      if (cached && cached.data) {
+        return {
+          ...cached.data,
+          isOfflineCache: true,
+          cachedAt: cached.savedAt,
+        };
+      }
+
+      return result;
+    } catch {
+      // Khi thiết bị hoàn toàn không có mạng hoặc server không phản hồi
+      const cached = await readLocalCache(cacheKey);
+      if (cached && cached.data) {
+        return {
+          ...cached.data,
+          isOfflineCache: true,
+          cachedAt: cached.savedAt,
+        };
+      }
+      return { success: false, message: 'Không thể kết nối lấy lịch học.', tables: [], isOfflineCache: true };
     }
-
-    // Nếu server trả về lỗi, thử đọc từ cache offline
-    const cached = await readLocalCache(cacheKey);
-    if (cached && cached.data) {
-      return {
-        ...cached.data,
-        isOfflineCache: true,
-        cachedAt: cached.savedAt,
-      };
-    }
-
-    return result;
-  } catch {
-    // Khi thiết bị hoàn toàn không có mạng hoặc server không phản hồi
-    const cached = await readLocalCache(cacheKey);
-    if (cached && cached.data) {
-      return {
-        ...cached.data,
-        isOfflineCache: true,
-        cachedAt: cached.savedAt,
-      };
-    }
-    return { success: false, message: 'Không thể kết nối lấy lịch học.', tables: [], isOfflineCache: true };
-  }
+  });
 }
 
 export async function apiCreateCustomSchedule(payload: CustomSchedulePayload) {

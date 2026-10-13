@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet, TouchableOpacity } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { AppColors } from "../../../constants/appColors";
@@ -10,12 +10,16 @@ export interface HomeAlertsSectionProps {
   isLoggedIn: boolean;
   notificationAlerts: NotificationAlertItem[];
   onSelectAlert: (alert: NotificationAlertItem) => void;
+  onDismissAlert?: (alertId: string | number) => void;
+  onDismissAll?: () => void;
 }
 
 export const HomeAlertsSection = React.memo(function HomeAlertsSection({
   isLoggedIn,
   notificationAlerts,
   onSelectAlert,
+  onDismissAlert,
+  onDismissAll,
 }: HomeAlertsSectionProps) {
   const handleAlertPress = (item: NotificationAlertItem) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -25,9 +29,27 @@ export const HomeAlertsSection = React.memo(function HomeAlertsSection({
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Thông báo & Cảnh báo</Text>
-        {isLoggedIn && notificationAlerts && notificationAlerts.length > 0 ? (
-          <Text style={styles.countBadge}>{notificationAlerts.length} tin mới</Text>
+        <View style={styles.titleWithBadge}>
+          <Text style={styles.title}>Thông báo & Cảnh báo</Text>
+          {isLoggedIn && notificationAlerts && notificationAlerts.length > 0 ? (
+            <Text style={styles.countBadge}>{notificationAlerts.length} tin mới</Text>
+          ) : null}
+        </View>
+
+        {isLoggedIn && notificationAlerts && notificationAlerts.length > 0 && onDismissAll ? (
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+              onDismissAll();
+            }}
+            style={styles.clearAllBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="Xoá tất cả thông báo"
+          >
+            <Feather name="trash-2" size={12} color="#EF4444" />
+            <Text style={styles.clearAllText}>Xoá tất cả</Text>
+          </TouchableOpacity>
         ) : null}
       </View>
 
@@ -82,7 +104,24 @@ export const HomeAlertsSection = React.memo(function HomeAlertsSection({
                     {item.date || item.subtitle || "Hôm nay"}
                   </Text>
                 </View>
-                <Feather name="chevron-right" size={16} color={AppColors.textSubtle} />
+
+                {onDismissAlert ? (
+                  <TouchableOpacity
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                      onDismissAlert(item.id);
+                    }}
+                    style={styles.quickDismissBtn}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Xoá thông báo ${item.title}`}
+                  >
+                    <Feather name="x" size={15} color="#94A3B8" />
+                  </TouchableOpacity>
+                ) : (
+                  <Feather name="chevron-right" size={16} color={AppColors.textSubtle} />
+                )}
               </Pressable>
             );
           })}
@@ -108,15 +147,46 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingHorizontal: 2,
   },
+  titleWithBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   title: {
     fontSize: 16,
     fontWeight: "900",
     color: AppColors.text,
   },
   countBadge: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
     color: AppColors.info,
+    backgroundColor: "#EFF6FF",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  clearAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: "#FEE2E2",
+  },
+  clearAllText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#EF4444",
+  },
+  quickDismissBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(148, 163, 184, 0.12)",
   },
   list: {
     gap: 10,

@@ -51,10 +51,25 @@ io.on('connection', (socket) => {
 app.set('io', io);
 
 app.use(cors());
-app.use(express.json({ limit: '2mb' }));
-app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
-// Ghi nhận lượt tương tác của sinh viên / người dùng ứng dụng di động vào MySQL
+// Hàng đợi ghi nhận lượt tương tác (Micro-batched non-blocking queue)
+// Tránh nghẽn Event Loop và giảm tải 95% số lượng truy vấn INSERT đơn lẻ vào MySQL
+const activityLogBatch = [];
+let activityFlushTimer = null;
+
+function flushActivityLogs() {
+  if (activityLogBatch.length === 0) return;
+  const batch = activityLogBatch.splice(0, activityLogBatch.length);
+  const values = batch.map(b => [b.action, b.mssv, b.ip]);
+  db.query('INSERT INTO activity_logs (action, mssv, ip_address) VALUES ?', [values])
+    .then(() => {
+      if (io) io.emit('activity_update');
+    })
+    .catch(() => {});
+}
+
 app.use((req, res, next) => {
   const isApi = req.path.startsWith('/api');
   // LOẠI TRỪ HOÀN TOÀN: các API quản trị Admin, xác thực auth, health check, cron job nội bộ
@@ -68,13 +83,21 @@ app.use((req, res, next) => {
   if (isApi && !isInternal && req.method !== 'OPTIONS') {
     const mssv = req.headers['x-mssv'] || 'guest';
     const action = `${req.method} ${req.path.slice(0, 60)}`;
-    db.query('INSERT INTO activity_logs (action, mssv, ip_address) VALUES (?, ?, ?)', [
+    activityLogBatch.push({
       action,
       mssv,
-      req.ip || '127.0.0.1'
-    ]).then(() => {
-      if (io) io.emit('activity_update');
-    }).catch(() => {});
+      ip: req.ip || '127.0.0.1'
+    });
+
+    if (activityLogBatch.length >= 25) {
+      if (activityFlushTimer) clearTimeout(activityFlushTimer);
+      flushActivityLogs();
+    } else if (!activityFlushTimer) {
+      activityFlushTimer = setTimeout(() => {
+        activityFlushTimer = null;
+        flushActivityLogs();
+      }, 1500);
+    }
   }
   next();
 });

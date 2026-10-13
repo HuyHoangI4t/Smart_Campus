@@ -410,7 +410,9 @@ export default function ScheduleScreen() {
     fetchSchedule(true, { weekIndex: selectedWeekIndex });
   };
 
-  const filtered = scheduleList.filter((item) => item.dayNum === selectedDay);
+  const filtered = useMemo(() => {
+    return scheduleList.filter((item) => item.dayNum === selectedDay);
+  }, [scheduleList, selectedDay]);
 
   const subtitle =
     studentInfo.mssv && studentInfo.mssv !== "guest"

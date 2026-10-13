@@ -8,12 +8,14 @@ export interface HomeNoticeModalProps {
   alert: NotificationAlertItem | null;
   onClose: () => void;
   onNavigate: (screen: string) => void;
+  onDismiss?: (alertId: string | number) => void;
 }
 
 export const HomeNoticeModal = React.memo(function HomeNoticeModal({
   alert,
   onClose,
   onNavigate,
+  onDismiss,
 }: HomeNoticeModalProps) {
   if (!alert) return null;
 
@@ -141,12 +143,29 @@ export const HomeNoticeModal = React.memo(function HomeNoticeModal({
               </TouchableOpacity>
             ) : null}
 
+            {onDismiss ? (
+              <TouchableOpacity
+                onPress={() => {
+                  const id = alert.id;
+                  onClose();
+                  onDismiss(id);
+                }}
+                activeOpacity={0.8}
+                style={styles.deleteModalBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Xoá thông báo này"
+              >
+                <Feather name="trash-2" size={14} color="#EF4444" />
+                <Text style={styles.deleteModalText}>Xoá</Text>
+              </TouchableOpacity>
+            ) : null}
+
             <TouchableOpacity
               onPress={onClose}
               activeOpacity={0.8}
               style={[
                 styles.closeModalBtn,
-                { flex: alert.actionScreen ? 0.6 : 1 },
+                { flex: alert.actionScreen ? 0.5 : onDismiss ? 0.6 : 1 },
               ]}
             >
               <Text style={styles.closeModalText}>Đóng</Text>
@@ -262,6 +281,23 @@ const styles = StyleSheet.create({
   },
   closeModalText: {
     color: "#475569",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  deleteModalBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: "#FEE2E2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+  },
+  deleteModalText: {
+    color: "#EF4444",
     fontSize: 13,
     fontWeight: "700",
   },

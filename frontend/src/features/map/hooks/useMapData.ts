@@ -136,6 +136,11 @@ export function useMapData(params: UseMapDataParams = {}) {
     return targetRoom ? parseCampusRoom(targetRoom).buildingNumber : null;
   }, [targetRoom]);
 
+  // Tọa độ người dùng làm tròn 4 chữ số thập phân (~11m) làm mốc phụ thuộc cho useMemo
+  // Ngăn chặn hoàn toàn hiện tượng chip GPS rung/nhiễu vi mô (<5m) kích hoạt tính lại Dijkstra
+  const userLatQuantized = params.userLocation ? Math.round(params.userLocation.latitude * 10000) / 10000 : null;
+  const userLngQuantized = params.userLocation ? Math.round(params.userLocation.longitude * 10000) / 10000 : null;
+
   // Tính khoảng cách tới địa điểm đang chọn theo mạng lưới đường đi bộ nội bộ (Dijkstra)
   const computedDistanceKm = useMemo(() => {
     if (!selectedLoc || !params.userLocation) return null;
@@ -159,7 +164,7 @@ export function useMapData(params: UseMapDataParams = {}) {
       selectedLoc.lat,
       selectedLoc.lng
     );
-  }, [selectedLoc, params.userLocation, campusPaths]);
+  }, [selectedLoc?.id, userLatQuantized, userLngQuantized, campusPaths.length]);
 
   const computedDistanceText = useMemo(() => {
     if (computedDistanceKm === null) return "";

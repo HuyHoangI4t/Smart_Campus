@@ -73,14 +73,57 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
     stopPositionWatch();
   }, [stopHeadingTracking, stopPositionWatch]);
 
-  // Lấy vị trí GPS thật (tối ưu hóa pin và phản hồi tức thời)
+  // Bắt đầu theo dõi và tinh chỉnh tọa độ ngầm có độ chính xác cao (Background Refinement)
+  // Chip GPS vệ tinh sẽ âm thầm thu hẹp bán kính sai số từng mét khi sẵn sàng mà không làm đơ UI
+  const startPositionWatch = useCallback(async () => {
+    if (!isTabFocusedRef.current || !isMountedRef.current) return;
+    try {
+      if (await isGuestUser()) return;
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (!isTabFocusedRef.current || !isMountedRef.current || status !== "granted") return;
+
+      if (positionSubscriptionRef.current) return;
+
+      const sub = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.Highest,
+          distanceInterval: 1.5, // Cập nhật mượt mà khi di chuyển >= 1.5 mét
+          timeInterval: 1500,     // Chu kỳ quét 1.5 giây
+        },
+        (loc) => {
+          if (!isTabFocusedRef.current || !isMountedRef.current || !loc.coords) return;
+          const now = Date.now();
+          if (now - lastPositionTimeRef.current < 1000) return;
+          lastPositionTimeRef.current = now;
+
+          const freshCoords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+          const acc = loc.coords.accuracy || 5;
+
+          setUserLocation(freshCoords);
+          setCurrentLocationName("GPS thực tế");
+          // Gửi cờ isRefined = true để Leaflet làm mượt vị trí
+          onLocationUpdated?.(freshCoords, acc, false);
+        }
+      );
+
+      positionSubscriptionRef.current = sub;
+      if (isMountedRef.current) setIsWatchingPosition(true);
+    } catch {
+      // Bỏ qua lỗi
+    }
+  }, [onLocationUpdated]);
+
+  // CHIẾN LƯỢC ĐỊNH VỊ LAI (HYBRID LOCATION STRATEGY - GOOGLE MAPS STYLE):
+  // 1. Phản hồi tức thì (<100ms): Đọc ngay vị trí cache (Last Known Location) hoặc vị trí mạng (Balanced/Low qua Wi-Fi/Cell)
+  //    để hiển thị ngay tâm bản đồ, ghim vị trí sơ bộ mà không bắt người dùng phải chờ chip GPS quay.
+  // 2. Tinh chỉnh ngầm (Background Refinement): Kích hoạt request ngầm có độ chính xác cao để mượt mà làm mịn tọa độ.
   const fetchRealGpsLocation = useCallback(
     async (centerOnUser = true, silent = false): Promise<UserCoords | null> => {
       if (!isTabFocusedRef.current || !isMountedRef.current) return null;
       setShowLocationPicker(false);
       setLocationLoading(true);
 
-      let resultCoords: UserCoords | null = null;
+      let instantCoords: UserCoords | null = null;
 
       try {
         if (await isGuestUser()) {
@@ -109,60 +152,74 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
           );
         }
 
-        // Bước 1: Đọc nhanh từ cache OS nhưng CHỈ CHẤP NHẬN nếu sai số nhỏ (accuracy <= 35m)
-        // Tuyệt đối không dùng cache trạm phát sóng di động BTS (sai số 150m - 500m) làm GPS chốt
+        // ── BƯỚC 1: LẤY VỊ TRÍ TỨC THÌ (<100ms) BẰNG CACHE HOẶC ĐỊNH VỊ MẠNG (BALANCED) ──
+        // Tuyệt đối không bật chip GPS vệ tinh công suất cao ngay lúc này để tránh lag/delay
         try {
-          const lastLoc = await Location.getLastKnownPositionAsync({ maxAge: 30000 });
+          const lastLoc = await Location.getLastKnownPositionAsync({ maxAge: 120000 });
           if (isTabFocusedRef.current && isMountedRef.current && lastLoc && lastLoc.coords) {
-            const acc = lastLoc.coords.accuracy || 100;
-            // Chỉ hiển thị tạm thời nếu độ chính xác khả dĩ
-            if (acc <= 45) {
-              const cached = { latitude: lastLoc.coords.latitude, longitude: lastLoc.coords.longitude };
-              resultCoords = cached;
-              setUserLocation(cached);
-              setCurrentLocationName("GPS thực tế");
-              onLocationUpdated?.(cached, acc, centerOnUser);
-            }
+            instantCoords = { latitude: lastLoc.coords.latitude, longitude: lastLoc.coords.longitude };
+            setUserLocation(instantCoords);
+            setCurrentLocationName("Vị trí ước lượng");
+            onLocationUpdated?.(instantCoords, lastLoc.coords.accuracy || 35, centerOnUser);
           }
         } catch {
-          // Bỏ qua
+          // Bỏ qua lỗi cache
         }
 
-        // Bước 2: Quét trực tiếp vệ tinh GPS bằng Accuracy.Highest (độ chính xác cao nhất)
-        const positionPromise = Location.getCurrentPositionAsync({
+        // Nếu chưa có vị trí cache, thử quét nhanh qua Wi-Fi/Cell Tower (Balanced) với timeout siêu ngắn 1.5s
+        if (!instantCoords) {
+          try {
+            const quickPromise = Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+            });
+            const quickTimeout = new Promise<null>((r) => setTimeout(() => r(null), 1500));
+            const quickLoc = (await Promise.race([quickPromise, quickTimeout])) as Location.LocationObject | null;
+            if (isTabFocusedRef.current && isMountedRef.current && quickLoc && quickLoc.coords) {
+              instantCoords = { latitude: quickLoc.coords.latitude, longitude: quickLoc.coords.longitude };
+              setUserLocation(instantCoords);
+              setCurrentLocationName("Vị trí mạng");
+              onLocationUpdated?.(instantCoords, quickLoc.coords.accuracy || 25, centerOnUser);
+            }
+          } catch {
+            // Bỏ qua
+          }
+        }
+
+        // ── BƯỚC 2: TINH CHỈNH VỊ TRÍ NGẦM VỚI ĐỘ CHÍNH XÁC CAO (BACKGROUND REFINEMENT) ──
+        // Sau khi UI đã có vị trí hiển thị, âm thầm gọi request Highest Accuracy và khởi động Watcher
+        // để thu hẹp độ chính xác từng mét ngay khi chip GPS sẵn sàng
+        startPositionWatch();
+
+        Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Highest,
           mayShowUserSettingsDialog: !silent,
-        });
+        })
+          .then((freshLoc) => {
+            if (isTabFocusedRef.current && isMountedRef.current && freshLoc && freshLoc.coords) {
+              const freshCoords = { latitude: freshLoc.coords.latitude, longitude: freshLoc.coords.longitude };
+              setUserLocation(freshCoords);
+              setCurrentLocationName("GPS thực tế");
+              // Tinh chỉnh cập nhật lại tọa độ chính xác cao vào bản đồ (êm dịu, không giật màn hình)
+              onLocationUpdated?.(freshCoords, freshLoc.coords.accuracy || 5, false);
 
-        // Tăng timeout lên 8 giây để chip GNSS phần cứng đủ thời gian kết nối vệ tinh khi ở trong khuôn viên trường
-        const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000));
-        const freshLoc = (await Promise.race([positionPromise, timeoutPromise])) as Location.LocationObject | null;
+              const distKm = calculateDistanceKm(
+                freshCoords.latitude,
+                freshCoords.longitude,
+                TNU_CAMPUS_CENTER.lat,
+                TNU_CAMPUS_CENTER.lng
+              );
+              if (distKm > 2.5 && !silent) {
+                Alert.alert(
+                  "Đang ở ngoài trường",
+                  `GPS xác định bạn đang cách trường ĐH Tây Nguyên ~${distKm.toFixed(1)}km.\n\nNếu muốn test vẽ đường đi bộ nội bộ trường, bạn có thể chọn một trong các 'Vị trí mẫu' tại cổng trường!`
+                );
+              }
+            }
+          })
+          .catch(() => {
+            // Nếu quét Highest accuracy thất bại do trong hầm/nhà kín, watcher vẫn sẽ tiếp tục lắng nghe ngầm
+          });
 
-        if (!isTabFocusedRef.current || !isMountedRef.current) return resultCoords;
-
-        if (freshLoc && freshLoc.coords) {
-          const freshCoords = { latitude: freshLoc.coords.latitude, longitude: freshLoc.coords.longitude };
-          resultCoords = freshCoords;
-          setUserLocation(freshCoords);
-          setCurrentLocationName("GPS thực tế");
-          onLocationUpdated?.(freshCoords, freshLoc.coords.accuracy || 5, centerOnUser);
-
-          const distKm = calculateDistanceKm(
-            freshCoords.latitude,
-            freshCoords.longitude,
-            TNU_CAMPUS_CENTER.lat,
-            TNU_CAMPUS_CENTER.lng
-          );
-          if (distKm > 2.5 && !silent) {
-            Alert.alert(
-              "Đang ở ngoài trường",
-              `GPS xác định bạn đang cách trường ĐH Tây Nguyên ~${distKm.toFixed(1)}km.\n\nNếu muốn test vẽ đường đi bộ nội bộ trường, bạn có thể chọn một trong các 'Vị trí mẫu' tại cổng trường!`
-            );
-          }
-        } else if (!resultCoords) {
-          // Nếu cả cache và fresh đều chưa kịp thì tiếp tục kích hoạt watcher để nhận fix ngay khi vệ tinh khóa
-          startPositionWatch();
-        }
       } catch (err) {
         console.warn("Lỗi vị trí GPS:", err);
         if (!silent && isMountedRef.current) {
@@ -176,46 +233,10 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
           setLocationLoading(false);
         }
       }
-      return resultCoords;
+      return instantCoords;
     },
-    [onLocationUpdated]
+    [onLocationUpdated, startPositionWatch]
   );
-
-  // Bắt đầu theo dõi vị trí liên tục theo thời gian thực (watchPositionAsync độ chính xác cao nhất)
-  const startPositionWatch = useCallback(async () => {
-    if (!isTabFocusedRef.current || !isMountedRef.current) return;
-    try {
-      if (await isGuestUser()) return;
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (!isTabFocusedRef.current || !isMountedRef.current || status !== "granted") return;
-
-      if (positionSubscriptionRef.current) return;
-
-      const sub = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.Highest,
-          distanceInterval: 1.5, // Cập nhật ngay khi người dùng bước đi >= 1.5 mét
-          timeInterval: 1500,     // Chu kỳ 1.5 giây để liên tục tinh chỉnh tọa độ
-        },
-        (loc) => {
-          if (!isTabFocusedRef.current || !isMountedRef.current || !loc.coords) return;
-          const now = Date.now();
-          if (now - lastPositionTimeRef.current < 1000) return;
-          lastPositionTimeRef.current = now;
-
-          const coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
-          setUserLocation(coords);
-          setCurrentLocationName("GPS thực tế");
-          onLocationUpdated?.(coords, loc.coords.accuracy || 5, false);
-        }
-      );
-
-      positionSubscriptionRef.current = sub;
-      if (isMountedRef.current) setIsWatchingPosition(true);
-    } catch {
-      // Bỏ qua lỗi
-    }
-  }, [onLocationUpdated]);
 
   // Chọn vị trí mẫu
   const handleSelectSampleLocation = useCallback(

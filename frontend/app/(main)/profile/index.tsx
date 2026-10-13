@@ -178,26 +178,35 @@ export default function ProfileScreen() {
     if (!newAvatarUri) return;
     setUploadingAvatar(true);
     try {
-      const res = await apiUpdateProfile({
+      // 1. Cập nhật state UI và lưu cục bộ AsyncStorage ngay lập tức
+      const updated = {
         ...profile,
-        fullName: profile.ho_ten,
-        phone: profile.so_dien_thoai,
         avatar: newAvatarUri,
-      });
+      };
+      setProfile(updated);
+      setEditForm((f) => ({ ...f, avatar: newAvatarUri }));
+      await AsyncStorage.setItem("@auth_user", JSON.stringify(updated));
 
-      if (res && res.success) {
-        const updated = {
-          ...profile,
-          avatar: newAvatarUri,
-        };
-        setProfile(updated);
-        setEditForm((f) => ({ ...f, avatar: newAvatarUri }));
-        await AsyncStorage.setItem("@auth_user", JSON.stringify(updated));
-        Alert.alert("Thành công", "Đã cập nhật ảnh đại diện mới.");
-        closeAvatarModal();
-      } else {
-        Alert.alert("Lỗi", res?.message || "Không thể cập nhật ảnh đại diện.");
+      // 2. Đồng bộ hóa lên máy chủ nếu là tài khoản sinh viên đã xác thực
+      const isGuest = !profile.mssv || profile.mssv.toLowerCase().includes("guest") || profile.mssv === "CHUA_DANG_NHAP";
+      if (!isGuest) {
+        try {
+          const res = await apiUpdateProfile({
+            ...profile,
+            fullName: profile.ho_ten,
+            phone: profile.so_dien_thoai,
+            avatar: newAvatarUri,
+          });
+          if (res && !res.success) {
+            console.warn("[Profile] Cảnh báo lưu ảnh máy chủ:", res.message);
+          }
+        } catch (serverErr) {
+          console.warn("[Profile] Không thể đồng bộ ảnh lên máy chủ, đã lưu cục bộ:", serverErr);
+        }
       }
+
+      Alert.alert("Thành công", "Đã cập nhật ảnh đại diện mới.");
+      closeAvatarModal();
     } catch {
       Alert.alert("Lỗi", "Có lỗi xảy ra khi lưu ảnh đại diện.");
     } finally {
@@ -210,13 +219,24 @@ export default function ProfileScreen() {
       const hasPermission = await requestPhotoLibraryPermission();
       if (!hasPermission) return;
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.5,
-        base64: true,
-      });
+      let result: ImagePicker.ImagePickerResult;
+      try {
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.4,
+          base64: true,
+        });
+      } catch {
+        // Dự phòng cho một số thiết bị Android không hỗ trợ crop intent gốc
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: false,
+          quality: 0.4,
+          base64: true,
+        });
+      }
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
@@ -233,12 +253,21 @@ export default function ProfileScreen() {
       const hasPermission = await requestCameraPermission();
       if (!hasPermission) return;
 
-      const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.5,
-        base64: true,
-      });
+      let result: ImagePicker.ImagePickerResult;
+      try {
+        result = await ImagePicker.launchCameraAsync({
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.4,
+          base64: true,
+        });
+      } catch {
+        result = await ImagePicker.launchCameraAsync({
+          allowsEditing: false,
+          quality: 0.4,
+          base64: true,
+        });
+      }
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];

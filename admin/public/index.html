@@ -553,6 +553,57 @@
               </div>
             </div>
 
+            <!-- ANALYTICS HEADER & WEEK SELECTOR TOOLBAR -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 bg-white p-3.5 sm:px-5 rounded-2xl border border-slate-200/80 shadow-sm">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <i data-lucide="calendar" class="w-4 h-4"></i>
+                </div>
+                <div>
+                  <h4 class="text-xs font-bold text-slate-800">Thời Gian Phân Tích & Báo Cáo</h4>
+                  <p class="text-[11px] text-slate-400">Chọn tuần để tra cứu và so sánh dữ liệu hoạt động</p>
+                </div>
+              </div>
+
+              <!-- CONTROLS: PREV, SELECT, NEXT, RESET -->
+              <div class="flex items-center flex-wrap gap-2">
+                <button id="btnPrevChartWeek" type="button" title="Xem tuần trước đó" class="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+                  <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                </button>
+
+                <div class="relative">
+                  <select id="selectChartWeek" class="appearance-none bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer transition-colors">
+                    <option value="0">Tuần này (Hiện tại)</option>
+                    <option value="-1">1 tuần trước</option>
+                    <option value="-2">2 tuần trước</option>
+                    <option value="-3">3 tuần trước</option>
+                    <option value="-4">4 tuần trước</option>
+                    <option value="-5">5 tuần trước</option>
+                    <option value="-6">6 tuần trước</option>
+                    <option value="-7">7 tuần trước</option>
+                    <option value="-8">8 tuần trước</option>
+                    <option value="-9">9 tuần trước</option>
+                    <option value="-10">10 tuần trước</option>
+                    <option value="-11">11 tuần trước</option>
+                    <option value="-12">12 tuần trước (3 tháng)</option>
+                  </select>
+                  <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                </div>
+
+                <button id="btnNextChartWeek" type="button" title="Xem tuần tiếp theo" class="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                  <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                </button>
+
+                <span id="selectedWeekRangeBadge" class="hidden sm:inline-flex items-center text-[11px] font-bold px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-100">
+                  Đang tải...
+                </span>
+
+                <button id="btnResetCurrentWeek" type="button" class="text-[11px] font-bold text-blue-600 hover:text-blue-700 px-2 py-1 rounded-md hover:bg-blue-50 transition-colors">
+                  Về tuần này
+                </button>
+              </div>
+            </div>
+
             <!-- ROW 2: 3 ANALYTICS CHARTS (DOUGHNUT, BAR, SPLINE LINE - MATCHING IMAGE ROW 2) -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <!-- Chart 1: Cơ Cấu Dữ Liệu (Donut Chart) -->
@@ -588,7 +639,7 @@
                 <div>
                   <div class="flex items-center justify-between mb-2">
                     <h4 class="font-bold text-sm text-slate-900">Tần Suất Hoạt Động & Tương Tác</h4>
-                    <span class="text-[11px] font-semibold px-2 py-0.5 bg-slate-100 text-slate-600 rounded-lg">7 ngày qua</span>
+                    <span id="chartActivityWeekBadge" class="text-[11px] font-semibold px-2 py-0.5 bg-slate-100 text-slate-600 rounded-lg">7 ngày qua</span>
                   </div>
                   <p class="text-xs text-slate-500 mb-4">Thống kê lưu lượng truy cập và phản ánh sinh viên</p>
                 </div>
@@ -615,7 +666,7 @@
                 </div>
                 <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
                   <span id="feedbackResolveRate">Đang tải tỷ lệ giải quyết...</span>
-                  <span class="text-slate-400">Chu kỳ T2 - CN</span>
+                  <span id="chartTrendCycleBadge" class="text-slate-400">Chu kỳ T2 - CN</span>
                 </div>
               </div>
             </div>

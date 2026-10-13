@@ -97,70 +97,33 @@ export async function requestAppStartupStoragePermission(): Promise<boolean> {
  */
 export async function requestPhotoLibraryPermission(): Promise<boolean> {
   try {
-    if (await isGuestUser()) {
-      return false;
+    // 1. Thăm dò quyền hiện tại qua Expo ImagePicker
+    const res = await ImagePicker.getMediaLibraryPermissionsAsync();
+    if (res.granted) {
+      return true;
     }
 
+    // 2. Yêu cầu cấp quyền nếu chưa có
+    const req = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (req.granted) {
+      return true;
+    }
+
+    // 3. Trên Android 13+ (API 33+), Android Photo Picker hệ thống (ACTION_PICK_IMAGES)
+    // hoạt động độc lập và không cần quyền bộ nhớ runtime nguy hiểm.
     if (Platform.OS === "android") {
       const androidVersion = typeof Platform.Version === "number" ? Platform.Version : parseInt(String(Platform.Version), 10) || 30;
-
       if (androidVersion >= 33) {
-        const hasMedia = await PermissionsAndroid.check(
-          PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES
-        );
-        if (!hasMedia) {
-          const granted = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
-            {
-              title: "Quyền truy cập thư viện ảnh",
-              message:
-                "Ứng dụng cần quyền truy cập thư viện ảnh để bạn có thể chọn và tải ảnh đại diện lên hệ thống.",
-              buttonNeutral: "Để sau",
-              buttonNegative: "Từ chối",
-              buttonPositive: "Đồng ý",
-            }
-          );
-          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-            promptOpenSettings("thư viện ảnh");
-            return false;
-          }
-        }
-      } else {
-        const hasRead = await PermissionsAndroid.check(
-          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE
-        );
-        if (!hasRead) {
-          const granted = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-            {
-              title: "Quyền truy cập thư viện ảnh",
-              message:
-                "Ứng dụng cần quyền đọc bộ nhớ để chọn ảnh từ thư viện của bạn.",
-              buttonNeutral: "Để sau",
-              buttonNegative: "Từ chối",
-              buttonPositive: "Đồng ý",
-            }
-          );
-          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-            promptOpenSettings("thư viện ảnh");
-            return false;
-          }
-        }
+        return true;
       }
     }
 
-    // Sử dụng Expo ImagePicker Permission
-    const expoStatus = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!expoStatus.granted) {
-      promptOpenSettings("thư viện ảnh");
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.warn("Lỗi yêu cầu quyền thư viện ảnh:", error);
     promptOpenSettings("thư viện ảnh");
     return false;
+  } catch (error) {
+    console.warn("Lỗi yêu cầu quyền thư viện ảnh:", error);
+    // Vẫn trả về true để cho phép hệ thống mở Photo Picker
+    return true;
   }
 }
 
@@ -169,40 +132,18 @@ export async function requestPhotoLibraryPermission(): Promise<boolean> {
  */
 export async function requestCameraPermission(): Promise<boolean> {
   try {
-    if (await isGuestUser()) {
-      return false;
+    const res = await ImagePicker.getCameraPermissionsAsync();
+    if (res.granted) {
+      return true;
     }
 
-    if (Platform.OS === "android") {
-      const hasCamera = await PermissionsAndroid.check(
-        PermissionsAndroid.PERMISSIONS.CAMERA
-      );
-      if (!hasCamera) {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.CAMERA,
-          {
-            title: "Quyền truy cập máy ảnh",
-            message:
-              "Ứng dụng cần quyền máy ảnh để bạn có thể chụp ảnh đại diện mới.",
-            buttonNeutral: "Để sau",
-            buttonNegative: "Từ chối",
-            buttonPositive: "Đồng ý",
-          }
-        );
-        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-          promptOpenSettings("máy ảnh (Camera)");
-          return false;
-        }
-      }
+    const req = await ImagePicker.requestCameraPermissionsAsync();
+    if (req.granted) {
+      return true;
     }
 
-    const expoStatus = await ImagePicker.requestCameraPermissionsAsync();
-    if (!expoStatus.granted) {
-      promptOpenSettings("máy ảnh (Camera)");
-      return false;
-    }
-
-    return true;
+    promptOpenSettings("máy ảnh (Camera)");
+    return false;
   } catch (error) {
     console.warn("Lỗi yêu cầu quyền máy ảnh:", error);
     promptOpenSettings("máy ảnh (Camera)");

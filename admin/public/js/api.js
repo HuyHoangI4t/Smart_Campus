@@ -135,8 +135,9 @@ const AdminAPI = {
   },
 
   // Dashboard Stats (Đã loại bỏ bản ghi điểm)
-  async getStats() {
-    return this.request('/api/admin/stats');
+  async getStats(weekOffset = 0) {
+    const qs = Number(weekOffset) !== 0 ? `?weekOffset=${encodeURIComponent(weekOffset)}` : '';
+    return this.request(`/api/admin/stats${qs}`);
   },
 
   // Users Management

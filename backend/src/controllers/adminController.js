@@ -1,10 +1,27 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
+const { invalidateMapCache } = require('./campusController');
+
+const statsCache = new Map();
+const STATS_CACHE_TTL = 3000;
+
+const invalidateAdminStatsCache = () => {
+  statsCache.clear();
+};
+exports.invalidateAdminStatsCache = invalidateAdminStatsCache;
 
 /**
  * 1. Lấy thống kê tổng quan (Dashboard Stats)
  */
 exports.getDashboardStats = async (req, res) => {
+  const weekOffset = parseInt(req.query.weekOffset || '0', 10) || 0;
+  if (statsCache.has(weekOffset)) {
+    const entry = statsCache.get(weekOffset);
+    if (entry && Date.now() - entry.time < STATS_CACHE_TTL) {
+      return res.json(entry.data);
+    }
+  }
+
   try {
     const [
       [[usersCount]],
@@ -31,6 +48,10 @@ exports.getDashboardStats = async (req, res) => {
     ]);
 
     // 2. Tổng hợp dữ liệu 7 ngày trong tuần (T2 -> CN) thực tế từ MySQL cho biểu đồ
+    // 2. Hỗ trợ chọn tuần xem dữ liệu (weekOffset = 0: tuần này, -1: 1 tuần trước,...)
+    const weekOffset = parseInt(req.query.weekOffset || '0', 10) || 0;
+
+    // Tổng hợp dữ liệu 7 ngày trong tuần (T2 -> CN) thực tế từ MySQL cho biểu đồ
     const dayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
     const currentWeekDays = [];
     const weekLookup = {};
@@ -39,7 +60,8 @@ exports.getDashboardStats = async (req, res) => {
     const dayOfWeek = now.getDay(); // 0 là CN, 1 là T2...
     const distToMon = (dayOfWeek + 6) % 7;
     const monday = new Date(now);
-    monday.setDate(now.getDate() - distToMon);
+    monday.setDate(now.getDate() - distToMon + (weekOffset * 7));
+    monday.setHours(0, 0, 0, 0);
 
     const pad = (n) => String(n).padStart(2, '0');
     const toDateKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -61,7 +83,7 @@ exports.getDashboardStats = async (req, res) => {
       });
     }
 
-    // Tuần trước để so sánh xu hướng thực tế
+    // Tuần trước tuần được chọn để so sánh xu hướng thực tế
     const prevWeekDays = [];
     const prevWeekLookup = {};
     const prevMonday = new Date(monday);
@@ -177,7 +199,22 @@ exports.getDashboardStats = async (req, res) => {
       d.resolved = (d.sosResolved || 0) + (d.feedbackResolved || 0);
     }
 
+    const startD = currentWeekDays[0].date.split('-');
+    const endD = currentWeekDays[6].date.split('-');
+    const weekRangeFormatted = `${startD[2]}/${startD[1]} - ${endD[2]}/${endD[1]}/${endD[0]}`;
+
+    let weekLabel = 'Tuần này';
+    if (weekOffset === -1) weekLabel = 'Tuần trước';
+    else if (weekOffset < -1) weekLabel = `${Math.abs(weekOffset)} tuần trước`;
+    else if (weekOffset === 1) weekLabel = 'Tuần sau';
+    else if (weekOffset > 1) weekLabel = `${weekOffset} tuần sau`;
+
     const activityChart = {
+      weekOffset,
+      weekLabel,
+      weekRangeFormatted,
+      startDate: currentWeekDays[0].date,
+      endDate: currentWeekDays[6].date,
       labels: currentWeekDays.map(d => d.label),
       dates: currentWeekDays.map(d => d.date),
       interactions: currentWeekDays.map(d => d.interactions),
@@ -189,7 +226,7 @@ exports.getDashboardStats = async (req, res) => {
       feedbackResolved: currentWeekDays.map(d => d.feedbackResolved)
     };
 
-    res.json({
+    const responsePayload = {
       success: true,
       stats: {
         totalUsers: Number(usersCount.total || 0),
@@ -204,7 +241,9 @@ exports.getDashboardStats = async (req, res) => {
       activityChart,
       recentFeedback,
       recentSos
-    });
+    };
+    statsCache.set(weekOffset, { time: Date.now(), data: responsePayload });
+    res.json(responsePayload);
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi lấy thống kê admin: ' + error.message });
   }
@@ -618,6 +657,7 @@ exports.createLocation = async (req, res) => {
     ]);
 
     const [rows] = await db.query('SELECT * FROM map_locations WHERE id = ?', [result.insertId]);
+    invalidateMapCache();
 
     res.status(201).json({
       success: true,
@@ -666,6 +706,7 @@ exports.updateLocation = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy địa điểm cần cập nhật.' });
     }
 
+    invalidateMapCache();
     res.json({
       success: true,
       message: 'Cập nhật địa điểm thành công.',
@@ -680,6 +721,7 @@ exports.deleteLocation = async (req, res) => {
   const { id } = req.params;
   try {
     await db.query('DELETE FROM map_locations WHERE id = ?', [id]);
+    invalidateMapCache();
     res.json({ success: true, message: 'Đã xóa địa điểm thành công.' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi xóa địa điểm: ' + error.message });
@@ -690,6 +732,7 @@ exports.resetLocations = async (req, res) => {
   try {
     const { seedMapLocations } = require('../database/seeders');
     const total = await seedMapLocations(db, { force: true });
+    invalidateMapCache();
     res.json({
       success: true,
       message: `Đã khôi phục thành công ${total} địa điểm mặc định của Trường ĐH Tây Nguyên!`,
@@ -734,6 +777,7 @@ exports.createPath = async (req, res) => {
       [pathName, path_type || 'walkway', JSON.stringify(coordinates)]
     );
 
+    invalidateMapCache();
     res.status(201).json({
       success: true,
       message: 'Lưu tuyến đường nội bộ mới thành công.',
@@ -765,6 +809,7 @@ exports.updatePath = async (req, res) => {
       [name ? name.trim() : 'Lối đi nội bộ', path_type || 'walkway', JSON.stringify(coordinates), id]
     );
 
+    invalidateMapCache();
     res.json({
       success: true,
       message: 'Cập nhật tuyến đường thành công.',
@@ -779,6 +824,7 @@ exports.deletePath = async (req, res) => {
   const { id } = req.params;
   try {
     await db.query('DELETE FROM campus_paths WHERE id = ?', [id]);
+    invalidateMapCache();
     res.json({ success: true, message: 'Đã xóa tuyến đường nội bộ thành công.' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi xóa tuyến đường: ' + error.message });
@@ -789,6 +835,7 @@ exports.resetPaths = async (req, res) => {
   try {
     const { seedCampusPaths } = require('../database/seeders');
     const total = await seedCampusPaths(db, { force: true });
+    invalidateMapCache();
     res.json({
       success: true,
       message: `Đã khôi phục ${total} tuyến đường nội bộ mặc định của trường!`,

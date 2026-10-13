@@ -11,10 +11,80 @@ const DashboardModule = {
   },
   isFetching: false,
   lastSosCount: null,
+  currentWeekOffset: 0,
+  currentActivityChart: null,
+  hasBoundWeekEvents: false,
 
   async init() {
+    this.bindWeekControls();
     await this.loadStats(false);
     // Realtime được quản lý tập trung thông qua Socket.IO (Event-driven, 0 HTTP polling)
+  },
+
+  bindWeekControls() {
+    if (this.hasBoundWeekEvents) return;
+    this.hasBoundWeekEvents = true;
+
+    const selectWeek = document.getElementById('selectChartWeek');
+    const btnPrev = document.getElementById('btnPrevChartWeek');
+    const btnNext = document.getElementById('btnNextChartWeek');
+    const btnReset = document.getElementById('btnResetCurrentWeek');
+
+    if (selectWeek) {
+      selectWeek.addEventListener('change', (e) => {
+        const val = parseInt(e.target.value, 10) || 0;
+        this.changeWeekOffset(val);
+      });
+    }
+
+    if (btnPrev) {
+      btnPrev.addEventListener('click', () => {
+        this.changeWeekOffset(this.currentWeekOffset - 1);
+      });
+    }
+
+    if (btnNext) {
+      btnNext.addEventListener('click', () => {
+        if (this.currentWeekOffset < 0) {
+          this.changeWeekOffset(this.currentWeekOffset + 1);
+        }
+      });
+    }
+
+    if (btnReset) {
+      btnReset.addEventListener('click', () => {
+        this.changeWeekOffset(0);
+      });
+    }
+  },
+
+  changeWeekOffset(offset) {
+    this.currentWeekOffset = offset;
+    const selectWeek = document.getElementById('selectChartWeek');
+    if (selectWeek) {
+      let exists = false;
+      for (let i = 0; i < selectWeek.options.length; i++) {
+        if (parseInt(selectWeek.options[i].value, 10) === offset) {
+          selectWeek.selectedIndex = i;
+          exists = true;
+          break;
+        }
+      }
+      if (!exists) {
+        const opt = document.createElement('option');
+        opt.value = offset;
+        opt.text = `${Math.abs(offset)} tuần trước`;
+        selectWeek.appendChild(opt);
+        selectWeek.value = offset;
+      }
+    }
+
+    const btnNext = document.getElementById('btnNextChartWeek');
+    if (btnNext) {
+      btnNext.disabled = offset >= 0;
+    }
+
+    this.loadStats(false);
   },
 
   // Tương thích ngược: Không sử dụng setInterval polling nữa
@@ -53,7 +123,7 @@ const DashboardModule = {
     this.isFetching = true;
 
     try {
-      const res = await AdminAPI.getStats();
+      const res = await AdminAPI.getStats(this.currentWeekOffset);
       if (!res || !res.success) throw new Error(res?.message || 'Không thể tải thống kê');
 
       const stats = res.stats || {};
@@ -126,12 +196,41 @@ const DashboardModule = {
         badgeSosNav.style.display = sosCount > 0 ? 'inline-flex' : 'none';
       }
 
-      // 2. Render biểu đồ Chart.js (3 biểu đồ chuẩn template: Donut, Bar, Spline Line)
+      // 2. Cập nhật nhãn khoảng thời gian tuần
+      const weekChart = res.activityChart || {};
+      const rangeText = weekChart.weekRangeFormatted || '';
+      const weekLabel = weekChart.weekLabel || 'Tuần này';
+
+      const elRangeBadge = document.getElementById('selectedWeekRangeBadge');
+      if (elRangeBadge) {
+        elRangeBadge.textContent = rangeText ? `${rangeText}` : 'Tuần này';
+      }
+
+      const elActBadge = document.getElementById('chartActivityWeekBadge');
+      if (elActBadge) {
+        elActBadge.textContent = this.currentWeekOffset === 0 ? '7 ngày qua' : `${weekLabel} (${rangeText})`;
+      }
+
+      const elTrendBadge = document.getElementById('chartTrendCycleBadge');
+      if (elTrendBadge) {
+        elTrendBadge.textContent = rangeText ? `Chu kỳ T2 - CN (${rangeText})` : 'Chu kỳ T2 - CN';
+      }
+
+      const btnNext = document.getElementById('btnNextChartWeek');
+      if (btnNext) {
+        btnNext.disabled = this.currentWeekOffset >= 0;
+      }
+
+      // 3. Render biểu đồ Chart.js (3 biểu đồ chuẩn template: Donut, Bar, Spline Line)
       this.renderCharts(stats, res.activityChart);
 
-      // 3. Render danh sách gần đây
+      // 4. Render danh sách gần đây
       this.renderRecentFeedback(res.recentFeedback || []);
       this.renderRecentSos(res.recentSos || []);
+
+      if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+      }
 
       if (!silent && window.App && typeof window.App.showToast === 'function') {
         window.App.showToast('Đã làm mới dữ liệu thời gian thực', 'success');
@@ -149,6 +248,7 @@ const DashboardModule = {
 
   renderCharts(stats, activityChart = null) {
     if (typeof Chart === 'undefined') return;
+    this.currentActivityChart = activityChart;
 
     // ─── Biểu đồ 1: Cơ Cấu Dữ Liệu & Tài Khoản (Doughnut Chart) ──────
     const ctxDist = document.getElementById('chartDistribution');
@@ -379,8 +479,9 @@ const DashboardModule = {
               callbacks: {
                 title: (items) => {
                   const idx = items[0]?.dataIndex;
-                  if (activityChart && activityChart.dates && activityChart.dates[idx]) {
-                    return `${items[0].label} (${activityChart.dates[idx]})`;
+                  const current = DashboardModule.currentActivityChart || activityChart;
+                  if (current && current.dates && current.dates[idx]) {
+                    return `${items[0].label} (${current.dates[idx]})`;
                   }
                   return items[0]?.label || '';
                 },
@@ -529,8 +630,9 @@ const DashboardModule = {
               callbacks: {
                 title: (items) => {
                   const idx = items[0]?.dataIndex;
-                  if (activityChart && activityChart.dates && activityChart.dates[idx]) {
-                    return `${items[0].label} (${activityChart.dates[idx]})`;
+                  const current = DashboardModule.currentActivityChart || activityChart;
+                  if (current && current.dates && current.dates[idx]) {
+                    return `${items[0].label} (${current.dates[idx]})`;
                   }
                   return items[0]?.label || '';
                 },

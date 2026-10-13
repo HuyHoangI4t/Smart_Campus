@@ -112,13 +112,43 @@ exports.submitSos = async (req, res) => {
   }
 };
 
+// Bộ nhớ đệm RAM phục vụ tức thì cho các thực thể tĩnh / bán tĩnh (0.1ms)
+let cachedMapLocations = null;
+let mapLocationsCacheTime = 0;
+const MAP_LOCATIONS_TTL = 5 * 60 * 1000; // 5 phút
+
+let cachedCampusPaths = null;
+let campusPathsCacheTime = 0;
+const CAMPUS_PATHS_TTL = 10 * 60 * 1000; // 10 phút
+
+// Hàm dọn cache chủ động khi Admin cập nhật dữ liệu
+const invalidateMapCache = () => {
+  cachedMapLocations = null;
+  mapLocationsCacheTime = 0;
+  cachedCampusPaths = null;
+  campusPathsCacheTime = 0;
+};
+exports.invalidateMapCache = invalidateMapCache;
+
 // Get Map Locations (với đầy đủ danh mục và phân tầng)
 exports.getMapLocations = async (req, res) => {
   const CATEGORIES = ["Tất cả", "Giảng đường", "Học tập", "Phòng máy", "Dịch vụ", "Y tế", "Tiện ích", "WC", "Hành chính", "Ký túc xá"];
 
+  // 1. Kiểm tra RAM Cache (0.1ms)
+  if (cachedMapLocations && Date.now() - mapLocationsCacheTime < MAP_LOCATIONS_TTL) {
+    return res.json({
+      success: true,
+      categories: CATEGORIES,
+      locations: cachedMapLocations,
+      isRamCached: true
+    });
+  }
+
   try {
     const [rows] = await db.query('SELECT * FROM map_locations ORDER BY id ASC');
     if (rows && rows.length > 0) {
+      cachedMapLocations = rows;
+      mapLocationsCacheTime = Date.now();
       return res.json({
         success: true,
         categories: CATEGORIES,
@@ -130,6 +160,8 @@ exports.getMapLocations = async (req, res) => {
     const { seedMapLocations } = require('../database/seeders');
     await seedMapLocations(db);
     const [freshRows] = await db.query('SELECT * FROM map_locations ORDER BY id ASC');
+    cachedMapLocations = freshRows;
+    mapLocationsCacheTime = Date.now();
     return res.json({
       success: true,
       categories: CATEGORIES,
@@ -305,12 +337,23 @@ exports.getDashboard = async (req, res) => {
 
 // Lấy danh sách mạng lưới đường đi nội bộ khuôn viên trường
 exports.getCampusPaths = async (req, res) => {
+  if (cachedCampusPaths && Date.now() - campusPathsCacheTime < CAMPUS_PATHS_TTL) {
+    return res.json({
+      success: true,
+      count: cachedCampusPaths.length,
+      paths: cachedCampusPaths,
+      isRamCached: true
+    });
+  }
+
   try {
     const [rows] = await db.query('SELECT * FROM campus_paths ORDER BY id ASC');
     const paths = rows.map(r => ({
       ...r,
       coordinates: typeof r.coordinates === 'string' ? JSON.parse(r.coordinates) : r.coordinates
     }));
+    cachedCampusPaths = paths;
+    campusPathsCacheTime = Date.now();
     res.json({ success: true, count: paths.length, paths });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi tải mạng lưới đường nội bộ: ' + error.message });

@@ -7,28 +7,32 @@ import {
   readLocalCache,
   getTtlCache,
   setTtlCache,
+  deduplicateRequest,
 } from './client';
 
 export async function apiGetProfile(mssv?: string) {
-  try {
-    const headers = await getAuthHeaders();
-    const targetMssv = mssv || (headers['X-MSSV'] !== 'guest' ? headers['X-MSSV'] : undefined);
-    const ttlKey = `profile_${targetMssv || 'self'}`;
+  const targetMssv = mssv || 'self';
+  const ttlKey = `profile_${targetMssv}`;
 
-    const cached = getTtlCache<any>(ttlKey);
-    if (cached) return cached;
+  const cached = getTtlCache<any>(ttlKey);
+  if (cached) return cached;
 
-    const url = targetMssv ? `${API_BASE_URL}/student/profile/${targetMssv}` : `${API_BASE_URL}/student/profile`;
-    const response = await fetchWithTimeout(url, { headers });
-    const result = await handleResponse(response);
+  return deduplicateRequest(ttlKey, async () => {
+    try {
+      const headers = await getAuthHeaders();
+      const actualMssv = mssv || (headers['X-MSSV'] !== 'guest' ? headers['X-MSSV'] : undefined);
+      const url = actualMssv ? `${API_BASE_URL}/student/profile/${actualMssv}` : `${API_BASE_URL}/student/profile`;
+      const response = await fetchWithTimeout(url, { headers });
+      const result = await handleResponse(response);
 
-    if (result && result.success) {
-      setTtlCache(ttlKey, result, 60000); // 1 minute TTL
+      if (result && result.success) {
+        setTtlCache(ttlKey, result, 60000); // 1 minute TTL
+      }
+      return result;
+    } catch {
+      return { success: false, message: 'Lỗi tải thông tin sinh viên.' };
     }
-    return result;
-  } catch {
-    return { success: false, message: 'Lỗi tải thông tin sinh viên.' };
-  }
+  });
 }
 
 export async function apiUpdateProfile(payload: {
@@ -63,42 +67,44 @@ export async function apiGetGrades(mssv?: string, reload = false) {
     if (memoryHit) return memoryHit;
   }
 
-  try {
-    const headers = await getAuthHeaders();
-    const targetMssv = mssv || (headers['X-MSSV'] !== 'guest' ? headers['X-MSSV'] : undefined);
-    const qs = reload ? '?reload=true' : '';
-    const url = targetMssv ? `${API_BASE_URL}/student/grades/${targetMssv}${qs}` : `${API_BASE_URL}/student/grades${qs}`;
-    const response = await fetchWithTimeout(url, { headers });
-    const result = await handleResponse(response);
+  return deduplicateRequest(ttlKey, async () => {
+    try {
+      const headers = await getAuthHeaders();
+      const targetMssv = mssv || (headers['X-MSSV'] !== 'guest' ? headers['X-MSSV'] : undefined);
+      const qs = reload ? '?reload=true' : '';
+      const url = targetMssv ? `${API_BASE_URL}/student/grades/${targetMssv}${qs}` : `${API_BASE_URL}/student/grades${qs}`;
+      const response = await fetchWithTimeout(url, { headers });
+      const result = await handleResponse(response);
 
-    if (result && result.success) {
-      setTtlCache(ttlKey, { ...result, isOfflineCache: false }, 60000);
-      await saveLocalCache(cacheKey, result);
-      return { ...result, isOfflineCache: false };
-    }
+      if (result && result.success) {
+        setTtlCache(ttlKey, { ...result, isOfflineCache: false }, 60000);
+        await saveLocalCache(cacheKey, result);
+        return { ...result, isOfflineCache: false };
+      }
 
-    // Nếu server trả về lỗi, thử đọc từ cache offline
-    const cached = await readLocalCache(cacheKey);
-    if (cached && cached.data) {
-      return {
-        ...cached.data,
-        isOfflineCache: true,
-        cachedAt: cached.savedAt,
-      };
-    }
+      // Nếu server trả về lỗi, thử đọc từ cache offline
+      const cached = await readLocalCache(cacheKey);
+      if (cached && cached.data) {
+        return {
+          ...cached.data,
+          isOfflineCache: true,
+          cachedAt: cached.savedAt,
+        };
+      }
 
-    return result;
-  } catch {
-    // Khi thiết bị hoàn toàn không có mạng hoặc server không phản hồi
-    const cached = await readLocalCache(cacheKey);
-    if (cached && cached.data) {
-      return {
-        ...cached.data,
-        isOfflineCache: true,
-        cachedAt: cached.savedAt,
-      };
+      return result;
+    } catch {
+      // Khi thiết bị hoàn toàn không có mạng hoặc server không phản hồi
+      const cached = await readLocalCache(cacheKey);
+      if (cached && cached.data) {
+        return {
+          ...cached.data,
+          isOfflineCache: true,
+          cachedAt: cached.savedAt,
+        };
+      }
+      return { success: false, message: 'Không thể kết nối lấy điểm số.', data: [], isOfflineCache: true };
     }
-    return { success: false, message: 'Không thể kết nối lấy điểm số.', data: [], isOfflineCache: true };
-  }
+  });
 }
 

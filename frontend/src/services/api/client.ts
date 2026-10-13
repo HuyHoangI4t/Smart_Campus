@@ -155,3 +155,23 @@ export function clearTtlCache(keyPattern?: string): void {
   }
 }
 
+// ─── IN-FLIGHT DEDUPLICATION TIER (Chống trùng lặp request đang chờ) ─────────
+// Khi nhiều component cùng gọi API đồng thời, chỉ 1 request mạng thực sự được gửi,
+// các luồng còn lại cùng chia sẻ Promise đang chờ kết quả, tiết kiệm Pin và Băng thông di động.
+const inFlightRequests = new Map<string, Promise<any>>();
+
+export function deduplicateRequest<T>(key: string, requestFn: () => Promise<T>): Promise<T> {
+  const existing = inFlightRequests.get(key);
+  if (existing) {
+    return existing as Promise<T>;
+  }
+
+  const promise = requestFn()
+    .finally(() => {
+      inFlightRequests.delete(key);
+    });
+
+  inFlightRequests.set(key, promise);
+  return promise;
+}
+

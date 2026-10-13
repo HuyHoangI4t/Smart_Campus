@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -73,6 +73,48 @@ export default function HomeScreen() {
   const [notificationAlerts, setNotificationAlerts] = useState<NotificationAlertItem[]>([]);
   const [selectedAlertForModal, setSelectedAlertForModal] = useState<NotificationAlertItem | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
+  const dismissedAlertIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    AsyncStorage.getItem("@dismissed_home_alerts").then((stored) => {
+      if (stored) {
+        try {
+          const list: string[] = JSON.parse(stored);
+          dismissedAlertIdsRef.current = new Set(list.map(String));
+        } catch {}
+      }
+    });
+  }, []);
+
+  const handleDismissAlert = useCallback(async (alertId: string | number) => {
+    const idStr = String(alertId);
+    dismissedAlertIdsRef.current.add(idStr);
+    setNotificationAlerts((prev) => prev.filter((item) => String(item.id) !== idStr));
+    try {
+      const stored = await AsyncStorage.getItem("@dismissed_home_alerts");
+      const list: string[] = stored ? JSON.parse(stored) : [];
+      if (!list.includes(idStr)) {
+        list.push(idStr);
+        await AsyncStorage.setItem("@dismissed_home_alerts", JSON.stringify(list));
+      }
+    } catch (e) {
+      console.warn("Lỗi lưu trạng thái xoá thông báo:", e);
+    }
+  }, []);
+
+  const handleDismissAllAlerts = useCallback(async () => {
+    const allIds = notificationAlerts.map((item) => String(item.id));
+    allIds.forEach((id) => dismissedAlertIdsRef.current.add(id));
+    setNotificationAlerts([]);
+    try {
+      const stored = await AsyncStorage.getItem("@dismissed_home_alerts");
+      const list: string[] = stored ? JSON.parse(stored) : [];
+      const updated = Array.from(new Set([...list, ...allIds]));
+      await AsyncStorage.setItem("@dismissed_home_alerts", JSON.stringify(updated));
+    } catch (e) {
+      console.warn("Lỗi lưu trạng thái xoá tất cả thông báo:", e);
+    }
+  }, [notificationAlerts]);
 
   // Chuyển ngày tháng thành timestamp mili-giây để sắp xếp
   const parseArticleTimestamp = (item: any): number => {
@@ -144,13 +186,16 @@ export default function HomeScreen() {
       if (dashRes.student && isRealAccount) {
         setStudent((prev) => ({ ...prev, ...dashRes.student }));
       }
+      let rawAlerts: NotificationAlertItem[] = [];
       if (Array.isArray(dashRes.notificationAlerts)) {
-        setNotificationAlerts(dashRes.notificationAlerts);
+        rawAlerts = dashRes.notificationAlerts;
       } else if (Array.isArray(dashRes.alerts)) {
-        setNotificationAlerts(dashRes.alerts);
-      } else {
-        setNotificationAlerts([]);
+        rawAlerts = dashRes.alerts;
       }
+      const filtered = rawAlerts.filter(
+        (item) => !dismissedAlertIdsRef.current.has(String(item.id))
+      );
+      setNotificationAlerts(filtered);
     } else {
       setNotificationAlerts([]);
     }
@@ -440,6 +485,8 @@ export default function HomeScreen() {
               isLoggedIn={isLoggedIn}
               notificationAlerts={notificationAlerts}
               onSelectAlert={setSelectedAlertForModal}
+              onDismissAlert={handleDismissAlert}
+              onDismissAll={handleDismissAllAlerts}
             />
 
             {/* 7. THÔNG BÁO SINH VIÊN (RSS THONGBAOSV) */}
@@ -466,6 +513,7 @@ export default function HomeScreen() {
         alert={selectedAlertForModal}
         onClose={() => setSelectedAlertForModal(null)}
         onNavigate={onNavigate}
+        onDismiss={handleDismissAlert}
       />
     </View>
   );

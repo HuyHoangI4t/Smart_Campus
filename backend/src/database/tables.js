@@ -284,13 +284,26 @@ async function createAllTables(connection) {
   await safeAddColumn(connection, 'feedback', 'rating', 'INT DEFAULT 5');
   await safeAddColumn(connection, 'sos_alerts', 'incident_type', "VARCHAR(100) DEFAULT 'Khẩn cấp'");
 
-  // Đảm bảo các chỉ mục tăng tốc truy vấn
+  // Đảm bảo các chỉ mục tăng tốc truy vấn (Composite Indexes)
   await safeAddIndex(connection, 'feedback', 'mssv', 'idx_feedback_mssv');
+  await safeAddIndex(connection, 'feedback', 'mssv, id', 'idx_feedback_mssv_id');
+  await safeAddIndex(connection, 'feedback', 'status', 'idx_feedback_status');
+  await safeAddIndex(connection, 'feedback', 'created_at', 'idx_feedback_created');
+
   await safeAddIndex(connection, 'sos_alerts', 'mssv', 'idx_sos_mssv');
+  await safeAddIndex(connection, 'sos_alerts', 'mssv, id', 'idx_sos_mssv_id');
+  await safeAddIndex(connection, 'sos_alerts', 'status', 'idx_sos_status');
+  await safeAddIndex(connection, 'sos_alerts', 'created_at', 'idx_sos_created');
+
   await safeAddIndex(connection, 'student_grades', 'mssv', 'idx_student_grades_mssv');
+  await safeAddIndex(connection, 'student_grades', 'mssv, created_at', 'idx_grades_mssv_created');
+
   await safeAddIndex(connection, 'student_schedules', 'mssv', 'idx_student_schedules_mssv');
+  await safeAddIndex(connection, 'student_schedules', 'mssv, is_custom', 'idx_sched_mssv_custom');
   await safeAddIndex(connection, 'student_schedules', 'week_range', 'idx_sched_week_range');
   await safeAddIndex(connection, 'student_schedules', 'ngay_hoc', 'idx_sched_ngay_hoc');
+
+  await safeAddIndex(connection, 'notifications', 'created_at', 'idx_notif_created');
   await safeAddIndex(connection, 'news_cache', 'type', 'idx_news_cache_type');
   await safeAddIndex(connection, 'activity_logs', 'created_at', 'idx_act_created');
 }

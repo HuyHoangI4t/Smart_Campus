@@ -2,6 +2,8 @@ import { LocationItem, CampusPath, CampusGate } from "./types";
 import { TNU_CAMPUS_GATES } from "./constants";
 import { LEAFLET_CSS, LEAFLET_JS } from "./leafletBundle";
 
+const htmlCache = new Map<string, string>();
+
 export function generateLeafletMapHtml(
   locations: LocationItem[],
   boundary: [number, number][],
@@ -9,6 +11,10 @@ export function generateLeafletMapHtml(
   campusPaths: CampusPath[] = [],
   gates: CampusGate[] = TNU_CAMPUS_GATES
 ): string {
+  const cacheKey = `${locations.length}_${campusPaths.length}_${gates.length}_${boundary.length}`;
+  if (htmlCache.has(cacheKey)) {
+    return htmlCache.get(cacheKey)!;
+  }
   const safeJson = (data: any) => JSON.stringify(data).replace(/</g, "\\u003c").replace(/>/g, "\\u003e");
   // Tối ưu hóa: Chỉ gửi metadata gọn nhẹ (id, lat, lng, icon, color, category) vào WebView
   const lightweightLocations = locations.map((l) => ({
@@ -25,7 +31,7 @@ export function generateLeafletMapHtml(
   const campusPathsJson = safeJson(campusPaths);
   const gatesJson = safeJson(gates);
 
-  return `<!DOCTYPE html>
+  const finalHtml = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
@@ -346,6 +352,9 @@ ${LEAFLET_JS}
     map.whenReady(function() {
       applyBearing(0, false);
       handleZoomOptimization();
+      setTimeout(function() {
+        getCampusGraph();
+      }, 150);
     });
 
     function handleZoomOptimization() {
@@ -682,26 +691,6 @@ ${LEAFLET_JS}
       var origIn = isPointInCampus(origLat, origLng);
       var destIn = isPointInCampus(destLat, destLng);
 
-      var nearStartGate = null;
-      for (var gIdx = 0; gIdx < gatesData.length; gIdx++) {
-        var gItem = gatesData[gIdx];
-        var dStartGate = Math.min(
-          getDistanceMeters(origLat, origLng, gItem.outsidePoint[0], gItem.outsidePoint[1]),
-          getDistanceMeters(origLat, origLng, gItem.gatePoint[0], gItem.gatePoint[1]),
-          getDistanceMeters(origLat, origLng, gItem.insidePoint[0], gItem.insidePoint[1])
-        );
-        if (dStartGate <= 70) {
-          nearStartGate = gItem;
-          break;
-        }
-      }
-
-      if (!origIn && nearStartGate && destIn) {
-        origIn = true;
-        origLat = nearStartGate.insidePoint[0];
-        origLng = nearStartGate.insidePoint[1];
-      }
-
       // Trong trường -> Trong trường
       if (origIn && destIn) {
         var internal = findCampusWalkwayRoute(origLat, origLng, destLat, destLng);
@@ -723,13 +712,18 @@ ${LEAFLET_JS}
             ? intRoute.distanceMeters
             : getDistanceMeters(gate.insidePoint[0], gate.insidePoint[1], destLat, destLng);
           var gateDist = getDistanceMeters(gate.outsidePoint[0], gate.outsidePoint[1], gate.insidePoint[0], gate.insidePoint[1]);
+          var fastExt = buildPerimeterRoadFallback(origLat, origLng, gate.outsidePoint[0], gate.outsidePoint[1]);
+          var instantTotDist = Math.round(fastExt.distance + gateDist + intDist);
+          // Trả kết quả tức thì (0ms) cho Card xem trước
+          callback(instantTotDist, Math.max(1, Math.round(instantTotDist / 75)));
 
+          // Tinh chỉnh ngầm bằng OSRM nếu có kết nối mạng
           fetchExternalOsrmRoute(origLat, origLng, gate.outsidePoint[0], gate.outsidePoint[1], function(extCoords, extDist, extDur) {
-            var safeExtDist = (extDist !== null && extDist !== undefined)
-              ? extDist
-              : getDistanceMeters(origLat, origLng, gate.outsidePoint[0], gate.outsidePoint[1]);
-            var totDist = Math.round(safeExtDist + gateDist + intDist);
-            callback(totDist, Math.max(1, Math.round(totDist / 75)));
+            if (extDist !== null && extDist !== undefined) {
+              var safeExtDist = extDist;
+              var refinedTotDist = Math.round(safeExtDist + gateDist + intDist);
+              callback(refinedTotDist, Math.max(1, Math.round(refinedTotDist / 75)));
+            }
           });
           return;
         }
@@ -737,12 +731,12 @@ ${LEAFLET_JS}
 
       // Ngoài trường -> Ngoài trường
       if (!origIn && !destIn) {
+        var fastExtRoad = buildPerimeterRoadFallback(origLat, origLng, destLat, destLng);
+        callback(fastExtRoad.distance, fastExtRoad.duration);
+
         fetchExternalOsrmRoute(origLat, origLng, destLat, destLng, function(extCoords, extDist, extDur) {
           if (extDist !== null && extDist !== undefined) {
             callback(extDist, extDur || Math.max(1, Math.round(extDist / 75)));
-          } else {
-            var straight = getDistanceMeters(origLat, origLng, destLat, destLng);
-            callback(straight, Math.max(1, Math.round(straight / 75)));
           }
         });
         return;
@@ -783,7 +777,12 @@ ${LEAFLET_JS}
       '</div>';
     }
 
-    function updateUserLocation(lat, lng, accuracy, heading) {
+    var isFirstLocationUpdate = true;
+
+    function updateUserLocation(lat, lng, accuracy, heading, centerOnUser) {
+      var prevLat = currentUserLat;
+      var prevLng = currentUserLng;
+
       currentUserLat = lat;
       currentUserLng = lng;
 
@@ -807,7 +806,8 @@ ${LEAFLET_JS}
         userLocationMarker = L.marker([lat, lng], { icon: userIcon, zIndexOffset: 1000 }).addTo(map);
       }
 
-      if (accuracy && accuracy > 0 && accuracy <= 250) {
+      // Vòng tròn bán kính sai số (Accuracy Circle)
+      if (accuracy && accuracy > 0 && accuracy <= 500) {
         if (userAccuracyCircle) {
           userAccuracyCircle.setLatLng([lat, lng]);
           userAccuracyCircle.setRadius(accuracy);
@@ -824,6 +824,26 @@ ${LEAFLET_JS}
       } else if (userAccuracyCircle) {
         map.removeLayer(userAccuracyCircle);
         userAccuracyCircle = null;
+      }
+
+      // Xử lý cập nhật tâm bản đồ mượt mà (Google Maps Style):
+      // - Lần đầu tiên nhận tọa độ (Instant Cache/Network): setView hoặc panTo ngay trong <100ms
+      // - Khi có tinh chỉnh độ chính xác cao (Refinement): panTo mượt mà (animation duration 0.5s), không giật nảy
+      if (centerOnUser) {
+        map.panTo([lat, lng], { animate: true, duration: 0.6 });
+        isFirstLocationUpdate = false;
+      } else if (isFirstLocationUpdate) {
+        map.setView([lat, lng], map.getZoom() || 17, { animate: false });
+        isFirstLocationUpdate = false;
+      } else if (prevLat !== null && prevLng !== null) {
+        var dShift = getDistanceMeters(prevLat, prevLng, lat, lng);
+        // Nếu tọa độ tinh chỉnh có độ dịch chuyển đáng kể (5m - 100m) và người dùng chưa chủ động kéo bản đồ ra xa
+        if (dShift >= 5 && dShift <= 120) {
+          var bounds = map.getBounds();
+          if (bounds.contains([lat, lng])) {
+            map.panTo([lat, lng], { animate: true, duration: 0.5 });
+          }
+        }
       }
     }
 
@@ -976,16 +996,48 @@ ${LEAFLET_JS}
         return null;
       }
 
-      // Dijkstra
+      // Dijkstra O((V + E) log V) siêu tốc với MinHeap Priority Queue
+      function WebviewMinHeap() {
+        this.heap = [];
+      }
+      WebviewMinHeap.prototype.push = function(item) {
+        this.heap.push(item);
+        var idx = this.heap.length - 1;
+        while (idx > 0) {
+          var pIdx = (idx - 1) >> 1;
+          if (this.heap[idx].dist >= this.heap[pIdx].dist) break;
+          var tmp = this.heap[idx]; this.heap[idx] = this.heap[pIdx]; this.heap[pIdx] = tmp;
+          idx = pIdx;
+        }
+      };
+      WebviewMinHeap.prototype.pop = function() {
+        if (this.heap.length === 0) return null;
+        var top = this.heap[0];
+        var bottom = this.heap.pop();
+        if (this.heap.length > 0) {
+          this.heap[0] = bottom;
+          var idx = 0, len = this.heap.length;
+          while (true) {
+            var left = (idx << 1) + 1, right = left + 1, smallest = idx;
+            if (left < len && this.heap[left].dist < this.heap[smallest].dist) smallest = left;
+            if (right < len && this.heap[right].dist < this.heap[smallest].dist) smallest = right;
+            if (smallest === idx) break;
+            var t = this.heap[idx]; this.heap[idx] = this.heap[smallest]; this.heap[smallest] = t;
+            idx = smallest;
+          }
+        }
+        return top;
+      };
+
       var dist = {};
       var prev = {};
       var visited = {};
-      var pq = [{ node: startNode, dist: 0 }];
+      var pq = new WebviewMinHeap();
       dist[startNode] = 0;
+      pq.push({ node: startNode, dist: 0 });
 
-      while (pq.length > 0) {
-        pq.sort(function(a, b) { return a.dist - b.dist; });
-        var cur = pq.shift();
+      while (pq.heap.length > 0) {
+        var cur = pq.pop();
         var u = cur.node;
 
         if (visited[u]) continue;
@@ -1033,9 +1085,9 @@ ${LEAFLET_JS}
       return result;
     }
 
-    // Kiểm tra tọa độ có nằm bên trong tường bao khuôn viên trường không (Ray-casting + Buffer Zone)
+    // Kiểm tra tọa độ có nằm bên trong tường bao khuôn viên trường không (Thuật toán Ray-Casting)
     function isPointInCampus(lat, lng) {
-      if (!boundaryData || boundaryData.length < 3) return true;
+      if (!boundaryData || boundaryData.length < 3) return false;
       var x = lat, y = lng;
       var inside = false;
       for (var i = 0, j = boundaryData.length - 1; i < boundaryData.length; j = i++) {
@@ -1045,15 +1097,7 @@ ${LEAFLET_JS}
           (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
         if (intersect) inside = !inside;
       }
-      if (inside) return true;
-
-      // Vùng đệm thông minh (Buffer Zone): Nếu tọa độ cách tâm trường <= 550m,
-      // thì chắc chắn người dùng đang ở trong khuôn viên (tránh trường hợp GPS lệch nhẹ qua hàng rào khiến thuật toán ép đi vòng ra Cổng chính ngoài đường)
-      if (centerData && centerData.length >= 2) {
-        var distToCenter = getDistanceMeters(lat, lng, centerData[0], centerData[1]);
-        if (distToCenter <= 550) return true;
-      }
-      return false;
+      return inside;
     }
 
     // Chọn Cổng trường tối ưu (Cổng trước Lê Duẩn hoặc Cổng sau Y Wang)
@@ -1105,29 +1149,140 @@ ${LEAFLET_JS}
       return result;
     }
 
-    // Lấy chỉ đường ngoài đường phố công cộng qua OSRM (Google Maps road network)
-    function fetchExternalOsrmRoute(startLat, startLng, targetLat, targetLng, callback) {
-      var osrmUrl = 'https://router.project-osrm.org/route/v1/walking/' +
-        startLng + ',' + startLat + ';' + targetLng + ',' + targetLat +
-        '?overview=full&geometries=geojson';
+    // Tuyến đường trục giao thông chính bao quanh trường (Đường Lê Duẩn & Đường Y Wang)
+    var EXTERIOR_PERIMETER_ROADS = {
+      leDuan: [
+        [12.64800, 108.02210],
+        [12.64936, 108.02271],
+        [12.650645, 108.022990], // Cổng Bệnh viện ĐH Tây Nguyên
+        [12.651536, 108.023856], // Cổng chính (Lê Duẩn)
+        [12.65267, 108.02494],
+        [12.65386, 108.02579]
+      ],
+      yWang: [
+        [12.64650, 108.02650],
+        [12.64748, 108.02705],
+        [12.648372, 108.028044], // Cổng sau (Y Wang)
+        [12.64950, 108.02925],
+        [12.65013, 108.02963]
+      ]
+    };
 
-      fetch(osrmUrl)
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
-          if (data && data.routes && data.routes.length > 0) {
-            var coords = data.routes[0].geometry.coordinates.map(function(c) {
-              return [c[1], c[0]];
-            });
-            var distMeters = Math.round(data.routes[0].distance);
-            var durMin = Math.max(1, Math.round(data.routes[0].duration / 60));
-            callback(coords, distMeters, durMin);
-          } else {
-            callback(null, null, null);
-          }
-        })
-        .catch(function(err) {
-          callback(null, null, null);
-        });
+    function buildPerimeterRoadFallback(startLat, startLng, targetLat, targetLng) {
+      var road = (startLng <= 108.0255 && targetLng <= 108.0255)
+        ? EXTERIOR_PERIMETER_ROADS.leDuan
+        : EXTERIOR_PERIMETER_ROADS.yWang;
+
+      var sIdx = 0, minSDist = Infinity;
+      var tIdx = 0, minTDist = Infinity;
+
+      for (var r = 0; r < road.length; r++) {
+        var ds = getDistanceMeters(startLat, startLng, road[r][0], road[r][1]);
+        if (ds < minSDist) { minSDist = ds; sIdx = r; }
+        var dt = getDistanceMeters(targetLat, targetLng, road[r][0], road[r][1]);
+        if (dt < minTDist) { minTDist = dt; tIdx = r; }
+      }
+
+      var coords = [[startLat, startLng]];
+      if (sIdx <= tIdx) {
+        for (var i = sIdx; i <= tIdx; i++) coords.push([road[i][0], road[i][1]]);
+      } else {
+        for (var i = sIdx; i >= tIdx; i--) coords.push([road[i][0], road[i][1]]);
+      }
+      coords.push([targetLat, targetLng]);
+
+      var totalD = 0;
+      for (var c = 0; c < coords.length - 1; c++) {
+        totalD += getDistanceMeters(coords[c][0], coords[c][1], coords[c + 1][0], coords[c + 1][1]);
+      }
+      return {
+        coords: coords,
+        distance: Math.round(totalD),
+        duration: Math.max(1, Math.round(totalD / 75))
+      };
+    }
+
+    // Bộ nhớ đệm tuyến đường ngoại vi & Deduplication đang chờ
+    var externalRouteCache = {};
+    var externalInFlight = {};
+
+    // Lấy chỉ đường ngoài đường phố công cộng qua OpenStreetMap / OSRM đa tầng với timeout & fallback
+    function fetchExternalOsrmRoute(startLat, startLng, targetLat, targetLng, callback) {
+      var directDist = getDistanceMeters(startLat, startLng, targetLat, targetLng);
+      if (directDist <= 12) {
+        callback([[startLat, startLng], [targetLat, targetLng]], directDist, 1);
+        return;
+      }
+
+      var cacheKey = startLat.toFixed(4) + ',' + startLng.toFixed(4) + '->' + targetLat.toFixed(4) + ',' + targetLng.toFixed(4);
+      if (externalRouteCache[cacheKey]) {
+        var hit = externalRouteCache[cacheKey];
+        callback(hit.coords, hit.distance, hit.duration);
+        return;
+      }
+
+      if (externalInFlight[cacheKey]) {
+        externalInFlight[cacheKey].push(callback);
+        return;
+      }
+      externalInFlight[cacheKey] = [callback];
+
+      function resolveAll(coords, dist, dur) {
+        externalRouteCache[cacheKey] = { coords: coords, distance: dist, duration: dur };
+        var cbs = externalInFlight[cacheKey] || [callback];
+        delete externalInFlight[cacheKey];
+        for (var i = 0; i < cbs.length; i++) {
+          try { cbs[i](coords, dist, dur); } catch(e) {}
+        }
+      }
+
+      var providers = [
+        'https://routing.openstreetmap.de/routed-foot/route/v1/foot/' + startLng + ',' + startLat + ';' + targetLng + ',' + targetLat + '?overview=full&geometries=geojson',
+        'https://router.project-osrm.org/route/v1/walking/' + startLng + ',' + startLat + ';' + targetLng + ',' + targetLat + '?overview=full&geometries=geojson',
+        'https://routing.openstreetmap.de/routed-car/route/v1/driving/' + startLng + ',' + startLat + ';' + targetLng + ',' + targetLat + '?overview=full&geometries=geojson',
+        'https://router.project-osrm.org/route/v1/driving/' + startLng + ',' + startLat + ';' + targetLng + ',' + targetLat + '?overview=full&geometries=geojson'
+      ];
+
+      var pIdx = 0;
+      function tryNextProvider() {
+        if (pIdx >= providers.length) {
+          // Dự phòng ngoại tuyến: Nội suy dọc theo trục đường Lê Duẩn hoặc Y Wang thay vì vẽ đường chim bay cắt qua nhà dân
+          var fallbackPath = buildPerimeterRoadFallback(startLat, startLng, targetLat, targetLng);
+          resolveAll(fallbackPath.coords, fallbackPath.distance, fallbackPath.duration);
+          return;
+        }
+
+        var url = providers[pIdx++];
+        var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+        var timer = controller ? setTimeout(function() { controller.abort(); }, 1800) : null;
+
+        fetch(url, controller ? { signal: controller.signal } : {})
+          .then(function(res) {
+            if (timer) clearTimeout(timer);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+          })
+          .then(function(data) {
+            if (data && data.routes && data.routes.length > 0 && data.routes[0].geometry && data.routes[0].geometry.coordinates) {
+              var coords = data.routes[0].geometry.coordinates.map(function(c) {
+                return [c[1], c[0]];
+              });
+              if (coords && coords.length >= 2) {
+                var distMeters = Math.round(data.routes[0].distance || directDist);
+                var durMin = Math.max(1, Math.round((data.routes[0].duration || (distMeters / 1.25)) / 60));
+                resolveAll(coords, distMeters, durMin);
+                return;
+              }
+            }
+            tryNextProvider();
+          })
+          .catch(function() {
+            if (timer) clearTimeout(timer);
+            tryNextProvider();
+          });
+      }
+
+      tryNextProvider();
     }
 
     // Tính góc phương vị ban đầu của tuyến đường để xoay bản đồ theo hướng đi như Google Maps
@@ -1219,28 +1374,6 @@ ${LEAFLET_JS}
 
       var origIn = isPointInCampus(origLat, origLng);
       var destIn = isPointInCampus(destLat, destLng);
-
-      // Nhận diện vùng cổng trường: Nếu người dùng đang đứng ở cổng trường (bán kính <= 70m từ bất kỳ cổng nào)
-      // thì tự động snap thẳng vào cổng, không kích hoạt chỉ đường OSRM ngoài phố (tránh bị vòng qua dải phân cách đường Lê Duẩn)
-      var nearStartGate = null;
-      for (var gIdx = 0; gIdx < gatesData.length; gIdx++) {
-        var gItem = gatesData[gIdx];
-        var dStartGate = Math.min(
-          getDistanceMeters(origLat, origLng, gItem.outsidePoint[0], gItem.outsidePoint[1]),
-          getDistanceMeters(origLat, origLng, gItem.gatePoint[0], gItem.gatePoint[1]),
-          getDistanceMeters(origLat, origLng, gItem.insidePoint[0], gItem.insidePoint[1])
-        );
-        if (dStartGate <= 70) {
-          nearStartGate = gItem;
-          break;
-        }
-      }
-
-      if (!origIn && nearStartGate && destIn) {
-        origIn = true;
-        origLat = nearStartGate.insidePoint[0];
-        origLng = nearStartGate.insidePoint[1];
-      }
 
       // TRƯỜNG HỢP 1: CẢ 2 ĐỀU Ở TRONG KHUÔN VIÊN TRƯỜNG
       // Đi 100% bằng đường thiết kế nội bộ, tuyệt đối không ra ngoài hay xuyên tường
@@ -1423,7 +1556,7 @@ ${LEAFLET_JS}
             break;
 
           case 'UPDATE_USER_LOCATION':
-            updateUserLocation(msg.lat, msg.lng, msg.accuracy, msg.heading);
+            updateUserLocation(msg.lat, msg.lng, msg.accuracy, msg.heading, msg.centerOnUser);
             break;
 
           case 'UPDATE_USER_HEADING':
@@ -1505,5 +1638,7 @@ ${LEAFLET_JS}
   </script>
 </body>
 </html>`;
+  htmlCache.set(cacheKey, finalHtml);
+  return finalHtml;
 }
 

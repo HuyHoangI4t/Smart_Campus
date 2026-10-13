@@ -7,6 +7,7 @@ import {
   readLocalCache,
   getTtlCache,
   setTtlCache,
+  deduplicateRequest,
 } from './client';
 
 export async function apiGetMapLocations() {
@@ -14,16 +15,18 @@ export async function apiGetMapLocations() {
   const cached = getTtlCache<any>(ttlKey);
   if (cached) return cached;
 
-  try {
-    const response = await fetchWithTimeout(`${API_BASE_URL}/map`);
-    const result = await handleResponse(response);
-    if (result && result.locations) {
-      setTtlCache(ttlKey, result, 60000); // 1 min
+  return deduplicateRequest(ttlKey, async () => {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE_URL}/map`);
+      const result = await handleResponse(response);
+      if (result && result.locations) {
+        setTtlCache(ttlKey, result, 60000); // 1 min
+      }
+      return result;
+    } catch {
+      return { success: false, message: 'Lỗi tải danh sách địa điểm bản đồ.', locations: [] };
     }
-    return result;
-  } catch {
-    return { success: false, message: 'Lỗi tải danh sách địa điểm bản đồ.', locations: [] };
-  }
+  });
 }
 
 export async function apiGetCampusPaths() {
@@ -31,16 +34,18 @@ export async function apiGetCampusPaths() {
   const cached = getTtlCache<any>(ttlKey);
   if (cached) return cached;
 
-  try {
-    const response = await fetchWithTimeout(`${API_BASE_URL}/paths`);
-    const result = await handleResponse(response);
-    if (result && result.paths) {
-      setTtlCache(ttlKey, result, 120000); // 2 mins
+  return deduplicateRequest(ttlKey, async () => {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE_URL}/paths`);
+      const result = await handleResponse(response);
+      if (result && result.paths) {
+        setTtlCache(ttlKey, result, 120000); // 2 mins
+      }
+      return result;
+    } catch {
+      return { success: false, message: 'Lỗi tải mạng lưới lối đi nội bộ.', paths: [] };
     }
-    return result;
-  } catch {
-    return { success: false, message: 'Lỗi tải mạng lưới lối đi nội bộ.', paths: [] };
-  }
+  });
 }
 
 export async function apiSubmitFeedback(payload: {
@@ -99,28 +104,30 @@ export async function apiGetDashboard() {
   const memoryHit = getTtlCache<any>(ttlKey);
   if (memoryHit) return memoryHit;
 
-  try {
-    const headers = await getAuthHeaders();
-    const response = await fetchWithTimeout(`${API_BASE_URL}/campus/dashboard`, { headers });
-    const result = await handleResponse(response);
-    if (result && result.success) {
-      const payload = { ...result, isOfflineCache: false };
-      setTtlCache(ttlKey, payload, 30000); // 30s TTL
-      await saveLocalCache(cacheKey, result);
-      return payload;
+  return deduplicateRequest(ttlKey, async () => {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetchWithTimeout(`${API_BASE_URL}/campus/dashboard`, { headers });
+      const result = await handleResponse(response);
+      if (result && result.success) {
+        const payload = { ...result, isOfflineCache: false };
+        setTtlCache(ttlKey, payload, 30000); // 30s TTL
+        await saveLocalCache(cacheKey, result);
+        return payload;
+      }
+      const cached = await readLocalCache(cacheKey);
+      if (cached && cached.data) {
+        return { ...cached.data, isOfflineCache: true, cachedAt: cached.savedAt };
+      }
+      return result;
+    } catch {
+      const cached = await readLocalCache(cacheKey);
+      if (cached && cached.data) {
+        return { ...cached.data, isOfflineCache: true, cachedAt: cached.savedAt };
+      }
+      return { success: false, isOfflineCache: true };
     }
-    const cached = await readLocalCache(cacheKey);
-    if (cached && cached.data) {
-      return { ...cached.data, isOfflineCache: true, cachedAt: cached.savedAt };
-    }
-    return result;
-  } catch {
-    const cached = await readLocalCache(cacheKey);
-    if (cached && cached.data) {
-      return { ...cached.data, isOfflineCache: true, cachedAt: cached.savedAt };
-    }
-    return { success: false, isOfflineCache: true };
-  }
+  });
 }
 
 export async function apiGetFeedbackConfig() {

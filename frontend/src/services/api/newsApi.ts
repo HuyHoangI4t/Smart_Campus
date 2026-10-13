@@ -6,6 +6,7 @@ import {
   readLocalCache,
   getTtlCache,
   setTtlCache,
+  deduplicateRequest,
 } from './client';
 
 export const CAMPUS_FALLBACK_IMAGES = [
@@ -69,12 +70,14 @@ export async function apiGetArticleDetail(url: string): Promise<{ success: boole
     const cached = getTtlCache<any>(ttlKey);
     if (cached) return cached;
 
-    const response = await fetchWithTimeout(`${API_BASE_URL}/news/article-detail?url=${encodeURIComponent(url)}`, {}, 12000);
-    const result = await handleResponse(response);
-    if (result && result.success) {
-      setTtlCache(ttlKey, result, 300000); // 5 mins cache for article content
-    }
-    return result;
+    return deduplicateRequest(ttlKey, async () => {
+      const response = await fetchWithTimeout(`${API_BASE_URL}/news/article-detail?url=${encodeURIComponent(url)}`, {}, 12000);
+      const result = await handleResponse(response);
+      if (result && result.success) {
+        setTtlCache(ttlKey, result, 300000); // 5 mins cache for article content
+      }
+      return result;
+    });
   } catch (e: any) {
     return { success: false, message: e.message || 'Không thể tải chi tiết bài viết' };
   }
@@ -124,33 +127,35 @@ export async function apiGetNews(type?: 'all' | 'news' | 'announcement', limit?:
     if (memoryHit) return memoryHit;
   }
 
-  try {
-    const params = new URLSearchParams();
-    if (type && type !== 'all') params.append('type', type);
-    if (limit) params.append('limit', String(limit));
-    if (reload) params.append('reload', 'true');
-    const qs = params.toString() ? `?${params.toString()}` : '';
-    const response = await fetchWithTimeout(`${API_BASE_URL}/news${qs}`);
-    const result = await handleResponse(response);
+  return deduplicateRequest(ttlKey, async () => {
+    try {
+      const params = new URLSearchParams();
+      if (type && type !== 'all') params.append('type', type);
+      if (limit) params.append('limit', String(limit));
+      if (reload) params.append('reload', 'true');
+      const qs = params.toString() ? `?${params.toString()}` : '';
+      const response = await fetchWithTimeout(`${API_BASE_URL}/news${qs}`);
+      const result = await handleResponse(response);
 
-    if (result && result.success) {
-      const payload = { ...result, isOfflineCache: false };
-      setTtlCache(ttlKey, payload, 60000); // 1 min TTL
-      await saveLocalCache(cacheKey, result);
-      return payload;
-    }
+      if (result && result.success) {
+        const payload = { ...result, isOfflineCache: false };
+        setTtlCache(ttlKey, payload, 60000); // 1 min TTL
+        await saveLocalCache(cacheKey, result);
+        return payload;
+      }
 
-    const cached = await readLocalCache(cacheKey);
-    if (cached && cached.data) {
-      return { ...cached.data, isOfflineCache: true, cachedAt: cached.savedAt };
+      const cached = await readLocalCache(cacheKey);
+      if (cached && cached.data) {
+        return { ...cached.data, isOfflineCache: true, cachedAt: cached.savedAt };
+      }
+      return result;
+    } catch {
+      const cached = await readLocalCache(cacheKey);
+      if (cached && cached.data) {
+        return { ...cached.data, isOfflineCache: true, cachedAt: cached.savedAt };
+      }
+      return { success: false, data: [], isOfflineCache: true };
     }
-    return result;
-  } catch {
-    const cached = await readLocalCache(cacheKey);
-    if (cached && cached.data) {
-      return { ...cached.data, isOfflineCache: true, cachedAt: cached.savedAt };
-    }
-    return { success: false, data: [], isOfflineCache: true };
-  }
+  });
 }
 
