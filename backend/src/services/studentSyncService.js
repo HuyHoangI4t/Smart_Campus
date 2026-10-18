@@ -147,7 +147,7 @@ async function syncGradesForStudent(mssv, dk = '10') {
             'Referer': TTN_CONFIG.GRADES_REFERER,
             'Accept': '*/*'
           },
-          timeout: 10000
+          timeout: 4000
         })
       );
 
@@ -309,7 +309,7 @@ async function syncScheduleForStudent(mssv, dk = '10') {
             'Referer': TTN_CONFIG.SCHEDULE_REFERER,
             'Accept': 'text/plain, */*; q=0.01'
           },
-          timeout: 10000
+          timeout: 4000
         })
       );
 

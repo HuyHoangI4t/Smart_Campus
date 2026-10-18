@@ -656,19 +656,40 @@ ${LEAFLET_JS}
 
     function filterCategory(cat) {
       var isAll = !cat || cat === 'all';
+      var isWc = cat && cat.toLowerCase() === 'wc';
+      var matchedBounds = [];
       locationsData.forEach(function(loc) {
         var m = markerObjects[loc.id];
         if (!m) return;
         var el = m.getElement();
         if (!el) return;
-        if (isAll || (loc.category && loc.category.toLowerCase() === cat.toLowerCase())) {
+        var match = isAll;
+        if (!isAll) {
+          var locCat = (loc.category || '').toLowerCase();
+          var locName = (loc.name || '').toLowerCase();
+          var locDesc = (loc.description || '').toLowerCase();
+          if (isWc) {
+            match = locCat === 'wc' || locName.indexOf('wc') !== -1 || locDesc.indexOf('vệ sinh') !== -1;
+          } else {
+            match = locCat === cat.toLowerCase();
+          }
+        }
+        if (match) {
           el.style.opacity = '1';
           el.style.pointerEvents = 'auto';
+          if (loc.lat && loc.lng) {
+            matchedBounds.push([loc.lat, loc.lng]);
+          }
         } else {
           el.style.opacity = '0.22';
           el.style.pointerEvents = 'none';
         }
       });
+      if (!isAll && matchedBounds.length > 0) {
+        try {
+          map.fitBounds(matchedBounds, { padding: [60, 60], maxZoom: 18, animate: true });
+        } catch(e) {}
+      }
     }
 
     // Biến quản lý User Location và Tuyến đường (Routing)
@@ -677,9 +698,17 @@ ${LEAFLET_JS}
     var currentUserLat = null;
     var currentUserLng = null;
     var currentUserHeading = 0;
-    var currentArrowCumulativeAngle = 0;
-    var hasArrowRotatedOnce = false;
     var routeLayerGroup = L.layerGroup().addTo(map);
+    var activeRouteState = {
+      isActive: false,
+      coords: [],
+      gateInfo: null,
+      traversedPoly: null,
+      remainingPoly: null,
+      remainingGlow: null,
+      lastPassedSegmentIndex: 0,
+      totalDistance: 0
+    };
 
     function computeRouteDistanceToLoc(destLat, destLng, callback) {
       if (currentUserLat === null || currentUserLng === null) {
@@ -844,6 +873,11 @@ ${LEAFLET_JS}
             map.panTo([lat, lng], { animate: true, duration: 0.5 });
           }
         }
+      }
+
+      // Nếu lộ trình đang kích hoạt, cập nhật ngay quãng đường đã đi (đổi màu xám) và tính lại số mét còn lại
+      if (activeRouteState.isActive) {
+        updateRouteProgress(lat, lng);
       }
     }
 
@@ -1312,33 +1346,141 @@ ${LEAFLET_JS}
       return Math.round((brng + 360) % 360);
     }
 
+    // Hàm làm mượt các khúc cua gấp (Corner Filleting / Bézier Smoothing)
+    // Giữ nguyên các đoạn thẳng trên lối đi bộ, chỉ bo tròn tự nhiên tại các khúc cua/ngã rẽ
+    function smoothRouteCoordinates(coords) {
+      if (!coords || coords.length < 3) return coords || [];
+
+      // 1. Khử các điểm quá gần nhau (< 1.2 mét) hoặc trùng lặp
+      var cleaned = [coords[0]];
+      for (var i = 1; i < coords.length; i++) {
+        var prev = cleaned[cleaned.length - 1];
+        var cur = coords[i];
+        var d = getDistanceMeters(prev[0], prev[1], cur[0], cur[1]);
+        if (d >= 1.2 || i === coords.length - 1) {
+          cleaned.push(cur);
+        }
+      }
+
+      if (cleaned.length < 3) return cleaned;
+
+      // 2. Bo tròn các khúc cua bằng Quadratic Bézier fillet
+      var smoothed = [cleaned[0]];
+
+      for (var i = 1; i < cleaned.length - 1; i++) {
+        var pPrev = cleaned[i - 1];
+        var pCur = cleaned[i];
+        var pNext = cleaned[i + 1];
+
+        var d1 = getDistanceMeters(pPrev[0], pPrev[1], pCur[0], pCur[1]);
+        var d2 = getDistanceMeters(pCur[0], pCur[1], pNext[0], pNext[1]);
+
+        if (d1 < 1.5 || d2 < 1.5) {
+          smoothed.push(pCur);
+          continue;
+        }
+
+        // Tính góc lệch hướng giữa 2 đoạn đường
+        var b1 = computeInitialRouteBearing([pPrev, pCur]);
+        var b2 = computeInitialRouteBearing([pCur, pNext]);
+        var angleDiff = Math.abs(b1 - b2);
+        if (angleDiff > 180) angleDiff = 360 - angleDiff;
+
+        // Nếu góc đổi hướng nhỏ (< 18 độ), đoạn đường gần như thẳng, không cần bo
+        if (angleDiff < 18) {
+          smoothed.push(pCur);
+          continue;
+        }
+
+        // Bán kính bo góc (từ 3.0 - 6.5 mét tùy theo độ dài của đoạn đường)
+        var maxRadius = Math.min(6.5, d1 * 0.4, d2 * 0.4);
+
+        // Điểm bắt đầu cua (trên đoạn pPrev -> pCur)
+        var ratio1 = (d1 - maxRadius) / d1;
+        var pStart = [
+          pPrev[0] + ratio1 * (pCur[0] - pPrev[0]),
+          pPrev[1] + ratio1 * (pCur[1] - pPrev[1])
+        ];
+
+        // Điểm kết thúc cua (trên đoạn pCur -> pNext)
+        var ratio2 = maxRadius / d2;
+        var pEnd = [
+          pCur[0] + ratio2 * (pNext[0] - pCur[0]),
+          pCur[1] + ratio2 * (pNext[1] - pCur[1])
+        ];
+
+        smoothed.push(pStart);
+
+        // Thêm các điểm nội suy cong bậc 2 (Quadratic Bézier) giữa pStart, pCur (control point), pEnd
+        var numSteps = angleDiff > 60 ? 5 : 4;
+        for (var step = 1; step < numSteps; step++) {
+          var t = step / numSteps;
+          var oneMinusT = 1 - t;
+          var lat = oneMinusT * oneMinusT * pStart[0] + 2 * oneMinusT * t * pCur[0] + t * t * pEnd[0];
+          var lng = oneMinusT * oneMinusT * pStart[1] + 2 * oneMinusT * t * pCur[1] + t * t * pEnd[1];
+          smoothed.push([lat, lng]);
+        }
+
+        smoothed.push(pEnd);
+      }
+
+      smoothed.push(cleaned[cleaned.length - 1]);
+      return smoothed;
+    }
+
     // Vẽ và gửi thông tin tuyến đường
     function renderAndFinishRoute(coords, distanceMeters, durationMinutes, gateInfo) {
       if (!coords || coords.length < 2) return;
 
-      L.polyline(coords, {
-        color: '#93C5FD',
-        weight: 8,
-        opacity: 0.6
+      var finalCoords = smoothRouteCoordinates(coords);
+
+      activeRouteState.isActive = true;
+      activeRouteState.coords = finalCoords;
+      activeRouteState.gateInfo = gateInfo;
+      activeRouteState.lastPassedSegmentIndex = 0;
+      activeRouteState.totalDistance = distanceMeters;
+
+      // 1. Đoạn đường đã đi qua (Màu xám Slate #94A3B8 theo khuyến nghị người dùng)
+      activeRouteState.traversedPoly = L.polyline([], {
+        color: '#94A3B8',
+        weight: 5,
+        opacity: 0.85,
+        lineCap: 'round',
+        lineJoin: 'round',
+        smoothFactor: 1.0
       }).addTo(routeLayerGroup);
 
-      var routePoly = L.polyline(coords, {
+      // 2. Lớp phát sáng xanh dưới lộ trình còn lại
+      activeRouteState.remainingGlow = L.polyline(finalCoords, {
+        color: '#93C5FD',
+        weight: 8,
+        opacity: 0.6,
+        lineCap: 'round',
+        lineJoin: 'round',
+        smoothFactor: 1.0
+      }).addTo(routeLayerGroup);
+
+      // 3. Lộ trình còn lại phía trước (Màu xanh dương #2563EB)
+      activeRouteState.remainingPoly = L.polyline(finalCoords, {
         color: '#2563EB',
         weight: 5,
         opacity: 0.95,
-        className: 'walking-route-path'
+        className: 'walking-route-path',
+        lineCap: 'round',
+        lineJoin: 'round',
+        smoothFactor: 1.0
       }).addTo(routeLayerGroup);
 
-      // 1. Tự động xoay bản đồ theo hướng lộ trình như Google Maps (hướng đi luôn thẳng lên trên)
-      var routeBearing = computeInitialRouteBearing(coords);
+      // Tự động xoay bản đồ theo hướng lộ trình như Google Maps (hướng đi luôn thẳng lên trên)
+      var routeBearing = computeInitialRouteBearing(finalCoords);
       applyBearing(routeBearing, true);
 
-      // 2. Cập nhật góc và vị trí của hình tam giác điều hướng
+      // Cập nhật góc và vị trí của hình tam giác điều hướng
       updateUserHeading(routeBearing);
-      updateUserLocation(coords[0][0], coords[0][1], 10, routeBearing);
+      updateUserLocation(finalCoords[0][0], finalCoords[0][1], 10, routeBearing);
 
-      // 3. Đưa hình tam giác vị trí hiện tại về GIỮA MÀN HÌNH và ZOOM như Google Maps
-      map.setView([coords[0][0], coords[0][1]], 18, {
+      // Đưa hình tam giác vị trí hiện tại về GIỮA MÀN HÌNH và ZOOM như Google Maps
+      map.setView([finalCoords[0][0], finalCoords[0][1]], 18, {
         animate: true,
         duration: 0.6
       });
@@ -1351,6 +1493,146 @@ ${LEAFLET_JS}
           gateId: gateInfo ? gateInfo.id : null,
           gateName: gateInfo ? gateInfo.name : null,
           bearing: routeBearing
+        }));
+      }
+    }
+
+    // Cập nhật tiến trình đi bộ thời gian thực:
+    // 1. Quãng đường đã đi qua chuyển sang màu xám (#94A3B8)
+    // 2. Quãng đường còn lại tiếp tục giữ màu xanh (#2563EB)
+    // 3. Tự động tính toán lại số mét còn lại và thời gian đi bộ theo khúc cua thực tế
+    function updateRouteProgress(userLat, userLng) {
+      if (!activeRouteState.isActive || !activeRouteState.coords || activeRouteState.coords.length < 2) {
+        return;
+      }
+
+      var coords = activeRouteState.coords;
+      var numPts = coords.length;
+      var destPt = coords[numPts - 1];
+
+      // Khoảng cách trực tiếp tới điểm đến
+      var distToDestination = getDistanceMeters(userLat, userLng, destPt[0], destPt[1]);
+
+      // Nếu đã đến rất gần điểm đích (<= 8 mét)
+      if (distToDestination <= 8) {
+        if (activeRouteState.traversedPoly) {
+          activeRouteState.traversedPoly.setLatLngs(coords);
+        }
+        if (activeRouteState.remainingPoly) {
+          activeRouteState.remainingPoly.setLatLngs([]);
+        }
+        if (activeRouteState.remainingGlow) {
+          activeRouteState.remainingGlow.setLatLngs([]);
+        }
+        if (window.ReactNativeWebView) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'ROUTE_PROGRESS',
+            remainingDistanceMeters: 0,
+            remainingMinutes: 0,
+            arrived: true
+          }));
+        }
+        return;
+      }
+
+      var bestIdx = activeRouteState.lastPassedSegmentIndex;
+      var bestT = 0;
+      var bestQ = coords[bestIdx];
+      var minDistance = Infinity;
+
+      // Giới hạn tìm kiếm từ segment hiện tại trở đi (cho phép lùi 1 segment để dung sai rung lắc GPS)
+      var startSeg = Math.max(0, activeRouteState.lastPassedSegmentIndex - 1);
+
+      for (var i = startSeg; i < numPts - 1; i++) {
+        var A = coords[i];
+        var B = coords[i + 1];
+
+        var latMid = ((A[0] + B[0]) / 2) * (Math.PI / 180);
+        var mPerDegLat = 110574;
+        var mPerDegLng = 111320 * Math.cos(latMid);
+
+        var Vx = (B[1] - A[1]) * mPerDegLng;
+        var Vy = (B[0] - A[0]) * mPerDegLat;
+        var lenSq = Vx * Vx + Vy * Vy;
+
+        if (lenSq < 0.001) continue;
+
+        var Ux = (userLng - A[1]) * mPerDegLng;
+        var Uy = (userLat - A[0]) * mPerDegLat;
+
+        var t = (Ux * Vx + Uy * Vy) / lenSq;
+        var clampedT = Math.max(0, Math.min(1, t));
+
+        var Qlat = A[0] + clampedT * (B[0] - A[0]);
+        var Qlng = A[1] + clampedT * (B[1] - A[1]);
+
+        var dist = getDistanceMeters(userLat, userLng, Qlat, Qlng);
+
+        // Ưu tiên các segment phía trước nếu khoảng cách tương đương (giảm hiện tượng nhảy ngược)
+        var forwardBias = (i - startSeg) * 0.15;
+        if (dist - forwardBias < minDistance) {
+          minDistance = dist - forwardBias;
+          bestIdx = i;
+          bestT = clampedT;
+          bestQ = [Qlat, Qlng];
+        }
+      }
+
+      // Cập nhật mốc phân đoạn đã đi qua (chống thụt lùi khi GPS dao động)
+      if (bestIdx > activeRouteState.lastPassedSegmentIndex) {
+        activeRouteState.lastPassedSegmentIndex = bestIdx;
+      }
+
+      // Tạo mảng tọa độ đã đi qua (Màu xám)
+      var traversed = [];
+      for (var k = 0; k <= bestIdx; k++) {
+        traversed.push(coords[k]);
+      }
+      if (bestT > 0.02 && bestT < 0.98) {
+        traversed.push(bestQ);
+      }
+
+      // Tạo mảng tọa độ còn lại cần đi (Màu xanh)
+      var remaining = [];
+      if (bestT > 0.02 && bestT < 0.98) {
+        remaining.push(bestQ);
+      }
+      for (var m = bestIdx + 1; m < numPts; m++) {
+        remaining.push(coords[m]);
+      }
+
+      if (remaining.length === 0) {
+        remaining.push(destPt);
+      }
+
+      // Cập nhật hiển thị bản đồ
+      if (activeRouteState.traversedPoly) {
+        activeRouteState.traversedPoly.setLatLngs(traversed);
+      }
+      if (activeRouteState.remainingPoly) {
+        activeRouteState.remainingPoly.setLatLngs(remaining);
+      }
+      if (activeRouteState.remainingGlow) {
+        activeRouteState.remainingGlow.setLatLngs(remaining);
+      }
+
+      // Tính tổng khoảng cách còn lại chính xác theo các khúc cua
+      var remDist = 0;
+      for (var r = 0; r < remaining.length - 1; r++) {
+        remDist += getDistanceMeters(
+          remaining[r][0], remaining[r][1],
+          remaining[r + 1][0], remaining[r + 1][1]
+        );
+      }
+      remDist = Math.round(remDist);
+      var remMinutes = Math.max(remDist > 0 ? 1 : 0, Math.round(remDist / 80));
+
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'ROUTE_PROGRESS',
+          remainingDistanceMeters: remDist,
+          remainingMinutes: remMinutes,
+          arrived: remDist <= 8
         }));
       }
     }
@@ -1474,48 +1756,19 @@ ${LEAFLET_JS}
 
     function drawFallbackDirectRoute(origLat, origLng, destLat, destLng) {
       var waypoints = [[origLat, origLng], [destLat, destLng]];
-      var poly = L.polyline(waypoints, {
-        color: '#2563EB',
-        weight: 5,
-        opacity: 0.9,
-        className: 'walking-route-path'
-      }).addTo(routeLayerGroup);
-
-      var routeBearing = computeInitialRouteBearing(waypoints);
-      applyBearing(routeBearing, true);
-
-      // Cập nhật góc và vị trí của hình tam giác điều hướng
-      updateUserHeading(routeBearing);
-      updateUserLocation(origLat, origLng, 10, routeBearing);
-
-      // Đưa hình tam giác vị trí hiện tại về GIỮA MÀN HÌNH và ZOOM như Google Maps
-      map.setView([origLat, origLng], 18, {
-        animate: true,
-        duration: 0.6
-      });
-
-      var R = 6371000;
-      var dLat = (destLat - origLat) * Math.PI / 180;
-      var dLon = (destLng - origLng) * Math.PI / 180;
-      var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(origLat * Math.PI / 180) * Math.cos(destLat * Math.PI / 180) *
-              Math.sin(dLon/2) * Math.sin(dLon/2);
-      var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      var dist = Math.round(R * c);
+      var dist = getDistanceMeters(origLat, origLng, destLat, destLng);
       var dur = Math.max(1, Math.round(dist / 80));
-
-      if (window.ReactNativeWebView) {
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'ROUTE_INFO',
-          distanceMeters: dist,
-          durationMinutes: dur,
-          bearing: routeBearing
-        }));
-      }
+      renderAndFinishRoute(waypoints, dist, dur, null);
     }
 
     function clearRoute() {
       routeLayerGroup.clearLayers();
+      activeRouteState.isActive = false;
+      activeRouteState.coords = [];
+      activeRouteState.traversedPoly = null;
+      activeRouteState.remainingPoly = null;
+      activeRouteState.remainingGlow = null;
+      activeRouteState.lastPassedSegmentIndex = 0;
       applyBearing(0, true);
     }
 

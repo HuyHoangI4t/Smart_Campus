@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Linking, ActivityIndicator, Modal } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import * as Location from "expo-location";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
@@ -30,6 +31,8 @@ export default function SosScreen() {
   const [locationText, setLocationText] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [gpsCoords, setGpsCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
 
   // Popup Modal Đã gửi SOS
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -50,6 +53,30 @@ export default function SosScreen() {
       } catch {}
     };
     fetchConfig();
+
+    // Tự động yêu cầu quyền vị trí và lấy tọa độ GPS chính xác
+    const fetchGps = async () => {
+      try {
+        setIsLocating(true);
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          if (loc?.coords) {
+            setGpsCoords({
+              latitude: loc.coords.latitude,
+              longitude: loc.coords.longitude,
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Lỗi định vị GPS SOS:', e);
+      } finally {
+        setIsLocating(false);
+      }
+    };
+    fetchGps();
   }, []);
 
   const handleCall = (phone: string) => {
@@ -66,10 +93,28 @@ export default function SosScreen() {
 
     setSubmitting(true);
     try {
+      let currentCoords = gpsCoords;
+      if (!currentCoords) {
+        try {
+          const loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          if (loc?.coords) {
+            currentCoords = {
+              latitude: loc.coords.latitude,
+              longitude: loc.coords.longitude,
+            };
+            setGpsCoords(currentCoords);
+          }
+        } catch {}
+      }
+
       const res = await apiSubmitSos({
         incidentType,
         location: locationText.trim(),
         description: notes.trim() || incidentType,
+        latitude: currentCoords?.latitude,
+        longitude: currentCoords?.longitude,
       });
 
       if (res && res.success) {
@@ -185,9 +230,23 @@ export default function SosScreen() {
             paddingHorizontal: 14,
             fontSize: 14,
             color: AppColors.text,
-            marginBottom: 14,
+            marginBottom: gpsCoords || isLocating ? 6 : 14,
           }}
         />
+
+        {gpsCoords ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 14 }}>
+            <Feather name="navigation" size={12} color="#16A34A" />
+            <Text style={{ fontSize: 11, color: "#16A34A", fontWeight: "700" }}>
+              Đã định vị GPS: ({gpsCoords.latitude.toFixed(5)}, {gpsCoords.longitude.toFixed(5)})
+            </Text>
+          </View>
+        ) : isLocating ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 14 }}>
+            <ActivityIndicator size="small" color="#DC2626" />
+            <Text style={{ fontSize: 11, color: AppColors.textMuted }}>Đang lấy tọa độ GPS của bạn...</Text>
+          </View>
+        ) : null}
 
         {/* Mô tả bổ sung */}
         <Text style={{ fontSize: 14, fontWeight: "800", color: AppColors.text, marginBottom: 6 }}>

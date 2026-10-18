@@ -2,8 +2,9 @@
  * ============================================================================
  * ĐỊNH NGHĨA TẤT CẢ CÁC BẢNG TRONG CƠ SỞ DỮ LIỆU (DATABASE SCHEMAS)
  * ============================================================================
- * Toàn bộ cấu trúc 13 bảng của hệ thống Smart Campus Đại học Tây Nguyên
- * được tập trung tại file duy nhất này để dễ dàng quản trị, bảo trì và kiểm soát.
+ * Toàn bộ cấu trúc 12 bảng thực tế của hệ thống Smart Campus Đại học Tây Nguyên.
+ * Tinh gọn và hạn chế tối đa các chỉ mục (indexes) không cần thiết để tối ưu
+ * dung lượng lưu trữ RAM/Disk và tăng tốc độ ghi dữ liệu (INSERT/UPDATE).
  */
 
 // Định nghĩa mã SQL DDL cho từng bảng
@@ -21,7 +22,8 @@ const TABLE_DEFINITIONS = {
       lop VARCHAR(100) DEFAULT 'Kỹ thuật phần mềm K23',
       khoa VARCHAR(100) DEFAULT 'Công nghệ Thông tin',
       avatar LONGTEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_users_email (email)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `,
 
@@ -69,7 +71,7 @@ const TABLE_DEFINITIONS = {
       tiet VARCHAR(50) NOT NULL,
       phong VARCHAR(50) NOT NULL,
       giang_vien VARCHAR(100),
-      hoc_ky VARCHAR(50) DEFAULT NULL,
+      hoc_ky VARCHAR(50) DEFAULT 'HK1 (2025-2026)',
       is_custom TINYINT(1) DEFAULT 0,
       ghi_chu VARCHAR(255) DEFAULT '',
       loai_lich VARCHAR(50) DEFAULT 'chinh_khoa',
@@ -90,14 +92,17 @@ const TABLE_DEFINITIONS = {
       nam_hoc VARCHAR(20) DEFAULT NULL,
       ky VARCHAR(20) DEFAULT NULL,
       diem_dbp DECIMAL(4,2) DEFAULT NULL,
-      diem_thi1 DECIMAL(4,2) DEFAULT NULL,
-      diem_thi2 DECIMAL(4,2) DEFAULT NULL,
+      diem_qt DECIMAL(4,2) DEFAULT NULL,
+      diem_thi1 DECIMAL(4,2) DEFAULT 8.00,
+      diem_thi2 DECIMAL(4,2) DEFAULT 8.00,
+      diem_thi DECIMAL(4,2) DEFAULT NULL,
       diem_1 DECIMAL(4,2) DEFAULT NULL,
       diem_2 DECIMAL(4,2) DEFAULT NULL,
-      diem_chu VARCHAR(10) DEFAULT NULL,
-      so_tin_chi DECIMAL(3,1) DEFAULT NULL,
+      diem_hp DECIMAL(4,2) DEFAULT NULL,
+      diem_chu VARCHAR(10) DEFAULT 'B',
+      so_tin_chi DECIMAL(3,1) DEFAULT 3.0,
       hoc_phi VARCHAR(100) DEFAULT NULL,
-      hoc_ky VARCHAR(50) DEFAULT NULL,
+      hoc_ky VARCHAR(50) DEFAULT 'HK1 (2025-2026)',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_grades_mssv (mssv)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -124,8 +129,7 @@ const TABLE_DEFINITIONS = {
       attachments JSON,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      INDEX idx_news_type (type),
-      INDEX idx_news_created (created_at)
+      INDEX idx_news_type (type)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `,
 
@@ -150,6 +154,8 @@ const TABLE_DEFINITIONS = {
       id INT AUTO_INCREMENT PRIMARY KEY,
       mssv VARCHAR(50),
       location VARCHAR(255),
+      latitude DECIMAL(10, 8) DEFAULT NULL,
+      longitude DECIMAL(11, 8) DEFAULT NULL,
       message TEXT,
       incident_type VARCHAR(100) DEFAULT 'Khẩn cấp',
       status VARCHAR(50) DEFAULT 'Đã tiếp nhận',
@@ -171,30 +177,7 @@ const TABLE_DEFINITIONS = {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `,
 
-  // 10. Bảng khảo sát ý kiến sinh viên
-  surveys: `
-    CREATE TABLE IF NOT EXISTS surveys (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      title VARCHAR(255) NOT NULL,
-      description TEXT,
-      status VARCHAR(50) DEFAULT 'Đang mở',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-  `,
-
-  // 11. Bảng yêu cầu hỗ trợ sinh viên
-  support_tickets: `
-    CREATE TABLE IF NOT EXISTS support_tickets (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      mssv VARCHAR(50),
-      title VARCHAR(255) NOT NULL,
-      content TEXT NOT NULL,
-      status VARCHAR(50) DEFAULT 'Đang xử lý',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-  `,
-
-  // 12. Bảng mã OTP và token đặt lại mật khẩu qua email
+  // 10. Bảng mã OTP và token đặt lại mật khẩu qua email
   password_resets: `
     CREATE TABLE IF NOT EXISTS password_resets (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -208,7 +191,7 @@ const TABLE_DEFINITIONS = {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `,
 
-  // 13. Bảng mã OTP xác thực đăng ký tài khoản mới
+  // 11. Bảng mã OTP xác thực đăng ký tài khoản mới
   registration_otps: `
     CREATE TABLE IF NOT EXISTS registration_otps (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -219,11 +202,11 @@ const TABLE_DEFINITIONS = {
       otp_code VARCHAR(10) NOT NULL,
       expires_at DATETIME NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      INDEX idx_reg_email (email)
+      INDEX idx_reg_mssv (mssv)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `,
 
-  // 14. Bảng nhật ký hoạt động & lượt tương tác hệ thống
+  // 12. Bảng nhật ký hoạt động & lượt tương tác hệ thống
   activity_logs: `
     CREATE TABLE IF NOT EXISTS activity_logs (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -231,7 +214,7 @@ const TABLE_DEFINITIONS = {
       mssv VARCHAR(50) DEFAULT 'guest',
       ip_address VARCHAR(50) DEFAULT '',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      INDEX idx_act_created (created_at)
+      INDEX idx_act_mssv (mssv)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `
 };
@@ -259,7 +242,7 @@ async function safeAddIndex(connection, table, col, indexName) {
 }
 
 /**
- * Hàm khởi tạo tất cả các bảng và cập nhật cột di trú
+ * Hàm khởi tạo tất cả các bảng và đồng bộ cột di trú tối thiểu
  * @param {import('mysql2/promise').Connection|import('mysql2/promise').Pool} connection
  */
 async function createAllTables(connection) {
@@ -280,32 +263,25 @@ async function createAllTables(connection) {
   await safeAddColumn(connection, 'student_schedules', 'loai_lich', 'VARCHAR(50) DEFAULT "chinh_khoa"');
   await safeAddColumn(connection, 'student_schedules', 'week_range', 'VARCHAR(100) NULL');
   await safeAddColumn(connection, 'student_schedules', 'ngay_hoc', 'VARCHAR(20) NULL');
+  await safeAddColumn(connection, 'student_grades', 'diem_qt', 'DECIMAL(4,2) DEFAULT NULL');
+  await safeAddColumn(connection, 'student_grades', 'diem_thi', 'DECIMAL(4,2) DEFAULT NULL');
+  await safeAddColumn(connection, 'student_grades', 'diem_hp', 'DECIMAL(4,2) DEFAULT NULL');
   await safeAddColumn(connection, 'feedback', 'category', "VARCHAR(50) DEFAULT 'facility'");
   await safeAddColumn(connection, 'feedback', 'rating', 'INT DEFAULT 5');
+  await safeAddColumn(connection, 'sos_alerts', 'latitude', 'DECIMAL(10, 8) NULL');
+  await safeAddColumn(connection, 'sos_alerts', 'longitude', 'DECIMAL(11, 8) NULL');
   await safeAddColumn(connection, 'sos_alerts', 'incident_type', "VARCHAR(100) DEFAULT 'Khẩn cấp'");
 
-  // Đảm bảo các chỉ mục tăng tốc truy vấn (Composite Indexes)
+  // Chỉ tạo các index thiết yếu nhất
+  await safeAddIndex(connection, 'users', 'email', 'idx_users_email');
+  await safeAddIndex(connection, 'student_schedules', 'mssv', 'idx_sched_mssv');
+  await safeAddIndex(connection, 'student_grades', 'mssv', 'idx_grades_mssv');
+  await safeAddIndex(connection, 'news_cache', 'type', 'idx_news_type');
   await safeAddIndex(connection, 'feedback', 'mssv', 'idx_feedback_mssv');
-  await safeAddIndex(connection, 'feedback', 'mssv, id', 'idx_feedback_mssv_id');
-  await safeAddIndex(connection, 'feedback', 'status', 'idx_feedback_status');
-  await safeAddIndex(connection, 'feedback', 'created_at', 'idx_feedback_created');
-
   await safeAddIndex(connection, 'sos_alerts', 'mssv', 'idx_sos_mssv');
-  await safeAddIndex(connection, 'sos_alerts', 'mssv, id', 'idx_sos_mssv_id');
-  await safeAddIndex(connection, 'sos_alerts', 'status', 'idx_sos_status');
-  await safeAddIndex(connection, 'sos_alerts', 'created_at', 'idx_sos_created');
-
-  await safeAddIndex(connection, 'student_grades', 'mssv', 'idx_student_grades_mssv');
-  await safeAddIndex(connection, 'student_grades', 'mssv, created_at', 'idx_grades_mssv_created');
-
-  await safeAddIndex(connection, 'student_schedules', 'mssv', 'idx_student_schedules_mssv');
-  await safeAddIndex(connection, 'student_schedules', 'mssv, is_custom', 'idx_sched_mssv_custom');
-  await safeAddIndex(connection, 'student_schedules', 'week_range', 'idx_sched_week_range');
-  await safeAddIndex(connection, 'student_schedules', 'ngay_hoc', 'idx_sched_ngay_hoc');
-
-  await safeAddIndex(connection, 'notifications', 'created_at', 'idx_notif_created');
-  await safeAddIndex(connection, 'news_cache', 'type', 'idx_news_cache_type');
-  await safeAddIndex(connection, 'activity_logs', 'created_at', 'idx_act_created');
+  await safeAddIndex(connection, 'password_resets', 'mssv', 'idx_pwd_mssv');
+  await safeAddIndex(connection, 'registration_otps', 'mssv', 'idx_reg_mssv');
+  await safeAddIndex(connection, 'activity_logs', 'mssv', 'idx_act_mssv');
 }
 
 module.exports = {
@@ -314,4 +290,3 @@ module.exports = {
   safeAddColumn,
   safeAddIndex,
 };
-

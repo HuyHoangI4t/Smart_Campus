@@ -19,6 +19,8 @@ router.use(verifyToken, requireRole('admin'));
  *   get:
  *     summary: Lấy dữ liệu thống kê tổng quan (Dashboard Stats)
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: Trả về số lượng người dùng, thông báo, phản hồi, cảnh báo SOS
@@ -31,6 +33,8 @@ router.get('/stats', adminController.getDashboardStats);
  *   get:
  *     summary: Lấy danh sách người dùng / sinh viên
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: query
  *         name: search
@@ -48,6 +52,8 @@ router.get('/stats', adminController.getDashboardStats);
  *   post:
  *     summary: Tạo tài khoản người dùng mới
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -95,6 +101,8 @@ router.post('/users', adminController.createUser);
  *   put:
  *     summary: Cập nhật thông tin người dùng
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -127,6 +135,8 @@ router.post('/users', adminController.createUser);
  *   delete:
  *     summary: Xóa tài khoản người dùng và toàn bộ dữ liệu liên quan
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -146,12 +156,16 @@ router.delete('/users/:id', adminController.deleteUser);
  *   get:
  *     summary: Lấy danh sách tất cả thông báo
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: Danh sách thông báo
  *   post:
  *     summary: Đăng thông báo mới từ Nhà trường / Quản trị
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -190,6 +204,8 @@ router.post('/notifications', adminController.createNotification);
  *   put:
  *     summary: Chỉnh sửa thông báo
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -222,6 +238,8 @@ router.post('/notifications', adminController.createNotification);
  *   delete:
  *     summary: Xóa thông báo
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -241,6 +259,8 @@ router.delete('/notifications/:id', adminController.deleteNotification);
  *   get:
  *     summary: Xem danh sách ý kiến phản hồi từ sinh viên
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: Danh sách phản hồi
@@ -253,6 +273,8 @@ router.get('/feedback', adminController.getAllFeedback);
  *   put:
  *     summary: Cập nhật trạng thái xử lý phản hồi
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -281,6 +303,8 @@ router.put('/feedback/:id/status', adminController.updateFeedbackStatus);
  *   delete:
  *     summary: Xóa ý kiến phản hồi
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -299,6 +323,8 @@ router.delete('/feedback/:id', adminController.deleteFeedback);
  *   get:
  *     summary: Xem danh sách cảnh báo SOS khẩn cấp
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: Danh sách cảnh báo SOS
@@ -311,6 +337,8 @@ router.get('/sos', adminController.getAllSosAlerts);
  *   put:
  *     summary: Cập nhật trạng thái xử lý cảnh báo SOS
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -339,6 +367,8 @@ router.put('/sos/:id/status', adminController.updateSosStatus);
  *   delete:
  *     summary: Xóa cảnh báo SOS
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -357,12 +387,16 @@ router.delete('/sos/:id', adminController.deleteSosAlert);
  *   get:
  *     summary: Lấy danh sách địa điểm khuôn viên trường dành cho Admin
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: Danh sách địa điểm
  *   post:
  *     summary: Thêm mới địa điểm khuôn viên trường
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -382,6 +416,8 @@ router.post('/locations', adminController.createLocation);
  *   put:
  *     summary: Cập nhật thông tin địa điểm khuôn viên
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -400,6 +436,8 @@ router.post('/locations', adminController.createLocation);
  *   delete:
  *     summary: Xóa một địa điểm khuôn viên
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -419,6 +457,8 @@ router.delete('/locations/:id', adminController.deleteLocation);
  *   post:
  *     summary: Khôi phục danh sách 37 địa điểm tòa nhà chuẩn mặc định của Đại học Tây Nguyên
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: Khôi phục thành công
@@ -431,12 +471,16 @@ router.post('/locations/reset', adminController.resetLocations);
  *   get:
  *     summary: Lấy danh sách mạng lưới đường đi nội bộ khuôn viên
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: Danh sách các đoạn đường
  *   post:
  *     summary: Thêm mới đoạn đường nội bộ
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -466,6 +510,8 @@ router.post('/paths', adminController.createPath);
  *   put:
  *     summary: Cập nhật đoạn đường đi
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -478,6 +524,8 @@ router.post('/paths', adminController.createPath);
  *   delete:
  *     summary: Xóa đoạn đường đi
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -497,6 +545,8 @@ router.delete('/paths/:id', adminController.deletePath);
  *   post:
  *     summary: Khôi phục mạng lưới đường đi chuẩn mặc định của khuôn viên trường
  *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: Khôi phục thành công
@@ -504,4 +554,3 @@ router.delete('/paths/:id', adminController.deletePath);
 router.post('/paths/reset', adminController.resetPaths);
 
 module.exports = router;
-

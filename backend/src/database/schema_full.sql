@@ -1,17 +1,21 @@
 -- ============================================================================
--- SMART CAMPUS ĐẠI HỌC TÂY NGUYÊN (TTN) - TOÀN BỘ CẤU TRÚC DATABASE (14 BẢNG)
+-- SMART CAMPUS ĐẠI HỌC TÂY NGUYÊN (TTN) - TOÀN BỘ CẤU TRÚC DATABASE (12 BẢNG)
 -- ============================================================================
--- File này chứa toàn bộ DDL tạo bảng chuẩn, chỉ mục (indexes) và ràng buộc.
--- Hỗ trợ import trực tiếp vào MySQL / MariaDB hoặc phpMyAdmin, MySQL Workbench.
+-- File chứa DDL tạo 12 bảng thực tế, toàn bộ cột và CHỈ GIỮ LẠI CÁC INDEX THIẾT YẾU.
+-- Không lạm dụng chỉ mục để tiết kiệm bộ nhớ, tăng tốc độ ghi dữ liệu (INSERT/UPDATE).
+-- Bảng mã: utf8mb4 / utf8mb4_unicode_ci | Storage Engine: InnoDB
 -- ============================================================================
 
-CREATE DATABASE IF NOT EXISTS `smartcampus` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS `smartcampus` 
+  DEFAULT CHARACTER SET utf8mb4 
+  COLLATE utf8mb4_unicode_ci;
+
 USE `smartcampus`;
 
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- ----------------------------------------------------------------------------
--- 1. BẢNG users: Tài khoản người dùng (sinh viên, giảng viên, admin)
+-- 1. BẢNG users: Tài khoản người dùng (sinh viên, giảng viên, quản trị viên)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -23,13 +27,13 @@ CREATE TABLE IF NOT EXISTS `users` (
   `lop` VARCHAR(100) DEFAULT 'Kỹ thuật phần mềm K23',
   `khoa` VARCHAR(100) DEFAULT 'Công nghệ Thông tin',
   `role` VARCHAR(50) DEFAULT 'sinh_vien',
-  `avatar` LONGTEXT,
+  `avatar` LONGTEXT DEFAULT NULL,
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX `idx_users_mssv` (`mssv`)
+  INDEX `idx_users_email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
--- 2. BẢNG map_locations: Danh mục địa điểm, tòa nhà khuôn viên TTN
+-- 2. BẢNG map_locations: Danh mục địa điểm, tòa nhà khuôn viên ĐH Tây Nguyên
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `map_locations` (
   `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -37,21 +41,20 @@ CREATE TABLE IF NOT EXISTS `map_locations` (
   `category` VARCHAR(100) DEFAULT NULL,
   `building` VARCHAR(100) DEFAULT NULL,
   `floor` VARCHAR(100) DEFAULT NULL,
-  `lat` DECIMAL(10,8) DEFAULT NULL,
-  `lng` DECIMAL(11,8) DEFAULT NULL,
-  `description` TEXT,
+  `lat` DECIMAL(10, 8) DEFAULT NULL,
+  `lng` DECIMAL(11, 8) DEFAULT NULL,
+  `description` TEXT DEFAULT NULL,
   `icon` VARCHAR(50) DEFAULT NULL,
   `x` INT DEFAULT 50,
   `y` INT DEFAULT 50,
   `type` VARCHAR(50) DEFAULT 'academic',
   `color` VARCHAR(50) DEFAULT '#6366F1',
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX `idx_locations_name` (`name`)
+  `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
--- 3. BẢNG campus_paths: Các tuyến đường nội bộ khuôn viên trường
+-- 3. BẢNG campus_paths: Các tuyến đường đi bộ nội bộ khuôn viên trường
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `campus_paths` (
   `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -81,44 +84,45 @@ CREATE TABLE IF NOT EXISTS `student_schedules` (
   `week_range` VARCHAR(100) DEFAULT NULL,
   `ngay_hoc` VARCHAR(20) DEFAULT NULL,
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX `idx_student_schedules_mssv` (`mssv`),
-  INDEX `idx_sched_week_range` (`week_range`),
-  INDEX `idx_sched_ngay_hoc` (`ngay_hoc`)
+  INDEX `idx_sched_mssv` (`mssv`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
--- 5. BẢNG student_grades: Điểm thi và bảng điểm sinh viên
+-- 5. BẢNG student_grades: Điểm thi và bảng điểm chi tiết của sinh viên
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `student_grades` (
   `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `mssv` VARCHAR(50) NOT NULL,
   `ma_hp` VARCHAR(50) DEFAULT '',
   `ten_hp` VARCHAR(255) NOT NULL,
-  `so_tin_chi` DECIMAL(3,1) DEFAULT 3,
-  `diem_chu` VARCHAR(10) DEFAULT 'B',
-  `hoc_ky` VARCHAR(50) DEFAULT 'HK1 (2025-2026)',
-  `hoc_phi` VARCHAR(100) DEFAULT NULL,
-  `diem_dbp` DECIMAL(4,2) DEFAULT NULL,
-  `diem_thi1` DECIMAL(4,2) DEFAULT 8.00,
-  `diem_thi2` DECIMAL(4,2) DEFAULT 8.00,
-  `diem_1` DECIMAL(4,2) DEFAULT NULL,
-  `diem_2` DECIMAL(4,2) DEFAULT NULL,
   `nam_hoc` VARCHAR(20) DEFAULT NULL,
   `ky` VARCHAR(20) DEFAULT NULL,
+  `diem_dbp` DECIMAL(4, 2) DEFAULT NULL,
+  `diem_qt` DECIMAL(4, 2) DEFAULT NULL,
+  `diem_thi1` DECIMAL(4, 2) DEFAULT 8.00,
+  `diem_thi2` DECIMAL(4, 2) DEFAULT 8.00,
+  `diem_thi` DECIMAL(4, 2) DEFAULT NULL,
+  `diem_1` DECIMAL(4, 2) DEFAULT NULL,
+  `diem_2` DECIMAL(4, 2) DEFAULT NULL,
+  `diem_hp` DECIMAL(4, 2) DEFAULT NULL,
+  `diem_chu` VARCHAR(10) DEFAULT 'B',
+  `so_tin_chi` DECIMAL(3, 1) DEFAULT 3.0,
+  `hoc_phi` VARCHAR(100) DEFAULT NULL,
+  `hoc_ky` VARCHAR(50) DEFAULT 'HK1 (2025-2026)',
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX `idx_student_grades_mssv` (`mssv`)
+  INDEX `idx_grades_mssv` (`mssv`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
--- 6. BẢNG news_cache: Bộ nhớ đệm tin tức và thông báo từ cổng trường
+-- 6. BẢNG news_cache: Bộ nhớ đệm tin tức và thông báo từ cổng trường TTN
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `news_cache` (
   `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `guid` VARCHAR(255) UNIQUE,
   `type` VARCHAR(50) NOT NULL,
   `title` VARCHAR(500) NOT NULL,
-  `summary` TEXT,
-  `content` LONGTEXT,
+  `summary` TEXT DEFAULT NULL,
+  `content` LONGTEXT DEFAULT NULL,
   `link` VARCHAR(500) DEFAULT NULL,
   `pub_date` VARCHAR(100) DEFAULT NULL,
   `raw_date` VARCHAR(100) DEFAULT NULL,
@@ -131,8 +135,7 @@ CREATE TABLE IF NOT EXISTS `news_cache` (
   `attachments` JSON DEFAULT NULL,
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX `idx_news_cache_type` (`type`),
-  INDEX `idx_news_cache_created` (`created_at`)
+  INDEX `idx_news_type` (`type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
@@ -151,13 +154,15 @@ CREATE TABLE IF NOT EXISTS `feedback` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
--- 8. BẢNG sos_alerts: Cảnh báo khẩn cấp SOS tới đội bảo vệ/an ninh
+-- 8. BẢNG sos_alerts: Cảnh báo khẩn cấp SOS tới đội bảo vệ/an ninh trường
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `sos_alerts` (
   `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `mssv` VARCHAR(50) DEFAULT NULL,
   `location` VARCHAR(255) DEFAULT NULL,
-  `message` TEXT,
+  `latitude` DECIMAL(10, 8) DEFAULT NULL,
+  `longitude` DECIMAL(11, 8) DEFAULT NULL,
+  `message` TEXT DEFAULT NULL,
   `incident_type` VARCHAR(100) DEFAULT 'Khẩn cấp',
   `status` VARCHAR(50) DEFAULT 'Đã tiếp nhận',
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
@@ -165,7 +170,7 @@ CREATE TABLE IF NOT EXISTS `sos_alerts` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
--- 9. BẢNG notifications: Thông báo gửi tới sinh viên
+-- 9. BẢNG notifications: Thông báo gửi tới sinh viên và toàn trường
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `notifications` (
   `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -178,30 +183,7 @@ CREATE TABLE IF NOT EXISTS `notifications` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
--- 10. BẢNG surveys: Khảo sát ý kiến sinh viên
--- ----------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `surveys` (
-  `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `title` VARCHAR(255) NOT NULL,
-  `description` TEXT,
-  `status` VARCHAR(50) DEFAULT 'Đang mở',
-  `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ----------------------------------------------------------------------------
--- 11. BẢNG support_tickets: Yêu cầu trợ giúp, khiếu nại của sinh viên
--- ----------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `support_tickets` (
-  `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `mssv` VARCHAR(50) DEFAULT NULL,
-  `title` VARCHAR(255) NOT NULL,
-  `content` TEXT NOT NULL,
-  `status` VARCHAR(50) DEFAULT 'Đang xử lý',
-  `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ----------------------------------------------------------------------------
--- 12. BẢNG password_resets: Mã OTP và token đặt lại mật khẩu
+-- 10. BẢNG password_resets: Mã OTP và token đặt lại mật khẩu qua email
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `password_resets` (
   `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -215,7 +197,7 @@ CREATE TABLE IF NOT EXISTS `password_resets` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
--- 13. BẢNG registration_otps: Mã OTP xác thực đăng ký tài khoản mới
+-- 11. BẢNG registration_otps: Mã OTP xác thực đăng ký tài khoản mới
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `registration_otps` (
   `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -226,11 +208,11 @@ CREATE TABLE IF NOT EXISTS `registration_otps` (
   `otp_code` VARCHAR(10) NOT NULL,
   `expires_at` DATETIME NOT NULL,
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX `idx_reg_email` (`email`)
+  INDEX `idx_reg_mssv` (`mssv`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
--- 14. BẢNG activity_logs: Nhật ký hoạt động & tương tác trên ứng dụng
+-- 12. BẢNG activity_logs: Nhật ký hoạt động & tương tác trên ứng dụng
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `activity_logs` (
   `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -238,8 +220,7 @@ CREATE TABLE IF NOT EXISTS `activity_logs` (
   `mssv` VARCHAR(50) DEFAULT 'guest',
   `ip_address` VARCHAR(50) DEFAULT '',
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX `idx_act_created` (`created_at`)
+  INDEX `idx_act_mssv` (`mssv`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;
-

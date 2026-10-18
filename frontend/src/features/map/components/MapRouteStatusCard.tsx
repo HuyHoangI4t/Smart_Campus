@@ -12,6 +12,7 @@ export interface MapRouteStatusCardProps {
     durationMinutes?: number;
     gateId?: string;
     gateName?: string;
+    arrived?: boolean;
   } | null;
   targetRoom: string;
   currentParsed: ParsedCampusRoom | null;
@@ -66,7 +67,7 @@ export const MapRouteStatusCard = React.memo(function MapRouteStatusCard({
               )}
             </View>
 
-            {!activeRoute?.distanceMeters ? (
+            {activeRoute?.distanceMeters === undefined || activeRoute?.distanceMeters === null ? (
               <View style={styles.loadingWireframeContainer}>
                 <View style={styles.wireframeBarLarge} />
                 <View style={styles.wireframeBarSmall} />
@@ -77,7 +78,9 @@ export const MapRouteStatusCard = React.memo(function MapRouteStatusCard({
                   {targetRoom && currentParsed ? currentParsed.fullDisplay : selectedLoc?.name || "Điểm đến"}
                 </Text>
                 <Text style={styles.distanceDurationText}>
-                  {`~${activeRoute.distanceMeters}m • ~${activeRoute.durationMinutes || 1} phút đi bộ`}
+                  {activeRoute.distanceMeters <= 8 || activeRoute.arrived
+                    ? "Đã đến nơi!"
+                    : `~${activeRoute.distanceMeters}m • ~${activeRoute.durationMinutes || 1} phút đi bộ`}
                 </Text>
               </>
             )}

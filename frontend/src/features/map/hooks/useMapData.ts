@@ -105,7 +105,17 @@ export function useMapData(params: UseMapDataParams = {}) {
   const searchResults = useMemo(() => {
     let list = locations;
     if (selectedCategory && selectedCategory !== "all") {
-      list = list.filter((loc) => loc.category.toLowerCase() === selectedCategory.toLowerCase());
+      const isWc = selectedCategory.toLowerCase() === "wc";
+      list = list.filter((loc) => {
+        if (isWc) {
+          return (
+            loc.category?.toLowerCase() === "wc" ||
+            loc.name?.toLowerCase().includes("wc") ||
+            (loc.description && loc.description.toLowerCase().includes("vệ sinh"))
+          );
+        }
+        return loc.category?.toLowerCase() === selectedCategory.toLowerCase();
+      });
     }
     const q = search.trim().toLowerCase();
     if (!q) return list;

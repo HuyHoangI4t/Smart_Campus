@@ -120,10 +120,22 @@ async function seedCampusPaths(conn, options = {}) {
       await connection.query('DELETE FROM campus_paths');
     }
     for (const p of DEFAULT_CAMPUS_PATHS) {
-      await connection.query(
-        'INSERT INTO campus_paths (name, path_type, coordinates) VALUES (?, ?, ?)',
-        [p.name, p.path_type, JSON.stringify(p.coordinates)]
-      );
+      if (p.id) {
+        await connection.query(
+          `INSERT INTO campus_paths (id, name, path_type, coordinates)
+           VALUES (?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+             name = VALUES(name),
+             path_type = VALUES(path_type),
+             coordinates = VALUES(coordinates)`,
+          [p.id, p.name, p.path_type, JSON.stringify(p.coordinates)]
+        );
+      } else {
+        await connection.query(
+          'INSERT INTO campus_paths (name, path_type, coordinates) VALUES (?, ?, ?)',
+          [p.name, p.path_type, JSON.stringify(p.coordinates)]
+        );
+      }
     }
     const [finalCount] = await connection.query('SELECT COUNT(*) as total FROM campus_paths');
     console.log(`✔ [Seeder] Đã nạp ${finalCount[0].total} tuyến đường đi bộ nội bộ.`);

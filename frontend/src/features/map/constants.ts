@@ -132,10 +132,10 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     "name": "Giảng đường 400 chỗ",
     "category": "Hội trường",
     "building": "Hội trường lớn",
-    "floor": "",
+    "floor": "Tầng 1",
     "description": "Hội trường lớn tổ chức sự kiện, hội thảo và các lớp đại cương đông sinh viên.",
-    "lat": 12.65199587,
-    "lng": 108.02544363,
+    "lat": 12.65198863,
+    "lng": 108.02531958,
     "icon": "award",
     "x": 68,
     "y": 57,
@@ -176,8 +176,8 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
     "building": "Tòa Thư viện",
     "floor": "Tầng 1 - 2",
     "description": "Thư viện tài liệu học tập, phòng tự học và tra cứu thông tin.",
-    "lat": 12.65153895,
-    "lng": 108.02550658,
+    "lat": 12.65143272,
+    "lng": 108.02536728,
     "icon": "book",
     "x": 64,
     "y": 55,
@@ -522,44 +522,44 @@ export const TAY_NGUYEN_CAMPUS_LOCATIONS: LocationItem[] = [
   {
     "id": 43,
     "name": "WC",
-    "category": "Khác",
-    "building": "Nhà 6",
+    "category": "WC",
+    "building": "WC",
     "floor": "Tầng 1",
     "description": "Nhà vệ sinh nhà 6",
     "lat": 12.65005177,
     "lng": 108.02507489,
-    "icon": "map-pin",
+    "icon": "droplet",
     "x": 50,
     "y": 50,
-    "color": "#3b82f6"
+    "color": "#06b6d4"
   },
   {
     "id": 44,
     "name": "WC",
-    "category": "Khác",
+    "category": "WC",
     "building": "Nhà 6",
     "floor": "Tầng 1",
     "description": "Nhà vệ sinh nhà 6",
     "lat": 12.6498268,
     "lng": 108.02530036,
-    "icon": "map-pin",
+    "icon": "droplet",
     "x": 50,
     "y": 50,
-    "color": "#3b82f6"
+    "color": "#06b6d4"
   },
   {
     "id": 45,
     "name": "WC",
-    "category": "Giảng đường",
+    "category": "WC",
     "building": "Nhà 2, Nhà 3",
     "floor": "Tầng 1",
     "description": "Nhà vệ sinh nhà 2, nhà 3",
     "lat": 12.65044239,
     "lng": 108.02490875,
-    "icon": "map-pin",
+    "icon": "droplet",
     "x": 50,
     "y": 50,
-    "color": "#3b82f6"
+    "color": "#06b6d4"
   }
 ];
 
@@ -839,14 +839,14 @@ export const TNU_CAMPUS_BOUNDARY: [number, number][] = [
 export const TNU_CAMPUS_GATES: CampusGate[] = [
   {
     id: 'front_gate',
-    name: 'Cổng trước (Lê Duẩn)',
+    name: 'Cổng trước',
     gatePoint: [12.651536, 108.023856],
     insidePoint: [12.65144, 108.02395],
     outsidePoint: [12.65154752, 108.02385583]
   },
   {
     id: 'back_gate',
-    name: 'Cổng sau (Y Wang)',
+    name: 'Cổng sau',
     gatePoint: [12.64837195, 108.02804429],
     insidePoint: [12.64850, 108.02798],
     outsidePoint: [12.64837195, 108.02804429]
@@ -872,7 +872,7 @@ export const TNU_SAMPLE_TEST_LOCATIONS = [
   },
   {
     id: 'front_gate',
-    name: 'Cổng trước (Lê Duẩn)',
+    name: 'Cổng trước',
     desc: 'Cổng chính Trường ĐH Tây Nguyên',
     latitude: 12.651536,
     longitude: 108.023856,
@@ -881,7 +881,7 @@ export const TNU_SAMPLE_TEST_LOCATIONS = [
   },
   {
     id: 'back_gate',
-    name: 'Cổng sau (Y Wang)',
+    name: 'Cổng sau',
     desc: 'Cổng phụ kết nối đường Y Wang',
     latitude: 12.648372,
     longitude: 108.028044,
@@ -890,7 +890,7 @@ export const TNU_SAMPLE_TEST_LOCATIONS = [
   },
   {
     id: 'admin_building',
-    name: 'Tòa nhà Điều hành (Khu Hiệu bộ)',
+    name: 'Tòa nhà Điều hành',
     desc: 'Trung tâm hành chính trường',
     latitude: 12.650900,
     longitude: 108.024100,

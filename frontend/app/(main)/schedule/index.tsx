@@ -142,7 +142,7 @@ export default function ScheduleScreen() {
     setModalVisible(true);
   };
 
-  const handleOpenEditModal = (item: ScheduleItem) => {
+  const handleOpenEditModal = useCallback((item: ScheduleItem) => {
     setIsEditing(true);
     setEditingId(item.id);
     setFormCourse(item.course);
@@ -159,7 +159,7 @@ export default function ScheduleScreen() {
     const matchedPreset = PERIOD_OPTIONS.some((p) => p.label === item.time);
     setIsCustomTime(!matchedPreset && !!item.time);
     setModalVisible(true);
-  };
+  }, [weekDates, weekRangeText]);
 
   const handleSelectDate = (dateStr: string) => {
     setFormDate(dateStr);
@@ -283,7 +283,7 @@ export default function ScheduleScreen() {
     }
   };
 
-  const handleDeleteSchedule = (item: ScheduleItem) => {
+  const handleDeleteSchedule = useCallback((item: ScheduleItem) => {
     Alert.alert(
       "Xác nhận xóa",
       `Bạn có chắc chắn muốn xóa lịch "${item.course}"?`,
@@ -295,8 +295,7 @@ export default function ScheduleScreen() {
           onPress: async () => {
             try {
               await apiDeleteCustomSchedule(item.id);
-              const newList = scheduleList.filter((s) => s.id !== item.id);
-              setScheduleList(newList);
+              setScheduleList((prev) => prev.filter((s) => s.id !== item.id));
               Alert.alert("Đã xóa", "Lịch học đã được xóa thành công.");
             } catch (err: any) {
               Alert.alert("Lỗi", "Không thể xóa lịch: " + (err?.message || ""));
@@ -305,7 +304,7 @@ export default function ScheduleScreen() {
         },
       ]
     );
-  };
+  }, []);
 
   const fetchSchedule = async (forceReload = false, weekOpts?: { week?: string; weekOffset?: number; weekIndex?: number }) => {
     try {
@@ -405,9 +404,9 @@ export default function ScheduleScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    fetchSchedule(true, { weekIndex: selectedWeekIndex });
+    await fetchSchedule(true, { weekIndex: selectedWeekIndex });
   };
 
   const filtered = useMemo(() => {

@@ -58,9 +58,9 @@ export const MapTopGateSelector = React.memo(function MapTopGateSelector({
           const isActive = gate.id === activeId;
           const shortName =
             gate.id === "front_gate"
-              ? "Cổng trước (Lê Duẩn)"
+              ? "Cổng trước"
               : gate.id === "back_gate"
-              ? "Cổng sau (Y Wang)"
+              ? "Cổng sau"
               : "Cổng BV trường";
 
           return (

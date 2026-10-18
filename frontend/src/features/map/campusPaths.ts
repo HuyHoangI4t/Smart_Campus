@@ -2,7 +2,7 @@ import { CampusPath } from './types';
 
 export const DEFAULT_CAMPUS_PATHS: CampusPath[] = [
   {
-    "id": 1,
+    "id": 11,
     "name": "Mạng lưới lối đi 1 (59 nhánh)",
     "path_type": "walkway",
     "coordinates": [
@@ -1455,7 +1455,7 @@ export const DEFAULT_CAMPUS_PATHS: CampusPath[] = [
     ]
   },
   {
-    "id": 2,
+    "id": 15,
     "name": "Lối đi nội bộ 2",
     "path_type": "walkway",
     "coordinates": [
@@ -1464,13 +1464,13 @@ export const DEFAULT_CAMPUS_PATHS: CampusPath[] = [
         108.0266548
       ],
       [
-        12.6514917,
-        108.0265302
+        12.6512828,
+        108.0268894
       ]
     ]
   },
   {
-    "id": 3,
+    "id": 16,
     "name": "Lối đi nội bộ 3",
     "path_type": "walkway",
     "coordinates": [
@@ -1485,7 +1485,7 @@ export const DEFAULT_CAMPUS_PATHS: CampusPath[] = [
     ]
   },
   {
-    "id": 4,
+    "id": 17,
     "name": "Lối đi nội bộ 4",
     "path_type": "walkway",
     "coordinates": [
@@ -1500,7 +1500,7 @@ export const DEFAULT_CAMPUS_PATHS: CampusPath[] = [
     ]
   },
   {
-    "id": 5,
+    "id": 18,
     "name": "Mạng lưới lối đi 5 (4 nhánh)",
     "path_type": "walkway",
     "coordinates": [
@@ -1571,7 +1571,7 @@ export const DEFAULT_CAMPUS_PATHS: CampusPath[] = [
     ]
   },
   {
-    "id": 6,
+    "id": 19,
     "name": "Lối đi nội bộ 6",
     "path_type": "walkway",
     "coordinates": [
@@ -1586,7 +1586,7 @@ export const DEFAULT_CAMPUS_PATHS: CampusPath[] = [
     ]
   },
   {
-    "id": 7,
+    "id": 20,
     "name": "Lối đi nội bộ 7",
     "path_type": "walkway",
     "coordinates": [
@@ -1601,7 +1601,7 @@ export const DEFAULT_CAMPUS_PATHS: CampusPath[] = [
     ]
   },
   {
-    "id": 8,
+    "id": 21,
     "name": "Lối đi nội bộ 8",
     "path_type": "walkway",
     "coordinates": [
@@ -1620,7 +1620,7 @@ export const DEFAULT_CAMPUS_PATHS: CampusPath[] = [
     ]
   },
   {
-    "id": 9,
+    "id": 22,
     "name": "Mạng lưới lối đi 9 (2 nhánh)",
     "path_type": "walkway",
     "coordinates": [
@@ -1647,7 +1647,7 @@ export const DEFAULT_CAMPUS_PATHS: CampusPath[] = [
     ]
   },
   {
-    "id": 10,
+    "id": 23,
     "name": "Lối đi nội bộ 10",
     "path_type": "walkway",
     "coordinates": [
@@ -1662,7 +1662,7 @@ export const DEFAULT_CAMPUS_PATHS: CampusPath[] = [
     ]
   },
   {
-    "id": 11,
+    "id": 24,
     "name": "Mạng lưới lối đi 11 (2 nhánh)",
     "path_type": "walkway",
     "coordinates": [
@@ -1689,7 +1689,7 @@ export const DEFAULT_CAMPUS_PATHS: CampusPath[] = [
     ]
   },
   {
-    "id": 12,
+    "id": 25,
     "name": "Mạng lưới lối đi 12 (3 nhánh)",
     "path_type": "walkway",
     "coordinates": [
@@ -1726,7 +1726,7 @@ export const DEFAULT_CAMPUS_PATHS: CampusPath[] = [
     ]
   },
   {
-    "id": 13,
+    "id": 26,
     "name": "Lối đi nội bộ 13",
     "path_type": "walkway",
     "coordinates": [
@@ -1745,7 +1745,7 @@ export const DEFAULT_CAMPUS_PATHS: CampusPath[] = [
     ]
   },
   {
-    "id": 14,
+    "id": 27,
     "name": "Mạng lưới lối đi 14 (2 nhánh)",
     "path_type": "walkway",
     "coordinates": [
@@ -1788,7 +1788,7 @@ export const DEFAULT_CAMPUS_PATHS: CampusPath[] = [
     ]
   },
   {
-    "id": 15,
+    "id": 28,
     "name": "Lối đi nội bộ 15",
     "path_type": "walkway",
     "coordinates": [
@@ -1803,7 +1803,7 @@ export const DEFAULT_CAMPUS_PATHS: CampusPath[] = [
     ]
   },
   {
-    "id": 16,
+    "id": 29,
     "name": "Lối đi nội bộ 16",
     "path_type": "walkway",
     "coordinates": [
@@ -1818,7 +1818,7 @@ export const DEFAULT_CAMPUS_PATHS: CampusPath[] = [
     ]
   },
   {
-    "id": 17,
+    "id": 30,
     "name": "Lối đi nội bộ 17",
     "path_type": "walkway",
     "coordinates": [
@@ -1833,6 +1833,180 @@ export const DEFAULT_CAMPUS_PATHS: CampusPath[] = [
       [
         12.6501929,
         108.023356
+      ]
+    ]
+  },
+  {
+    "id": 32,
+    "name": "Lối đi nội bộ 19",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        12.65302,
+        108.0263476
+      ],
+      [
+        12.6530595,
+        108.0264701
+      ],
+      [
+        12.6529258,
+        108.0264428
+      ]
+    ]
+  },
+  {
+    "id": 33,
+    "name": "Lối đi nội bộ 20",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        12.6531732,
+        108.0261586
+      ],
+      [
+        12.6531457,
+        108.0259776
+      ]
+    ]
+  },
+  {
+    "id": 34,
+    "name": "Lối đi nội bộ 21",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        12.649533,
+        108.0274614
+      ],
+      [
+        12.6494023,
+        108.0273255
+      ]
+    ]
+  },
+  {
+    "id": 35,
+    "name": "Lối đi nội bộ 22",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        12.6490825,
+        108.0279829
+      ],
+      [
+        12.6488558,
+        108.0282481
+      ],
+      [
+        12.6489287,
+        108.0280385
+      ],
+      [
+        12.6490825,
+        108.0279829
+      ]
+    ]
+  },
+  {
+    "id": 36,
+    "name": "Mạng lưới lối đi 22 (2 nhánh)",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        [
+          12.6513687,
+          108.0266548
+        ],
+        [
+          12.6514917,
+          108.0265302
+        ]
+      ],
+      [
+        [
+          12.6505652,
+          108.0251501
+        ],
+        [
+          12.6504623,
+          108.0249378
+        ]
+      ]
+    ]
+  },
+  {
+    "id": 37,
+    "name": "Mạng lưới lối đi 23 (3 nhánh)",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        [
+          12.6507843,
+          108.02489
+        ],
+        [
+          12.6505652,
+          108.0251501
+        ],
+        [
+          12.6507292,
+          108.0250215
+        ],
+        [
+          12.6508733,
+          108.0249985
+        ]
+      ],
+      [
+        [
+          12.650703,
+          108.0232514
+        ],
+        [
+          12.6509316,
+          108.0234523
+        ]
+      ],
+      [
+        [
+          12.651569,
+          108.0245763
+        ],
+        [
+          12.6514302,
+          108.0244166
+        ]
+      ]
+    ]
+  },
+  {
+    "id": 38,
+    "name": "Lối đi nội bộ 24",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        12.6514564,
+        108.02578
+      ],
+      [
+        12.6510946,
+        108.0256529
+      ]
+    ]
+  },
+  {
+    "id": 39,
+    "name": "Lối đi nội bộ 25",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        12.6510913,
+        108.024533
+      ],
+      [
+        12.6509711,
+        108.0245864
       ]
     ]
   }

@@ -58,25 +58,6 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-async function ensureRegistrationOtpTable() {
-  try {
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS registration_otps (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        mssv VARCHAR(50) NOT NULL,
-        ho_ten VARCHAR(255) NOT NULL,
-        email VARCHAR(255) NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        otp_code VARCHAR(10) NOT NULL,
-        expires_at DATETIME NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-  } catch (e) {
-    // ignore
-  }
-}
-
 // Register Request (Sends OTP and stores pending registration)
 exports.registerRequest = async (req, res) => {
   const { mssv, password, fullName, email, mat_khau, ho_ten } = req.body;
@@ -88,9 +69,7 @@ exports.registerRequest = async (req, res) => {
   }
 
   try {
-    await ensureRegistrationOtpTable();
-
-    const [existing] = await db.query('SELECT * FROM users WHERE mssv = ?', [mssv]);
+    const [existing] = await db.query('SELECT id FROM users WHERE mssv = ? LIMIT 1', [mssv]);
     if (existing.length > 0) {
       return res.status(400).json({ success: false, message: 'Mã số sinh viên đã tồn tại trong hệ thống.' });
     }
@@ -175,8 +154,6 @@ exports.verifyRegisterOtp = async (req, res) => {
   }
 
   try {
-    await ensureRegistrationOtpTable();
-
     const [rows] = await db.query(
       'SELECT * FROM registration_otps WHERE mssv = ? AND otp_code = ? ORDER BY created_at DESC LIMIT 1',
       [mssv.trim(), otpCode.trim()]
@@ -242,8 +219,8 @@ exports.login = async (req, res) => {
 
   try {
     const queryStr = loginKey.includes('@') 
-      ? 'SELECT * FROM users WHERE email = ?' 
-      : 'SELECT * FROM users WHERE mssv = ?';
+      ? 'SELECT id, mssv, ho_ten, email, password, role, avatar FROM users WHERE email = ? LIMIT 1' 
+      : 'SELECT id, mssv, ho_ten, email, password, role, avatar FROM users WHERE mssv = ? LIMIT 1';
     const [rows] = await db.query(queryStr, [loginKey]);
     
     if (rows.length === 0) {
@@ -375,7 +352,7 @@ exports.changePassword = async (req, res) => {
   }
 
   try {
-    const [rows] = await db.query('SELECT * FROM users WHERE mssv = ?', [mssv]);
+    const [rows] = await db.query('SELECT id, password FROM users WHERE mssv = ? LIMIT 1', [mssv]);
     if (rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy sinh viên.' });
     }
@@ -410,7 +387,9 @@ exports.forgotPassword = async (req, res) => {
   }
 
   try {
-    const queryStr = key.includes('@') ? 'SELECT * FROM users WHERE email = ?' : 'SELECT * FROM users WHERE mssv = ?';
+    const queryStr = key.includes('@') 
+      ? 'SELECT id, mssv, email FROM users WHERE email = ? LIMIT 1' 
+      : 'SELECT id, mssv, email FROM users WHERE mssv = ? LIMIT 1';
     const [rows] = await db.query(queryStr, [key]);
 
     if (rows.length === 0) {

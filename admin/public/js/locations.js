@@ -9,6 +9,10 @@ const LocationsModule = {
   categoryFilter: 'Tất cả',
   editingLocationId: null,
 
+  // Cảnh báo SOS chớp đỏ thời gian thực trong khuôn viên trường
+  sosAlerts: [],
+  sosMarkers: new Map(), // key: alertId -> L.marker
+
   // Trạng thái chọn nhanh tọa độ trên bản đồ
   isPickingMode: false,
   pickingTargetId: null,
@@ -304,6 +308,7 @@ const LocationsModule = {
     'Thư viện',
     'Ký túc xá',
     'Thể thao',
+    'WC',
     'Dịch vụ',
     'Tiện ích',
     'Học tập',
@@ -317,6 +322,7 @@ const LocationsModule = {
     await this.loadLocations();
     await this.loadCampusPaths();
     this.initMap();
+    await this.loadActiveSosAlerts();
   },
 
   initCategoryDropdown() {
@@ -390,8 +396,17 @@ const LocationsModule = {
   applyFilter() {
     this.filteredLocations = this.locations.filter(loc => {
       // Category filter
-      if (this.categoryFilter !== 'Tất cả' && loc.category !== this.categoryFilter) {
-        return false;
+      if (this.categoryFilter !== 'Tất cả') {
+        if (this.categoryFilter === 'WC') {
+          const locCat = (loc.category || '').toLowerCase();
+          const locName = (loc.name || '').toLowerCase();
+          const locDesc = (loc.description || '').toLowerCase();
+          if (locCat !== 'wc' && !locName.includes('wc') && !locDesc.includes('vệ sinh')) {
+            return false;
+          }
+        } else if (loc.category !== this.categoryFilter) {
+          return false;
+        }
       }
 
       // Search query
@@ -415,7 +430,10 @@ const LocationsModule = {
     if (!mapContainer || !window.L) return;
 
     if (this.map) {
-      setTimeout(() => this.map.invalidateSize(), 200);
+      setTimeout(() => {
+        this.map.invalidateSize();
+        this.loadActiveSosAlerts();
+      }, 200);
       return;
     }
 
@@ -470,6 +488,7 @@ const LocationsModule = {
       this.renderCampusBoundaryWall();
       this.renderMapMarkers();
       this.renderCampusPaths();
+      this.loadActiveSosAlerts();
     }, 250);
   },
 
@@ -742,6 +761,255 @@ const LocationsModule = {
       } catch (e) {
         console.warn('fitBounds error:', e);
       }
+    }
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // CẢNH BÁO SOS THỜI GIAN THỰC TRONG KHUÔN VIÊN TRƯỜNG (CHỚP ĐỎ)
+  // ─────────────────────────────────────────────────────────────
+
+  /**
+   * Kiểm tra xem một tọa độ [lat, lng] có nằm TRONG khuôn viên trường hay không.
+   * Sử dụng thuật toán Ray-Casting Point-in-Polygon trên ranh giới tường bao `this.boundary`
+   * và tính cả bán kính tiếp cận tại các cổng trường (Front, Back, Hospital Gate).
+   */
+  isInsideCampus(lat, lng) {
+    if (!this.boundary || this.boundary.length < 3) return true;
+    const x = Number(lat);
+    const y = Number(lng);
+    if (isNaN(x) || isNaN(y)) return false;
+
+    // Kiểm tra khoảng cách tới các cổng trường (trong phạm vi 30m xung quanh cổng vẫn thuộc ranh giới khuôn viên)
+    if (this.gates && this.gates.length && window.L && window.L.latLng) {
+      for (const g of this.gates) {
+        if (g.gatePoint) {
+          try {
+            const d = L.latLng(x, y).distanceTo(L.latLng(g.gatePoint));
+            if (d <= 30) return true;
+          } catch (e) {}
+        }
+      }
+    }
+
+    // Thuật toán Ray-Casting xác định điểm trong đa giác
+    let inside = false;
+    for (let i = 0, j = this.boundary.length - 1; i < this.boundary.length; j = i++) {
+      const xi = this.boundary[i][0], yi = this.boundary[i][1];
+      const xj = this.boundary[j][0], yj = this.boundary[j][1];
+      const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  },
+
+  /**
+   * Trích xuất và xác thực tọa độ SOS trong khuôn viên trường
+   */
+  resolveSosCoordinates(alert) {
+    if (!alert) return null;
+    const lat = alert.latitude !== undefined && alert.latitude !== null ? Number(alert.latitude) : (alert.vi_do !== undefined ? Number(alert.vi_do) : (alert.lat !== undefined ? Number(alert.lat) : null));
+    const lng = alert.longitude !== undefined && alert.longitude !== null ? Number(alert.longitude) : (alert.kinh_do !== undefined ? Number(alert.kinh_do) : (alert.lng !== undefined ? Number(alert.lng) : null));
+
+    // 1. Nếu có tọa độ GPS hợp lệ: Kiểm tra nghiêm ngặt có thuộc khuôn viên trường không
+    if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+      if (this.isInsideCampus(lat, lng)) {
+        return { lat, lng, source: 'gps' };
+      }
+      console.warn(`⚠️ [SOS Campus Map] Tọa độ GPS (${lat}, ${lng}) nằm NGOÀI ranh giới khuôn viên trường ĐH Tây Nguyên. Bỏ qua không hiển thị trên bản đồ trường.`);
+      return null;
+    }
+
+    // 2. Nếu không có tọa độ GPS hoặc thiết bị chưa gửi GPS, tìm kiếm khớp với địa điểm trong trường (VD: "Nhà 7", "Ký túc xá")
+    const locText = (alert.location || alert.location_name || alert.vi_tri || '').toLowerCase().trim();
+    if (locText && this.locations && this.locations.length) {
+      const matched = this.locations.find(loc => {
+        const name = (loc.name || '').toLowerCase();
+        const b = (loc.building || '').toLowerCase();
+        return name.includes(locText) || locText.includes(name) || (b && (b.includes(locText) || locText.includes(b)));
+      });
+
+      if (matched && matched.lat && matched.lng) {
+        const mLat = Number(matched.lat);
+        const mLng = Number(matched.lng);
+        if (this.isInsideCampus(mLat, mLng)) {
+          return { lat: mLat, lng: mLng, source: 'matched_building', buildingName: matched.name };
+        }
+      }
+    }
+
+    return null;
+  },
+
+  /**
+   * Nạp toàn bộ các cảnh báo SOS chưa xử lý và vẽ lên bản đồ
+   */
+  async loadActiveSosAlerts() {
+    if (!this.map || !window.L || typeof AdminAPI === 'undefined') return;
+    try {
+      const res = await AdminAPI.getSosAlerts();
+      if (!res || !res.success) return;
+      const alerts = res.alerts || [];
+      const unresolved = alerts.filter(a => a.status !== 'Đã xử lý' && a.status !== 'Đã giải quyết');
+
+      const currentIds = new Set(unresolved.map(a => Number(a.id)));
+      for (const [id, marker] of this.sosMarkers.entries()) {
+        if (!currentIds.has(id)) {
+          this.map.removeLayer(marker);
+          this.sosMarkers.delete(id);
+        }
+      }
+
+      unresolved.forEach(alert => {
+        this.addSosAlert(alert, false);
+      });
+    } catch (e) {
+      console.error('Lỗi khi nạp cảnh báo SOS lên bản đồ:', e);
+    }
+  },
+
+  /**
+   * Thêm 1 marker chớp đỏ khẩn cấp tại vị trí SOS (chỉ trong khuôn viên trường)
+   */
+  addSosAlert(alert, shouldFocus = false) {
+    if (!this.map || !window.L || !alert) return;
+    const id = Number(alert.id);
+
+    const coords = this.resolveSosCoordinates(alert);
+    if (!coords) {
+      return;
+    }
+
+    if (this.sosMarkers.has(id)) {
+      this.map.removeLayer(this.sosMarkers.get(id));
+      this.sosMarkers.delete(id);
+    }
+
+    const { lat, lng } = coords;
+    const mssv = alert.mssv || 'N/A';
+    const hoTen = alert.ho_ten || 'Sinh viên';
+    const locationName = alert.location || alert.location_name || coords.buildingName || 'Trong khuôn viên trường';
+    const phone = alert.so_dien_thoai || alert.phone || '';
+    const lop = alert.lop || '';
+    const message = alert.message || alert.description || 'Yêu cầu cứu trợ khẩn cấp';
+
+    const beaconHtml = `
+      <div class="sos-beacon-wrapper" title="CẢNH BÁO SOS: ${escapeHtml(hoTen)} (${escapeHtml(mssv)})">
+        <div class="sos-beacon-ring"></div>
+        <div class="sos-beacon-ring delayed"></div>
+        <div class="sos-beacon-core">
+          <svg style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.5;" viewBox="0 0 24 24">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </div>
+        <div class="sos-beacon-label">
+          <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#fff;animation:sosBeaconFlash 0.8s infinite;"></span>
+          SOS: ${escapeHtml(mssv)}
+        </div>
+      </div>
+    `;
+
+    const icon = L.divIcon({
+      className: 'sos-custom-leaflet-marker',
+      html: beaconHtml,
+      iconSize: [52, 52],
+      iconAnchor: [26, 26],
+      popupAnchor: [0, -32]
+    });
+
+    const marker = L.marker([lat, lng], { icon, zIndexOffset: 9999 }).addTo(this.map);
+
+    const popupHtml = `
+      <div class="p-2 text-slate-800 font-sans" style="min-width: 260px; max-width: 320px;">
+        <div class="flex items-center gap-2 pb-2 mb-2 border-b border-red-100">
+          <span class="w-3 h-3 rounded-full bg-red-600 animate-ping"></span>
+          <span class="font-extrabold text-sm text-red-600">🚨 CẢNH BÁO SOS KHẨN CẤP</span>
+        </div>
+        <div class="space-y-1.5 text-xs mb-3">
+          <p class="font-bold text-sm text-slate-900">${escapeHtml(hoTen)} <span class="font-mono text-brand-700 text-xs font-semibold">(${escapeHtml(mssv)})</span></p>
+          ${lop ? `<p class="text-slate-500 text-[11px]">Lớp: <b>${escapeHtml(lop)}</b></p>` : ''}
+          <div class="bg-red-50 text-red-800 p-2 rounded-lg border border-red-200">
+            <p class="font-bold mb-0.5 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 inline text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              ${escapeHtml(locationName)}
+            </p>
+            <p class="italic text-[11px] text-red-700 mt-1">"${escapeHtml(message)}"</p>
+          </div>
+          <p class="text-[11px] text-slate-400">Tọa độ: <span class="font-mono font-bold text-slate-600">${lat.toFixed(6)}, ${lng.toFixed(6)}</span></p>
+        </div>
+        <div class="flex items-center gap-2 pt-1 border-t border-slate-100">
+          ${phone ? `
+            <a href="tel:${phone}" class="flex-1 py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold text-center flex items-center justify-center gap-1 shadow-sm transition">
+              <svg class="w-3.5 h-3.5 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              Gọi (${phone})
+            </a>
+          ` : ''}
+          <button onclick="LocationsModule.resolveSosFromMap(${id})" class="flex-1 py-1.5 px-2 bg-brand-800 hover:bg-brand-900 text-white rounded-lg text-xs font-bold text-center flex items-center justify-center gap-1 shadow-sm transition">
+            <svg class="w-3.5 h-3.5 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+            Đã xử lý
+          </button>
+        </div>
+      </div>
+    `;
+
+    marker.bindPopup(popupHtml);
+    this.sosMarkers.set(id, marker);
+
+    if (shouldFocus) {
+      this.map.flyTo([lat, lng], 18, { animate: true, duration: 1 });
+      setTimeout(() => {
+        marker.openPopup();
+      }, 1000);
+    }
+  },
+
+  removeSosAlert(sosId) {
+    const id = Number(sosId);
+    if (this.sosMarkers.has(id)) {
+      this.map.removeLayer(this.sosMarkers.get(id));
+      this.sosMarkers.delete(id);
+    }
+  },
+
+  resolveSosFromMap(sosId) {
+    if (window.SosModule && typeof SosModule.confirmResolve === 'function') {
+      SosModule.confirmResolve(sosId);
+    } else {
+      window.App.showConfirm(
+        'Xác nhận xử lý SOS',
+        'Đánh dấu cảnh báo khẩn cấp này là "Đã xử lý an toàn"?',
+        async () => {
+          try {
+            await AdminAPI.updateSosStatus(sosId, 'Đã xử lý');
+            window.App.showToast('Đã xử lý cảnh báo SOS an toàn', 'success');
+            this.removeSosAlert(sosId);
+            window.App.refreshSosBadge();
+          } catch (e) {
+            window.App.showToast('Lỗi cập nhật SOS: ' + e.message, 'error');
+          }
+        }
+      );
+    }
+  },
+
+  focusSosOnMap(sosId) {
+    const id = Number(sosId);
+    if (this.sosMarkers.has(id)) {
+      const marker = this.sosMarkers.get(id);
+      const latlng = marker.getLatLng();
+      this.map.flyTo(latlng, 18, { animate: true, duration: 1 });
+      setTimeout(() => marker.openPopup(), 1000);
+    } else {
+      this.loadActiveSosAlerts().then(() => {
+        if (this.sosMarkers.has(id)) {
+          const marker = this.sosMarkers.get(id);
+          this.map.flyTo(marker.getLatLng(), 18, { animate: true, duration: 1 });
+          setTimeout(() => marker.openPopup(), 1000);
+        } else {
+          window.App.showToast('Cảnh báo SOS này nằm ngoài ranh giới khuôn viên trường hoặc đã được xử lý.', 'warning');
+        }
+      });
     }
   },
 

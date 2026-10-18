@@ -407,3 +407,101 @@ body:has(#loginView:not(.hidden)) {
   opacity: 0.6;
 }
 
+/* ==========================================================================
+   SOS REALTIME BEACON MARKER (Hiệu ứng chớp đỏ khẩn cấp trong khuôn viên)
+   ========================================================================== */
+
+@keyframes sosBeaconPulse {
+  0% {
+    transform: scale(0.65);
+    opacity: 0.95;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+@keyframes sosBeaconFlash {
+  0%, 100% {
+    transform: scale(1);
+    background-color: #DC2626;
+    box-shadow: 0 0 10px 3px rgba(220, 38, 38, 0.85);
+  }
+  50% {
+    transform: scale(1.22);
+    background-color: #EF4444;
+    box-shadow: 0 0 22px 8px rgba(239, 68, 68, 1);
+  }
+}
+
+.sos-custom-leaflet-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.sos-beacon-wrapper {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.sos-beacon-ring {
+  position: absolute;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background-color: rgba(239, 68, 68, 0.35);
+  border: 2px solid #EF4444;
+  animation: sosBeaconPulse 1.4s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+  pointer-events: none;
+}
+
+.sos-beacon-ring.delayed {
+  animation-delay: 0.7s;
+}
+
+.sos-beacon-core {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background-color: #DC2626;
+  border: 2.5px solid #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  box-shadow: 0 0 15px rgba(220, 38, 38, 0.9);
+  animation: sosBeaconFlash 1s ease-in-out infinite;
+  z-index: 5;
+}
+
+.sos-beacon-label {
+  position: absolute;
+  bottom: 34px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #DC2626;
+  color: #FFFFFF;
+  font-weight: 800;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+  border: 1.5px solid #FFFFFF;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+

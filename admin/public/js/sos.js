@@ -85,13 +85,18 @@ const SosModule = {
           <td>
             <div class="space-y-1">
               <p class="text-xs font-semibold text-slate-800">${escapeHtml(a.location_name || a.vi_tri || 'Trong khuôn viên trường')}</p>
-              ${hasCoords ? `
-                <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank"
-                  class="inline-flex items-center gap-1 text-[11px] font-bold text-brand-500 hover:text-brand-800 hover:underline">
-                  <i data-lucide="map-pin" class="w-3 h-3"></i>
-                  Xem trên Google Maps (${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)})
-                </a>
-              ` : ''}
+              <div class="flex flex-wrap items-center gap-2">
+                <button onclick="SosModule.viewOnCampusMap(${a.id})" class="inline-flex items-center gap-1 text-[11px] font-bold text-red-600 bg-red-50 hover:bg-red-100 px-2 py-0.5 rounded border border-red-200 transition">
+                  <i data-lucide="map" class="w-3 h-3"></i> Xem trên bản đồ trường
+                </button>
+                ${hasCoords ? `
+                  <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank"
+                    class="inline-flex items-center gap-1 text-[11px] font-bold text-brand-500 hover:text-brand-800 hover:underline">
+                    <i data-lucide="map-pin" class="w-3 h-3"></i>
+                    Google Maps (${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)})
+                  </a>
+                ` : ''}
+              </div>
               ${a.message ? `<p class="text-xs text-red-600 italic">"${escapeHtml(a.message)}"</p>` : ''}
             </div>
           </td>
@@ -123,6 +128,15 @@ const SosModule = {
     }).join('');
 
     if (window.lucide) window.lucide.createIcons();
+  },
+
+  viewOnCampusMap(id) {
+    if (window.App) window.App.switchTab('locations');
+    setTimeout(() => {
+      if (window.LocationsModule) {
+        LocationsModule.focusSosOnMap(id);
+      }
+    }, 450);
   },
 
   viewDetail(id) {

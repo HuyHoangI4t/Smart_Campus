@@ -73,28 +73,44 @@ exports.submitFeedback = async (req, res) => {
 
 // Submit SOS
 exports.submitSos = async (req, res) => {
-  const { location, message, description, incidentType } = req.body;
+  const { location, message, description, incidentType, latitude, longitude, lat, lng } = req.body;
   const mssv = getMssvFromReq(req);
   const sosLocation = location || 'Không rõ vị trí trong khuôn viên trường';
   const alertMsg = incidentType ? `[${incidentType}] ${description || message || 'Yêu cầu hỗ trợ khẩn cấp'}` : (description || message || 'Yêu cầu hỗ trợ khẩn cấp');
+  const sosLat = latitude !== undefined && latitude !== null ? Number(latitude) : (lat !== undefined && lat !== null ? Number(lat) : null);
+  const sosLng = longitude !== undefined && longitude !== null ? Number(longitude) : (lng !== undefined && lng !== null ? Number(lng) : null);
 
   try {
     const [result] = await db.query(
-      'INSERT INTO sos_alerts (mssv, location, message) VALUES (?, ?, ?)',
-      [mssv, sosLocation, alertMsg]
+      'INSERT INTO sos_alerts (mssv, location, latitude, longitude, message, incident_type, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [mssv, sosLocation, sosLat, sosLng, alertMsg, incidentType || 'Khẩn cấp', 'Chờ xử lý']
     );
+
+    // Lấy thông tin họ tên, SĐT, lớp của sinh viên để hiển thị ngay trên bảng điều khiển admin
+    let user = null;
+    if (mssv && mssv !== 'Anonymous') {
+      const [uRows] = await db.query('SELECT ho_ten, so_dien_thoai, lop FROM users WHERE mssv = ? LIMIT 1', [mssv]);
+      if (uRows.length > 0) user = uRows[0];
+    }
 
     const newAlertData = {
       id: result.insertId,
       mssv,
+      ho_ten: user ? user.ho_ten : 'Sinh viên',
+      so_dien_thoai: user ? user.so_dien_thoai : null,
+      lop: user ? user.lop : null,
       location: sosLocation,
+      location_name: sosLocation,
+      latitude: sosLat,
+      longitude: sosLng,
       message: alertMsg,
       incidentType: incidentType || 'Khẩn cấp',
       status: 'Chờ xử lý',
+      created_at: new Date(),
       timestamp: new Date()
     };
 
-    // Bắn sự kiện Realtime qua Socket.IO tới Admin (Ngay lập tức reo còi & tăng badge)
+    // Bắn sự kiện Realtime qua Socket.IO tới Admin (Ngay lập tức reo còi & chớp đỏ bản đồ)
     const io = req.app.get('io');
     if (io) {
       io.emit('new_sos', newAlertData);

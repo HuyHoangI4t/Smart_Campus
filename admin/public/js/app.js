@@ -151,8 +151,12 @@ const App = {
       if (window.DashboardModule && typeof window.DashboardModule.playAlertSound === 'function') {
         window.DashboardModule.playAlertSound();
       }
-      this.showToast(`🚨 CẢNH BÁO SOS: Có yêu cầu cứu trợ khẩn cấp mới! (${data?.location_name || 'Vị trí mới'})`, 'error');
+      const locDisplay = data?.location || data?.location_name || 'Vị trí mới';
+      this.showToast(`🚨 CẢNH BÁO SOS: Có yêu cầu cứu trợ khẩn cấp mới! (${locDisplay})`, 'error');
       this.refreshSosBadge();
+      if (window.LocationsModule) {
+        LocationsModule.addSosAlert(data, this.currentTab === 'locations');
+      }
       if (this.currentTab === 'sos' && window.SosModule) {
         SosModule.loadAlerts();
       }
@@ -166,6 +170,11 @@ const App = {
       console.log('🔄 [Socket.IO] Sự kiện sos_status_changed:', data);
       if (!AdminAPI.getToken()) return;
       this.refreshSosBadge();
+      if (window.LocationsModule) {
+        if (data.status === 'Đã xử lý' || data.status === 'Đã giải quyết') {
+          LocationsModule.removeSosAlert(data.id);
+        }
+      }
       if (this.currentTab === 'sos' && window.SosModule) {
         SosModule.loadAlerts();
       }

@@ -172,33 +172,32 @@ exports.getGrades = async (req, res) => {
 
   const forceRefresh = req.query.reload === 'true' || req.query.refresh === 'true' || req.body?.reload === true;
 
-  // 1. TỐI ƯU HÓA: Kiểm tra Cache TTL (12 giờ) trong Database siêu tốc (1ms)
+  // 1. TỐI ƯU HÓA: Kiểm tra Cache TTL (12 giờ) trong Database siêu tốc (1 round-trip)
+  let dbGrades = [];
   let isGradesFresh = false;
-  let gradesLastSync = 0;
+  let gradesLastSyncAgeMs = Infinity;
+
   if (mssv && !isGuestOrEmail(mssv)) {
     try {
-      const [cacheMeta] = await db.query(
-        'SELECT MAX(created_at) AS last_sync, COUNT(*) AS count FROM student_grades WHERE mssv = ?',
+      const [rows] = await db.query(
+        `SELECT ten_hp, nam_hoc, ky, diem_dbp, diem_thi1, diem_thi2, diem_1, diem_2, diem_chu, so_tin_chi, hoc_phi, hoc_ky, created_at 
+         FROM student_grades WHERE mssv = ? ORDER BY id ASC`,
         [mssv]
       );
-      const hasCache = cacheMeta && cacheMeta[0] && cacheMeta[0].count > 0;
-      gradesLastSync = hasCache ? new Date(cacheMeta[0].last_sync).getTime() : 0;
-      isGradesFresh = hasCache && (Date.now() - gradesLastSync < studentSyncService.TTL_GRADES_MS);
+      if (rows && rows.length > 0) {
+        dbGrades = rows;
+        const gradesLastSync = Math.max(...dbGrades.map(r => new Date(r.created_at).getTime() || 0));
+        gradesLastSyncAgeMs = Date.now() - gradesLastSync;
+        isGradesFresh = (gradesLastSyncAgeMs < studentSyncService.TTL_GRADES_MS);
 
-      // Nếu không ép reload và cache vẫn còn hạn (dưới 12h): Trả ngay lập tức từ DB, 0 request tới trường
-      if (!forceRefresh && isGradesFresh) {
-        const [dbGrades] = await db.query(
-          `SELECT ten_hp, nam_hoc, ky, diem_dbp, diem_thi1, diem_thi2, diem_1, diem_2, diem_chu, so_tin_chi, hoc_phi, hoc_ky 
-           FROM student_grades WHERE mssv = ? ORDER BY id ASC`,
-          [mssv]
-        );
-        if (dbGrades && dbGrades.length > 0) {
+        // Fast-path: Nếu cache còn hạn HOẶC vừa reload dưới 2 phút trước -> trả ngay từ DB (1ms)
+        if ((!forceRefresh && isGradesFresh) || (forceRefresh && gradesLastSyncAgeMs < 2 * 60 * 1000)) {
           const processed = gradeService.processGradesPayload(dbGrades);
           return res.json({
             success: true,
             mssv: mssv,
             isDbCached: true,
-            cacheAgeHours: Math.round((Date.now() - gradesLastSync) / 3600000 * 10) / 10,
+            cacheAgeHours: Math.round(gradesLastSyncAgeMs / 3600000 * 10) / 10,
             ho_ten: studentName || ('Sinh viên ' + mssv),
             ...processed
           });
@@ -209,18 +208,25 @@ exports.getGrades = async (req, res) => {
     }
   }
 
-  // 2. Nếu DB chưa có hoặc cache quá 12h hoặc người dùng chủ động vuốt reload:
-  // Đồng bộ qua studentSyncService (Được điều tiết tải hàng đợi MAX 3, chống nghẽn web trường)
+  // 2. Nếu DB chưa có hoặc cache quá 2 phút và người dùng chủ động vuốt reload:
+  // Giới hạn chờ crawler tối đa 2500ms nếu đã có sẵn dữ liệu trong DB
   let syncSuccess = false;
   if (mssv && !isGuestOrEmail(mssv)) {
     try {
-      const syncRes = await studentSyncService.syncGradesForStudent(mssv, studentDk);
+      const syncPromise = studentSyncService.syncGradesForStudent(mssv, studentDk);
+      const syncRes = dbGrades.length > 0
+        ? await Promise.race([
+            syncPromise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('TTN Crawler timeout 2500ms')), 2500))
+          ])
+        : await syncPromise;
+
       if (syncRes && syncRes.success) {
         syncSuccess = true;
         if (syncRes.studentName) studentName = syncRes.studentName;
       }
     } catch (crawlErr) {
-      console.warn('Lỗi đồng bộ bảng điểm qua crawler:', crawlErr.message);
+      console.warn('Lỗi đồng bộ bảng điểm qua crawler (timeout/lỗi):', crawlErr.message);
     }
   }
 
@@ -420,71 +426,76 @@ exports.getSchedule = async (req, res) => {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
   const isSunday = now.getDay() === 0;
 
-  // Lấy các mục lịch học tự tạo / thực hành đột xuất của sinh viên
+  // 1. TỐI ƯU HÓA: Đọc toàn bộ lịch học (chính khóa + tùy chỉnh) chỉ trong 1 Query duy nhất
   let customItems = [];
-  try {
-    const [customRows] = await db.query(
-      'SELECT id, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich, week_range, ngay_hoc FROM student_schedules WHERE (mssv = ? OR mssv = "guest") AND is_custom = 1 ORDER BY id ASC',
-      [mssv]
-    );
-    customItems = customRows || [];
-  } catch (e) {}
-
-  // 1. TỐI ƯU HÓA: Kiểm tra Cache TTL (24 giờ) trong Database siêu tốc (1ms)
+  let dbSchedules = [];
   let isSchedFresh = false;
-  let schedLastSync = 0;
+  let lastSyncAgeMs = Infinity;
+
   if (mssv && !isGuestOrEmail(mssv)) {
     try {
-      const [cacheMeta] = await db.query(
-        'SELECT MAX(created_at) AS last_sync, COUNT(*) AS count FROM student_schedules WHERE mssv = ? AND (is_custom = 0 OR is_custom IS NULL)',
+      const [allRows] = await db.query(
+        'SELECT id, mssv, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich, week_range, ngay_hoc, created_at FROM student_schedules WHERE (mssv = ? OR (mssv = "guest" AND is_custom = 1)) ORDER BY id ASC',
         [mssv]
       );
-      const hasCache = cacheMeta && cacheMeta[0] && cacheMeta[0].count > 0;
-      schedLastSync = hasCache ? new Date(cacheMeta[0].last_sync).getTime() : 0;
-      isSchedFresh = hasCache && (Date.now() - schedLastSync < studentSyncService.TTL_SCHEDULE_MS);
-    } catch (e) {}
-  }
-
-  // 1.1 Nếu không yêu cầu ép reload và cache còn hạn (dưới 24h): Trả ngay lập tức từ DB (0 request tới trường)
-  if (!forceRefresh && isSchedFresh && mssv && !isGuestOrEmail(mssv)) {
-    try {
-      const [dbSchedules] = await db.query(
-        'SELECT id, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich, week_range, ngay_hoc FROM student_schedules WHERE mssv = ? ORDER BY id ASC',
-        [mssv]
-      );
-      if (dbSchedules && dbSchedules.length > 0) {
-        const handled = formatDbSchedulesResponse(dbSchedules, customItems, req, res, mssv, true, today, isSunday, requestedWeek, requestedWeekOffset, requestedWeekIndex);
-        if (handled) return;
+      if (allRows && allRows.length > 0) {
+        customItems = allRows.filter(r => r.is_custom === 1);
+        dbSchedules = allRows.filter(r => r.mssv === mssv);
+        const officialSchedules = allRows.filter(r => r.mssv === mssv && (!r.is_custom || r.is_custom === 0));
+        if (officialSchedules.length > 0) {
+          const schedLastSync = Math.max(...officialSchedules.map(r => new Date(r.created_at).getTime() || 0));
+          lastSyncAgeMs = Date.now() - schedLastSync;
+          isSchedFresh = (lastSyncAgeMs < studentSyncService.TTL_SCHEDULE_MS);
+        }
       }
     } catch (e) {
       console.warn('Lỗi đọc student_schedules từ DB:', e.message);
     }
   }
 
-  // 2. Nếu DB chưa có hoặc cache quá 24h hoặc người dùng chủ động vuốt reload:
-  // Đồng bộ qua studentSyncService (Được điều tiết tải hàng đợi MAX 3, chống nghẽn web trường)
+  // 1.1 Fast-Path siêu tốc (1ms):
+  // - Nếu không yêu cầu ép reload và cache còn hạn (dưới 24h)
+  // - HOẶC nếu người dùng vuốt reload nhưng vừa đồng bộ trong vòng 2 phút trước (tránh spam web trường)
+  if (dbSchedules.length > 0 && ((!forceRefresh && isSchedFresh) || (forceRefresh && lastSyncAgeMs < 2 * 60 * 1000))) {
+    const handled = formatDbSchedulesResponse(dbSchedules, customItems, req, res, mssv, true, today, isSunday, requestedWeek, requestedWeekOffset, requestedWeekIndex);
+    if (handled) return;
+  }
+
+  // 2. Nếu DB chưa có hoặc cache quá 2 phút và người dùng vuốt reload:
+  // Giới hạn thời gian chờ crawler web trường tối đa 2500ms nếu đã có sẵn dữ liệu trong DB
   let scheduleSyncSuccess = false;
   if (mssv && !isGuestOrEmail(mssv)) {
     try {
-      const syncRes = await studentSyncService.syncScheduleForStudent(mssv, studentDk);
+      const syncPromise = studentSyncService.syncScheduleForStudent(mssv, studentDk);
+      const syncRes = dbSchedules.length > 0
+        ? await Promise.race([
+            syncPromise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('TTN Crawler timeout 2500ms')), 2500))
+          ])
+        : await syncPromise;
+
       if (syncRes && syncRes.success) {
         scheduleSyncSuccess = true;
       }
     } catch (crawlErr) {
-      console.warn('Lỗi đồng bộ lịch học qua crawler:', crawlErr.message);
+      console.warn('Crawler lịch học web trường chậm hoặc timeout, fallback dữ liệu DB:', crawlErr.message);
     }
   }
 
-  // 3. Đọc dữ liệu từ DB (vừa cào xong hoặc fallback cache cũ nếu cào lỗi)
+  // 3. Đọc dữ liệu từ DB (vừa cào xong hoặc fallback cache cũ nếu cào lỗi/timeout)
   if (mssv && !isGuestOrEmail(mssv)) {
     try {
-      const [dbSchedules] = await db.query(
-        'SELECT id, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich, week_range, ngay_hoc FROM student_schedules WHERE mssv = ? ORDER BY id ASC',
+      const [newRows] = await db.query(
+        'SELECT id, mssv, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich, week_range, ngay_hoc FROM student_schedules WHERE (mssv = ? OR (mssv = "guest" AND is_custom = 1)) ORDER BY id ASC',
         [mssv]
       );
-      if (dbSchedules && dbSchedules.length > 0) {
-        const handled = formatDbSchedulesResponse(dbSchedules, customItems, req, res, mssv, !scheduleSyncSuccess, today, isSunday, requestedWeek, requestedWeekOffset, requestedWeekIndex);
-        if (handled) return;
+      if (newRows && newRows.length > 0) {
+        customItems = newRows.filter(r => r.is_custom === 1);
+        dbSchedules = newRows.filter(r => r.mssv === mssv);
+        if (dbSchedules.length > 0) {
+          const handled = formatDbSchedulesResponse(dbSchedules, customItems, req, res, mssv, !scheduleSyncSuccess, today, isSunday, requestedWeek, requestedWeekOffset, requestedWeekIndex);
+          if (handled) return;
+        }
       }
     } catch (e) {
       console.warn('Lỗi đọc student_schedules từ DB:', e.message);
@@ -775,7 +786,10 @@ exports.updateProfile = async (req, res) => {
   const { ho_ten, fullName, email, so_dien_thoai, phone, lop, khoa, avatar, avatar_url, avatarUrl } = req.body;
 
   try {
-    const [existing] = await db.query('SELECT * FROM users WHERE mssv = ?', [mssv]);
+    const [existing] = await db.query(
+      'SELECT ho_ten, email, so_dien_thoai, lop, khoa, avatar FROM users WHERE mssv = ? LIMIT 1',
+      [mssv]
+    );
     if (existing.length === 0) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy sinh viên.' });
     }

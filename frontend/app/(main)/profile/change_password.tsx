@@ -1,7 +1,7 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Modal } from "react-native";
+import React, { useState, useCallback } from "react";
+import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Modal, BackHandler } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { AppColors } from "../../../src/constants/appColors";
 import { NavHeader } from "../../../src/components/NavHeader";
 import { apiChangePassword } from "../../../src/services/api";
@@ -31,12 +31,32 @@ export default function ChangePasswordScreen() {
     setPopupVisible(true);
   };
 
-  const handleClosePopup = () => {
+  const handleClosePopup = useCallback(() => {
     setPopupVisible(false);
     if (popupType === "success") {
       router.replace("/(main)/profile");
     }
-  };
+  }, [popupType, router]);
+
+  const handleBackToProfile = useCallback(() => {
+    if (popupVisible) {
+      handleClosePopup();
+      return;
+    }
+    router.replace("/(main)/profile");
+  }, [popupVisible, handleClosePopup, router]);
+
+  // Bắt sự kiện phím Back vật lý / cử chỉ vuốt cạnh để luôn trở về màn hình Hồ sơ thay vì bị văng về Home
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        handleBackToProfile();
+        return true;
+      };
+      const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+      return () => sub.remove();
+    }, [handleBackToProfile])
+  );
 
   const handleChangePassword = async () => {
     if (!currentPassword) {
@@ -81,7 +101,7 @@ export default function ChangePasswordScreen() {
         title="Đổi mật khẩu"
         subtitle="Bảo vệ an toàn tài khoản sinh viên"
         showBack={true}
-        onBack={() => router.replace("/(main)/profile")}
+        onBack={handleBackToProfile}
       />
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 110 }}>

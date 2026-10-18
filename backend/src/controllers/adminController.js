@@ -24,32 +24,31 @@ exports.getDashboardStats = async (req, res) => {
 
   try {
     const [
-      [[usersCount]],
-      [[studentsCount]],
+      [[userStats]],
       [[notificationsCount]],
-      [[feedbackCount]],
-      [[resolvedFeedbackCount]],
-      [[sosCount]],
-      [[resolvedSosCount]],
+      [[feedbackStats]],
+      [[sosStats]],
       [[locationsCount]],
       [recentFeedback],
       [recentSos]
     ] = await Promise.all([
-      db.query('SELECT COUNT(*) AS total FROM users'),
-      db.query("SELECT COUNT(*) AS total FROM users WHERE role = 'sinh_vien' OR role IS NULL"),
+      db.query("SELECT COUNT(*) AS total, SUM(CASE WHEN role = 'sinh_vien' OR role IS NULL THEN 1 ELSE 0 END) AS students FROM users"),
       db.query('SELECT COUNT(*) AS total FROM notifications'),
-      db.query('SELECT COUNT(*) AS total FROM feedback'),
-      db.query("SELECT COUNT(*) AS total FROM feedback WHERE status = 'Đã giải quyết'"),
-      db.query('SELECT COUNT(*) AS total FROM sos_alerts'),
-      db.query("SELECT COUNT(*) AS total FROM sos_alerts WHERE status = 'Đã xử lý'"),
+      db.query("SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'Đã giải quyết' THEN 1 ELSE 0 END) AS resolved FROM feedback"),
+      db.query("SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'Đã xử lý' THEN 1 ELSE 0 END) AS resolved FROM sos_alerts"),
       db.query('SELECT COUNT(*) AS total FROM map_locations'),
-      db.query('SELECT * FROM feedback ORDER BY id DESC LIMIT 5'),
-      db.query('SELECT * FROM sos_alerts ORDER BY id DESC LIMIT 5')
+      db.query('SELECT id, mssv, title, content, category, rating, status, created_at FROM feedback ORDER BY id DESC LIMIT 5'),
+      db.query('SELECT id, mssv, location, message, incident_type, status, created_at FROM sos_alerts ORDER BY id DESC LIMIT 5')
     ]);
 
-    // 2. Tổng hợp dữ liệu 7 ngày trong tuần (T2 -> CN) thực tế từ MySQL cho biểu đồ
-    // 2. Hỗ trợ chọn tuần xem dữ liệu (weekOffset = 0: tuần này, -1: 1 tuần trước,...)
-    const weekOffset = parseInt(req.query.weekOffset || '0', 10) || 0;
+    const usersCount = { total: Number(userStats?.total || 0) };
+    const studentsCount = { total: Number(userStats?.students || 0) };
+    const feedbackCount = { total: Number(feedbackStats?.total || 0) };
+    const resolvedFeedbackCount = { total: Number(feedbackStats?.resolved || 0) };
+    const sosCount = { total: Number(sosStats?.total || 0) };
+    const resolvedSosCount = { total: Number(sosStats?.resolved || 0) };
+
+    // 2. Tổng hợp dữ liệu 7 ngày trong tuần (T2 -> CN) thực tế từ MySQL cho biểu đồ (weekOffset đã được parse ở dòng 17)
 
     // Tổng hợp dữ liệu 7 ngày trong tuần (T2 -> CN) thực tế từ MySQL cho biểu đồ
     const dayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];

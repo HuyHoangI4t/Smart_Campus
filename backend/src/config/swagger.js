@@ -22,19 +22,19 @@ const options = {
       description: `
 ### Tài liệu API & Cổng Thử Nghiệm Tương Tác (Interactive Swagger UI)
 Hệ thống **Smart Campus Đại học Tây Nguyên** hỗ trợ tích hợp đa nền tảng:
-- 📱 **Ứng dụng di động (Mobile App - React Native / Expo)**: Tra cứu điểm, thời khóa biểu, bản đồ số 37 điểm, chỉ đường thông minh, phản ánh sinh viên và cứu trợ khẩn cấp SOS.
-- 💻 **Trang quản trị (Admin Portal Web)**: Giám sát KPI, quản lý người dùng, duyệt phản ánh, trực ban cứu nạn SOS, chỉnh sửa bản đồ & mạng lưới lối đi nội bộ.
-- 🔄 **Tiến trình tự động (Automated Cron Jobs)**: Đồng bộ tin tức, thông báo từ cổng trường TTN.
+-  **Ứng dụng di động (Mobile App - React Native / Expo)**: Tra cứu điểm, thời khóa biểu, bản đồ số 37 điểm, chỉ đường thông minh, phản ánh sinh viên và cứu trợ khẩn cấp SOS.
+-  **Trang quản trị (Admin Portal Web)**: Giám sát KPI, quản lý người dùng, duyệt phản ánh, trực ban cứu nạn SOS, chỉnh sửa bản đồ & mạng lưới lối đi nội bộ.
+-  **Tiến trình tự động (Automated Cron Jobs)**: Đồng bộ tin tức, thông báo từ cổng trường TTN.
 
 ---
-#### 🔑 Hướng dẫn xác thực (Authentication):
+####  Hướng dẫn xác thực (Authentication):
 1. Gọi API \`POST /api/auth/login\` với tài khoản Admin hoặc Sinh viên để nhận JWT Token.
-2. Nhấn nút **Authorize 🔓** ở góc trên bên phải, dán chuỗi Token vào và bấm **Authorize**.
+2. Nhấn nút **Authorize ** ở góc trên bên phải, dán chuỗi Token vào và bấm **Authorize**.
 3. Bạn có thể bấm **"Try it out"** và thực thi trực tiếp toàn bộ API có quyền bảo vệ trên giao diện này.
       `,
       contact: {
         name: 'Đội ngũ Kỹ thuật SmartCampus TTN',
-        email: 'admin@ttn.edu.vn',
+        email: '',
         url: 'https://www.ttn.edu.vn',
       },
     },
@@ -51,7 +51,7 @@ Hệ thống **Smart Campus Đại học Tây Nguyên** hỗ trợ tích hợp �
     tags: [
       { name: 'Auth', description: 'Xác thực tài khoản, đăng nhập, đăng ký, OTP email và khôi phục mật khẩu' },
       { name: 'Student', description: 'Tra cứu bảng điểm, thời khóa biểu, CRUD lịch học tự tạo, hồ sơ sinh viên' },
-      { name: 'Campus', description: 'Bản đồ khuôn viên, tọa độ 37 tòa nhà, đường đi nội bộ, phản hồi và SOS' },
+      { name: 'Campus', description: 'Bản đồ khuôn viên, tọa độ tòa nhà, đường đi nội bộ, phản hồi và SOS' },
       { name: 'News', description: 'Tin tức, thông báo và tài liệu đính kèm từ cổng đào tạo Đại học Tây Nguyên' },
       { name: 'General', description: 'Thông báo chung và tiện ích hệ thống' },
       { name: 'Admin', description: 'Quản trị viên (Người dùng, Địa điểm bản đồ, Đường đi, Cảnh báo SOS, Phản hồi)' },

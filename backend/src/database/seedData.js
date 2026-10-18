@@ -178,10 +178,10 @@ const TAY_NGUYEN_CAMPUS_LOCATIONS = [
     "name": "Giảng đường 400 chỗ",
     "category": "Hội trường",
     "building": "Hội trường lớn",
-    "floor": "",
+    "floor": "Tầng 1",
     "description": "Hội trường lớn tổ chức sự kiện, hội thảo và các lớp đại cương đông sinh viên.",
-    "lat": 12.65199587,
-    "lng": 108.02544363,
+    "lat": 12.65198863,
+    "lng": 108.02531958,
     "icon": "award",
     "x": 68,
     "y": 57,
@@ -222,8 +222,8 @@ const TAY_NGUYEN_CAMPUS_LOCATIONS = [
     "building": "Tòa Thư viện",
     "floor": "Tầng 1 - 2",
     "description": "Thư viện tài liệu học tập, phòng tự học và tra cứu thông tin.",
-    "lat": 12.65153895,
-    "lng": 108.02550658,
+    "lat": 12.65143272,
+    "lng": 108.02536728,
     "icon": "book",
     "x": 64,
     "y": 55,
@@ -568,50 +568,51 @@ const TAY_NGUYEN_CAMPUS_LOCATIONS = [
   {
     "id": 43,
     "name": "WC",
-    "category": "Khác",
-    "building": "Nhà 6",
+    "category": "WC",
+    "building": "WC",
     "floor": "Tầng 1",
     "description": "Nhà vệ sinh nhà 6",
     "lat": 12.65005177,
     "lng": 108.02507489,
-    "icon": "map-pin",
+    "icon": "droplet",
     "x": 50,
     "y": 50,
-    "color": "#3b82f6"
+    "color": "#06b6d4"
   },
   {
     "id": 44,
     "name": "WC",
-    "category": "Khác",
+    "category": "WC",
     "building": "Nhà 6",
     "floor": "Tầng 1",
     "description": "Nhà vệ sinh nhà 6",
     "lat": 12.6498268,
     "lng": 108.02530036,
-    "icon": "map-pin",
+    "icon": "droplet",
     "x": 50,
     "y": 50,
-    "color": "#3b82f6"
+    "color": "#06b6d4"
   },
   {
     "id": 45,
     "name": "WC",
-    "category": "Giảng đường",
+    "category": "WC",
     "building": "Nhà 2, Nhà 3",
     "floor": "Tầng 1",
     "description": "Nhà vệ sinh nhà 2, nhà 3",
     "lat": 12.65044239,
     "lng": 108.02490875,
-    "icon": "map-pin",
+    "icon": "droplet",
     "x": 50,
     "y": 50,
-    "color": "#3b82f6"
+    "color": "#06b6d4"
   }
 ];
 
 // 5. Tuyến đường đi bộ nội bộ mặc định ban đầu
 const DEFAULT_CAMPUS_PATHS = [
   {
+    "id": 11,
     "name": "Mạng lưới lối đi 1 (59 nhánh)",
     "path_type": "walkway",
     "coordinates": [
@@ -2064,6 +2065,7 @@ const DEFAULT_CAMPUS_PATHS = [
     ]
   },
   {
+    "id": 15,
     "name": "Lối đi nội bộ 2",
     "path_type": "walkway",
     "coordinates": [
@@ -2072,12 +2074,13 @@ const DEFAULT_CAMPUS_PATHS = [
         108.0266548
       ],
       [
-        12.6514917,
-        108.0265302
+        12.6512828,
+        108.0268894
       ]
     ]
   },
   {
+    "id": 16,
     "name": "Lối đi nội bộ 3",
     "path_type": "walkway",
     "coordinates": [
@@ -2092,6 +2095,7 @@ const DEFAULT_CAMPUS_PATHS = [
     ]
   },
   {
+    "id": 17,
     "name": "Lối đi nội bộ 4",
     "path_type": "walkway",
     "coordinates": [
@@ -2106,6 +2110,7 @@ const DEFAULT_CAMPUS_PATHS = [
     ]
   },
   {
+    "id": 18,
     "name": "Mạng lưới lối đi 5 (4 nhánh)",
     "path_type": "walkway",
     "coordinates": [
@@ -2176,6 +2181,7 @@ const DEFAULT_CAMPUS_PATHS = [
     ]
   },
   {
+    "id": 19,
     "name": "Lối đi nội bộ 6",
     "path_type": "walkway",
     "coordinates": [
@@ -2190,6 +2196,7 @@ const DEFAULT_CAMPUS_PATHS = [
     ]
   },
   {
+    "id": 20,
     "name": "Lối đi nội bộ 7",
     "path_type": "walkway",
     "coordinates": [
@@ -2204,6 +2211,7 @@ const DEFAULT_CAMPUS_PATHS = [
     ]
   },
   {
+    "id": 21,
     "name": "Lối đi nội bộ 8",
     "path_type": "walkway",
     "coordinates": [
@@ -2222,6 +2230,7 @@ const DEFAULT_CAMPUS_PATHS = [
     ]
   },
   {
+    "id": 22,
     "name": "Mạng lưới lối đi 9 (2 nhánh)",
     "path_type": "walkway",
     "coordinates": [
@@ -2248,6 +2257,7 @@ const DEFAULT_CAMPUS_PATHS = [
     ]
   },
   {
+    "id": 23,
     "name": "Lối đi nội bộ 10",
     "path_type": "walkway",
     "coordinates": [
@@ -2262,6 +2272,7 @@ const DEFAULT_CAMPUS_PATHS = [
     ]
   },
   {
+    "id": 24,
     "name": "Mạng lưới lối đi 11 (2 nhánh)",
     "path_type": "walkway",
     "coordinates": [
@@ -2288,6 +2299,7 @@ const DEFAULT_CAMPUS_PATHS = [
     ]
   },
   {
+    "id": 25,
     "name": "Mạng lưới lối đi 12 (3 nhánh)",
     "path_type": "walkway",
     "coordinates": [
@@ -2324,6 +2336,7 @@ const DEFAULT_CAMPUS_PATHS = [
     ]
   },
   {
+    "id": 26,
     "name": "Lối đi nội bộ 13",
     "path_type": "walkway",
     "coordinates": [
@@ -2342,6 +2355,7 @@ const DEFAULT_CAMPUS_PATHS = [
     ]
   },
   {
+    "id": 27,
     "name": "Mạng lưới lối đi 14 (2 nhánh)",
     "path_type": "walkway",
     "coordinates": [
@@ -2384,6 +2398,7 @@ const DEFAULT_CAMPUS_PATHS = [
     ]
   },
   {
+    "id": 28,
     "name": "Lối đi nội bộ 15",
     "path_type": "walkway",
     "coordinates": [
@@ -2398,6 +2413,7 @@ const DEFAULT_CAMPUS_PATHS = [
     ]
   },
   {
+    "id": 29,
     "name": "Lối đi nội bộ 16",
     "path_type": "walkway",
     "coordinates": [
@@ -2412,6 +2428,7 @@ const DEFAULT_CAMPUS_PATHS = [
     ]
   },
   {
+    "id": 30,
     "name": "Lối đi nội bộ 17",
     "path_type": "walkway",
     "coordinates": [
@@ -2426,6 +2443,180 @@ const DEFAULT_CAMPUS_PATHS = [
       [
         12.6501929,
         108.023356
+      ]
+    ]
+  },
+  {
+    "id": 32,
+    "name": "Lối đi nội bộ 19",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        12.65302,
+        108.0263476
+      ],
+      [
+        12.6530595,
+        108.0264701
+      ],
+      [
+        12.6529258,
+        108.0264428
+      ]
+    ]
+  },
+  {
+    "id": 33,
+    "name": "Lối đi nội bộ 20",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        12.6531732,
+        108.0261586
+      ],
+      [
+        12.6531457,
+        108.0259776
+      ]
+    ]
+  },
+  {
+    "id": 34,
+    "name": "Lối đi nội bộ 21",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        12.649533,
+        108.0274614
+      ],
+      [
+        12.6494023,
+        108.0273255
+      ]
+    ]
+  },
+  {
+    "id": 35,
+    "name": "Lối đi nội bộ 22",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        12.6490825,
+        108.0279829
+      ],
+      [
+        12.6488558,
+        108.0282481
+      ],
+      [
+        12.6489287,
+        108.0280385
+      ],
+      [
+        12.6490825,
+        108.0279829
+      ]
+    ]
+  },
+  {
+    "id": 36,
+    "name": "Mạng lưới lối đi 22 (2 nhánh)",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        [
+          12.6513687,
+          108.0266548
+        ],
+        [
+          12.6514917,
+          108.0265302
+        ]
+      ],
+      [
+        [
+          12.6505652,
+          108.0251501
+        ],
+        [
+          12.6504623,
+          108.0249378
+        ]
+      ]
+    ]
+  },
+  {
+    "id": 37,
+    "name": "Mạng lưới lối đi 23 (3 nhánh)",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        [
+          12.6507843,
+          108.02489
+        ],
+        [
+          12.6505652,
+          108.0251501
+        ],
+        [
+          12.6507292,
+          108.0250215
+        ],
+        [
+          12.6508733,
+          108.0249985
+        ]
+      ],
+      [
+        [
+          12.650703,
+          108.0232514
+        ],
+        [
+          12.6509316,
+          108.0234523
+        ]
+      ],
+      [
+        [
+          12.651569,
+          108.0245763
+        ],
+        [
+          12.6514302,
+          108.0244166
+        ]
+      ]
+    ]
+  },
+  {
+    "id": 38,
+    "name": "Lối đi nội bộ 24",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        12.6514564,
+        108.02578
+      ],
+      [
+        12.6510946,
+        108.0256529
+      ]
+    ]
+  },
+  {
+    "id": 39,
+    "name": "Lối đi nội bộ 25",
+    "path_type": "walkway",
+    "coordinates": [
+      [
+        12.6510913,
+        108.024533
+      ],
+      [
+        12.6509711,
+        108.0245864
       ]
     ]
   }

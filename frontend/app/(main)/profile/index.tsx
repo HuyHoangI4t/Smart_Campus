@@ -9,6 +9,10 @@ import {
   ActivityIndicator,
   Image,
   RefreshControl,
+  Modal,
+  BackHandler,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as ImagePicker from "expo-image-picker";
@@ -346,6 +350,28 @@ export default function ProfileScreen() {
     }
   };
 
+  // Xử lý nút Back vật lý / cử chỉ vuốt cạnh khi modal đang mở để không bị văng về Home
+  useEffect(() => {
+    const onBackPress = () => {
+      if (avatarModalVisible) {
+        if (!uploadingAvatar) closeAvatarModal();
+        return true;
+      }
+      if (editModalVisible) {
+        if (!saving) setEditModalVisible(false);
+        return true;
+      }
+      if (logoutModalVisible) {
+        if (!loggingOut) cancelLogout();
+        return true;
+      }
+      return false;
+    };
+
+    const backSubscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    return () => backSubscription.remove();
+  }, [avatarModalVisible, editModalVisible, logoutModalVisible, uploadingAvatar, saving, loggingOut, returnToEditModal]);
+
   return (
     <View style={{ flex: 1, backgroundColor: AppColors.background }}>
       <StatusBar style="light" backgroundColor="transparent" translucent={true} />
@@ -620,22 +646,28 @@ export default function ProfileScreen() {
       </ScrollView>
 
       {/* Edit Profile Modal */}
-      {editModalVisible && (
-        <View
+      <Modal
+        visible={editModalVisible}
+        transparent={true}
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => {
+          if (!saving) setEditModalVisible(false);
+        }}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
+            flex: 1,
             backgroundColor: "rgba(15, 23, 42, 0.55)",
-            zIndex: 999,
             justifyContent: "flex-end",
           }}
         >
           <TouchableOpacity
             activeOpacity={1}
-            onPress={() => setEditModalVisible(false)}
+            onPress={() => {
+              if (!saving) setEditModalVisible(false);
+            }}
             style={{ flex: 1 }}
           />
           <View
@@ -649,12 +681,14 @@ export default function ProfileScreen() {
           >
             <View style={[s.row, s.between, { marginBottom: 20 }]}>
               <Text style={{ fontSize: 18, fontWeight: "900", color: AppColors.text }}>Cập nhật hồ sơ</Text>
-              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+              <TouchableOpacity onPress={() => {
+                if (!saving) setEditModalVisible(false);
+              }}>
                 <Feather name="x" size={22} color={AppColors.textMuted} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <View style={{ alignItems: "center", marginBottom: 16 }}>
                 <TouchableOpacity
                   activeOpacity={0.8}
@@ -810,20 +844,23 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </ScrollView>
           </View>
-        </View>
-      )}
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* Modal Popup Xác nhận Đăng xuất */}
-      {logoutModalVisible && (
+      <Modal
+        visible={logoutModalVisible}
+        transparent={true}
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => {
+          if (!loggingOut) cancelLogout();
+        }}
+      >
         <View
           style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
+            flex: 1,
             backgroundColor: "rgba(15, 23, 42, 0.55)",
-            zIndex: 999,
             justifyContent: "center",
             alignItems: "center",
             padding: 24,
@@ -926,25 +963,30 @@ export default function ProfileScreen() {
             </View>
           </View>
         </View>
-      )}
+      </Modal>
 
       {/* Modal Thay đổi ảnh đại diện */}
-      {avatarModalVisible && (
+      <Modal
+        visible={avatarModalVisible}
+        transparent={true}
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => {
+          if (!uploadingAvatar) closeAvatarModal();
+        }}
+      >
         <View
           style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
+            flex: 1,
             backgroundColor: "rgba(15, 23, 42, 0.55)",
-            zIndex: 999,
             justifyContent: "flex-end",
           }}
         >
           <TouchableOpacity
             activeOpacity={1}
-            onPress={closeAvatarModal}
+            onPress={() => {
+              if (!uploadingAvatar) closeAvatarModal();
+            }}
             style={{ flex: 1 }}
           />
           <View
@@ -1135,7 +1177,7 @@ export default function ProfileScreen() {
             </ScrollView>
           </View>
         </View>
-      )}
+      </Modal>
     </View>
   );
 }

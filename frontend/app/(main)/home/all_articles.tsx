@@ -209,7 +209,7 @@ export default function AllArticlesScreen() {
   };
 
   // Mở màn hình chi tiết bài viết
-  const openDetail = (item: NewsOrAnnouncementItem, idx = 0) => {
+  const openDetail = useCallback((item: NewsOrAnnouncementItem, idx = 0) => {
     const finalImgUrl = item.imageUrl ? getNewsImageUrl(item.imageUrl, idx) : "";
     router.push({
       pathname: "/(main)/home/home_detail",
@@ -235,7 +235,7 @@ export default function AllArticlesScreen() {
         attachments: item.attachments && item.attachments.length > 0 ? JSON.stringify(item.attachments) : "",
       },
     });
-  };
+  }, [router]);
 
   // Lọc theo Tab và Search
   const filteredArticles = useMemo(() => {
@@ -274,7 +274,7 @@ export default function AllArticlesScreen() {
     };
   }, [articles]);
 
-  const renderItem = ({ item, index }: { item: NewsOrAnnouncementItem; index: number }) => {
+  const renderItem = useCallback(({ item, index }: { item: NewsOrAnnouncementItem; index: number }) => {
     const isNews = item.type === "news";
 
     return (
@@ -451,7 +451,7 @@ export default function AllArticlesScreen() {
         </View>
       </TouchableOpacity>
     );
-  };
+  }, [openDetail]);
 
   if (!isLoggedIn) {
     return (
@@ -773,22 +773,26 @@ export default function AllArticlesScreen() {
       ) : (
         <FlatList
           data={filteredArticles}
-          keyExtractor={(item, index) => String(item.id || index)}
-        renderItem={renderItem}
-        contentContainerStyle={{
-          paddingHorizontal: 16,
-          paddingBottom: 100,
-          paddingTop: 4,
-        }}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#0F2964"
-            colors={["#0F2964"]}
-          />
-        }
+          keyExtractor={(item, index) => (item.id ? String(item.id) : `${item.link || index}`)}
+          renderItem={renderItem}
+          initialNumToRender={8}
+          maxToRenderPerBatch={10}
+          windowSize={7}
+          removeClippedSubviews={Platform.OS === "android"}
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingBottom: 100,
+            paddingTop: 4,
+          }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#0F2964"
+              colors={["#0F2964"]}
+            />
+          }
         ListEmptyComponent={
           <View
             style={{

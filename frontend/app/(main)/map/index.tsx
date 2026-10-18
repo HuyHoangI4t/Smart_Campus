@@ -71,6 +71,7 @@ export default function MapScreen() {
     durationMinutes?: number;
     gateId?: string;
     gateName?: string;
+    arrived?: boolean;
   } | null>(null);
   const [selectedGateId, setSelectedGateId] = useState<string | null>(null);
 
@@ -394,6 +395,16 @@ export default function MapScreen() {
           }
           setIsRoutingActive(true);
           setTabBarVisible(false);
+        } else if (data.type === "ROUTE_PROGRESS") {
+          setActiveRoute((prev) => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              distanceMeters: data.remainingDistanceMeters,
+              durationMinutes: data.remainingMinutes,
+              arrived: !!data.arrived,
+            };
+          });
         } else if (data.type === "MANUAL_ROTATE") {
           stopCompassTracking();
           setBearing(data.bearing);
@@ -532,7 +543,7 @@ export default function MapScreen() {
         type: "DRAW_ROUTE",
         origin: orig,
         destination: { lat: selectedLoc.lat, lng: selectedLoc.lng },
-        originName: origCoords ? (currentLocationName || "GPS thực tế") : "Cổng trước (Lê Duẩn) [Mặc định]",
+        originName: origCoords ? (currentLocationName || "GPS thực tế") : "Cổng trước [Mặc định]",
         destinationName: selectedLoc.name,
         gateId: typeof gateToUse === "string" ? gateToUse : undefined,
       })
