@@ -30,6 +30,16 @@ const verifyToken = async (req, res, next) => {
       const identifier = parts[2];
       const timestamp = parts[3];
       const signature = parts[4];
+
+      // Kiểm tra thời hạn hiệu lực của token (Tối đa 30 ngày)
+      const tokenTime = parseInt(timestamp, 10);
+      const MAX_TOKEN_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+      if (tokenTime && !isNaN(tokenTime) && Date.now() - tokenTime > MAX_TOKEN_AGE_MS) {
+        return res.status(401).json({
+          success: false,
+          message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+        });
+      }
       
       let user = null;
       if (identifier) {

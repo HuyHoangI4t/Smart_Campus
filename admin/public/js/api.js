@@ -88,8 +88,13 @@ const AdminAPI = {
       : (endpoint.startsWith('/') ? `${API_BASE}${endpoint}` : `${this.baseUrl}/${endpoint}`);
     const defaultHeaders = this.getHeaders();
     
+    const controller = new AbortController();
+    const timeoutMs = options.timeout || 12000;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
     const config = {
       ...options,
+      signal: controller.signal,
       headers: {
         ...defaultHeaders,
         ...(options.headers || {})
@@ -98,6 +103,7 @@ const AdminAPI = {
 
     try {
       const res = await fetch(url, config);
+      clearTimeout(timeoutId);
       const data = await res.json().catch(() => ({ success: false, message: 'Dữ liệu trả về không hợp lệ' }));
 
       if (res.status === 401) {
@@ -117,6 +123,10 @@ const AdminAPI = {
 
       return data;
     } catch (err) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        throw new Error('Yêu cầu máy chủ quá hạn (Timeout). Vui lòng thử lại.');
+      }
       console.error(`[AdminAPI Error] ${endpoint}:`, err);
       throw err;
     }

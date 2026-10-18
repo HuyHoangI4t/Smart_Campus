@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Linking, ActivityIndicator, Modal } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import * as Location from "expo-location";
 import { AppColors } from "../../../src/constants/appColors";
@@ -80,6 +81,7 @@ export default function SosScreen() {
   }, []);
 
   const handleCall = (phone: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     Linking.openURL(`tel:${phone}`).catch(() => {
       Alert.alert("Lỗi", `Không thể mở trình gọi điện thoại cho số ${phone}.`);
     });
@@ -87,10 +89,12 @@ export default function SosScreen() {
 
   const handleSendSos = async () => {
     if (!locationText.trim()) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
       Alert.alert("Chú ý", "Vui lòng nhập vị trí hiện tại của bạn để đội an ninh tiếp cận nhanh nhất.");
       return;
     }
 
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
     setSubmitting(true);
     try {
       let currentCoords = gpsCoords;
@@ -118,6 +122,7 @@ export default function SosScreen() {
       });
 
       if (res && res.success) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
         setSentInfo({
           type: incidentType,
           location: locationText.trim(),
@@ -125,9 +130,11 @@ export default function SosScreen() {
         });
         setShowSuccessModal(true);
       } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
         Alert.alert("Thông báo", res?.message || "Không thể gửi tín hiệu lúc này. Vui lòng gọi trực tiếp hotline bên dưới!");
       }
     } catch {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
       Alert.alert("Lỗi kết nối", "Vui lòng gọi trực tiếp cho số Hotline Bảo vệ để được trợ giúp tức thì.");
     } finally {
       setSubmitting(false);

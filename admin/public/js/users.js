@@ -17,9 +17,13 @@ const UsersModule = {
   bindEvents() {
     const searchInput = document.getElementById('userSearchInput');
     if (searchInput) {
+      let debounceTimer = null;
       searchInput.addEventListener('input', (e) => {
-        this.searchQuery = e.target.value.toLowerCase().trim();
-        this.applyFilter();
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          this.searchQuery = e.target.value.toLowerCase().trim();
+          this.applyFilter();
+        }, 180);
       });
     }
 

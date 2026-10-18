@@ -32,24 +32,32 @@ exports.submitFeedback = async (req, res) => {
   const { title, content, category, rating } = req.body;
   const mssv = getMssvFromReq(req);
 
-  if (!title || !content) {
-    return res.status(400).json({ success: false, message: 'Tiêu đề và nội dung phản hồi là bắt buộc.' });
+  if (!title || typeof title !== 'string' || !title.trim()) {
+    return res.status(400).json({ success: false, message: 'Tiêu đề phản hồi là bắt buộc.' });
+  }
+  if (!content || typeof content !== 'string' || !content.trim()) {
+    return res.status(400).json({ success: false, message: 'Nội dung phản hồi là bắt buộc.' });
   }
 
+  const cleanTitle = title.trim().slice(0, 255);
+  const cleanContent = content.trim().slice(0, 3000);
+  const cleanCat = (category && typeof category === 'string') ? category.trim().slice(0, 50) : 'Cơ sở vật chất';
+  const cleanRating = Math.min(5, Math.max(1, parseInt(rating, 10) || 5));
+
   try {
-    const feedbackTitle = category ? `[${category}] ${title}` : title;
+    const feedbackTitle = cleanCat ? `[${cleanCat}] ${cleanTitle}` : cleanTitle;
     const [result] = await db.query(
       'INSERT INTO feedback (mssv, title, content, category, rating, status) VALUES (?, ?, ?, ?, ?, ?)',
-      [mssv, feedbackTitle, content, category || 'Cơ sở vật chất', rating || 5, 'Chờ tiếp nhận']
+      [mssv, feedbackTitle, cleanContent, cleanCat, cleanRating, 'Chờ tiếp nhận']
     );
 
     const newFeedbackData = {
       id: result.insertId,
       mssv,
       title: feedbackTitle,
-      content,
-      category: category || 'Chung',
-      rating: rating || 5,
+      content: cleanContent,
+      category: cleanCat,
+      rating: cleanRating,
       createdAt: new Date()
     };
 
@@ -75,15 +83,17 @@ exports.submitFeedback = async (req, res) => {
 exports.submitSos = async (req, res) => {
   const { location, message, description, incidentType, latitude, longitude, lat, lng } = req.body;
   const mssv = getMssvFromReq(req);
-  const sosLocation = location || 'Không rõ vị trí trong khuôn viên trường';
-  const alertMsg = incidentType ? `[${incidentType}] ${description || message || 'Yêu cầu hỗ trợ khẩn cấp'}` : (description || message || 'Yêu cầu hỗ trợ khẩn cấp');
+  const sosLocation = (location && typeof location === 'string') ? location.trim().slice(0, 255) : 'Không rõ vị trí trong khuôn viên trường';
+  const rawMsg = (description || message || 'Yêu cầu hỗ trợ khẩn cấp').toString().trim().slice(0, 1000);
+  const alertMsg = incidentType ? `[${incidentType}] ${rawMsg}` : rawMsg;
+  const cleanType = (incidentType && typeof incidentType === 'string') ? incidentType.trim().slice(0, 50) : 'Khẩn cấp';
   const sosLat = latitude !== undefined && latitude !== null ? Number(latitude) : (lat !== undefined && lat !== null ? Number(lat) : null);
   const sosLng = longitude !== undefined && longitude !== null ? Number(longitude) : (lng !== undefined && lng !== null ? Number(lng) : null);
 
   try {
     const [result] = await db.query(
       'INSERT INTO sos_alerts (mssv, location, latitude, longitude, message, incident_type, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [mssv, sosLocation, sosLat, sosLng, alertMsg, incidentType || 'Khẩn cấp', 'Chờ xử lý']
+      [mssv, sosLocation, sosLat, sosLng, alertMsg, cleanType, 'Chờ xử lý']
     );
 
     // Lấy thông tin họ tên, SĐT, lớp của sinh viên để hiển thị ngay trên bảng điều khiển admin
@@ -104,7 +114,7 @@ exports.submitSos = async (req, res) => {
       latitude: sosLat,
       longitude: sosLng,
       message: alertMsg,
-      incidentType: incidentType || 'Khẩn cấp',
+      incidentType: cleanType,
       status: 'Chờ xử lý',
       created_at: new Date(),
       timestamp: new Date()
@@ -364,10 +374,20 @@ exports.getCampusPaths = async (req, res) => {
 
   try {
     const [rows] = await db.query('SELECT * FROM campus_paths ORDER BY id ASC');
-    const paths = rows.map(r => ({
-      ...r,
-      coordinates: typeof r.coordinates === 'string' ? JSON.parse(r.coordinates) : r.coordinates
-    }));
+    const paths = rows.map(r => {
+      let coords = r.coordinates;
+      if (typeof coords === 'string') {
+        try {
+          coords = JSON.parse(coords);
+        } catch {
+          coords = [];
+        }
+      }
+      return {
+        ...r,
+        coordinates: Array.isArray(coords) ? coords : []
+      };
+    });
     cachedCampusPaths = paths;
     campusPathsCacheTime = Date.now();
     res.json({ success: true, count: paths.length, paths });

@@ -50,6 +50,15 @@ io.on('connection', (socket) => {
 // Gắn io instance vào Express app để các controller truy cập được qua req.app.get('io')
 app.set('io', io);
 
+// Security Headers (OWASP Recommended)
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
 app.use(cors());
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
@@ -58,6 +67,7 @@ app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 // Tránh nghẽn Event Loop và giảm tải 95% số lượng truy vấn INSERT đơn lẻ vào MySQL
 const activityLogBatch = [];
 let activityFlushTimer = null;
+const MAX_ACTIVITY_QUEUE = 250;
 
 function flushActivityLogs() {
   if (activityLogBatch.length === 0) return;
@@ -83,6 +93,12 @@ app.use((req, res, next) => {
   if (isApi && !isInternal && req.method !== 'OPTIONS') {
     const mssv = req.headers['x-mssv'] || 'guest';
     const action = `${req.method} ${req.path.slice(0, 60)}`;
+    
+    // Giữ hàng đợi trong giới hạn để chống leak RAM khi DB tải nặng
+    if (activityLogBatch.length >= MAX_ACTIVITY_QUEUE) {
+      activityLogBatch.splice(0, 50);
+    }
+    
     activityLogBatch.push({
       action,
       mssv,
@@ -211,6 +227,25 @@ async function startServer() {
     // Khởi động tiến trình đồng bộ dữ liệu tự động 3 lần/ngày
     cronService.startCronJobs();
   });
+
+  const gracefulShutdown = async (signal) => {
+    console.log(`\n🛑 Nhận tín hiệu [${signal}]. Đang đóng máy chủ nhẹ nhàng...`);
+    try {
+      flushActivityLogs();
+    } catch {}
+    server.close(() => {
+      console.log('🛑 [HTTP/Socket.IO] Đã đóng các kết nối đang chờ.');
+      process.exit(0);
+    });
+    setTimeout(() => {
+      console.warn('⚠️ Ép buộc thoát tiến trình sau 3000ms.');
+      process.exit(0);
+    }, 3000);
+  };
+
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 }
 
 startServer();
+

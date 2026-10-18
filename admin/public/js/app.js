@@ -656,7 +656,7 @@ const App = {
       }
     });
 
-    // Phím tắt Ctrl + K để focus vào ô tìm kiếm toàn cục
+    // Phím tắt Ctrl + K để focus vào ô tìm kiếm toàn cục, Escape để đóng modal
     window.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
@@ -665,6 +665,10 @@ const App = {
           searchInput.focus();
           searchInput.select();
         }
+      }
+      if (e.key === 'Escape') {
+        const openModals = document.querySelectorAll('[id$="Modal"]:not(.hidden)');
+        openModals.forEach((m) => closeModal(m.id));
       }
     });
   }

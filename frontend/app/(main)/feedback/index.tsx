@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Modal } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { AppColors } from "../../../src/constants/appColors";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
@@ -50,6 +51,7 @@ export default function FeedbackScreen() {
 
   const handleSubmit = async () => {
     if (!title.trim()) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
       setPopupState({
         visible: true,
         type: "error",
@@ -59,6 +61,7 @@ export default function FeedbackScreen() {
       return;
     }
     if (!content.trim()) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
       setPopupState({
         visible: true,
         type: "error",
@@ -68,6 +71,7 @@ export default function FeedbackScreen() {
       return;
     }
 
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setSubmitting(true);
     try {
       const res = await apiSubmitFeedback({
@@ -78,6 +82,7 @@ export default function FeedbackScreen() {
       });
 
       if (res && res.success) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
         setPopupState({
           visible: true,
           type: "success",
@@ -87,6 +92,7 @@ export default function FeedbackScreen() {
         setTitle("");
         setContent("");
       } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
         setPopupState({
           visible: true,
           type: "error",
@@ -95,6 +101,7 @@ export default function FeedbackScreen() {
         });
       }
     } catch {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
       setPopupState({
         visible: true,
         type: "error",

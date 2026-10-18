@@ -344,9 +344,13 @@ const LocationsModule = {
   bindEvents() {
     const searchInput = document.getElementById('locationSearchInput');
     if (searchInput) {
+      let debounceTimer = null;
       searchInput.addEventListener('input', (e) => {
-        this.searchQuery = e.target.value.toLowerCase().trim();
-        this.applyFilter();
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          this.searchQuery = e.target.value.toLowerCase().trim();
+          this.applyFilter();
+        }, 180);
       });
     }
 

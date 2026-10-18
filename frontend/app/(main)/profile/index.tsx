@@ -17,6 +17,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import * as ImagePicker from "expo-image-picker";
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
@@ -306,6 +307,7 @@ export default function ProfileScreen() {
         phone: editForm.so_dien_thoai,
       });
       if (res && res.success) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
         const updated = {
           ...profile,
           ...editForm,
@@ -317,9 +319,11 @@ export default function ProfileScreen() {
         Alert.alert("Thành công", "Đã cập nhật thông tin cá nhân lên hệ thống.");
         setEditModalVisible(false);
       } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
         Alert.alert("Lỗi", res?.message || "Không thể cập nhật hồ sơ vào lúc này.");
       }
     } catch {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
       Alert.alert("Lỗi", "Có lỗi xảy ra khi kết nối máy chủ.");
     } finally {
       setSaving(false);
@@ -327,10 +331,12 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setLogoutModalVisible(true);
   };
 
   const confirmLogout = async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
     setLoggingOut(true);
     try {
       await apiLogout();
