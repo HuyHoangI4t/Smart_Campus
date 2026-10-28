@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { AppColors } from "../../../constants/appColors";
+import { useTheme } from "../../../context/ThemeContext";
 import { ScheduleItem } from "../types";
 
 export interface ScheduleCardProps {
@@ -260,6 +261,7 @@ export const ScheduleCard = React.memo(function ScheduleCard({
   onEdit,
   onDelete,
 }: ScheduleCardProps) {
+  const { colors, isDark } = useTheme();
   // Xác định ngày chính xác của ca học để tính toán trạng thái
   const effectiveDate = item.date || item.ngay_hoc || currentViewDate;
   const statusInfo = getScheduleStatusInfo(item.time, effectiveDate, item.dayNum);
@@ -284,7 +286,9 @@ export const ScheduleCard = React.memo(function ScheduleCard({
       style={[
         styles.card,
         {
-          borderColor: item.isCustom ? `${AppColors.warning}66` : AppColors.cardBorder,
+          backgroundColor: colors.cardBg,
+          borderColor: item.isCustom ? `${colors.warning}66` : colors.cardBorder,
+          shadowColor: isDark ? "#000000" : "#000",
         },
       ]}
     >
@@ -391,26 +395,26 @@ export const ScheduleCard = React.memo(function ScheduleCard({
         </View>
 
         <View style={styles.timeGroup}>
-          <Feather name="clock" size={13} color={AppColors.textSecondary} />
-          <Text style={styles.timeText}>{item.time}</Text>
+          <Feather name="clock" size={13} color={colors.textSecondary} />
+          <Text style={[styles.timeText, { color: colors.textSecondary }]}>{item.time}</Text>
         </View>
       </View>
 
       {/* ── COURSE TITLE ── */}
-      <Text style={styles.courseTitle}>{item.course}</Text>
+      <Text style={[styles.courseTitle, { color: colors.text }]}>{item.course}</Text>
 
       {/* ── GHI CHÚ NẾU CÓ ── */}
       {item.note ? (
-        <View style={styles.noteBox}>
-          <Feather name="info" size={12} color={AppColors.textMuted} />
-          <Text style={styles.noteText} numberOfLines={2}>
+        <View style={[styles.noteBox, { backgroundColor: isDark ? "#0F172A" : colors.muted, borderColor: colors.border }]}>
+          <Feather name="info" size={12} color={colors.textMuted} />
+          <Text style={[styles.noteText, { color: colors.textSecondary }]} numberOfLines={2}>
             {item.note}
           </Text>
         </View>
       ) : null}
 
       {/* ── BOTTOM ROW: ROOM & LECTURER + ACTION BUTTONS ── */}
-      <View style={styles.bottomRow}>
+      <View style={[styles.bottomRow, { borderColor: colors.cardBorder }]}>
         <View style={styles.infoCol}>
           <Pressable
             onPress={handleDirection}
@@ -422,16 +426,16 @@ export const ScheduleCard = React.memo(function ScheduleCard({
             accessibilityRole="button"
             accessibilityLabel={`Vị trí phòng ${item.room}`}
           >
-            <View style={styles.roomIconCircle}>
-              <Feather name="map-pin" size={13} color={AppColors.primary} />
+            <View style={[styles.roomIconCircle, { backgroundColor: `${colors.primary}1A` }]}>
+              <Feather name="map-pin" size={13} color={colors.primary} />
             </View>
-            <Text style={styles.roomText}>{item.room}</Text>
-            <Feather name="info" size={12} color={AppColors.primaryLight} />
+            <Text style={[styles.roomText, { color: colors.text }]}>{item.room}</Text>
+            <Feather name="info" size={12} color={colors.primaryLight} />
           </Pressable>
 
           <View style={styles.lecturerRow}>
-            <Feather name="user" size={12} color={AppColors.textMuted} />
-            <Text style={styles.lecturerText} numberOfLines={1}>
+            <Feather name="user" size={12} color={colors.textMuted} />
+            <Text style={[styles.lecturerText, { color: colors.textSecondary }]} numberOfLines={1}>
               {item.lecturer}
             </Text>
           </View>
@@ -477,14 +481,18 @@ export const ScheduleCard = React.memo(function ScheduleCard({
             onPress={handleDirection}
             style={({ pressed }) => [
               styles.directionCapsuleBtn,
+              {
+                backgroundColor: isDark ? "#334155" : `${colors.primary}12`,
+                borderColor: isDark ? colors.cardBorder : `${colors.primary}2E`,
+              },
               pressed && styles.buttonPressed,
             ]}
             hitSlop={6}
             accessibilityRole="button"
             accessibilityLabel={`Chỉ đường tới phòng ${item.room}`}
           >
-            <Feather name="navigation" size={13} color={AppColors.primary} />
-            <Text style={styles.directionCapsuleText}>Chỉ đường</Text>
+            <Feather name="navigation" size={13} color={colors.primary} />
+            <Text style={[styles.directionCapsuleText, { color: colors.primary }]}>Chỉ đường</Text>
           </Pressable>
         </View>
       </View>

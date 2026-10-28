@@ -546,10 +546,35 @@ exports.getSchedule = async (req, res) => {
       ["Thứ 4", "Cấu trúc dữ liệu & Giải thuật", "7-10", "9.3.01", "ThS. Lê Thị B"]
     ]
   }];
-  const processedFallback = scheduleService.processSchedulePayload(fallbackTables, "Từ ngày 28/09/2026 đến ngày 04/10/2026", fallbackCustom);
+  const fallbackWeek0 = "Từ ngày 19/10/2026 đến ngày 25/10/2026";
+  const fallbackWeek1 = "Từ ngày 26/10/2026 đến ngày 01/11/2026";
+  const processedFallback = scheduleService.processSchedulePayload(fallbackTables, fallbackWeek0, fallbackCustom);
+  const fallbackAvailableWeeks = [
+    {
+      index: 0,
+      weekRange: fallbackWeek0,
+      label: 'Tuần này',
+      isCurrent: true,
+      isNext: false,
+      schedules: processedFallback.schedules
+    },
+    {
+      index: 1,
+      weekRange: fallbackWeek1,
+      label: 'Tuần sau',
+      isCurrent: false,
+      isNext: true,
+      schedules: []
+    }
+  ];
   res.json({
     success: true,
     mssv: mssv,
+    selectedWeekIndex: 0,
+    currentWeekIndex: 0,
+    nextWeekIndex: 1,
+    weekRange: fallbackWeek0,
+    availableWeeks: fallbackAvailableWeeks,
     ...processedFallback
   });
 };
@@ -595,13 +620,38 @@ function formatDbSchedulesResponse(dbSchedules, customItems, req, res, mssv, isD
       if (!weekMap[wRange]) {
         weekMap[wRange] = [["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"]];
       }
-      weekMap[wRange].push([
-        row.thu || "Thứ 2",
-        row.ten_hp || "Môn học",
-        row.tiet || "1-4",
-        row.phong || "Khu giảng đường",
-        row.giang_vien || "Giảng viên bộ môn"
-      ]);
+      if (row.ten_hp && row.loai_lich !== 'tuan_trong' && !row.ma_hp?.startsWith('WEEK-')) {
+        weekMap[wRange].push([
+          row.thu || "Thứ 2",
+          row.ten_hp || "Môn học",
+          row.tiet || "1-4",
+          row.phong || "Khu giảng đường",
+          row.giang_vien || "Giảng viên bộ môn"
+        ]);
+      }
+    }
+  }
+
+  // Tự động bổ sung các tuần lân cận nếu chỉ có 1 tuần để sinh viên luôn chọn và duyệt được các tuần
+  if (Object.keys(weekMap).length === 1) {
+    const singleRange = Object.keys(weekMap)[0];
+    const { startDate, endDate } = parseWeekRangeDates(singleRange);
+    if (startDate && endDate) {
+      const pad = (n) => String(n).padStart(2, '0');
+      // Thêm Tuần sau (+7 ngày)
+      const nextStart = new Date(startDate.getTime() + 7 * 86400000);
+      const nextEnd = new Date(endDate.getTime() + 7 * 86400000);
+      const nextRangeStr = `Từ ngày ${pad(nextStart.getDate())}/${pad(nextStart.getMonth() + 1)}/${nextStart.getFullYear()} đến ngày ${pad(nextEnd.getDate())}/${pad(nextEnd.getMonth() + 1)}/${nextEnd.getFullYear()}`;
+      if (!weekMap[nextRangeStr]) {
+        weekMap[nextRangeStr] = [["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"]];
+      }
+      // Thêm Tuần trước (-7 ngày)
+      const prevStart = new Date(startDate.getTime() - 7 * 86400000);
+      const prevEnd = new Date(endDate.getTime() - 7 * 86400000);
+      const prevRangeStr = `Từ ngày ${pad(prevStart.getDate())}/${pad(prevStart.getMonth() + 1)}/${prevStart.getFullYear()} đến ngày ${pad(prevEnd.getDate())}/${pad(prevEnd.getMonth() + 1)}/${prevEnd.getFullYear()}`;
+      if (!weekMap[prevRangeStr]) {
+        weekMap[prevRangeStr] = [["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"]];
+      }
     }
   }
 
@@ -623,18 +673,46 @@ function formatDbSchedulesResponse(dbSchedules, customItems, req, res, mssv, isD
     });
   }
 
+  // Sắp xếp các tuần theo thứ tự thời gian tăng dần
+  dbWeeks.sort((a, b) => {
+    if (!a.startDate || !b.startDate) return 0;
+    return a.startDate.getTime() - b.startDate.getTime();
+  });
+  dbWeeks.forEach((w, idx) => { w.index = idx; });
+
   let curWeekIdx = dbWeeks.findIndex(w => w.isCurrent);
-  if (curWeekIdx === -1) curWeekIdx = 0;
+  if (curWeekIdx === -1) {
+    const nowTime = today.getTime();
+    let minDiff = Infinity;
+    dbWeeks.forEach((w, idx) => {
+      if (w.startDate) {
+        const diff = Math.abs(w.startDate.getTime() - nowTime);
+        if (diff < minDiff) {
+          minDiff = diff;
+          curWeekIdx = idx;
+        }
+      }
+    });
+    if (curWeekIdx === -1) curWeekIdx = 0;
+  }
   dbWeeks[curWeekIdx].isCurrent = true;
   const nextWeekIdx = (curWeekIdx + 1 < dbWeeks.length) ? (curWeekIdx + 1) : curWeekIdx;
   if (dbWeeks[nextWeekIdx]) dbWeeks[nextWeekIdx].isNext = true;
 
   const processedWeeks = dbWeeks.map(w => {
     const proc = scheduleService.processSchedulePayload([{ tableIndex: 1, rows: w.rows }], w.weekRange, customItems, { isCurrentWeek: w.index === curWeekIdx });
+    let label = `Tuần ${w.index + 1}`;
+    if (w.index === curWeekIdx) {
+      label = 'Tuần này';
+    } else if (w.index === nextWeekIdx && nextWeekIdx !== curWeekIdx) {
+      label = 'Tuần sau';
+    } else if (w.index === curWeekIdx - 1) {
+      label = 'Tuần trước';
+    }
     return {
       index: w.index,
       weekRange: w.weekRange,
-      label: w.index === curWeekIdx ? 'Tuần này' : (w.index === nextWeekIdx ? 'Tuần sau' : `Tuần ${w.index + 1}`),
+      label,
       isCurrent: w.index === curWeekIdx,
       isNext: w.index === nextWeekIdx,
       schedules: proc.schedules

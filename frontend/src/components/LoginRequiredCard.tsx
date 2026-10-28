@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { AppColors } from "../constants/appColors";
+import { useTheme } from "../context/ThemeContext";
 
 interface LoginRequiredCardProps {
   mode?: "card" | "fullscreen";
@@ -20,12 +20,13 @@ export const LoginRequiredCard: React.FC<LoginRequiredCardProps> = ({
   onLoginPress,
 }) => {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
 
   const handleLogin = () => {
     if (onLoginPress) {
       onLoginPress();
     } else {
-      router.push("/(auth)");
+      router.replace("/(auth)");
     }
   };
 
@@ -37,7 +38,7 @@ export const LoginRequiredCard: React.FC<LoginRequiredCardProps> = ({
           alignItems: "center",
           justifyContent: "center",
           paddingHorizontal: 28,
-          backgroundColor: AppColors.background,
+          backgroundColor: colors.background,
         }}
       >
         {/* Vòng tròn biểu tượng kép có khóa */}
@@ -46,16 +47,16 @@ export const LoginRequiredCard: React.FC<LoginRequiredCardProps> = ({
             width: 88,
             height: 88,
             borderRadius: 44,
-            backgroundColor: "#EFF6FF",
+            backgroundColor: isDark ? "#334155" : "#EFF6FF",
             alignItems: "center",
             justifyContent: "center",
             marginBottom: 20,
             borderWidth: 2,
-            borderColor: "#DBEAFE",
+            borderColor: isDark ? colors.cardBorder : "#DBEAFE",
             position: "relative",
           }}
         >
-          <Feather name={icon} size={38} color={AppColors.primary} />
+          <Feather name={icon} size={38} color={colors.primary} />
           <View
             style={{
               position: "absolute",
@@ -64,11 +65,11 @@ export const LoginRequiredCard: React.FC<LoginRequiredCardProps> = ({
               width: 32,
               height: 32,
               borderRadius: 16,
-              backgroundColor: AppColors.primary,
+              backgroundColor: colors.primary,
               alignItems: "center",
               justifyContent: "center",
               borderWidth: 2.5,
-              borderColor: "#FFFFFF",
+              borderColor: colors.cardBg,
             }}
           >
             <Feather name="lock" size={15} color="#FFFFFF" />
@@ -79,7 +80,7 @@ export const LoginRequiredCard: React.FC<LoginRequiredCardProps> = ({
           style={{
             fontSize: 18,
             fontWeight: "900",
-            color: "#0F172A",
+            color: colors.text,
             textAlign: "center",
             marginBottom: 8,
           }}
@@ -90,7 +91,7 @@ export const LoginRequiredCard: React.FC<LoginRequiredCardProps> = ({
         <Text
           style={{
             fontSize: 13.5,
-            color: "#64748B",
+            color: colors.textSecondary,
             textAlign: "center",
             lineHeight: 20,
             marginBottom: 24,
@@ -107,11 +108,11 @@ export const LoginRequiredCard: React.FC<LoginRequiredCardProps> = ({
             flexDirection: "row",
             alignItems: "center",
             gap: 8,
-            backgroundColor: AppColors.primary,
+            backgroundColor: colors.primary,
             paddingVertical: 13,
             paddingHorizontal: 28,
             borderRadius: 24,
-            shadowColor: AppColors.primary,
+            shadowColor: colors.primary,
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.25,
             shadowRadius: 10,
@@ -131,15 +132,15 @@ export const LoginRequiredCard: React.FC<LoginRequiredCardProps> = ({
   return (
     <View
       style={{
-        backgroundColor: "#FFFFFF",
+        backgroundColor: colors.cardBg,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: "#E2E8F0",
+        borderColor: colors.cardBorder,
         padding: 20,
         alignItems: "center",
-        shadowColor: "#000",
+        shadowColor: isDark ? "#000000" : "#000",
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
+        shadowOpacity: isDark ? 0.25 : 0.04,
         shadowRadius: 8,
         elevation: 2,
         marginVertical: 4,
@@ -150,14 +151,14 @@ export const LoginRequiredCard: React.FC<LoginRequiredCardProps> = ({
           width: 52,
           height: 52,
           borderRadius: 26,
-          backgroundColor: "#F1F5F9",
+          backgroundColor: isDark ? "#334155" : "#F1F5F9",
           alignItems: "center",
           justifyContent: "center",
           marginBottom: 12,
           position: "relative",
         }}
       >
-        <Feather name={icon} size={24} color={AppColors.primary} />
+        <Feather name={icon} size={24} color={colors.primary} />
         <View
           style={{
             position: "absolute",
@@ -170,7 +171,7 @@ export const LoginRequiredCard: React.FC<LoginRequiredCardProps> = ({
             alignItems: "center",
             justifyContent: "center",
             borderWidth: 2,
-            borderColor: "#FFFFFF",
+            borderColor: colors.cardBg,
           }}
         >
           <Feather name="lock" size={10} color="#FFFFFF" />
@@ -181,7 +182,7 @@ export const LoginRequiredCard: React.FC<LoginRequiredCardProps> = ({
         style={{
           fontSize: 15,
           fontWeight: "800",
-          color: "#0F172A",
+          color: colors.text,
           textAlign: "center",
           marginBottom: 6,
         }}
@@ -192,7 +193,7 @@ export const LoginRequiredCard: React.FC<LoginRequiredCardProps> = ({
       <Text
         style={{
           fontSize: 12.5,
-          color: "#64748B",
+          color: colors.textSecondary,
           textAlign: "center",
           lineHeight: 18,
           marginBottom: 16,
@@ -209,11 +210,11 @@ export const LoginRequiredCard: React.FC<LoginRequiredCardProps> = ({
           flexDirection: "row",
           alignItems: "center",
           gap: 6,
-          backgroundColor: AppColors.primary,
+          backgroundColor: colors.primary,
           paddingVertical: 10,
           paddingHorizontal: 20,
           borderRadius: 20,
-          shadowColor: AppColors.primary,
+          shadowColor: colors.primary,
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.18,
           shadowRadius: 6,
@@ -228,4 +229,3 @@ export const LoginRequiredCard: React.FC<LoginRequiredCardProps> = ({
     </View>
   );
 };
-

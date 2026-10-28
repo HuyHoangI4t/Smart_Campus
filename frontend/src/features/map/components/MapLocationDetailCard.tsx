@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { AppColors } from "../../../constants/appColors";
+import { useTheme } from "../../../context/ThemeContext";
 import { LocationItem, ParsedCampusRoom } from "../types";
 import { formatDistanceText, calculateDistanceKm } from "../utils";
 
@@ -33,6 +34,7 @@ const MapLocationDetailCardComponent: React.FC<MapLocationDetailCardProps> = ({
   onStartDirections,
   onOpenGoogleMaps,
 }) => {
+  const { colors, isDark } = useTheme();
   const isMatch = matchedTargetId && String(selectedLoc.id) === String(matchedTargetId);
 
   const displayDistance = distanceText || (userLocation ? formatDistanceText(userLocation.latitude, userLocation.longitude, selectedLoc.lat, selectedLoc.lng) : "");
@@ -59,31 +61,35 @@ const MapLocationDetailCardComponent: React.FC<MapLocationDetailCardProps> = ({
     <View
       style={[
         styles.container,
-        { bottom: bottomOffset },
+        {
+          bottom: bottomOffset,
+          backgroundColor: colors.cardBg,
+          borderColor: colors.cardBorder,
+        },
       ]}
     >
       {/* ── THANH TAY CẦM KÉO NHẸ (SHEET HANDLE) ── */}
-      <View style={styles.sheetHandle} />
+      <View style={[styles.sheetHandle, { backgroundColor: isDark ? "#475569" : "#CBD5E1" }]} />
 
       {/* ── HEADER ĐỊA ĐIỂM: HUY HIỆU & NÚT ĐÓNG ── */}
       <View style={styles.headerRow}>
         <View style={styles.badgeGroup}>
           {isMatch && currentParsed ? (
             <>
-              <View style={styles.buildingBadge}>
+              <View style={[styles.buildingBadge, { backgroundColor: colors.primary }]}>
                 <Text style={styles.buildingBadgeText}>
                   {currentParsed.buildingCode.toUpperCase()}
                 </Text>
               </View>
               {currentParsed.floor ? (
-                <View style={styles.floorBadge}>
-                  <Text style={styles.floorBadgeText}>
+                <View style={[styles.floorBadge, { backgroundColor: isDark ? "rgba(91, 97, 244, 0.2)" : `${colors.primary}12` }]}>
+                  <Text style={[styles.floorBadgeText, { color: colors.primary }]}>
                     {currentParsed.floor}
                   </Text>
                 </View>
               ) : null}
-              <View style={styles.roomBadge}>
-                <Text style={styles.roomBadgeText}>
+              <View style={[styles.roomBadge, { backgroundColor: isDark ? "#0F172A" : AppColors.muted }]}>
+                <Text style={[styles.roomBadgeText, { color: colors.textSecondary }]}>
                   {currentParsed.roomNumber}
                 </Text>
               </View>
@@ -92,7 +98,7 @@ const MapLocationDetailCardComponent: React.FC<MapLocationDetailCardProps> = ({
             <View
               style={[
                 styles.categoryBadge,
-                { backgroundColor: selectedLoc.color || AppColors.primary },
+                { backgroundColor: selectedLoc.color || colors.primary },
               ]}
             >
               <Text style={styles.categoryBadgeText}>
@@ -103,7 +109,7 @@ const MapLocationDetailCardComponent: React.FC<MapLocationDetailCardProps> = ({
 
           {displayDistance ? (
             <View style={styles.distanceBadge}>
-              <Feather name="navigation" size={10} color={AppColors.success} />
+              <Feather name="navigation" size={10} color={colors.success} />
               <Text style={styles.distanceBadgeText}>
                 {displayDistance}
                 {displayMinutes ? ` • ~${displayMinutes} phút đi bộ` : ""}
@@ -117,22 +123,23 @@ const MapLocationDetailCardComponent: React.FC<MapLocationDetailCardProps> = ({
           hitSlop={8}
           style={({ pressed }) => [
             styles.closeBtn,
+            { backgroundColor: isDark ? "#334155" : AppColors.muted },
             pressed && { opacity: 0.7 },
           ]}
           accessibilityRole="button"
           accessibilityLabel="Đóng thẻ địa điểm"
         >
-          <Feather name="x" size={15} color={AppColors.textMuted} />
+          <Feather name="x" size={15} color={colors.textSecondary} />
         </Pressable>
       </View>
 
       {/* ── TIÊU ĐỀ ĐỊA ĐIỂM ── */}
-      <Text style={styles.titleText}>
+      <Text style={[styles.titleText, { color: colors.text }]}>
         {isMatch && targetSubject ? targetSubject : selectedLoc.name}
       </Text>
 
       {/* ── TÒA NHÀ & TẦNG ── */}
-      <Text style={styles.buildingText}>
+      <Text style={[styles.buildingText, { color: colors.primary }]}>
         {isMatch && currentParsed
           ? currentParsed.fullDisplay
           : `${selectedLoc.building}${selectedLoc.floor ? ` • ${selectedLoc.floor}` : ""}`}
@@ -140,14 +147,14 @@ const MapLocationDetailCardComponent: React.FC<MapLocationDetailCardProps> = ({
 
       {/* ── HƯỚNG DẪN LỐI ĐI / MÔ TẢ ── */}
       {isMatch && currentParsed ? (
-        <View style={styles.routeGuideBox}>
-          <Feather name="compass" size={13} color={AppColors.info} />
-          <Text style={styles.routeGuideText}>
+        <View style={[styles.routeGuideBox, { backgroundColor: isDark ? "#0F172A" : AppColors.muted, borderColor: colors.border }]}>
+          <Feather name="compass" size={13} color={colors.info} />
+          <Text style={[styles.routeGuideText, { color: colors.textSecondary }]}>
             {currentParsed.routeGuide}
           </Text>
         </View>
       ) : selectedLoc.description ? (
-        <Text style={styles.descText} numberOfLines={2}>
+        <Text style={[styles.descText, { color: colors.textSecondary }]} numberOfLines={2}>
           {selectedLoc.description}
         </Text>
       ) : (
@@ -161,6 +168,7 @@ const MapLocationDetailCardComponent: React.FC<MapLocationDetailCardProps> = ({
           onPress={handleStartDirections}
           style={({ pressed }) => [
             styles.directionsBtn,
+            { backgroundColor: colors.primary },
             pressed && styles.btnPressed,
           ]}
           accessibilityRole="button"
@@ -175,13 +183,17 @@ const MapLocationDetailCardComponent: React.FC<MapLocationDetailCardProps> = ({
           onPress={handleOpenGoogleMaps}
           style={({ pressed }) => [
             styles.externalBtn,
+            {
+              backgroundColor: isDark ? "#0F172A" : AppColors.muted,
+              borderColor: colors.border,
+            },
             pressed && styles.btnPressed,
           ]}
           accessibilityRole="button"
           accessibilityLabel="Mở ứng dụng bản đồ bên ngoài"
         >
-          <Feather name="external-link" size={14} color={AppColors.textSecondary} />
-          <Text style={styles.externalBtnText}>Mở App ngoài</Text>
+          <Feather name="external-link" size={14} color={colors.textSecondary} />
+          <Text style={[styles.externalBtnText, { color: colors.textSecondary }]}>Mở App ngoài</Text>
         </Pressable>
       </View>
     </View>
@@ -196,22 +208,19 @@ const styles = StyleSheet.create({
     left: 12,
     right: 12,
     zIndex: 50,
-    backgroundColor: AppColors.cardBg,
     borderRadius: 22,
     padding: 16,
-    shadowColor: AppColors.primary,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.14,
     shadowRadius: 14,
     elevation: 8,
     borderWidth: 1,
-    borderColor: AppColors.cardBorder,
   },
   sheetHandle: {
     width: 38,
     height: 4,
     borderRadius: 2,
-    backgroundColor: "#CBD5E1",
     alignSelf: "center",
     marginBottom: 12,
   },
@@ -230,7 +239,6 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   buildingBadge: {
-    backgroundColor: AppColors.primary,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
@@ -241,7 +249,6 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
   floorBadge: {
-    backgroundColor: `${AppColors.primary}12`,
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 8,
@@ -249,10 +256,8 @@ const styles = StyleSheet.create({
   floorBadgeText: {
     fontSize: 10.5,
     fontWeight: "800",
-    color: AppColors.primary,
   },
   roomBadge: {
-    backgroundColor: AppColors.muted,
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 8,
@@ -260,7 +265,6 @@ const styles = StyleSheet.create({
   roomBadgeText: {
     fontSize: 10.5,
     fontWeight: "800",
-    color: AppColors.textSecondary,
   },
   categoryBadge: {
     paddingHorizontal: 8,
@@ -276,33 +280,30 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 3.5,
-    backgroundColor: `${AppColors.success}14`,
+    backgroundColor: "rgba(16, 185, 129, 0.14)",
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
   },
   distanceBadgeText: {
     fontSize: 10.5,
-    fontWeight: "800",
-    color: AppColors.success,
+    fontWeight: "700",
+    color: "#10B981",
   },
   closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: AppColors.muted,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
   },
   titleText: {
-    fontSize: 16.5,
+    fontSize: 16,
     fontWeight: "900",
-    color: AppColors.text,
     marginBottom: 2,
   },
   buildingText: {
     fontSize: 12.5,
-    color: AppColors.primary,
     fontWeight: "700",
     marginBottom: 6,
   },
@@ -310,23 +311,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: AppColors.muted,
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: 10,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: AppColors.border,
   },
   routeGuideText: {
     fontSize: 11.5,
-    color: AppColors.textSecondary,
     fontWeight: "600",
     flex: 1,
   },
   descText: {
     fontSize: 12,
-    color: AppColors.textSecondary,
     marginBottom: 12,
     lineHeight: 17,
   },
@@ -339,12 +336,10 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 44, // Touch target >= 44pt
     borderRadius: 14,
-    backgroundColor: AppColors.primary,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    shadowColor: AppColors.primary,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.22,
     shadowRadius: 6,
@@ -359,9 +354,7 @@ const styles = StyleSheet.create({
     minHeight: 44, // Touch target >= 44pt
     paddingHorizontal: 14,
     borderRadius: 14,
-    backgroundColor: AppColors.muted,
     borderWidth: 1,
-    borderColor: AppColors.border,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -370,7 +363,6 @@ const styles = StyleSheet.create({
   externalBtnText: {
     fontSize: 12,
     fontWeight: "700",
-    color: AppColors.textSecondary,
   },
   btnPressed: {
     opacity: 0.85,

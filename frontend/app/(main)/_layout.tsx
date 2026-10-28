@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CustomBottomNav } from '../../src/components/MainTabs';
+import { useTheme } from '../../src/context/ThemeContext';
 import {
   apiGetDashboard,
   apiGetSchedule,
@@ -12,6 +13,8 @@ import {
 } from '../../src/services/api';
 
 export default function MainLayout() {
+  const { colors } = useTheme();
+
   // Nạp dữ liệu ngầm sau khi màn hình đầu tiên đã mount mượt mà
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -45,6 +48,7 @@ export default function MainLayout() {
       screenOptions={{
         headerShown: false,
         lazy: true,
+        sceneStyle: { backgroundColor: colors.background },
       }}
       tabBar={(props) => <CustomBottomNav {...props} />}
     >
@@ -57,6 +61,7 @@ export default function MainLayout() {
       <Tabs.Screen name="sos/index" options={{ href: null }} />
       <Tabs.Screen name="grades/grades_detail" options={{ href: null }} />
       <Tabs.Screen name="profile/change_password" options={{ href: null }} />
+      <Tabs.Screen name="profile/settings" options={{ href: null }} />
       <Tabs.Screen name="home/home_detail" options={{ href: null }} />
       <Tabs.Screen name="home/all_articles" options={{ href: null }} />
     </Tabs>

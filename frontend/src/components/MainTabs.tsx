@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { AppColors } from '../constants/appColors';
+import { useTheme } from '../context/ThemeContext';
 import { tabBarStyles } from '../constants/globalStyles';
 
 export interface StandaloneNavProps {
@@ -123,6 +124,7 @@ export function useTabBarScrollHandler(options?: { visiblePadding?: number; hidd
 }
 
 export function CustomBottomNav(props: CustomBottomNavProps) {
+  const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const bottomPadding = Math.max(insets.bottom, 16);
   const hideDistance = 160 + insets.bottom;
@@ -230,7 +232,17 @@ export function CustomBottomNav(props: CustomBottomNavProps) {
         },
       ]}
     >
-      <View style={tabBarStyles.navCard}>
+      <View
+        style={[
+          tabBarStyles.navCard,
+          {
+            backgroundColor: colors.cardBg,
+            borderColor: isDark ? colors.cardBorder : 'rgba(19, 47, 115, 0.08)',
+            shadowColor: isDark ? '#000000' : colors.primary,
+            shadowOpacity: isDark ? 0.4 : 0.14,
+          },
+        ]}
+      >
         {TAB_ITEMS.map((item, index) => {
           const isSelected = index === activeIndex;
 
@@ -245,6 +257,11 @@ export function CustomBottomNav(props: CustomBottomNavProps) {
                 <View
                   style={[
                     tabBarStyles.centerIconContainer,
+                    {
+                      backgroundColor: colors.primary,
+                      borderColor: colors.cardBg,
+                      shadowColor: colors.primary,
+                    },
                     isSelected && tabBarStyles.centerIconSelected,
                   ]}
                 >
@@ -258,7 +275,7 @@ export function CustomBottomNav(props: CustomBottomNavProps) {
                   style={[
                     tabBarStyles.centerLabel,
                     {
-                      color: isSelected ? AppColors.primary : AppColors.textMuted,
+                      color: isSelected ? colors.primary : colors.textMuted,
                       fontWeight: isSelected ? '800' : '600',
                     },
                   ]}
@@ -280,13 +297,18 @@ export function CustomBottomNav(props: CustomBottomNavProps) {
                 collapsable={false}
                 style={[
                   tabBarStyles.iconContainer,
-                  isSelected && tabBarStyles.selectedIconContainer,
+                  isSelected && [
+                    tabBarStyles.selectedIconContainer,
+                    {
+                      backgroundColor: isDark ? 'rgba(99, 102, 241, 0.22)' : '#EEF2FF',
+                    },
+                  ],
                 ]}
               >
                 <Feather
                   name={item.icon}
                   size={22}
-                  color={isSelected ? AppColors.primary : AppColors.textMuted}
+                  color={isSelected ? colors.primary : colors.textMuted}
                 />
               </View>
               <Text
@@ -294,7 +316,7 @@ export function CustomBottomNav(props: CustomBottomNavProps) {
                   tabBarStyles.label,
                   {
                     fontWeight: isSelected ? '800' : '600',
-                    color: isSelected ? AppColors.primary : AppColors.textMuted,
+                    color: isSelected ? colors.primary : colors.textMuted,
                   },
                 ]}
               >

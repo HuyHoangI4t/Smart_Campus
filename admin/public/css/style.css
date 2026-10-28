@@ -504,4 +504,10 @@ body:has(#loginView:not(.hidden)) {
   gap: 4px;
 }
 
+.sos-resolved-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+
 

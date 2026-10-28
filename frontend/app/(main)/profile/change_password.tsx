@@ -3,11 +3,13 @@ import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator,
 import { Feather } from "@expo/vector-icons";
 import { useRouter, useFocusEffect } from "expo-router";
 import { AppColors } from "../../../src/constants/appColors";
+import { useTheme } from "../../../src/context/ThemeContext";
 import { NavHeader } from "../../../src/components/NavHeader";
 import { apiChangePassword } from "../../../src/services/api";
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -96,7 +98,7 @@ export default function ChangePasswordScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: AppColors.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <NavHeader
         title="Đổi mật khẩu"
         subtitle="Bảo vệ an toàn tài khoản sinh viên"
@@ -109,19 +111,19 @@ export default function ChangePasswordScreen() {
           style={{
             padding: 16,
             borderRadius: 16,
-            backgroundColor: "#EFF6FF",
+            backgroundColor: isDark ? "rgba(99, 102, 241, 0.15)" : "#EFF6FF",
             borderWidth: 1,
-            borderColor: "#BFDBFE",
+            borderColor: isDark ? "rgba(99, 102, 241, 0.3)" : "#BFDBFE",
             marginBottom: 24,
           }}
         >
-          <Text style={{ fontSize: 13, color: AppColors.primary, lineHeight: 20, fontWeight: "600" }}>
+          <Text style={{ fontSize: 13, color: colors.primary, lineHeight: 20, fontWeight: "600" }}>
             Lưu ý: Mật khẩu mới cần tối thiểu 6 ký tự. Tránh sử dụng ngày sinh hoặc chuỗi ký tự dễ đoán.
           </Text>
         </View>
 
         {/* Mật khẩu hiện tại */}
-        <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text, marginBottom: 6 }}>
+        <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: 6 }}>
           Mật khẩu hiện tại <Text style={{ color: AppColors.danger }}>*</Text>
         </Text>
         <View
@@ -130,28 +132,28 @@ export default function ChangePasswordScreen() {
             alignItems: "center",
             height: 48,
             borderRadius: 14,
-            backgroundColor: AppColors.cardBg,
+            backgroundColor: isDark ? "#0F172A" : colors.cardBg,
             borderWidth: 1,
-            borderColor: AppColors.cardBorder,
+            borderColor: colors.cardBorder,
             paddingHorizontal: 14,
             marginBottom: 16,
           }}
         >
           <TextInput
             placeholder="Nhập mật khẩu hiện tại"
-            placeholderTextColor={AppColors.textMuted}
+            placeholderTextColor={colors.textMuted}
             value={currentPassword}
             onChangeText={setCurrentPassword}
             secureTextEntry={!showCurrent}
-            style={{ flex: 1, fontSize: 14, color: AppColors.text }}
+            style={{ flex: 1, fontSize: 14, color: colors.text }}
           />
           <TouchableOpacity onPress={() => setShowCurrent(!showCurrent)}>
-            <Feather name={showCurrent ? "eye" : "eye-off"} size={18} color={AppColors.textMuted} />
+            <Feather name={showCurrent ? "eye" : "eye-off"} size={18} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
 
         {/* Mật khẩu mới */}
-        <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text, marginBottom: 6 }}>
+        <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: 6 }}>
           Mật khẩu mới <Text style={{ color: AppColors.danger }}>*</Text>
         </Text>
         <View
@@ -160,28 +162,28 @@ export default function ChangePasswordScreen() {
             alignItems: "center",
             height: 48,
             borderRadius: 14,
-            backgroundColor: AppColors.cardBg,
+            backgroundColor: isDark ? "#0F172A" : colors.cardBg,
             borderWidth: 1,
-            borderColor: AppColors.cardBorder,
+            borderColor: colors.cardBorder,
             paddingHorizontal: 14,
             marginBottom: 16,
           }}
         >
           <TextInput
             placeholder="Tối thiểu 6 ký tự"
-            placeholderTextColor={AppColors.textMuted}
+            placeholderTextColor={colors.textMuted}
             value={newPassword}
             onChangeText={setNewPassword}
             secureTextEntry={!showNew}
-            style={{ flex: 1, fontSize: 14, color: AppColors.text }}
+            style={{ flex: 1, fontSize: 14, color: colors.text }}
           />
           <TouchableOpacity onPress={() => setShowNew(!showNew)}>
-            <Feather name={showNew ? "eye" : "eye-off"} size={18} color={AppColors.textMuted} />
+            <Feather name={showNew ? "eye" : "eye-off"} size={18} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
 
         {/* Xác nhận mật khẩu mới */}
-        <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text, marginBottom: 6 }}>
+        <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: 6 }}>
           Xác nhận mật khẩu mới <Text style={{ color: AppColors.danger }}>*</Text>
         </Text>
         <View
@@ -190,23 +192,23 @@ export default function ChangePasswordScreen() {
             alignItems: "center",
             height: 48,
             borderRadius: 14,
-            backgroundColor: AppColors.cardBg,
+            backgroundColor: isDark ? "#0F172A" : colors.cardBg,
             borderWidth: 1,
-            borderColor: AppColors.cardBorder,
+            borderColor: colors.cardBorder,
             paddingHorizontal: 14,
             marginBottom: 28,
           }}
         >
           <TextInput
             placeholder="Nhập lại mật khẩu mới"
-            placeholderTextColor={AppColors.textMuted}
+            placeholderTextColor={colors.textMuted}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry={!showConfirm}
-            style={{ flex: 1, fontSize: 14, color: AppColors.text }}
+            style={{ flex: 1, fontSize: 14, color: colors.text }}
           />
           <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
-            <Feather name={showConfirm ? "eye" : "eye-off"} size={18} color={AppColors.textMuted} />
+            <Feather name={showConfirm ? "eye" : "eye-off"} size={18} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
 
@@ -217,10 +219,10 @@ export default function ChangePasswordScreen() {
           style={{
             height: 50,
             borderRadius: 14,
-            backgroundColor: AppColors.primary,
+            backgroundColor: colors.primary,
             alignItems: "center",
             justifyContent: "center",
-            shadowColor: AppColors.primary,
+            shadowColor: colors.primary,
             shadowOffset: { width: 0, height: 3 },
             shadowOpacity: 0.3,
             shadowRadius: 6,
@@ -255,10 +257,12 @@ export default function ChangePasswordScreen() {
             style={{
               width: "100%",
               maxWidth: 340,
-              backgroundColor: "#FFFFFF",
+              backgroundColor: colors.cardBg,
               borderRadius: 24,
               padding: 24,
               alignItems: "center",
+              borderWidth: isDark ? 1 : 0,
+              borderColor: colors.cardBorder,
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 10 },
               shadowOpacity: 0.25,
@@ -274,30 +278,30 @@ export default function ChangePasswordScreen() {
                 borderRadius: 34,
                 backgroundColor:
                   popupType === "success"
-                    ? "#ECFDF5"
+                    ? (isDark ? "rgba(16, 185, 129, 0.18)" : "#ECFDF5")
                     : popupType === "error"
-                    ? "#FEF2F2"
-                    : "#FFFBEB",
+                    ? (isDark ? "rgba(239, 68, 68, 0.18)" : "#FEF2F2")
+                    : (isDark ? "rgba(245, 158, 11, 0.18)" : "#FFFBEB"),
                 alignItems: "center",
                 justifyContent: "center",
                 marginBottom: 16,
                 borderWidth: 2,
                 borderColor:
                   popupType === "success"
-                    ? "#A7F3D0"
+                    ? (isDark ? "rgba(16, 185, 129, 0.35)" : "#A7F3D0")
                     : popupType === "error"
-                    ? "#FECACA"
-                    : "#FDE68A",
+                    ? (isDark ? "rgba(239, 68, 68, 0.35)" : "#FECACA")
+                    : (isDark ? "rgba(245, 158, 11, 0.35)" : "#FDE68A"),
               }}
             >
               {popupType === "success" && (
-                <Feather name="check-circle" size={34} color="#10B981" />
+                <Feather name="check-circle" size={34} color={isDark ? "#34D399" : "#10B981"} />
               )}
               {popupType === "error" && (
-                <Feather name="alert-circle" size={34} color="#EF4444" />
+                <Feather name="alert-circle" size={34} color={isDark ? "#F87171" : "#EF4444"} />
               )}
               {popupType === "warning" && (
-                <Feather name="alert-triangle" size={34} color="#F59E0B" />
+                <Feather name="alert-triangle" size={34} color={isDark ? "#FBBF24" : "#F59E0B"} />
               )}
             </View>
 
@@ -306,7 +310,7 @@ export default function ChangePasswordScreen() {
               style={{
                 fontSize: 18,
                 fontWeight: "800",
-                color: "#0F172A",
+                color: colors.text,
                 textAlign: "center",
                 marginBottom: 8,
               }}
@@ -318,7 +322,7 @@ export default function ChangePasswordScreen() {
             <Text
               style={{
                 fontSize: 13.5,
-                color: "#64748B",
+                color: colors.textSecondary,
                 textAlign: "center",
                 lineHeight: 21,
                 marginBottom: 22,
@@ -336,10 +340,10 @@ export default function ChangePasswordScreen() {
                 height: 48,
                 borderRadius: 14,
                 backgroundColor:
-                  popupType === "success" ? "#10B981" : AppColors.primary,
+                  popupType === "success" ? "#10B981" : colors.primary,
                 alignItems: "center",
                 justifyContent: "center",
-                shadowColor: popupType === "success" ? "#10B981" : AppColors.primary,
+                shadowColor: popupType === "success" ? "#10B981" : colors.primary,
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.3,
                 shadowRadius: 8,

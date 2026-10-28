@@ -3,6 +3,7 @@ import { View, Text, Pressable, Image, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { AppColors } from "../../../constants/appColors";
+import { useTheme } from "../../../context/ThemeContext";
 import { StudentInfo } from "../types";
 
 export interface HomeHeaderProps {
@@ -16,6 +17,8 @@ export const HomeHeader = React.memo(function HomeHeader({
   topPadding,
   onNavigate,
 }: HomeHeaderProps) {
+  const { colors } = useTheme();
+
   const handleSosPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     onNavigate("sos");
@@ -32,6 +35,7 @@ export const HomeHeader = React.memo(function HomeHeader({
         styles.container,
         {
           paddingTop: topPadding,
+          backgroundColor: colors.primary,
         },
       ]}
     >
@@ -88,7 +92,6 @@ export const HomeHeader = React.memo(function HomeHeader({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: AppColors.primary,
     paddingBottom: 16,
     paddingHorizontal: 20,
     zIndex: 10,

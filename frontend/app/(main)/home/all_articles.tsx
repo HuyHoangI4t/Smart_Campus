@@ -9,6 +9,7 @@ import {
   StatusBar,
   Platform,
   Image,
+  BackHandler,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
@@ -17,7 +18,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
 import { AllArticlesSkeleton } from "../../../src/components/Skeleton";
 import { getHeaderTopPadding } from "../../../src/utils/safeArea";
-//import { AppColors } from "../../../src/constants/appColors";
+import { useTheme } from "../../../src/context/ThemeContext";
 import {
   apiGetNews,
   readLocalCache,
@@ -29,6 +30,7 @@ import {
 type TabFilter = "all" | "announcement" | "news";
 
 function ArticleCardImage({ imageUrl, index }: { imageUrl?: string; index: number }) {
+  const { isDark } = useTheme();
   const [currentUri, setCurrentUri] = useState(getNewsImageUrl(imageUrl, index));
 
   return (
@@ -39,7 +41,7 @@ function ArticleCardImage({ imageUrl, index }: { imageUrl?: string; index: numbe
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         },
       }}
-      style={{ width: "100%", height: 160, backgroundColor: "#E2E8F0" }}
+      style={{ width: "100%", height: 160, backgroundColor: isDark ? "#1E293B" : "#E2E8F0" }}
       resizeMode="cover"
       onError={() => {
         const fallback = CAMPUS_FALLBACK_IMAGES[index % CAMPUS_FALLBACK_IMAGES.length];
@@ -54,6 +56,7 @@ function ArticleCardImage({ imageUrl, index }: { imageUrl?: string; index: numbe
 export default function AllArticlesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
   const searchParams = useLocalSearchParams<{ tab?: string }>();
 
   const initialTab: TabFilter =
@@ -85,10 +88,24 @@ export default function AllArticlesScreen() {
     }
   };
 
+  const handleBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(main)/home");
+    }
+  }, [router]);
+
   useFocusEffect(
     useCallback(() => {
       checkAuth();
-    }, [])
+      const onBackPress = () => {
+        handleBack();
+        return true;
+      };
+      const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+      return () => sub.remove();
+    }, [handleBack])
   );
 
   const topPadding = getHeaderTopPadding(insets.top, 14);
@@ -283,15 +300,15 @@ export default function AllArticlesScreen() {
         onPress={() => openDetail(item, index)}
         activeOpacity={0.7}
         style={{
-          backgroundColor: "#FFFFFF",
+          backgroundColor: colors.cardBg,
           borderRadius: 16,
           borderWidth: 1,
-          borderColor: "#E2E8F0",
+          borderColor: colors.cardBorder,
           marginBottom: 14,
           overflow: "hidden",
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.04,
+          shadowOpacity: isDark ? 0.3 : 0.04,
           shadowRadius: 4,
           elevation: 2,
         }}
@@ -377,14 +394,14 @@ export default function AllArticlesScreen() {
                   }}
                 >
                   <Feather name="paperclip" size={10} color="#475569" />
-                  <Text style={{ fontSize: 10, fontWeight: "700", color: "#475569" }}>
+                  <Text style={{ fontSize: 10, fontWeight: "700", color: colors.subtext }}>
                     {item.attachments.length} file
                   </Text>
                 </View>
               ) : null}
             </View>
 
-            <Text style={{ fontSize: 11, color: "#64748B", fontWeight: "600" }}>
+            <Text style={{ fontSize: 11, color: colors.subtext, fontWeight: "600" }}>
               {item.date}
             </Text>
           </View>
@@ -394,7 +411,7 @@ export default function AllArticlesScreen() {
             style={{
               fontSize: 14.5,
               fontWeight: "800",
-              color: "#0F172A",
+              color: colors.text,
               lineHeight: 21,
               marginBottom: 6,
             }}
@@ -408,7 +425,7 @@ export default function AllArticlesScreen() {
             <Text
               style={{
                 fontSize: 12,
-                color: "#64748B",
+                color: colors.subtext,
                 lineHeight: 18,
                 marginBottom: 10,
               }}
@@ -425,7 +442,7 @@ export default function AllArticlesScreen() {
               justifyContent: "space-between",
               alignItems: "center",
               borderTopWidth: 1,
-              borderTopColor: "#F1F5F9",
+              borderTopColor: colors.cardBorder,
               paddingTop: 10,
               marginTop: 4,
             }}
@@ -434,18 +451,18 @@ export default function AllArticlesScreen() {
               <Feather
                 name={isNews ? "globe" : "home"}
                 size={12}
-                color="#64748B"
+                color={colors.subtext}
               />
-              <Text style={{ fontSize: 11, color: "#64748B", flex: 1 }} numberOfLines={1}>
+              <Text style={{ fontSize: 11, color: colors.subtext, flex: 1 }} numberOfLines={1}>
                 {item.author || item.sender || "Phòng Công tác SV"}
               </Text>
             </View>
 
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-              <Text style={{ fontSize: 12, fontWeight: "700", color: "#2563EB" }}>
+              <Text style={{ fontSize: 12, fontWeight: "700", color: colors.primary }}>
                 {isNews ? "Chi tiết bài viết" : "Chi tiết"}
               </Text>
-              <Feather name="arrow-right" size={12} color="#2563EB" />
+              <Feather name="arrow-right" size={12} color={colors.primary} />
             </View>
           </View>
         </View>
@@ -455,13 +472,13 @@ export default function AllArticlesScreen() {
 
   if (!isLoggedIn) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
-        <StatusBar barStyle="light-content" backgroundColor="#0F2964" translucent={Platform.OS === "android"} />
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <StatusBar barStyle="light-content" backgroundColor={colors.primary} translucent={Platform.OS === "android"} />
 
         {/* ─── HEADER NAVY BLUE ─── */}
         <View
           style={{
-            backgroundColor: "#0F2964",
+            backgroundColor: colors.primary,
             paddingTop: topPadding,
             paddingBottom: 16,
             paddingHorizontal: 16,
@@ -476,8 +493,11 @@ export default function AllArticlesScreen() {
         >
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={handleBack}
               activeOpacity={0.8}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Quay lại"
               style={{
                 width: 38,
                 height: 38,
@@ -528,13 +548,13 @@ export default function AllArticlesScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
-      <StatusBar barStyle="light-content" backgroundColor="#0F2964" translucent={Platform.OS === "android"} />
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} translucent={Platform.OS === "android"} />
 
       {/* ─── HEADER NAVY BLUE ─── */}
       <View
         style={{
-          backgroundColor: "#0F2964",
+          backgroundColor: colors.primary,
           paddingTop: topPadding,
           paddingBottom: 16,
           paddingHorizontal: 16,
@@ -549,8 +569,11 @@ export default function AllArticlesScreen() {
       >
         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={handleBack}
             activeOpacity={0.8}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="Quay lại"
             style={{
               width: 38,
               height: 38,
@@ -594,28 +617,30 @@ export default function AllArticlesScreen() {
           style={{
             flexDirection: "row",
             alignItems: "center",
-            backgroundColor: "#FFFFFF",
+            backgroundColor: isDark ? colors.cardBg : "#FFFFFF",
             borderRadius: 12,
             paddingHorizontal: 12,
             height: 42,
+            borderWidth: isDark ? 1 : 0,
+            borderColor: colors.cardBorder,
           }}
         >
-          <Feather name="search" size={16} color="#64748B" style={{ marginRight: 8 }} />
+          <Feather name="search" size={16} color={colors.subtext} style={{ marginRight: 8 }} />
           <TextInput
             placeholder="Tìm theo tiêu đề, nội dung, đơn vị..."
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={colors.subtext}
             value={searchQuery}
             onChangeText={setSearchQuery}
             style={{
               flex: 1,
               fontSize: 13,
-              color: "#0F172A",
+              color: colors.text,
               paddingVertical: 0,
             }}
           />
           {searchQuery.length > 0 ? (
             <TouchableOpacity onPress={() => setSearchQuery("")} activeOpacity={0.7} style={{ padding: 4 }}>
-              <Feather name="x" size={16} color="#64748B" />
+              <Feather name="x" size={16} color={colors.subtext} />
             </TouchableOpacity>
           ) : null}
         </View>
@@ -628,7 +653,7 @@ export default function AllArticlesScreen() {
           paddingHorizontal: 16,
           paddingVertical: 12,
           gap: 8,
-          backgroundColor: "#F8FAFC",
+          backgroundColor: colors.background,
         }}
       >
         <TouchableOpacity
@@ -641,9 +666,9 @@ export default function AllArticlesScreen() {
             justifyContent: "center",
             paddingVertical: 9,
             borderRadius: 12,
-            backgroundColor: activeTab === "all" ? "#0F2964" : "#FFFFFF",
+            backgroundColor: activeTab === "all" ? colors.primary : colors.cardBg,
             borderWidth: 1,
-            borderColor: activeTab === "all" ? "#0F2964" : "#E2E8F0",
+            borderColor: activeTab === "all" ? colors.primary : colors.cardBorder,
             gap: 6,
           }}
         >
@@ -651,7 +676,7 @@ export default function AllArticlesScreen() {
             style={{
               fontSize: 12.5,
               fontWeight: "800",
-              color: activeTab === "all" ? "#FFFFFF" : "#475569",
+              color: activeTab === "all" ? "#FFFFFF" : colors.subtext,
             }}
           >
             Tất cả
@@ -661,14 +686,14 @@ export default function AllArticlesScreen() {
               paddingHorizontal: 6,
               paddingVertical: 1.5,
               borderRadius: 10,
-              backgroundColor: activeTab === "all" ? "rgba(255,255,255,0.22)" : "#F1F5F9",
+              backgroundColor: activeTab === "all" ? "rgba(255,255,255,0.22)" : (isDark ? "#334155" : "#F1F5F9"),
             }}
           >
             <Text
               style={{
                 fontSize: 10.5,
                 fontWeight: "700",
-                color: activeTab === "all" ? "#FFFFFF" : "#64748B",
+                color: activeTab === "all" ? "#FFFFFF" : colors.subtext,
               }}
             >
               {counts.all}
@@ -686,9 +711,9 @@ export default function AllArticlesScreen() {
             justifyContent: "center",
             paddingVertical: 9,
             borderRadius: 12,
-            backgroundColor: activeTab === "announcement" ? "#0F2964" : "#FFFFFF",
+            backgroundColor: activeTab === "announcement" ? colors.primary : colors.cardBg,
             borderWidth: 1,
-            borderColor: activeTab === "announcement" ? "#0F2964" : "#E2E8F0",
+            borderColor: activeTab === "announcement" ? colors.primary : colors.cardBorder,
             gap: 6,
           }}
         >
@@ -696,7 +721,7 @@ export default function AllArticlesScreen() {
             style={{
               fontSize: 12.5,
               fontWeight: "800",
-              color: activeTab === "announcement" ? "#FFFFFF" : "#475569",
+              color: activeTab === "announcement" ? "#FFFFFF" : colors.subtext,
             }}
           >
             Thông báo SV
@@ -706,14 +731,14 @@ export default function AllArticlesScreen() {
               paddingHorizontal: 6,
               paddingVertical: 1.5,
               borderRadius: 10,
-              backgroundColor: activeTab === "announcement" ? "rgba(255,255,255,0.22)" : "#ECFDF5",
+              backgroundColor: activeTab === "announcement" ? "rgba(255,255,255,0.22)" : (isDark ? "rgba(16, 185, 129, 0.2)" : "#ECFDF5"),
             }}
           >
             <Text
               style={{
                 fontSize: 10.5,
                 fontWeight: "700",
-                color: activeTab === "announcement" ? "#FFFFFF" : "#059669",
+                color: activeTab === "announcement" ? "#FFFFFF" : (isDark ? "#34D399" : "#059669"),
               }}
             >
               {counts.announcement}
@@ -731,9 +756,9 @@ export default function AllArticlesScreen() {
             justifyContent: "center",
             paddingVertical: 9,
             borderRadius: 12,
-            backgroundColor: activeTab === "news" ? "#0F2964" : "#FFFFFF",
+            backgroundColor: activeTab === "news" ? colors.primary : colors.cardBg,
             borderWidth: 1,
-            borderColor: activeTab === "news" ? "#0F2964" : "#E2E8F0",
+            borderColor: activeTab === "news" ? colors.primary : colors.cardBorder,
             gap: 6,
           }}
         >
@@ -741,7 +766,7 @@ export default function AllArticlesScreen() {
             style={{
               fontSize: 12.5,
               fontWeight: "800",
-              color: activeTab === "news" ? "#FFFFFF" : "#475569",
+              color: activeTab === "news" ? "#FFFFFF" : colors.subtext,
             }}
           >
             Tin tức
@@ -751,14 +776,14 @@ export default function AllArticlesScreen() {
               paddingHorizontal: 6,
               paddingVertical: 1.5,
               borderRadius: 10,
-              backgroundColor: activeTab === "news" ? "rgba(255,255,255,0.22)" : "#EFF6FF",
+              backgroundColor: activeTab === "news" ? "rgba(255,255,255,0.22)" : (isDark ? "rgba(59, 130, 246, 0.2)" : "#EFF6FF"),
             }}
           >
             <Text
               style={{
                 fontSize: 10.5,
                 fontWeight: "700",
-                color: activeTab === "news" ? "#FFFFFF" : "#2563EB",
+                color: activeTab === "news" ? "#FFFFFF" : (isDark ? "#60A5FA" : "#2563EB"),
               }}
             >
               {counts.news}
@@ -789,8 +814,8 @@ export default function AllArticlesScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#0F2964"
-              colors={["#0F2964"]}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
             />
           }
         ListEmptyComponent={
@@ -815,10 +840,10 @@ export default function AllArticlesScreen() {
             >
               <Feather name="file-text" size={26} color="#94A3B8" />
             </View>
-            <Text style={{ fontSize: 15, fontWeight: "800", color: "#1E293B", marginBottom: 6 }}>
+            <Text style={{ fontSize: 15, fontWeight: "800", color: colors.text, marginBottom: 6 }}>
               {isLoading ? "Đang tải dữ liệu..." : "Không tìm thấy bài viết nào"}
             </Text>
-            <Text style={{ fontSize: 13, color: "#64748B", textAlign: "center", lineHeight: 18 }}>
+            <Text style={{ fontSize: 13, color: colors.subtext, textAlign: "center", lineHeight: 18 }}>
               {searchQuery
                 ? `Không có kết quả nào phù hợp với từ khóa "${searchQuery}". Hãy thử tìm kiếm từ khóa khác.`
                 : "Hiện tại chưa có bài viết nào trong danh mục này."}
@@ -832,7 +857,7 @@ export default function AllArticlesScreen() {
                   paddingHorizontal: 16,
                   paddingVertical: 8,
                   borderRadius: 10,
-                  backgroundColor: "#0F2964",
+                  backgroundColor: colors.primary,
                 }}
               >
                 <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "800" }}>

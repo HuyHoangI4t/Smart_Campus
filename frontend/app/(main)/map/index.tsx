@@ -5,10 +5,11 @@ import { WebView } from "react-native-webview";
 import { useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Haptics from "expo-haptics";
+import { useTheme } from "../../../src/context/ThemeContext";
 import { AppColors } from "../../../src/constants/appColors";
 import { NavHeader } from "../../../src/components/NavHeader";
 import { setTabBarVisible } from "../../../src/components/MainTabs";
-import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
 import { MapSkeleton } from "../../../src/components/Skeleton";
 import {
   LocationItem,
@@ -60,6 +61,8 @@ export default function MapScreen() {
 
   const webViewRef = useRef<WebView>(null);
   const isMapReadyRef = useRef<boolean>(false);
+
+  const { defaultSatelliteMap } = useTheme();
 
   // Trạng thái xác thực tài khoản sinh viên
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
@@ -275,11 +278,13 @@ export default function MapScreen() {
         })
       );
     }
-    // Lớp mặc định là vệ tinh sắc nét
+    // Lớp bản đồ theo cấu hình cài đặt người dùng
+    const initialLayer = defaultSatelliteMap ? "satellite" : "osm";
+    setMapLayer(initialLayer);
     webViewRef.current?.postMessage(
       JSON.stringify({
         type: "SWITCH_LAYER",
-        layer: "satellite",
+        layer: initialLayer,
       })
     );
     if (locations && locations.length > 0) {
@@ -298,7 +303,7 @@ export default function MapScreen() {
         })
       );
     }
-  }, [userLocation, selectedLoc, locations, campusPaths, resetBearing]);
+  }, [userLocation, selectedLoc, locations, campusPaths, resetBearing, defaultSatelliteMap]);
 
   // Ref lưu mốc yêu cầu tính khoảng cách gần nhất để triệt tiêu bridge message spam
   const lastDistanceRequestRef = useRef<{ locId?: number; lat?: number; lng?: number }>({});
@@ -396,6 +401,11 @@ export default function MapScreen() {
           setIsRoutingActive(true);
           setTabBarVisible(false);
         } else if (data.type === "ROUTE_PROGRESS") {
+          if (data.rerouted) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+          } else if (data.arrived) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+          }
           setActiveRoute((prev) => {
             if (!prev) return null;
             return {
@@ -537,6 +547,7 @@ export default function MapScreen() {
     setIsRoutingActive(true);
     setTabBarVisible(false);
     startPositionWatch();
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
 
     webViewRef.current?.postMessage(
       JSON.stringify({
@@ -553,6 +564,7 @@ export default function MapScreen() {
   // Đổi cổng vào khác khi dẫn đường từ ngoài trường (Lê Duẩn <-> Y Wang <-> Bệnh viện)
   const handleSwitchGate = useCallback((targetGateId?: string) => {
     if (!selectedLoc) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     if (typeof targetGateId === "string") {
       setSelectedGateId(targetGateId);
       handleStartInAppDirections(targetGateId);
@@ -568,6 +580,7 @@ export default function MapScreen() {
 
   // Hủy đường đi bộ đang vẽ
   const handleClearRoute = useCallback(() => {
+    Haptics.selectionAsync().catch(() => {});
     setIsRoutingActive(false);
     setActiveRoute(null);
     setSelectedGateId(null);
@@ -670,28 +683,16 @@ export default function MapScreen() {
       {/* ─── THANH TIÊU ĐỀ NAV HEADER ─────────────────────────────────── */}
       <NavHeader title="Bản đồ khuôn viên" subtitle="Đại học Tây Nguyên • Khuôn viên nội bộ" />
 
-      {isLoggedIn === null ? (
-        <MapSkeleton />
-      ) : !isLoggedIn ? (
-        <View style={{ flex: 1, marginBottom: 88 }}>
-          <LoginRequiredCard
-            mode="fullscreen"
-            title="Vui lòng đăng nhập để xem"
-            message="Đăng nhập tài khoản sinh viên để xem và tra cứu bản đồ khuôn viên trường Đại học Tây Nguyên."
-            icon="map-pin"
-          />
-        </View>
-      ) : (
-        /* ─── KHUNG BẢN ĐỒ TƯƠNG TÁC (EDGE-TO-EDGE CANVAS) ─────────────── */
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "#F8FAFC",
-            position: "relative",
-            marginBottom: 0,
-            overflow: "hidden",
-          }}
-        >
+      {/* ─── KHUNG BẢN ĐỒ TƯƠNG TÁC (EDGE-TO-EDGE CANVAS) ─────────────── */}
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "#F8FAFC",
+          position: "relative",
+          marginBottom: 0,
+          overflow: "hidden",
+        }}
+      >
           {/* WebView Tối ưu CPU, RAM, GPU */}
           <WebView
             ref={webViewRef}
@@ -807,7 +808,6 @@ export default function MapScreen() {
             onSelectSampleLocation={handleSelectSampleLocation}
           />
         </View>
-      )}
     </View>
   );
 }

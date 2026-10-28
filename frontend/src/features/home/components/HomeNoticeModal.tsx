@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, Modal, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { AppColors } from "../../../constants/appColors";
+import { useTheme } from "../../../context/ThemeContext";
 import { NotificationAlertItem } from "../types";
 
 export interface HomeNoticeModalProps {
@@ -17,6 +17,8 @@ export const HomeNoticeModal = React.memo(function HomeNoticeModal({
   onNavigate,
   onDismiss,
 }: HomeNoticeModalProps) {
+  const { colors, isDark } = useTheme();
+
   if (!alert) return null;
 
   return (
@@ -27,7 +29,7 @@ export const HomeNoticeModal = React.memo(function HomeNoticeModal({
       onRequestClose={onClose}
     >
       <View style={styles.backdrop}>
-        <View style={styles.modalBox}>
+        <View style={[styles.modalBox, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder, borderWidth: 1 }]}>
           {/* Header Modal */}
           <View style={styles.headerRow}>
             <View
@@ -36,10 +38,10 @@ export const HomeNoticeModal = React.memo(function HomeNoticeModal({
                 {
                   backgroundColor:
                     alert.variant === "success"
-                      ? "#ECFDF5"
+                      ? (isDark ? "rgba(16, 185, 129, 0.2)" : "#ECFDF5")
                       : alert.variant === "warning"
-                      ? "#FFFBEB"
-                      : "#EFF6FF",
+                      ? (isDark ? "rgba(245, 158, 11, 0.2)" : "#FFFBEB")
+                      : (isDark ? "rgba(59, 130, 246, 0.2)" : "#EFF6FF"),
                 },
               ]}
             >
@@ -54,44 +56,44 @@ export const HomeNoticeModal = React.memo(function HomeNoticeModal({
                 size={20}
                 color={
                   alert.variant === "success"
-                    ? "#10B981"
+                    ? colors.success
                     : alert.variant === "warning"
-                    ? "#D97706"
-                    : "#2563EB"
+                    ? colors.warning
+                    : colors.info
                 }
               />
             </View>
             <View style={styles.headerTextCol}>
-              <Text style={styles.headerTitle}>
+              <Text style={[styles.headerTitle, { color: colors.text }]}>
                 {alert.type === "feedback"
                   ? "Trạng thái phản hồi"
                   : alert.type === "sos"
                   ? "Cảnh báo khẩn cấp"
                   : "Thông báo từ trường"}
               </Text>
-              <Text style={styles.headerDate}>
+              <Text style={[styles.headerDate, { color: colors.textSecondary }]}>
                 {alert.date || "30/9/2026"}
               </Text>
             </View>
             <TouchableOpacity
               onPress={onClose}
-              style={styles.closeBtn}
+              style={[styles.closeBtn, { backgroundColor: isDark ? "#334155" : "#F1F5F9" }]}
             >
-              <Feather name="x" size={16} color="#64748B" />
+              <Feather name="x" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
-          {/* Trạng thái Badge */}
+          {/* Badge trạng thái */}
           <View
             style={[
               styles.statusBadge,
               {
                 backgroundColor:
                   alert.variant === "success"
-                    ? "#DCFCE7"
+                    ? (isDark ? "rgba(16, 185, 129, 0.2)" : "#DCFCE7")
                     : alert.variant === "warning"
-                    ? "#FEF3C7"
-                    : "#DBEAFE",
+                    ? (isDark ? "rgba(245, 158, 11, 0.2)" : "#FEF3C7")
+                    : (isDark ? "rgba(59, 130, 246, 0.2)" : "#DBEAFE"),
               },
             ]}
           >
@@ -101,43 +103,36 @@ export const HomeNoticeModal = React.memo(function HomeNoticeModal({
                 {
                   color:
                     alert.variant === "success"
-                      ? "#166534"
+                      ? colors.success
                       : alert.variant === "warning"
-                      ? "#92400E"
-                      : "#1E40AF",
+                      ? colors.warning
+                      : colors.info,
                 },
               ]}
             >
-              {alert.status || "Đã tiếp nhận"}
+              {alert.status || "ĐÃ GỬI"}
             </Text>
           </View>
 
           {/* Tiêu đề & Nội dung */}
-          <Text style={styles.alertTitle}>
-            {alert.title}
-          </Text>
+          <Text style={[styles.alertTitle, { color: colors.text }]}>{alert.title}</Text>
+          <Text style={[styles.alertContent, { color: colors.textSecondary }]}>{alert.content}</Text>
 
-          <Text style={styles.alertContent}>
-            {alert.content}
-          </Text>
-
-          {/* Nút tác vụ */}
+          {/* Nút hành động */}
           <View style={styles.actionRow}>
             {alert.actionScreen ? (
               <TouchableOpacity
                 onPress={() => {
-                  const screen = alert.actionScreen;
                   onClose();
-                  if (screen) onNavigate(screen);
+                  onNavigate(alert.actionScreen!);
                 }}
-                activeOpacity={0.8}
-                style={styles.primaryActionBtn}
+                style={[styles.primaryActionBtn, { backgroundColor: colors.primary }]}
               >
                 <Text style={styles.primaryActionText}>
-                  {alert.type === "feedback"
-                    ? "Xem / Gửi phản hồi"
-                    : alert.type === "sos"
-                    ? "Đến trang SOS"
+                  {alert.actionScreen === "feedback"
+                    ? "Xem danh sách phản hồi"
+                    : alert.actionScreen === "sos"
+                    ? "Xem trang cứu hộ SOS"
                     : "Xem chi tiết"}
                 </Text>
               </TouchableOpacity>
@@ -146,14 +141,13 @@ export const HomeNoticeModal = React.memo(function HomeNoticeModal({
             {onDismiss ? (
               <TouchableOpacity
                 onPress={() => {
-                  const id = alert.id;
+                  onDismiss(alert.id);
                   onClose();
-                  onDismiss(id);
                 }}
-                activeOpacity={0.8}
-                style={styles.deleteModalBtn}
-                accessibilityRole="button"
-                accessibilityLabel="Xoá thông báo này"
+                style={[
+                  styles.deleteModalBtn,
+                  isDark && { backgroundColor: "rgba(239, 68, 68, 0.2)", borderColor: "rgba(239, 68, 68, 0.4)" },
+                ]}
               >
                 <Feather name="trash-2" size={14} color="#EF4444" />
                 <Text style={styles.deleteModalText}>Xoá</Text>
@@ -162,13 +156,13 @@ export const HomeNoticeModal = React.memo(function HomeNoticeModal({
 
             <TouchableOpacity
               onPress={onClose}
-              activeOpacity={0.8}
               style={[
                 styles.closeModalBtn,
-                { flex: alert.actionScreen ? 0.5 : onDismiss ? 0.6 : 1 },
+                { backgroundColor: isDark ? "#334155" : "#F1F5F9" },
+                !alert.actionScreen && { flex: 1 },
               ]}
             >
-              <Text style={styles.closeModalText}>Đóng</Text>
+              <Text style={[styles.closeModalText, { color: colors.text }]}>Đóng</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -180,7 +174,7 @@ export const HomeNoticeModal = React.memo(function HomeNoticeModal({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.55)",
+    backgroundColor: "rgba(0,0,0,0.65)",
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
@@ -188,7 +182,6 @@ const styles = StyleSheet.create({
   modalBox: {
     width: "100%",
     maxWidth: 360,
-    backgroundColor: "#FFFFFF",
     borderRadius: 20,
     padding: 22,
     shadowColor: "#000",
@@ -216,18 +209,15 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontWeight: "900",
-    color: "#1E293B",
   },
   headerDate: {
     fontSize: 11,
-    color: "#64748B",
     marginTop: 2,
   },
   closeBtn: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -245,13 +235,11 @@ const styles = StyleSheet.create({
   alertTitle: {
     fontSize: 15,
     fontWeight: "800",
-    color: "#1E293B",
     lineHeight: 21,
     marginBottom: 8,
   },
   alertContent: {
     fontSize: 13,
-    color: "#475569",
     lineHeight: 20,
     marginBottom: 20,
   },
@@ -261,7 +249,6 @@ const styles = StyleSheet.create({
   },
   primaryActionBtn: {
     flex: 1,
-    backgroundColor: AppColors.primary,
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: "center",
@@ -273,14 +260,13 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   closeModalBtn: {
-    backgroundColor: "#F1F5F9",
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 16,
   },
   closeModalText: {
-    color: "#475569",
     fontSize: 13,
     fontWeight: "700",
   },
@@ -302,4 +288,3 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 });
-

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Smart Capmus",
+    "name": "Smart Campus",
     "slug": "myfirstapp",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -56,7 +56,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/favicon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",

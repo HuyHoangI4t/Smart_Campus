@@ -6,6 +6,7 @@ import {
   RefreshControl,
   StatusBar,
   Platform,
+  Alert,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -13,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTabBarScrollHandler } from "../../../src/components/MainTabs";
 import { AppColors } from "../../../src/constants/appColors";
+import { useTheme } from "../../../src/context/ThemeContext";
 import { HomeSkeleton } from "../../../src/components/Skeleton";
 import { getHeaderTopPadding } from "../../../src/utils/safeArea";
 import {
@@ -43,6 +45,7 @@ import {
 } from "../../../src/features/home";
 
 export default function HomeScreen() {
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { onScroll: onTabBarScroll, bottomPadding } = useTabBarScrollHandler();
@@ -341,10 +344,28 @@ export default function HomeScreen() {
         apiGetGrades(isRealAccount ? mssv : undefined),
       ]);
       applyData(dashRes, scheduleRes, newsRes, isRealAccount);
-      if (gradesRes?.success && Array.isArray(gradesRes.data) && gradesRes.data.length > 0) {
-        const parsedSummary = parseGpaSummary(gradesRes.data);
-        if (parsedSummary) {
-          setGpaSummary(parsedSummary);
+      if (gradesRes?.success) {
+        if (gradesRes.summary && gradesRes.summary.gpa4 !== undefined) {
+          setGpaSummary({
+            gpa4: String(gradesRes.summary.gpa4 || "0.00"),
+            gpa10: String(gradesRes.summary.gpa10 || "0.00"),
+            totalCredits: Number(gradesRes.summary.accumulatedCredits ?? gradesRes.summary.totalCredits ?? 0),
+            rank: gradesRes.summary.academicRank?.label || "Chưa có",
+            rankColor: gradesRes.summary.academicRank?.color || "#6B7280",
+          });
+        } else if (Array.isArray(gradesRes.data) && gradesRes.data.length > 0) {
+          const parsedSummary = parseGpaSummary(gradesRes.data);
+          if (parsedSummary) {
+            setGpaSummary(parsedSummary);
+          }
+        } else if (isRealAccount) {
+          setGpaSummary({
+            gpa4: "0.00",
+            gpa10: "0.00",
+            totalCredits: 0,
+            rank: "Chưa có",
+            rankColor: "#6B7280",
+          });
         }
       }
     } catch {
@@ -368,17 +389,51 @@ export default function HomeScreen() {
   };
 
   const onNavigate = (screen: string) => {
+    if (screen === "schedule" && !isLoggedIn) {
+      Alert.alert(
+        "Vui lòng đăng nhập để tiếp tục",
+        "Tính năng Thời khóa biểu chỉ dành riêng cho sinh viên Đại học Tây Nguyên. Bạn có muốn đăng nhập không?",
+        [
+          { text: "Để sau", style: "cancel" },
+          { text: "Đăng nhập", onPress: () => router.replace("/(auth)") },
+        ]
+      );
+      return;
+    }
+    if (screen === "grades" && !isLoggedIn) {
+      Alert.alert(
+        "Vui lòng đăng nhập để tiếp tục",
+        "Tính năng Kết quả học tập chỉ dành riêng cho sinh viên Đại học Tây Nguyên. Bạn có muốn đăng nhập không?",
+        [
+          { text: "Để sau", style: "cancel" },
+          { text: "Đăng nhập", onPress: () => router.replace("/(auth)") },
+        ]
+      );
+      return;
+    }
     if (screen === "home") router.push("/(main)/home");
     else router.push(`/(main)/${screen}` as any);
   };
 
   const handleOpenMapDirections = () => {
+    if (!isLoggedIn) {
+      Alert.alert(
+        "Vui lòng đăng nhập để tiếp tục",
+        "Tính năng Thời khóa biểu chỉ dành riêng cho sinh viên Đại học Tây Nguyên. Bạn có muốn đăng nhập không?",
+        [
+          { text: "Để sau", style: "cancel" },
+          { text: "Đăng nhập", onPress: () => router.replace("/(auth)") },
+        ]
+      );
+      return;
+    }
     const rawRoom = nextClass?.room || "";
     router.push({
       pathname: "/(main)/map",
       params: {
         room: rawRoom,
         subject: nextClass?.subject || "",
+        t: Date.now().toString(),
       },
     });
   };
@@ -412,8 +467,8 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: AppColors.background }}>
-      <StatusBar barStyle="light-content" backgroundColor={AppColors.primary} translucent={Platform.OS === "android"} />
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} translucent={Platform.OS === "android"} />
 
       {/* ─── 1. HEADER NAVY BLUE ─── */}
       <HomeHeader
@@ -433,8 +488,8 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={AppColors.primary}
-            colors={[AppColors.primary]}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
           />
         }
       >
@@ -447,17 +502,17 @@ export default function HomeScreen() {
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  backgroundColor: "#FEF3C7",
+                  backgroundColor: isDark ? "rgba(245, 158, 11, 0.15)" : "#FEF3C7",
                   borderWidth: 1,
-                  borderColor: "#FDE68A",
+                  borderColor: isDark ? "rgba(245, 158, 11, 0.35)" : "#FDE68A",
                   paddingVertical: 8,
                   paddingHorizontal: 12,
                   borderRadius: 12,
                   marginBottom: 16,
                 }}
               >
-                <Feather name="wifi-off" size={15} color="#D97706" style={{ marginRight: 8 }} />
-                <Text style={{ fontSize: 12, color: "#92400E", fontWeight: "600", flex: 1 }}>
+                <Feather name="wifi-off" size={15} color={isDark ? "#FBBF24" : "#D97706"} style={{ marginRight: 8 }} />
+                <Text style={{ fontSize: 12, color: isDark ? "#FDE68A" : "#92400E", fontWeight: "600", flex: 1 }}>
                   Đang xem dữ liệu ngoại tuyến {cachedAt ? `(lưu lúc ${cachedAt})` : ""} • Vuốt xuống để làm mới
                 </Text>
               </View>
@@ -472,7 +527,20 @@ export default function HomeScreen() {
             {/* 4. TỔNG KẾT GPA HỆ 4 & HỆ 10 */}
             <HomeGpaCard
               gpaSummary={gpaSummary}
-              onPress={() => router.push("/(main)/grades")}
+              onPress={() => {
+                if (!isLoggedIn) {
+                  Alert.alert(
+                    "Vui lòng đăng nhập để tiếp tục",
+                    "Tính năng Kết quả học tập chỉ dành riêng cho sinh viên Đại học Tây Nguyên. Bạn có muốn đăng nhập không?",
+                    [
+                      { text: "Để sau", style: "cancel" },
+                      { text: "Đăng nhập", onPress: () => router.replace("/(auth)") },
+                    ]
+                  );
+                  return;
+                }
+                router.push("/(main)/grades");
+              }}
             />
 
             {/* 5. TÁC VỤ NHANH */}

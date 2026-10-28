@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { AppColors } from "../../../constants/appColors";
+import { useTheme } from "../../../context/ThemeContext";
 import { NextClassInfo } from "../types";
 
 export interface HomeNextClassCardProps {
@@ -19,6 +20,8 @@ export const HomeNextClassCard = React.memo(function HomeNextClassCard({
   nextClass,
   onPress,
 }: HomeNextClassCardProps) {
+  const { colors, isDark } = useTheme();
+
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     onPress();
@@ -31,6 +34,11 @@ export const HomeNextClassCard = React.memo(function HomeNextClassCard({
       onPress={handlePress}
       style={({ pressed }) => [
         styles.card,
+        {
+          backgroundColor: isDark ? colors.cardBg : colors.primary,
+          borderColor: isDark ? colors.cardBorder : "rgba(255, 255, 255, 0.16)",
+          shadowColor: isDark ? "#000000" : colors.primary,
+        },
         pressed && styles.cardPressed,
       ]}
       accessibilityRole="button"
@@ -69,51 +77,58 @@ export const HomeNextClassCard = React.memo(function HomeNextClassCard({
                 { color: indicatorColor },
               ]}
             >
-              {nextClass?.statusLabel || "NGÀY MAI"}
+              {nextClass ? (nextClass.statusLabel || "SẮP DIỄN RA") : "HÔM NAY TRỐNG"}
             </Text>
           </View>
 
-          <Text style={styles.roomText} numberOfLines={1}>
-            {nextClass
-              ? `${nextClass.room ? `${nextClass.room}` : "Bản đồ trường"}`
-              : "Bản đồ trường"}
-          </Text>
+          {nextClass?.room ? (
+            <Text style={[styles.roomText, isDark && { color: colors.textSecondary }]}>
+              Phòng: {nextClass.room}
+            </Text>
+          ) : (
+            <Text style={[styles.roomText, isDark && { color: colors.textSecondary }]}>Đại học Tây Nguyên</Text>
+          )}
         </View>
 
-        {/* Row 2: Tên môn học (Title) + Badge tiết học (Pill shape) */}
+        {/* Row 2: Tên môn học + Pill thời gian */}
         <View style={styles.subjectRow}>
-          <Text style={styles.subjectText} numberOfLines={1}>
-            {nextClass?.subject || "Không có ca học nào trong ngày mai"}
+          <Text style={[styles.subjectText, isDark && { color: colors.text }]} numberOfLines={1}>
+            {nextClass ? nextClass.subject : "Không có ca học nào"}
           </Text>
-          <View style={styles.timeBadgePill}>
-            <Text style={styles.timeText}>
-              {nextClass
-                ? nextClass.time.startsWith("Tiết")
-                  ? nextClass.time
-                  : `Tiết ${nextClass.time}`
-                : "Nghỉ"}
-            </Text>
-          </View>
+
+          {nextClass?.time ? (
+            <View style={[styles.timeBadgePill, isDark && { backgroundColor: "#334155" }]}>
+              <Text style={[styles.timeText, isDark && { color: colors.text }]}>{nextClass.time}</Text>
+            </View>
+          ) : null}
         </View>
 
-        {/* Row 3: Giảng viên + Nút Chỉ đường dạng Pill Capsule */}
+        {/* Row 3: Giảng viên + Nút chỉ đường viên con nhộng */}
         <View style={styles.footerRow}>
           <View style={styles.lecturerRow}>
-            <View style={styles.lecturerIconCircle}>
-              <Feather name="user" size={11} color="rgba(255,255,255,0.9)" />
+            <View style={[styles.lecturerIconCircle, isDark && { backgroundColor: "rgba(255,255,255,0.12)" }]}>
+              <Feather
+                name={nextClass ? "user" : "coffee"}
+                size={11.5}
+                color={isDark ? colors.textSecondary : "#FFFFFF"}
+              />
             </View>
-            <Text style={styles.lecturerText} numberOfLines={1}>
-              {nextClass?.lecturer
-                ? nextClass.lecturer
-                : nextClass
-                ? "Giảng viên bộ môn"
-                : "Mở bản đồ trường"}
+            <Text style={[styles.lecturerText, isDark && { color: colors.textSecondary }]} numberOfLines={1}>
+              {nextClass
+                ? (nextClass.lecturer || "Chưa cập nhật GV")
+                : "Tận hưởng ngày nghỉ hoặc ôn bài nhé!"}
             </Text>
           </View>
 
-          <View style={styles.directionCapsule}>
-            <Feather name="navigation" size={12} color={AppColors.textLight} />
-            <Text style={styles.directionText}>Chỉ đường →</Text>
+          <View style={[styles.directionCapsule, isDark && { backgroundColor: "rgba(91, 97, 244, 0.25)" }]}>
+            <Text style={[styles.directionText, isDark && { color: colors.accentLight }]}>
+              {nextClass ? "Chỉ đường" : "Xem lịch"}
+            </Text>
+            <Feather
+              name={nextClass ? "navigation" : "calendar"}
+              size={12}
+              color={isDark ? colors.accentLight : AppColors.textLight}
+            />
           </View>
         </View>
       </View>
@@ -254,3 +269,4 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
 });
+

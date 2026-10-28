@@ -13,16 +13,13 @@ const NotificationsModule = {
     try {
       let data = null;
       try {
-        if (window.AdminAPI && typeof window.AdminAPI.request === 'function') {
+        if (window.AdminAPI && typeof window.AdminAPI.getNotifications === 'function') {
+          data = await window.AdminAPI.getNotifications();
+        } else if (window.AdminAPI && typeof window.AdminAPI.request === 'function') {
           data = await window.AdminAPI.request('/api/admin/notifications');
         }
       } catch (e) {
-        // Fallback fetch
-      }
-
-      if (!data || !data.success) {
-        const res = await fetch('/api/campus/notifications');
-        data = await res.json().catch(() => ({ success: false }));
+        console.warn('Lỗi gọi API admin notifications:', e);
       }
 
       this.notifications = (data && (data.data || data.notifications)) || [];

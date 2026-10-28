@@ -1,25 +1,29 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
 import { SkeletonBox } from "./BaseSkeleton";
+import { useTheme } from "../../context/ThemeContext";
 
 /**
  * Skeleton Wireframe cho Bản đồ Trường học (MapScreen)
+ * Tương thích trọn vẹn Dark Mode OLED/Slate
  */
 export function MapSkeleton() {
+  const { colors, isDark } = useTheme();
+
   return (
     <View style={StyleSheet.absoluteFillObject}>
       {/* Nền bản đồ với hiệu ứng sáng nhẹ */}
-      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "#EBF1F6" }]}>
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: isDark ? "#0B1120" : "#EBF1F6" }]}>
         {/* Lưới giả lập đường bản đồ */}
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <SkeletonBox width={120} height={120} borderRadius={60} backgroundColor="#DCE6EE" />
-          <SkeletonBox width={180} height={16} borderRadius={8} style={{ marginTop: 20 }} backgroundColor="#DCE6EE" />
+          <SkeletonBox width={120} height={120} borderRadius={60} backgroundColor={isDark ? "#1E293B" : "#DCE6EE"} />
+          <SkeletonBox width={180} height={16} borderRadius={8} style={{ marginTop: 20 }} backgroundColor={isDark ? "#1E293B" : "#DCE6EE"} />
         </View>
       </View>
 
       {/* Thanh tìm kiếm vị trí phía trên */}
       <View style={styles.mapSearchOverlay}>
-        <View style={styles.mapSearchBar}>
+        <View style={[styles.mapSearchBar, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
           <SkeletonBox width={20} height={20} borderRadius={10} style={{ marginRight: 10 }} />
           <SkeletonBox width="65%" height={16} borderRadius={4} />
           <SkeletonBox width={28} height={28} borderRadius={14} style={{ marginLeft: "auto" }} />
@@ -41,7 +45,7 @@ export function MapSkeleton() {
       </View>
 
       {/* Thẻ preview địa điểm phía dưới */}
-      <View style={styles.mapBottomCard}>
+      <View style={[styles.mapBottomCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
           <SkeletonBox width={42} height={42} borderRadius={10} style={{ marginRight: 12 }} />
           <View style={{ flex: 1, gap: 6 }}>
@@ -63,14 +67,12 @@ const styles = StyleSheet.create({
     right: 16,
   },
   mapSearchBar: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 24,
     height: 48,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: "#EEF2F6",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -91,11 +93,9 @@ const styles = StyleSheet.create({
     bottom: 24,
     left: 16,
     right: 16,
-    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: "#EEF2F6",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -103,4 +103,3 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
 });
-

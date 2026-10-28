@@ -1,11 +1,15 @@
 import React from "react";
 import { View } from "react-native";
 import { SkeletonBox } from "./BaseSkeleton";
+import { useTheme } from "../../context/ThemeContext";
 
 /**
  * Skeleton Wireframe cho Màn hình Hồ sơ cá nhân (ProfileScreen)
+ * Tương thích trọn vẹn Dark Mode OLED/Slate
  */
 export function ProfileSkeleton() {
+  const { colors } = useTheme();
+
   return (
     <View style={{ padding: 20 }}>
       {/* 1. Thẻ Avatar & Họ tên */}
@@ -13,10 +17,10 @@ export function ProfileSkeleton() {
         style={{
           padding: 24,
           borderRadius: 24,
-          backgroundColor: "#FFFFFF",
+          backgroundColor: colors.cardBg,
           alignItems: "center",
           borderWidth: 1,
-          borderColor: "#EEF2F6",
+          borderColor: colors.cardBorder,
           marginBottom: 20,
         }}
       >
@@ -35,9 +39,9 @@ export function ProfileSkeleton() {
         style={{
           padding: 16,
           borderRadius: 20,
-          backgroundColor: "#FFFFFF",
+          backgroundColor: colors.cardBg,
           borderWidth: 1,
-          borderColor: "#EEF2F6",
+          borderColor: colors.cardBorder,
           gap: 16,
           marginBottom: 24,
         }}
@@ -64,4 +68,3 @@ export function ProfileSkeleton() {
     </View>
   );
 }
-

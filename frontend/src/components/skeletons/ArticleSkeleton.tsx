@@ -1,15 +1,19 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
 import { SkeletonBox } from "./BaseSkeleton";
+import { useTheme } from "../../context/ThemeContext";
 
 /**
  * Skeleton Wireframe cho Danh sách Tất cả bài viết (AllArticlesScreen)
+ * Tương thích trọn vẹn Dark Mode OLED/Slate
  */
 export function AllArticlesSkeleton() {
+  const { colors } = useTheme();
+
   return (
     <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
       {[1, 2, 3].map((i) => (
-        <View key={i} style={styles.articleCard}>
+        <View key={i} style={[styles.articleCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
           <SkeletonBox width="100%" height={160} borderRadius={12} style={{ marginBottom: 12 }} />
           <View style={{ gap: 8, paddingHorizontal: 2 }}>
             <SkeletonBox width={90} height={18} borderRadius={9} />
@@ -64,12 +68,9 @@ export function ArticleDetailSkeleton() {
 
 const styles = StyleSheet.create({
   articleCard: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 14,
     padding: 12,
     borderWidth: 1,
-    borderColor: "#EEF2F6",
     marginBottom: 14,
   },
 });
-

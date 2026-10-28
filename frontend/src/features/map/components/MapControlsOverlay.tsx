@@ -3,6 +3,7 @@ import { View, Text, Pressable, ActivityIndicator, StyleSheet } from "react-nati
 import { Feather, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { AppColors } from "../../../constants/appColors";
+import { useTheme } from "../../../context/ThemeContext";
 
 interface MapControlsOverlayProps {
   mapLayer: "osm" | "satellite";
@@ -31,6 +32,7 @@ interface MapControlsOverlayProps {
  * Cụm nút điều khiển bản đồ nổi (MapControlsOverlay) - Ngôn ngữ thiết kế Hybrid Android 16 & iOS HIG
  * Phong cách Material 3 Expressive Floating Action Buttons (FABs) với kích thước 46x46pt,
  * nền kính mờ nhẹ (Glassmorphic Tint), viền Hairline sắc nét và bóng đổ khuếch tán mềm.
+ * Tương thích Dark Mode OLED/Slate.
  */
 const MapControlsOverlayComponent: React.FC<MapControlsOverlayProps> = ({
   mapLayer,
@@ -48,6 +50,8 @@ const MapControlsOverlayComponent: React.FC<MapControlsOverlayProps> = ({
   onResetView,
   onClearRoute,
 }) => {
+  const { colors, isDark } = useTheme();
+
   const handleToggleLayer = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     onToggleLayer();
@@ -86,13 +90,21 @@ const MapControlsOverlayComponent: React.FC<MapControlsOverlayProps> = ({
     <>
       {/* ── BANNER HIỂN THỊ THÔNG TIN TUYẾN ĐƯỜNG ĐI BỘ ĐANG VẼ (KHI KHÔNG Ở CHẾ ĐỘ DẪN ĐƯỜNG TỐI GIẢN) ── */}
       {activeRoute && !isRoutingActive && (
-        <View style={styles.routeBanner}>
+        <View
+          style={[
+            styles.routeBanner,
+            {
+              backgroundColor: isDark ? "rgba(30, 41, 59, 0.96)" : "rgba(255, 255, 255, 0.96)",
+              borderColor: colors.cardBorder,
+            },
+          ]}
+        >
           <View style={styles.routeBannerLeft}>
             <View style={styles.routeBannerIcon}>
-              <Feather name="navigation" size={14} color={AppColors.success} />
+              <Feather name="navigation" size={14} color={colors.success} />
             </View>
             <View>
-              <Text style={styles.routeBannerTitle}>
+              <Text style={[styles.routeBannerTitle, { color: colors.text }]}>
                 Tuyến đường đi bộ
               </Text>
               <Text style={styles.routeBannerSubtitle}>
@@ -106,12 +118,13 @@ const MapControlsOverlayComponent: React.FC<MapControlsOverlayProps> = ({
             hitSlop={8}
             style={({ pressed }) => [
               styles.clearRouteBtn,
+              { backgroundColor: isDark ? "#334155" : AppColors.muted },
               pressed && { opacity: 0.7 },
             ]}
             accessibilityRole="button"
             accessibilityLabel="Hủy tuyến đường"
           >
-            <Feather name="x" size={14} color={AppColors.textMuted} />
+            <Feather name="x" size={14} color={colors.textSecondary} />
           </Pressable>
         </View>
       )}
@@ -128,6 +141,10 @@ const MapControlsOverlayComponent: React.FC<MapControlsOverlayProps> = ({
           onPress={handleToggleLayer}
           style={({ pressed }) => [
             styles.fabControl,
+            {
+              backgroundColor: isDark ? "rgba(30, 41, 59, 0.95)" : "rgba(255, 255, 255, 0.95)",
+              borderColor: colors.cardBorder,
+            },
             pressed && styles.fabControlPressed,
           ]}
           hitSlop={4}
@@ -137,7 +154,7 @@ const MapControlsOverlayComponent: React.FC<MapControlsOverlayProps> = ({
           <Feather
             name={mapLayer === "osm" ? "layers" : "globe"}
             size={19}
-            color={AppColors.primary}
+            color={colors.primary}
           />
         </Pressable>
 
@@ -146,6 +163,10 @@ const MapControlsOverlayComponent: React.FC<MapControlsOverlayProps> = ({
           onPress={handleCompass}
           style={({ pressed }) => [
             styles.fabControl,
+            {
+              backgroundColor: isDark ? "rgba(30, 41, 59, 0.95)" : "rgba(255, 255, 255, 0.95)",
+              borderColor: colors.cardBorder,
+            },
             compassMode && styles.compassBtnActive,
             pressed && styles.fabControlPressed,
           ]}
@@ -163,7 +184,7 @@ const MapControlsOverlayComponent: React.FC<MapControlsOverlayProps> = ({
             <MaterialCommunityIcons
               name="compass-outline"
               size={24}
-              color={compassMode ? AppColors.info : AppColors.danger}
+              color={compassMode ? colors.info : colors.danger}
             />
           </View>
 
@@ -178,6 +199,10 @@ const MapControlsOverlayComponent: React.FC<MapControlsOverlayProps> = ({
           onLongPress={handleLocationLong}
           style={({ pressed }) => [
             styles.fabControl,
+            {
+              backgroundColor: isDark ? "rgba(30, 41, 59, 0.95)" : "rgba(255, 255, 255, 0.95)",
+              borderColor: colors.cardBorder,
+            },
             hasUserLocation && styles.locationBtnActive,
             pressed && styles.fabControlPressed,
           ]}
@@ -186,12 +211,12 @@ const MapControlsOverlayComponent: React.FC<MapControlsOverlayProps> = ({
           accessibilityLabel="Định vị vị trí hiện tại"
         >
           {locationLoading ? (
-            <ActivityIndicator size="small" color={AppColors.primary} />
+            <ActivityIndicator size="small" color={colors.primary} />
           ) : (
             <MaterialIcons
               name={hasUserLocation ? "my-location" : "location-searching"}
               size={22}
-              color={hasUserLocation ? AppColors.info : AppColors.textSecondary}
+              color={hasUserLocation ? colors.info : colors.textSecondary}
             />
           )}
         </Pressable>
@@ -202,13 +227,17 @@ const MapControlsOverlayComponent: React.FC<MapControlsOverlayProps> = ({
             onPress={handleReset}
             style={({ pressed }) => [
               styles.fabControl,
+              {
+                backgroundColor: isDark ? "rgba(30, 41, 59, 0.95)" : "rgba(255, 255, 255, 0.95)",
+                borderColor: colors.cardBorder,
+              },
               pressed && styles.fabControlPressed,
             ]}
             hitSlop={4}
             accessibilityRole="button"
             accessibilityLabel="Xem toàn cảnh khuôn viên trường"
           >
-            <Feather name="maximize-2" size={17} color={AppColors.textSecondary} />
+            <Feather name="maximize-2" size={17} color={colors.textSecondary} />
           </Pressable>
         )}
       </View>
@@ -225,7 +254,6 @@ const styles = StyleSheet.create({
     left: 12,
     right: 70,
     zIndex: 45,
-    backgroundColor: "rgba(255, 255, 255, 0.96)", // Glassmorphic translucent surface
     borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -238,7 +266,6 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 4,
     borderWidth: 1,
-    borderColor: AppColors.cardBorder,
   },
   routeBannerLeft: {
     flexDirection: "row",
@@ -250,25 +277,23 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: `${AppColors.success}1A`,
+    backgroundColor: "rgba(16, 185, 129, 0.15)",
     alignItems: "center",
     justifyContent: "center",
   },
   routeBannerTitle: {
     fontSize: 12.5,
     fontWeight: "900",
-    color: AppColors.text,
   },
   routeBannerSubtitle: {
     fontSize: 11,
-    color: AppColors.success,
+    color: "#10B981",
     fontWeight: "800",
   },
   clearRouteBtn: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: AppColors.muted,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -283,7 +308,6 @@ const styles = StyleSheet.create({
     width: 46, // Kích thước FAB chuẩn Material 3 Expressive
     height: 46,
     borderRadius: 23,
-    backgroundColor: "rgba(255, 255, 255, 0.95)", // Glassmorphic background
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
@@ -292,16 +316,15 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
     borderWidth: 1, // Viền Hairline siêu mỏng
-    borderColor: AppColors.cardBorder,
   },
   fabControlPressed: {
     opacity: 0.86,
     transform: [{ scale: 0.94 }], // Co giãn lò xo mượt mà
   },
   compassBtnActive: {
-    backgroundColor: `${AppColors.info}16`,
+    backgroundColor: "rgba(59, 130, 246, 0.16)",
     borderWidth: 1.5,
-    borderColor: AppColors.info,
+    borderColor: "#3B82F6",
   },
   compassActiveDot: {
     position: "absolute",
@@ -310,11 +333,11 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 999,
-    backgroundColor: AppColors.success,
+    backgroundColor: "#10B981",
     borderWidth: 1.2,
-    borderColor: AppColors.cardBg,
+    borderColor: "#1E293B",
   },
   locationBtnActive: {
-    borderColor: AppColors.info,
+    borderColor: "#3B82F6",
   },
 });

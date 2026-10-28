@@ -4,6 +4,10 @@ import { LEAFLET_CSS, LEAFLET_JS } from "./leafletBundle";
 
 const htmlCache = new Map<string, string>();
 
+export function clearLeafletHtmlCache(): void {
+  htmlCache.clear();
+}
+
 export function generateLeafletMapHtml(
   locations: LocationItem[],
   boundary: [number, number][],
@@ -11,7 +15,7 @@ export function generateLeafletMapHtml(
   campusPaths: CampusPath[] = [],
   gates: CampusGate[] = TNU_CAMPUS_GATES
 ): string {
-  const cacheKey = `${locations.length}_${campusPaths.length}_${gates.length}_${boundary.length}`;
+  const cacheKey = `${locations.length}_${campusPaths.length}_${gates.length}_${boundary.length}_${locations[0]?.id || ''}_${locations[0]?.name || ''}_${campusPaths[0]?.id || ''}`;
   if (htmlCache.has(cacheKey)) {
     return htmlCache.get(cacheKey)!;
   }
@@ -532,29 +536,6 @@ ${LEAFLET_JS}
           iconSize: [0, 0]
         });
         L.marker(g.gatePoint, { icon: gateIcon, zIndexOffset: 850 }).addTo(gatesLayerGroup);
-
-        // 2. Điểm đón ngoài đường phố (Lê Duẩn / Y Wang)
-        var outIcon = L.divIcon({
-          className: 'custom-marker',
-          html: '<div class="outside-point-marker" title="Điểm ngoài: ' + g.name + '">' +
-            '<div class="outside-point-dot"></div>' +
-          '</div>',
-          iconSize: [22, 22],
-          iconAnchor: [11, 11]
-        });
-        var outMarker = L.marker(g.outsidePoint, { icon: outIcon, zIndexOffset: 860 }).addTo(gatesLayerGroup);
-        outMarker.bindTooltip('Điểm đón ngoài - ' + g.name + '<br><small style="color:#64748B">Kết nối đường phố Google Maps</small>', {
-          permanent: false,
-          direction: 'top'
-        });
-
-        // 3. Đường thông hành qua cổng (nối Điểm ngoài -> Cổng -> Điểm trong)
-        L.polyline([g.outsidePoint, g.gatePoint, g.insidePoint], {
-          color: '#10B981',
-          weight: 3.5,
-          dashArray: '3, 5',
-          opacity: 0.9
-        }).addTo(gatesLayerGroup);
       });
     }
 
@@ -707,7 +688,15 @@ ${LEAFLET_JS}
       remainingPoly: null,
       remainingGlow: null,
       lastPassedSegmentIndex: 0,
-      totalDistance: 0
+      totalDistance: 0,
+      destLat: null,
+      destLng: null,
+      origName: '',
+      destName: '',
+      preferredGateId: null,
+      lastRerouteTime: 0,
+      offRouteCount: 0,
+      isRerouting: false
     };
 
     function computeRouteDistanceToLoc(destLat, destLng, callback) {
@@ -1499,8 +1488,8 @@ ${LEAFLET_JS}
 
     // Cập nhật tiến trình đi bộ thời gian thực:
     // 1. Quãng đường đã đi qua chuyển sang màu xám (#94A3B8)
-    // 2. Quãng đường còn lại tiếp tục giữ màu xanh (#2563EB)
-    // 3. Tự động tính toán lại số mét còn lại và thời gian đi bộ theo khúc cua thực tế
+    // 2. Quãng đường còn lại luôn gắn trực tiếp vào mũi tên định vị (#2563EB)
+    // 3. Tự động phát hiện khi người dùng đi lệch/rẽ đường khác và tự động tính lại lộ trình
     function updateRouteProgress(userLat, userLng) {
       if (!activeRouteState.isActive || !activeRouteState.coords || activeRouteState.coords.length < 2) {
         return;
@@ -1578,6 +1567,22 @@ ${LEAFLET_JS}
         }
       }
 
+      // Kiểm tra độ lệch so với lộ trình đã vẽ (người đi bộ có thể rẽ sang đường khác trong khuôn viên)
+      var realDevDist = getDistanceMeters(userLat, userLng, bestQ[0], bestQ[1]);
+      var now = Date.now();
+      var timeSinceLastReroute = now - (activeRouteState.lastRerouteTime || 0);
+
+      if (realDevDist > 14 && timeSinceLastReroute > 1800) {
+        activeRouteState.offRouteCount = (activeRouteState.offRouteCount || 0) + 1;
+        // Đi chệch 2 lần cập nhật liên tiếp (tránh giật GPS nhất thời) hoặc lệch hẳn > 25m
+        if (activeRouteState.offRouteCount >= 2 || realDevDist > 25) {
+          triggerAutoReroute(userLat, userLng);
+          return;
+        }
+      } else {
+        activeRouteState.offRouteCount = 0;
+      }
+
       // Cập nhật mốc phân đoạn đã đi qua (chống thụt lùi khi GPS dao động)
       if (bestIdx > activeRouteState.lastPassedSegmentIndex) {
         activeRouteState.lastPassedSegmentIndex = bestIdx;
@@ -1593,7 +1598,9 @@ ${LEAFLET_JS}
       }
 
       // Tạo mảng tọa độ còn lại cần đi (Màu xanh)
-      var remaining = [];
+      // Luôn gắn điểm đầu tiên vào ngay tọa độ GPS hiện tại của người dùng
+      // Giúp đường vẽ luôn nối liền mũi tên điều hướng, triệt tiêu khe hở hoặc lệch hình ảnh
+      var remaining = [[userLat, userLng]];
       if (bestT > 0.02 && bestT < 0.98) {
         remaining.push(bestQ);
       }
@@ -1601,7 +1608,7 @@ ${LEAFLET_JS}
         remaining.push(coords[m]);
       }
 
-      if (remaining.length === 0) {
+      if (remaining.length === 1) {
         remaining.push(destPt);
       }
 
@@ -1637,9 +1644,153 @@ ${LEAFLET_JS}
       }
     }
 
+    // Tự động tính toán lại lộ trình khi người dùng đi lệch hoặc chọn lối đi bộ khác
+    function triggerAutoReroute(userLat, userLng) {
+      if (!activeRouteState.isActive || !activeRouteState.destLat || !activeRouteState.destLng || activeRouteState.isRerouting) {
+        return;
+      }
+      activeRouteState.isRerouting = true;
+      activeRouteState.lastRerouteTime = Date.now();
+      activeRouteState.offRouteCount = 0;
+
+      var destLat = activeRouteState.destLat;
+      var destLng = activeRouteState.destLng;
+      var gateId = activeRouteState.preferredGateId;
+
+      calculateRoute(userLat, userLng, destLat, destLng, gateId, function(coords, dist, dur, gate) {
+        activeRouteState.isRerouting = false;
+        if (!coords || coords.length < 2 || !activeRouteState.isActive) return;
+
+        var finalCoords = smoothRouteCoordinates(coords);
+        finalCoords[0] = [userLat, userLng];
+
+        activeRouteState.coords = finalCoords;
+        activeRouteState.lastPassedSegmentIndex = 0;
+        activeRouteState.totalDistance = dist;
+        if (gate) activeRouteState.gateInfo = gate;
+
+        if (activeRouteState.traversedPoly) {
+          activeRouteState.traversedPoly.setLatLngs([]);
+        }
+        if (activeRouteState.remainingPoly) {
+          activeRouteState.remainingPoly.setLatLngs(finalCoords);
+        }
+        if (activeRouteState.remainingGlow) {
+          activeRouteState.remainingGlow.setLatLngs(finalCoords);
+        }
+
+        if (window.ReactNativeWebView) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'ROUTE_PROGRESS',
+            remainingDistanceMeters: dist,
+            remainingMinutes: dur,
+            arrived: dist <= 8,
+            rerouted: true
+          }));
+        }
+      });
+    }
+
+    // Hàm tính toán tuyến đường đa chế độ (nội bộ / đường phố / qua cổng trường)
+    function calculateRoute(origLat, origLng, destLat, destLng, preferredGateId, callback) {
+      var origIn = isPointInCampus(origLat, origLng);
+      var destIn = isPointInCampus(destLat, destLng);
+
+      // TRƯỜNG HỢP 1: CẢ 2 ĐỀU Ở TRONG KHUÔN VIÊN TRƯỜNG
+      // Đi 100% bằng đường thiết kế nội bộ (Dijkstra)
+      if (origIn && destIn) {
+        var internalRoute = findCampusWalkwayRoute(origLat, origLng, destLat, destLng);
+        if (internalRoute && internalRoute.coordinates && internalRoute.coordinates.length >= 2) {
+          callback(internalRoute.coordinates, internalRoute.distanceMeters, internalRoute.durationMinutes, null);
+          return;
+        }
+        var fb = computeFallbackDirectRoute(origLat, origLng, destLat, destLng);
+        callback(fb.coordinates, fb.distanceMeters, fb.durationMinutes, null);
+        return;
+      }
+
+      // TRƯỜNG HỢP 2: CẢ 2 ĐỀU Ở NGOÀI KHUÔN VIÊN TRƯỜNG
+      // Đi hoàn toàn trên đường phố công cộng (OSRM)
+      if (!origIn && !destIn) {
+        fetchExternalOsrmRoute(origLat, origLng, destLat, destLng, function(coords, dist, dur) {
+          if (coords && coords.length >= 2) {
+            callback(coords, dist, dur, null);
+          } else {
+            var fb = computeFallbackDirectRoute(origLat, origLng, destLat, destLng);
+            callback(fb.coordinates, fb.distanceMeters, fb.durationMinutes, null);
+          }
+        });
+        return;
+      }
+
+      // TRƯỜNG HỢP 3: TỪ NGOÀI KHU VỰC TRƯỜNG VÀO TRONG KHUÔN VIÊN TRƯỜNG
+      if (!origIn && destIn) {
+        var gate = getBestGate(origLat, origLng, destLat, destLng, true, preferredGateId);
+        if (!gate) {
+          var fb = computeFallbackDirectRoute(origLat, origLng, destLat, destLng);
+          callback(fb.coordinates, fb.distanceMeters, fb.durationMinutes, null);
+          return;
+        }
+
+        var internalRoute = findCampusWalkwayRoute(gate.insidePoint[0], gate.insidePoint[1], destLat, destLng);
+        var intCoords = (internalRoute && internalRoute.coordinates && internalRoute.coordinates.length >= 2)
+          ? internalRoute.coordinates
+          : [gate.insidePoint, [destLat, destLng]];
+        var intDist = (internalRoute && internalRoute.distanceMeters)
+          ? internalRoute.distanceMeters
+          : getDistanceMeters(gate.insidePoint[0], gate.insidePoint[1], destLat, destLng);
+
+        fetchExternalOsrmRoute(origLat, origLng, gate.outsidePoint[0], gate.outsidePoint[1], function(extCoords, extDist, extDur) {
+          var safeExt = (extCoords && extCoords.length >= 2) ? extCoords : [[origLat, origLng], gate.outsidePoint];
+          var safeExtDist = (extDist !== null && extDist !== undefined)
+            ? extDist
+            : getDistanceMeters(origLat, origLng, gate.outsidePoint[0], gate.outsidePoint[1]);
+
+          var gateTransition = [gate.outsidePoint, gate.gatePoint, gate.insidePoint];
+          var combinedCoords = stitchPathCoordinates(safeExt, gateTransition, intCoords);
+          var totalDist = Math.round(safeExtDist + getDistanceMeters(gate.outsidePoint[0], gate.outsidePoint[1], gate.insidePoint[0], gate.insidePoint[1]) + intDist);
+          var totalDur = Math.max(1, Math.round(totalDist / 75));
+
+          callback(combinedCoords, totalDist, totalDur, gate);
+        });
+        return;
+      }
+
+      // TRƯỜNG HỢP 4: TỪ TRONG KHUÔN VIÊN TRƯỜNG ĐI RA NGOÀI ĐƯỜNG
+      if (origIn && !destIn) {
+        var gate = getBestGate(origLat, origLng, destLat, destLng, false, preferredGateId);
+        if (!gate) {
+          var fb = computeFallbackDirectRoute(origLat, origLng, destLat, destLng);
+          callback(fb.coordinates, fb.distanceMeters, fb.durationMinutes, null);
+          return;
+        }
+
+        var internalRoute = findCampusWalkwayRoute(origLat, origLng, gate.insidePoint[0], gate.insidePoint[1]);
+        var intCoords = (internalRoute && internalRoute.coordinates && internalRoute.coordinates.length >= 2)
+          ? internalRoute.coordinates
+          : [[origLat, origLng], gate.insidePoint];
+        var intDist = (internalRoute && internalRoute.distanceMeters)
+          ? internalRoute.distanceMeters
+          : getDistanceMeters(origLat, origLng, gate.insidePoint[0], gate.insidePoint[1]);
+
+        fetchExternalOsrmRoute(gate.outsidePoint[0], gate.outsidePoint[1], destLat, destLng, function(extCoords, extDist, extDur) {
+          var safeExt = (extCoords && extCoords.length >= 2) ? extCoords : [gate.outsidePoint, [destLat, destLng]];
+          var safeExtDist = (extDist !== null && extDist !== undefined)
+            ? extDist
+            : getDistanceMeters(gate.outsidePoint[0], gate.outsidePoint[1], destLat, destLng);
+
+          var gateTransition = [gate.insidePoint, gate.gatePoint, gate.outsidePoint];
+          var combinedCoords = stitchPathCoordinates(intCoords, gateTransition, safeExt);
+          var totalDist = Math.round(intDist + getDistanceMeters(gate.insidePoint[0], gate.insidePoint[1], gate.outsidePoint[0], gate.outsidePoint[1]) + safeExtDist);
+          var totalDur = Math.max(1, Math.round(totalDist / 75));
+
+          callback(combinedCoords, totalDist, totalDur, gate);
+        });
+        return;
+      }
+    }
+
     // Vẽ đường đi bộ trực tiếp ngay trên bản đồ
-    // Quy tắc: Ô viền làm tường (không cho đi xuyên qua), chỉ được qua Cổng trước và Cổng sau
-    // Phía ngoài khu vực trường lấy chỉ đường gg map (đường phố ngoài), khi vào khuôn viên trường mới lấy đường thiết kế nội bộ
     function drawWalkingRoute(origLat, origLng, destLat, destLng, origName, destName, preferredGateId) {
       routeLayerGroup.clearLayers();
 
@@ -1654,111 +1805,25 @@ ${LEAFLET_JS}
       });
       L.marker([destLat, destLng], { icon: endIcon, zIndexOffset: 990 }).addTo(routeLayerGroup);
 
-      var origIn = isPointInCampus(origLat, origLng);
-      var destIn = isPointInCampus(destLat, destLng);
+      activeRouteState.destLat = destLat;
+      activeRouteState.destLng = destLng;
+      activeRouteState.origName = origName || '';
+      activeRouteState.destName = destName || '';
+      activeRouteState.preferredGateId = preferredGateId || null;
+      activeRouteState.lastRerouteTime = Date.now();
+      activeRouteState.offRouteCount = 0;
+      activeRouteState.isRerouting = false;
 
-      // TRƯỜNG HỢP 1: CẢ 2 ĐỀU Ở TRONG KHUÔN VIÊN TRƯỜNG
-      // Đi 100% bằng đường thiết kế nội bộ, tuyệt đối không ra ngoài hay xuyên tường
-      if (origIn && destIn) {
-        var internalRoute = findCampusWalkwayRoute(origLat, origLng, destLat, destLng);
-        if (internalRoute && internalRoute.coordinates && internalRoute.coordinates.length >= 2) {
-          renderAndFinishRoute(internalRoute.coordinates, internalRoute.distanceMeters, internalRoute.durationMinutes, null);
-          return;
-        }
-        drawFallbackDirectRoute(origLat, origLng, destLat, destLng);
-        return;
-      }
-
-      // TRƯỜNG HỢP 2: CẢ 2 ĐỀU Ở NGOÀI KHUÔN VIÊN TRƯỜNG
-      // Đi hoàn toàn trên đường phố công cộng (OSRM / Google Maps)
-      if (!origIn && !destIn) {
-        fetchExternalOsrmRoute(origLat, origLng, destLat, destLng, function(coords, dist, dur) {
-          if (coords && coords.length >= 2) {
-            renderAndFinishRoute(coords, dist, dur, null);
-          } else {
-            drawFallbackDirectRoute(origLat, origLng, destLat, destLng);
-          }
-        });
-        return;
-      }
-
-      // TRƯỜNG HỢP 3: TỪ NGOÀI KHU VỰC TRƯỜNG VÀO TRONG KHUÔN VIÊN TRƯỜNG
-      // Phía ngoài lấy chỉ đường của gg map, đến cổng trường mới lấy đường thiết kế nội bộ
-      if (!origIn && destIn) {
-        var gate = getBestGate(origLat, origLng, destLat, destLng, true, preferredGateId);
-        if (!gate) {
-          drawFallbackDirectRoute(origLat, origLng, destLat, destLng);
-          return;
-        }
-
-        // Đoạn trong: từ Cổng trường (điểm trong) đi theo đường thiết kế đến đích
-        var internalRoute = findCampusWalkwayRoute(gate.insidePoint[0], gate.insidePoint[1], destLat, destLng);
-        var intCoords = (internalRoute && internalRoute.coordinates && internalRoute.coordinates.length >= 2)
-          ? internalRoute.coordinates
-          : [gate.insidePoint, [destLat, destLng]];
-        var intDist = (internalRoute && internalRoute.distanceMeters)
-          ? internalRoute.distanceMeters
-          : getDistanceMeters(gate.insidePoint[0], gate.insidePoint[1], destLat, destLng);
-
-        // Đoạn ngoài: từ điểm xuất phát đến Điểm đón ngoài của Cổng đã chọn
-        fetchExternalOsrmRoute(origLat, origLng, gate.outsidePoint[0], gate.outsidePoint[1], function(extCoords, extDist, extDur) {
-          var safeExt = (extCoords && extCoords.length >= 2) ? extCoords : [[origLat, origLng], gate.outsidePoint];
-          var safeExtDist = (extDist !== null && extDist !== undefined)
-            ? extDist
-            : getDistanceMeters(origLat, origLng, gate.outsidePoint[0], gate.outsidePoint[1]);
-
-          // Ghép nối: [Đường phố ngoài] + [Cổng trường] + [Đường thiết kế nội bộ]
-          var gateTransition = [gate.outsidePoint, gate.gatePoint, gate.insidePoint];
-          var combinedCoords = stitchPathCoordinates(safeExt, gateTransition, intCoords);
-          var totalDist = Math.round(safeExtDist + getDistanceMeters(gate.outsidePoint[0], gate.outsidePoint[1], gate.insidePoint[0], gate.insidePoint[1]) + intDist);
-          var totalDur = Math.max(1, Math.round(totalDist / 75));
-
-          renderAndFinishRoute(combinedCoords, totalDist, totalDur, gate);
-        });
-        return;
-      }
-
-      // TRƯỜNG HỢP 4: TỪ TRONG KHUÔN VIÊN TRƯỜNG ĐI RA NGOÀI ĐƯỜNG
-      if (origIn && !destIn) {
-        var gate = getBestGate(origLat, origLng, destLat, destLng, false, preferredGateId);
-        if (!gate) {
-          drawFallbackDirectRoute(origLat, origLng, destLat, destLng);
-          return;
-        }
-
-        // Đoạn trong: từ điểm xuất phát theo đường thiết kế ra Cổng trường
-        var internalRoute = findCampusWalkwayRoute(origLat, origLng, gate.insidePoint[0], gate.insidePoint[1]);
-        var intCoords = (internalRoute && internalRoute.coordinates && internalRoute.coordinates.length >= 2)
-          ? internalRoute.coordinates
-          : [[origLat, origLng], gate.insidePoint];
-        var intDist = (internalRoute && internalRoute.distanceMeters)
-          ? internalRoute.distanceMeters
-          : getDistanceMeters(origLat, origLng, gate.insidePoint[0], gate.insidePoint[1]);
-
-        // Đoạn ngoài: từ Điểm đón ngoài của Cổng đến đích đến
-        fetchExternalOsrmRoute(gate.outsidePoint[0], gate.outsidePoint[1], destLat, destLng, function(extCoords, extDist, extDur) {
-          var safeExt = (extCoords && extCoords.length >= 2) ? extCoords : [gate.outsidePoint, [destLat, destLng]];
-          var safeExtDist = (extDist !== null && extDist !== undefined)
-            ? extDist
-            : getDistanceMeters(gate.outsidePoint[0], gate.outsidePoint[1], destLat, destLng);
-
-          // Ghép nối: [Đường thiết kế nội bộ] + [Cổng trường] + [Đường phố ngoài]
-          var gateTransition = [gate.insidePoint, gate.gatePoint, gate.outsidePoint];
-          var combinedCoords = stitchPathCoordinates(intCoords, gateTransition, safeExt);
-          var totalDist = Math.round(intDist + getDistanceMeters(gate.insidePoint[0], gate.insidePoint[1], gate.outsidePoint[0], gate.outsidePoint[1]) + safeExtDist);
-          var totalDur = Math.max(1, Math.round(totalDist / 75));
-
-          renderAndFinishRoute(combinedCoords, totalDist, totalDur, gate);
-        });
-        return;
-      }
+      calculateRoute(origLat, origLng, destLat, destLng, preferredGateId, function(coords, dist, dur, gate) {
+        renderAndFinishRoute(coords, dist, dur, gate);
+      });
     }
 
-    function drawFallbackDirectRoute(origLat, origLng, destLat, destLng) {
+    function computeFallbackDirectRoute(origLat, origLng, destLat, destLng) {
       var waypoints = [[origLat, origLng], [destLat, destLng]];
       var dist = getDistanceMeters(origLat, origLng, destLat, destLng);
       var dur = Math.max(1, Math.round(dist / 80));
-      renderAndFinishRoute(waypoints, dist, dur, null);
+      return { coordinates: waypoints, distanceMeters: dist, durationMinutes: dur };
     }
 
     function clearRoute() {
@@ -1769,6 +1834,14 @@ ${LEAFLET_JS}
       activeRouteState.remainingPoly = null;
       activeRouteState.remainingGlow = null;
       activeRouteState.lastPassedSegmentIndex = 0;
+      activeRouteState.destLat = null;
+      activeRouteState.destLng = null;
+      activeRouteState.origName = '';
+      activeRouteState.destName = '';
+      activeRouteState.preferredGateId = null;
+      activeRouteState.lastRerouteTime = 0;
+      activeRouteState.offRouteCount = 0;
+      activeRouteState.isRerouting = false;
       applyBearing(0, true);
     }
 

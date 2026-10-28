@@ -107,6 +107,15 @@ const App = {
           badgeSosNav.style.display = 'none';
         }
       }
+      const panelSosBadge = document.getElementById('panelSosBadge');
+      if (panelSosBadge) {
+        panelSosBadge.textContent = unresolvedCount;
+        if (unresolvedCount > 0) {
+          panelSosBadge.classList.remove('hidden');
+        } else {
+          panelSosBadge.classList.add('hidden');
+        }
+      }
     } catch (e) {}
   },
 
@@ -171,11 +180,9 @@ const App = {
       if (!AdminAPI.getToken()) return;
       this.refreshSosBadge();
       if (window.LocationsModule) {
-        if (data.status === 'Đã xử lý' || data.status === 'Đã giải quyết') {
-          LocationsModule.removeSosAlert(data.id);
-        }
+        LocationsModule.loadActiveSosAlerts();
       }
-      if (this.currentTab === 'sos' && window.SosModule) {
+      if (window.SosModule) {
         SosModule.loadAlerts();
       }
       if (window.DashboardModule) {
@@ -513,6 +520,54 @@ const App = {
     );
   },
 
+  currentMapSubTab: 'locations',
+
+  switchMapSubTab(subTab) {
+    this.currentMapSubTab = subTab;
+    const btnLoc = document.getElementById('panelTabBtn-locations');
+    const btnSos = document.getElementById('panelTabBtn-sos');
+    const btnBoth = document.getElementById('panelTabBtn-both');
+
+    const contentLoc = document.getElementById('panelContent-locations');
+    const contentSos = document.getElementById('panelContent-sos');
+
+    // Reset styles
+    if (btnLoc) {
+      btnLoc.className = 'flex-1 py-2 px-3 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition flex items-center justify-center gap-1.5';
+    }
+    if (btnSos) {
+      btnSos.className = 'flex-1 py-2 px-3 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition flex items-center justify-center gap-1.5';
+    }
+    if (btnBoth) {
+      btnBoth.className = 'py-2 px-2.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition flex items-center justify-center gap-1';
+    }
+
+    if (subTab === 'locations') {
+      if (btnLoc) {
+        btnLoc.className = 'flex-1 py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-white text-emerald-700 shadow-xs';
+      }
+      if (contentLoc) contentLoc.classList.remove('hidden');
+      if (contentSos) contentSos.classList.add('hidden');
+    } else if (subTab === 'sos') {
+      if (btnSos) {
+        btnSos.className = 'flex-1 py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-white text-red-600 shadow-xs';
+      }
+      if (contentSos) contentSos.classList.remove('hidden');
+      if (contentLoc) contentLoc.classList.add('hidden');
+    } else if (subTab === 'both') {
+      if (btnBoth) {
+        btnBoth.className = 'py-2 px-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 bg-white text-slate-900 shadow-xs';
+      }
+      if (contentLoc) contentLoc.classList.remove('hidden');
+      if (contentSos) contentSos.classList.remove('hidden');
+    }
+
+    if (window.LocationsModule && window.LocationsModule.map) {
+      setTimeout(() => window.LocationsModule.map.invalidateSize(), 150);
+    }
+    if (window.lucide) window.lucide.createIcons();
+  },
+
   switchTab(tabId) {
     const prevTab = this.currentTab;
     this.currentTab = tabId;
@@ -522,6 +577,9 @@ const App = {
     if (prevTab === 'dashboard' && tabId !== 'dashboard' && window.DashboardModule) {
       DashboardModule.stopRealtime();
     }
+
+    // Vì SOS đã gộp chung với Bản đồ & Địa điểm thành 1 trang xếp cạnh nhau:
+    const effectiveSectionId = (tabId === 'sos') ? 'locations' : tabId;
 
     // Cập nhật giao diện nút tab trên sidebar
     const tabs = ['dashboard', 'users', 'locations', 'notifications', 'feedback', 'sos'];
@@ -538,7 +596,7 @@ const App = {
       }
 
       if (content) {
-        if (t === tabId) {
+        if (t === effectiveSectionId) {
           content.classList.remove('hidden');
           content.classList.add('animate-fade-in');
         } else {
@@ -551,10 +609,32 @@ const App = {
     // Tải dữ liệu tương ứng cho từng tab
     if (tabId === 'dashboard') DashboardModule.init();
     if (tabId === 'users') UsersModule.init();
-    if (tabId === 'locations') LocationsModule.init();
+    if (tabId === 'locations') {
+      this.switchMapSubTab('locations');
+      LocationsModule.init();
+      SosModule.init();
+      setTimeout(() => { if (LocationsModule.map) LocationsModule.map.invalidateSize(); }, 200);
+    }
+    if (tabId === 'sos') {
+      this.switchMapSubTab('sos');
+      LocationsModule.init();
+      SosModule.init();
+      setTimeout(() => {
+        if (LocationsModule.map) {
+          LocationsModule.map.invalidateSize();
+          // Tự động focus vào sự cố SOS đầu tiên nếu có
+          if (LocationsModule.sosMarkers && LocationsModule.sosMarkers.size > 0) {
+            const firstMarker = LocationsModule.sosMarkers.values().next().value;
+            if (firstMarker) {
+              LocationsModule.map.flyTo(firstMarker.getLatLng(), 18, { animate: true, duration: 0.8 });
+              setTimeout(() => firstMarker.openPopup(), 900);
+            }
+          }
+        }
+      }, 250);
+    }
     if (tabId === 'notifications') NotificationsModule.init();
     if (tabId === 'feedback') FeedbackModule.init();
-    if (tabId === 'sos') SosModule.init();
 
     if (window.lucide) window.lucide.createIcons();
   },

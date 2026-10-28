@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 import * as Haptics from "expo-haptics";
 import { AppColors } from "../../../constants/appColors";
+import { useTheme } from "../../../context/ThemeContext";
 import { DAYS } from "../constants";
 import { WeekDateItem } from "../types";
 
@@ -25,13 +26,23 @@ export const ScheduleDayBar = React.memo(function ScheduleDayBar({
   weekDates,
   onSelectDay,
 }: ScheduleDayBarProps) {
+  const { colors, isDark } = useTheme();
+
   const handleSelectDay = (dayNum: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     onSelectDay(dayNum);
   };
 
   return (
-    <View style={styles.dayContainer}>
+    <View
+      style={[
+        styles.dayContainer,
+        {
+          backgroundColor: colors.background,
+          borderColor: colors.border,
+        },
+      ]}
+    >
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -51,14 +62,15 @@ export const ScheduleDayBar = React.memo(function ScheduleDayBar({
                 styles.dayPill,
                 {
                   backgroundColor: isSelected
-                    ? AppColors.primary
+                    ? colors.primary
                     : isToday
-                    ? `${AppColors.primary}12`
-                    : AppColors.cardBg,
+                    ? `${colors.primary}1A`
+                    : colors.cardBg,
                   borderWidth: isSelected ? 0 : 1,
                   borderColor: isToday
-                    ? AppColors.primary
-                    : AppColors.cardBorder,
+                    ? colors.primary
+                    : colors.cardBorder,
+                  shadowColor: isDark ? "#000000" : "#000",
                 },
                 pressed && styles.dayPillPressed,
               ]}
@@ -66,36 +78,43 @@ export const ScheduleDayBar = React.memo(function ScheduleDayBar({
               accessibilityRole="button"
               accessibilityLabel={`${d.label}${dateShort ? `, ngày ${dateShort}` : ""}${isToday ? ", hôm nay" : ""}${isSelected ? ", đang chọn" : ""}`}
             >
+              {/* Vòng chấm nhỏ báo hiệu HÔM NAY */}
+              {isToday && !isSelected && (
+                <View
+                  style={[
+                    styles.todayDot,
+                    { backgroundColor: colors.primary },
+                  ]}
+                />
+              )}
+
               <Text
                 style={{
-                  fontSize: 13,
-                  fontWeight: "900",
+                  fontSize: 12.5,
+                  fontWeight: isSelected ? "900" : isToday ? "800" : "600",
                   color: isSelected
                     ? "#FFFFFF"
                     : isToday
-                    ? AppColors.primary
-                    : AppColors.text,
-                  letterSpacing: -0.2,
+                    ? colors.primary
+                    : colors.text,
                 }}
               >
                 {d.label}
               </Text>
-              {dateShort && (
+
+              {dateShort ? (
                 <Text
                   style={{
-                    fontSize: 10.5,
-                    fontWeight: "700",
-                    marginTop: 1,
+                    fontSize: 10,
+                    fontWeight: isSelected ? "700" : "500",
                     color: isSelected
-                      ? "rgba(255, 255, 255, 0.9)"
-                      : isToday
-                      ? AppColors.primary
-                      : AppColors.textMuted,
+                      ? "rgba(255, 255, 255, 0.88)"
+                      : colors.textSecondary,
                   }}
                 >
                   {dateShort}
                 </Text>
-              )}
+              ) : null}
             </Pressable>
           );
         })}
@@ -106,10 +125,10 @@ export const ScheduleDayBar = React.memo(function ScheduleDayBar({
 
 const styles = StyleSheet.create({
   dayContainer: {
+    backgroundColor: AppColors.background,
     paddingVertical: 10,
-    backgroundColor: AppColors.cardBg,
     borderBottomWidth: 1,
-    borderColor: AppColors.cardBorder,
+    borderColor: AppColors.border,
   },
   scrollContent: {
     paddingHorizontal: 16,
@@ -117,12 +136,13 @@ const styles = StyleSheet.create({
   },
   dayPill: {
     paddingVertical: 8,
-    paddingHorizontal: 15,
+    paddingHorizontal: 14,
     borderRadius: 999, // Pill capsule hoàn hảo
     alignItems: "center",
     justifyContent: "center",
-    minWidth: 58,
-    minHeight: 46, // Touch target chuẩn >= 44pt
+    minWidth: 64,
+    minHeight: 46, // Touch target tối thiểu >= 44pt
+    position: "relative",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -131,6 +151,14 @@ const styles = StyleSheet.create({
   },
   dayPillPressed: {
     opacity: 0.85,
-    transform: [{ scale: 0.94 }],
+    transform: [{ scale: 0.95 }],
+  },
+  todayDot: {
+    position: "absolute",
+    top: 5,
+    right: 8,
+    width: 5,
+    height: 5,
+    borderRadius: 999,
   },
 });

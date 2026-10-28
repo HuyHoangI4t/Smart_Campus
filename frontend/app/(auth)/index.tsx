@@ -48,6 +48,30 @@ export default function AuthScreen() {
   const inputRefs = useRef<(TextInput | null)[]>([]);
   const router = useRouter();
 
+  // Tự động chuyển hướng nếu người dùng đã có phiên đăng nhập hợp lệ
+  useEffect(() => {
+    let isMounted = true;
+    const checkActiveSession = async () => {
+      try {
+        const [token, userStr] = await Promise.all([
+          AsyncStorage.getItem('@auth_token'),
+          AsyncStorage.getItem('@auth_user'),
+        ]);
+        if (!isMounted) return;
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          if ((user?.mssv && user.mssv !== 'guest') || token) {
+            router.replace('/(main)/home');
+          }
+        }
+      } catch {}
+    };
+    checkActiveSession();
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
+
   // Handle individual OTP digit change or full paste
   const handleOtpChange = (text: string, index: number) => {
     const cleaned = text.replace(/[^0-9]/g, '');

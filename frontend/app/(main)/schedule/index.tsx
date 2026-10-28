@@ -12,7 +12,9 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { AppColors } from "../../../src/constants/appColors";
+import { useTheme } from "../../../src/context/ThemeContext";
 import { NavHeader } from "../../../src/components/NavHeader";
+import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
 import { ScheduleSkeleton } from "../../../src/components/Skeleton";
 import { useTabBarScrollHandler } from "../../../src/components/MainTabs";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -40,6 +42,7 @@ import {
   parseDateVN,
   getDayNumFromDate,
   getWeekRangeFromDate,
+  generateDefaultAvailableWeeks,
   parseRoomDirections,
   ScheduleWeekBar,
   ScheduleDayBar,
@@ -50,6 +53,7 @@ import {
 
 export default function ScheduleScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const { onScroll: onTabBarScroll, bottomPadding } = useTabBarScrollHandler();
   const todayDayNum = getTodayDayNum();
 
@@ -58,13 +62,16 @@ export default function ScheduleScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [scheduleList, setScheduleList] = useState<ScheduleItem[]>(FALLBACK_SCHEDULE);
   const [studentInfo, setStudentInfo] = useState<{ mssv: string; name: string }>({ mssv: "", name: "" });
-  const [weekRangeText, setWeekRangeText] = useState("Từ ngày 28/09/2026 đến ngày 04/10/2026");
-  const [availableWeeks, setAvailableWeeks] = useState<AvailableWeekItem[]>([]);
-  const [selectedWeekIndex, setSelectedWeekIndex] = useState<number>(0);
-  const [currentWeekIndex, setCurrentWeekIndex] = useState<number>(0);
-  const [nextWeekIndex, setNextWeekIndex] = useState<number>(1);
+  const initialDefaultWeeks = useMemo(() => generateDefaultAvailableWeeks(), []);
+  const initialCurrentWeek = initialDefaultWeeks.find((w) => w.isCurrent) || initialDefaultWeeks[1] || initialDefaultWeeks[0];
+  const [weekRangeText, setWeekRangeText] = useState(initialCurrentWeek?.weekRange || "Từ ngày 19/10/2026 đến ngày 25/10/2026");
+  const [availableWeeks, setAvailableWeeks] = useState<AvailableWeekItem[]>(initialDefaultWeeks);
+  const [selectedWeekIndex, setSelectedWeekIndex] = useState<number>(initialCurrentWeek?.index ?? 1);
+  const [currentWeekIndex, setCurrentWeekIndex] = useState<number>(initialCurrentWeek?.index ?? 1);
+  const [nextWeekIndex, setNextWeekIndex] = useState<number>((initialCurrentWeek?.index ?? 1) + 1);
   const [isSunday, setIsSunday] = useState<boolean>(new Date().getDay() === 0);
   const [selectedScheduleForDirection, setSelectedScheduleForDirection] = useState<ScheduleItem | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [isOfflineData, setIsOfflineData] = useState(false);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
 
@@ -318,8 +325,14 @@ export default function ScheduleScreen() {
         setStudentInfo({ mssv, name });
       }
 
-      const isRealAccount = mssv && mssv !== "guest";
-      const cacheKey = `@offline_schedule_${isRealAccount ? mssv : 'current'}`;
+      const isRealAccount = Boolean(mssv && mssv !== "guest");
+      setIsLoggedIn(isRealAccount);
+      if (!isRealAccount) {
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+      const cacheKey = `@offline_schedule_${mssv}`;
 
       if (!forceReload && !weekOpts) {
         const cached = await readLocalCache<any>(cacheKey);
@@ -369,8 +382,12 @@ export default function ScheduleScreen() {
           setAvailableWeeks(res.availableWeeks);
         }
 
-        if (res.schedules && Array.isArray(res.schedules) && res.schedules.length > 0) {
-          setScheduleList(res.schedules);
+        if (Array.isArray(res.schedules)) {
+          if (res.schedules.length > 0) {
+            setScheduleList(res.schedules);
+          } else if (isRealAccount) {
+            setScheduleList([]);
+          }
         }
       }
     } catch (error) {
@@ -385,7 +402,7 @@ export default function ScheduleScreen() {
   const handleSelectWeek = (w: AvailableWeekItem) => {
     setSelectedWeekIndex(w.index);
     setWeekRangeText(w.weekRange);
-    if (w.schedules && Array.isArray(w.schedules) && w.schedules.length > 0) {
+    if (w.schedules && Array.isArray(w.schedules)) {
       setScheduleList(w.schedules);
       if (isSunday && w.isNext && selectedDay === 1) {
         const hasSundayClass = w.schedules.some((s) => s.dayNum === 1);
@@ -449,42 +466,59 @@ export default function ScheduleScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: AppColors.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <NavHeader
         title="Thời khóa biểu"
-        subtitle={subtitle}
+        subtitle={isLoggedIn ? subtitle : "Thời khóa biểu cá nhân"}
         rightElement={
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-              handleOpenAddModal(selectedDay);
-            }}
-            style={({ pressed }) => [
-              {
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 5,
-                backgroundColor: "rgba(255, 255, 255, 0.2)",
-                paddingHorizontal: 12,
-                paddingVertical: 7,
-                borderRadius: 20,
-                borderWidth: 1,
-                borderColor: "rgba(255, 255, 255, 0.35)",
-              },
-              pressed && { opacity: 0.75, transform: [{ scale: 0.96 }] },
-            ]}
-            hitSlop={6}
-            accessibilityRole="button"
-            accessibilityLabel="Thêm lịch học mới"
-          >
-            <Feather name="plus-circle" size={15} color="#FFFFFF" />
-            <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "700" }}>Thêm lịch</Text>
-          </Pressable>
+          isLoggedIn ? (
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                handleOpenAddModal(selectedDay);
+              }}
+              style={({ pressed }) => [
+                {
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 5,
+                  backgroundColor: "rgba(255, 255, 255, 0.2)",
+                  paddingHorizontal: 12,
+                  paddingVertical: 7,
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: "rgba(255, 255, 255, 0.35)",
+                },
+                pressed && { opacity: 0.75, transform: [{ scale: 0.96 }] },
+              ]}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel="Thêm lịch học mới"
+            >
+              <Feather name="plus-circle" size={15} color="#FFFFFF" />
+              <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "700" }}>Thêm lịch</Text>
+            </Pressable>
+          ) : null
         }
       />
 
-      {/* 1. THANH CHỌN TUẦN HỌC */}
-      <ScheduleWeekBar
+      {isLoggedIn === null || loading ? (
+        <View style={{ flex: 1, padding: 16 }}>
+          <ScheduleSkeleton />
+        </View>
+      ) : !isLoggedIn ? (
+        <View style={{ flex: 1, paddingBottom: bottomPadding }}>
+          <LoginRequiredCard
+            mode="fullscreen"
+            icon="calendar"
+            title="Vui lòng đăng nhập để tiếp tục"
+            message="Tính năng Thời khóa biểu chỉ dành riêng cho sinh viên Đại học Tây Nguyên. Vui lòng đăng nhập tài khoản sinh viên để xem và quản lý lịch học."
+          />
+        </View>
+      ) : (
+        <>
+          {/* 1. THANH CHỌN TUẦN HỌC */}
+          <ScheduleWeekBar
         availableWeeks={availableWeeks}
         selectedWeekIndex={selectedWeekIndex}
         currentWeekIndex={currentWeekIndex}
@@ -508,24 +542,24 @@ export default function ScheduleScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: bottomPadding }}
         onScroll={onTabBarScroll}
         scrollEventThrottle={16}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         {isOfflineData && (
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
-              backgroundColor: "#FEF3C7",
+              backgroundColor: isDark ? "rgba(245, 158, 11, 0.15)" : "#FEF3C7",
               borderWidth: 1,
-              borderColor: "#FDE68A",
+              borderColor: isDark ? "rgba(245, 158, 11, 0.3)" : "#FDE68A",
               paddingVertical: 8,
               paddingHorizontal: 12,
               borderRadius: 12,
               marginBottom: 14,
             }}
           >
-            <Feather name="wifi-off" size={15} color="#D97706" style={{ marginRight: 8 }} />
-            <Text style={{ fontSize: 12, color: "#92400E", fontWeight: "600", flex: 1 }}>
+            <Feather name="wifi-off" size={15} color={isDark ? "#FBBF24" : "#D97706"} style={{ marginRight: 8 }} />
+            <Text style={{ fontSize: 12, color: isDark ? "#FBBF24" : "#92400E", fontWeight: "600", flex: 1 }}>
               Đang xem lịch học lưu ngoại tuyến {cachedAt ? `(lưu lúc ${cachedAt})` : ""} • Vuốt xuống để cập nhật lại
             </Text>
           </View>
@@ -535,9 +569,9 @@ export default function ScheduleScreen() {
           <ScheduleSkeleton />
         ) : filtered.length === 0 ? (
           <View style={{ paddingVertical: 50, alignItems: "center" }}>
-            <Feather name="calendar" size={48} color={AppColors.cardBorder} />
-            <Text style={{ marginTop: 12, fontSize: 15, fontWeight: "700", color: AppColors.text }}>Không có tiết học</Text>
-            <Text style={{ marginTop: 4, fontSize: 13, color: AppColors.textMuted }}>Bạn được nghỉ trong ngày này!</Text>
+            <Feather name="calendar" size={48} color={colors.cardBorder} />
+            <Text style={{ marginTop: 12, fontSize: 15, fontWeight: "700", color: colors.text }}>Không có tiết học</Text>
+            <Text style={{ marginTop: 4, fontSize: 13, color: colors.textMuted }}>Bạn được nghỉ trong ngày này!</Text>
             <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -549,7 +583,7 @@ export default function ScheduleScreen() {
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 8,
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: colors.primary,
                   paddingHorizontal: 16,
                   paddingVertical: 10,
                   borderRadius: 12,
@@ -589,23 +623,23 @@ export default function ScheduleScreen() {
           style={{
             marginTop: 20,
             padding: 14,
-            backgroundColor: "#F8FAFC",
+            backgroundColor: isDark ? colors.cardBg : "#F8FAFC",
             borderRadius: 12,
             borderWidth: 1,
-            borderColor: "#E2E8F0",
+            borderColor: colors.cardBorder,
           }}
         >
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 }}>
-            <Feather name="info" size={14} color={AppColors.primary} />
-            <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text }}>Lưu ý tiết học</Text>
+            <Feather name="info" size={14} color={colors.primary} />
+            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>Lưu ý tiết học</Text>
           </View>
-          <Text style={{ fontSize: 12, color: AppColors.textSecondary, lineHeight: 18, marginBottom: 4 }}>
+          <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 18, marginBottom: 4 }}>
             • Buổi sáng: Tiết 1 bắt đầu từ 06:45, Tiết 4 kết thúc lúc 10:30.
           </Text>
-          <Text style={{ fontSize: 12, color: AppColors.textSecondary, lineHeight: 18, marginBottom: 4 }}>
+          <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 18, marginBottom: 4 }}>
             • Buổi chiều: Tiết 7 bắt đầu từ 13:45, Tiết 10 kết thúc lúc 16:30.
           </Text>
-          <Text style={{ fontSize: 12, color: AppColors.textSecondary, lineHeight: 18 }}>
+          <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 18 }}>
             • Bấm &quot;Chỉ đường tới phòng&quot; để xem chỉ dẫn chi tiết và vị trí tòa nhà trên bản đồ trường.
           </Text>
         </View>
@@ -649,6 +683,8 @@ export default function ScheduleScreen() {
         onOpenCampusMap={handleOpenCampusMap}
         onOpenGoogleMaps={handleOpenGoogleMaps}
       />
+        </>
+      )}
     </View>
   );
 }

@@ -413,6 +413,22 @@ async function syncScheduleForStudent(mssv, dk = '10') {
               w.weekRangeText
             ]);
           }
+        } else {
+          // Ghi nhận tuần học rỗng để sinh viên vẫn có thể xem và chọn tuần trên app
+          bulkScheduleValues.push([
+            mssv,
+            `WEEK-${w.index}`,
+            '',
+            '',
+            '',
+            '',
+            '',
+            'HK1 (2025-2026)',
+            0,
+            '',
+            'tuan_trong',
+            w.weekRangeText
+          ]);
         }
       }
       if (bulkScheduleValues.length > 0) {

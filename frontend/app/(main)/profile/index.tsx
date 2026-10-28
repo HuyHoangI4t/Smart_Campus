@@ -21,6 +21,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
+import { useTheme } from "../../../src/context/ThemeContext";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
 import { setTabBarVisible, useTabBarScrollHandler } from "../../../src/components/MainTabs";
@@ -49,6 +50,7 @@ const PRESET_AVATARS = [
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { colors, isDark, themeMode } = useTheme();
   const { onScroll: onTabBarScroll, bottomPadding } = useTabBarScrollHandler({
     visiblePadding: 130,
     hiddenPadding: 130,
@@ -143,7 +145,21 @@ export default function ProfileScreen() {
     setRefreshing(false);
   };
 
+  const isGuest = !profile.mssv || profile.mssv.toLowerCase().includes("guest") || profile.mssv === "CHUA_DANG_NHAP";
+
   const openEditModal = () => {
+    if (isGuest) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      Alert.alert(
+        "Vui lòng đăng nhập để tiếp tục",
+        "Tính năng chỉnh sửa hồ sơ chỉ dành riêng cho tài khoản sinh viên. Bạn có muốn đăng nhập không?",
+        [
+          { text: "Để sau", style: "cancel" },
+          { text: "Đăng nhập", onPress: () => router.replace("/(auth)") },
+        ]
+      );
+      return;
+    }
     setEditForm({
       ho_ten: profile.ho_ten,
       email: profile.email,
@@ -158,6 +174,18 @@ export default function ProfileScreen() {
   const [returnToEditModal, setReturnToEditModal] = useState(false);
 
   const openAvatarModal = () => {
+    if (isGuest) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      Alert.alert(
+        "Vui lòng đăng nhập để tiếp tục",
+        "Vui lòng đăng nhập tài khoản sinh viên để đổi ảnh đại diện cá nhân.",
+        [
+          { text: "Để sau", style: "cancel" },
+          { text: "Đăng nhập", onPress: () => router.replace("/(auth)") },
+        ]
+      );
+      return;
+    }
     setAvatarModalVisible(true);
   };
 
@@ -379,16 +407,21 @@ export default function ProfileScreen() {
   }, [avatarModalVisible, editModalVisible, logoutModalVisible, uploadingAvatar, saving, loggingOut, returnToEditModal]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: AppColors.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style="light" backgroundColor="transparent" translucent={true} />
       
       <NavHeader
         title="Hồ sơ sinh viên"
         subtitle="Thông tin cá nhân & Tài khoản"
         rightElement={
-          <TouchableOpacity onPress={openEditModal}>
-            <Feather name="edit-2" size={18} color="#FFFFFF" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+            <TouchableOpacity onPress={() => router.push("/(main)/profile/settings")}>
+              <Feather name="settings" size={19} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={openEditModal}>
+              <Feather name="edit-2" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
         }
       />
 
@@ -398,7 +431,7 @@ export default function ProfileScreen() {
         onScroll={onTabBarScroll}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         {(loadingProfile && !profile.mssv) || refreshing ? (
           <ProfileSkeleton />
@@ -409,14 +442,14 @@ export default function ProfileScreen() {
           style={{
             padding: 24,
             borderRadius: 24,
-            backgroundColor: AppColors.cardBg,
+            backgroundColor: colors.cardBg,
             alignItems: "center",
             borderWidth: 1,
-            borderColor: AppColors.cardBorder,
+            borderColor: colors.cardBorder,
             marginBottom: 20,
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.06,
+            shadowOpacity: isDark ? 0.2 : 0.06,
             shadowRadius: 6,
             elevation: 3,
           }}
@@ -434,9 +467,9 @@ export default function ProfileScreen() {
                   width: 90,
                   height: 90,
                   borderRadius: 45,
-                  backgroundColor: "#E2E8F0",
+                  backgroundColor: isDark ? "#1E293B" : "#E2E8F0",
                   borderWidth: 3,
-                  borderColor: "#EEF2FF",
+                  borderColor: isDark ? colors.cardBorder : "#EEF2FF",
                 }}
               />
             ) : (
@@ -445,7 +478,7 @@ export default function ProfileScreen() {
                   width: 90,
                   height: 90,
                   borderRadius: 45,
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: colors.primary,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -465,11 +498,11 @@ export default function ProfileScreen() {
                 width: 30,
                 height: 30,
                 borderRadius: 15,
-                backgroundColor: AppColors.primary,
+                backgroundColor: colors.primary,
                 alignItems: "center",
                 justifyContent: "center",
                 borderWidth: 2.5,
-                borderColor: "#FFFFFF",
+                borderColor: isDark ? colors.cardBg : "#FFFFFF",
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.2,
@@ -491,20 +524,20 @@ export default function ProfileScreen() {
               paddingHorizontal: 12,
               paddingVertical: 4,
               borderRadius: 12,
-              backgroundColor: "#EEF2FF",
+              backgroundColor: isDark ? "rgba(99, 102, 241, 0.2)" : "#EEF2FF",
               marginBottom: 10,
             }}
           >
-            <Feather name="image" size={12} color={AppColors.primary} />
-            <Text style={{ fontSize: 11, fontWeight: "700", color: AppColors.primary }}>
+            <Feather name="image" size={12} color={colors.primary} />
+            <Text style={{ fontSize: 11, fontWeight: "700", color: colors.primary }}>
               Đổi ảnh đại diện
             </Text>
           </TouchableOpacity>
 
-          <Text style={{ fontSize: 20, fontWeight: "900", color: AppColors.text, textAlign: "center" }}>
+          <Text style={{ fontSize: 20, fontWeight: "900", color: colors.text, textAlign: "center" }}>
             {profile.ho_ten}
           </Text>
-          <Text style={{ fontSize: 13, color: AppColors.primary, fontWeight: "700", marginTop: 4 }}>
+          <Text style={{ fontSize: 13, color: colors.primary, fontWeight: "700", marginTop: 4 }}>
             MSSV: {profile.mssv || "Chưa có"}
           </Text>
           <View
@@ -513,19 +546,19 @@ export default function ProfileScreen() {
               paddingHorizontal: 12,
               paddingVertical: 4,
               borderRadius: 12,
-              backgroundColor: "#ECFDF5",
+              backgroundColor: isDark ? "rgba(16, 185, 129, 0.18)" : "#ECFDF5",
               flexDirection: "row",
               alignItems: "center",
               gap: 5,
             }}
           >
-            <Feather name="check-circle" size={12} color="#059669" />
-            <Text style={{ fontSize: 11, fontWeight: "700", color: "#059669" }}>Đang theo học chính quy</Text>
+            <Feather name="check-circle" size={12} color={isDark ? "#34D399" : "#059669"} />
+            <Text style={{ fontSize: 11, fontWeight: "700", color: isDark ? "#34D399" : "#059669" }}>Đang theo học chính quy</Text>
           </View>
         </View>
 
         {/* Thông tin chi tiết */}
-        <Text style={{ fontSize: 15, fontWeight: "800", color: AppColors.text, marginBottom: 12 }}>
+        <Text style={{ fontSize: 15, fontWeight: "800", color: colors.text, marginBottom: 12 }}>
           Thông tin học tập & liên hệ
         </Text>
 
@@ -533,77 +566,142 @@ export default function ProfileScreen() {
           style={{
             padding: 16,
             borderRadius: 20,
-            backgroundColor: AppColors.cardBg,
+            backgroundColor: colors.cardBg,
             borderWidth: 1,
-            borderColor: AppColors.cardBorder,
+            borderColor: colors.cardBorder,
             gap: 14,
             marginBottom: 24,
           }}
         >
           <View style={[s.row, s.between]}>
             <View style={[s.row, { gap: 10 }]}>
-              <Feather name="book" size={16} color={AppColors.primary} />
-              <Text style={{ fontSize: 13, color: AppColors.textSecondary, fontWeight: "600" }}>Khoa đào tạo</Text>
+              <Feather name="book" size={16} color={colors.primary} />
+              <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: "600" }}>Khoa đào tạo</Text>
             </View>
-            <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text }}>{profile.khoa || "Chưa cập nhật"}</Text>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>{profile.khoa || "Chưa cập nhật"}</Text>
           </View>
 
-          <View style={{ height: 1, backgroundColor: AppColors.cardBorder }} />
+          <View style={{ height: 1, backgroundColor: colors.cardBorder }} />
 
           <View style={[s.row, s.between]}>
             <View style={[s.row, { gap: 10 }]}>
-              <Feather name="users" size={16} color={AppColors.primary} />
-              <Text style={{ fontSize: 13, color: AppColors.textSecondary, fontWeight: "600" }}>Lớp sinh hoạt</Text>
+              <Feather name="users" size={16} color={colors.primary} />
+              <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: "600" }}>Lớp sinh hoạt</Text>
             </View>
-            <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text }}>{profile.lop || "Chưa cập nhật"}</Text>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>{profile.lop || "Chưa cập nhật"}</Text>
           </View>
 
-          <View style={{ height: 1, backgroundColor: AppColors.cardBorder }} />
+          <View style={{ height: 1, backgroundColor: colors.cardBorder }} />
 
           <View style={[s.row, s.between]}>
             <View style={[s.row, { gap: 10 }]}>
-              <Feather name="mail" size={16} color={AppColors.primary} />
-              <Text style={{ fontSize: 13, color: AppColors.textSecondary, fontWeight: "600" }}>Email trường</Text>
+              <Feather name="mail" size={16} color={colors.primary} />
+              <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: "600" }}>Email trường</Text>
             </View>
-            <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text }}>{profile.email || "Chưa cập nhật"}</Text>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>{profile.email || "Chưa cập nhật"}</Text>
           </View>
 
-          <View style={{ height: 1, backgroundColor: AppColors.cardBorder }} />
+          <View style={{ height: 1, backgroundColor: colors.cardBorder }} />
 
           <View style={[s.row, s.between]}>
             <View style={[s.row, { gap: 10 }]}>
-              <Feather name="phone" size={16} color={AppColors.primary} />
-              <Text style={{ fontSize: 13, color: AppColors.textSecondary, fontWeight: "600" }}>Số điện thoại</Text>
+              <Feather name="phone" size={16} color={colors.primary} />
+              <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: "600" }}>Số điện thoại</Text>
             </View>
-            <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.text }}>{profile.so_dien_thoai || "Chưa cập nhật"}</Text>
+            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>{profile.so_dien_thoai || "Chưa cập nhật"}</Text>
           </View>
         </View>
 
-        {/* Thiết lập & Bảo mật */}
-        <Text style={{ fontSize: 15, fontWeight: "800", color: AppColors.text, marginBottom: 12 }}>
-          Bảo mật tài khoản
+        {/* Cài đặt & Tiện ích */}
+        <Text style={{ fontSize: 15, fontWeight: "800", color: colors.text, marginBottom: 12 }}>
+          Cài đặt & Tiện ích
         </Text>
 
         <View style={{ gap: 10, marginBottom: 24 }}>
           <TouchableOpacity
-            onPress={() => router.push("/(main)/profile/change_password")}
+            onPress={() => router.push("/(main)/profile/settings")}
             activeOpacity={0.7}
             style={{
               padding: 16,
               borderRadius: 16,
-              backgroundColor: AppColors.cardBg,
+              backgroundColor: colors.cardBg,
               borderWidth: 1,
-              borderColor: AppColors.cardBorder,
+              borderColor: colors.cardBorder,
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
             }}
           >
             <View style={[s.row, { gap: 12 }]}>
-              <Feather name="lock" size={18} color={AppColors.primary} />
-              <Text style={{ fontSize: 14, fontWeight: "700", color: AppColors.text }}>Đổi mật khẩu tài khoản</Text>
+              <View
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  backgroundColor: isDark ? "rgba(99, 102, 241, 0.2)" : "#EEF2FF",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Feather name="sliders" size={18} color={colors.primary} />
+              </View>
+              <View>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>
+                  Cài đặt ứng dụng
+                </Text>
+                <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+                  Đổi theme, thông báo, bản đồ, rung...
+                </Text>
+              </View>
             </View>
-            <Feather name="chevron-right" size={18} color={AppColors.textMuted} />
+            <View style={[s.row, { gap: 6 }]}>
+              <Text style={{ fontSize: 12, color: colors.primary, fontWeight: "700" }}>
+                {themeMode === "dark" ? "Tối" : themeMode === "light" ? "Sáng" : "Tự động"}
+              </Text>
+              <Feather name="chevron-right" size={18} color={colors.textMuted} />
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Thiết lập & Bảo mật */}
+        <Text style={{ fontSize: 15, fontWeight: "800", color: colors.text, marginBottom: 12 }}>
+          Bảo mật tài khoản
+        </Text>
+
+        <View style={{ gap: 10, marginBottom: 24 }}>
+          <TouchableOpacity
+            onPress={() => {
+              if (isGuest) {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+                Alert.alert(
+                  "Vui lòng đăng nhập để tiếp tục",
+                  "Tài khoản khách không sử dụng mật khẩu. Vui lòng đăng nhập tài khoản sinh viên để đổi mật khẩu.",
+                  [
+                    { text: "Để sau", style: "cancel" },
+                    { text: "Đăng nhập", onPress: () => router.replace("/(auth)") },
+                  ]
+                );
+                return;
+              }
+              router.push("/(main)/profile/change_password");
+            }}
+            activeOpacity={0.7}
+            style={{
+              padding: 16,
+              borderRadius: 16,
+              backgroundColor: colors.cardBg,
+              borderWidth: 1,
+              borderColor: colors.cardBorder,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <View style={[s.row, { gap: 12 }]}>
+              <Feather name="lock" size={18} color={colors.primary} />
+              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>Đổi mật khẩu tài khoản</Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={colors.textMuted} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -612,40 +710,56 @@ export default function ProfileScreen() {
             style={{
               padding: 16,
               borderRadius: 16,
-              backgroundColor: AppColors.cardBg,
+              backgroundColor: colors.cardBg,
               borderWidth: 1,
-              borderColor: AppColors.cardBorder,
+              borderColor: colors.cardBorder,
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
             }}
           >
             <View style={[s.row, { gap: 12 }]}>
-              <Feather name="user-check" size={18} color={AppColors.primary} />
-              <Text style={{ fontSize: 14, fontWeight: "700", color: AppColors.text }}>Chỉnh sửa hồ sơ cá nhân</Text>
+              <Feather name="user-check" size={18} color={colors.primary} />
+              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>Chỉnh sửa hồ sơ cá nhân</Text>
             </View>
-            <Feather name="chevron-right" size={18} color={AppColors.textMuted} />
+            <Feather name="chevron-right" size={18} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
 
-        {/* Nút đăng xuất */}
+        {/* Nút đăng xuất hoặc đăng nhập tài khoản */}
         <TouchableOpacity
-          onPress={handleLogout}
+          onPress={isGuest ? () => router.replace("/(auth)") : handleLogout}
           activeOpacity={0.8}
           style={{
             height: 48,
             borderRadius: 14,
-            backgroundColor: "#FEF2F2",
+            backgroundColor: isGuest
+              ? (isDark ? "rgba(99, 102, 241, 0.2)" : "#EFF6FF")
+              : (isDark ? "rgba(239, 68, 68, 0.15)" : "#FEF2F2"),
             borderWidth: 1,
-            borderColor: "#FECACA",
+            borderColor: isGuest
+              ? (isDark ? "rgba(99, 102, 241, 0.4)" : "#BFDBFE")
+              : (isDark ? "rgba(239, 68, 68, 0.3)" : "#FECACA"),
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "center",
             gap: 8,
           }}
         >
-          <Feather name="log-out" size={18} color="#DC2626" />
-          <Text style={{ fontSize: 14, fontWeight: "800", color: "#DC2626" }}>Đăng xuất khỏi thiết bị</Text>
+          <Feather
+            name={isGuest ? "log-in" : "log-out"}
+            size={18}
+            color={isGuest ? colors.primary : (isDark ? "#F87171" : "#DC2626")}
+          />
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: "800",
+              color: isGuest ? colors.primary : (isDark ? "#F87171" : "#DC2626"),
+            }}
+          >
+            {isGuest ? "Đăng nhập tài khoản sinh viên" : "Đăng xuất khỏi thiết bị"}
+          </Text>
         </TouchableOpacity>
         </>
         )}
@@ -678,7 +792,7 @@ export default function ProfileScreen() {
           />
           <View
             style={{
-              backgroundColor: AppColors.cardBg,
+              backgroundColor: colors.cardBg,
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
               padding: 24,
@@ -686,11 +800,11 @@ export default function ProfileScreen() {
             }}
           >
             <View style={[s.row, s.between, { marginBottom: 20 }]}>
-              <Text style={{ fontSize: 18, fontWeight: "900", color: AppColors.text }}>Cập nhật hồ sơ</Text>
+              <Text style={{ fontSize: 18, fontWeight: "900", color: colors.text }}>Cập nhật hồ sơ</Text>
               <TouchableOpacity onPress={() => {
                 if (!saving) setEditModalVisible(false);
               }}>
-                <Feather name="x" size={22} color={AppColors.textMuted} />
+                <Feather name="x" size={22} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -704,7 +818,7 @@ export default function ProfileScreen() {
                   {editForm.avatar ? (
                     <Image
                       source={{ uri: editForm.avatar }}
-                      style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "#E2E8F0" }}
+                      style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: isDark ? "#1E293B" : "#E2E8F0" }}
                     />
                   ) : (
                     <View
@@ -712,7 +826,7 @@ export default function ProfileScreen() {
                         width: 72,
                         height: 72,
                         borderRadius: 36,
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: colors.primary,
                         alignItems: "center",
                         justifyContent: "center",
                       }}
@@ -728,11 +842,11 @@ export default function ProfileScreen() {
                       width: 24,
                       height: 24,
                       borderRadius: 12,
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: colors.primary,
                       alignItems: "center",
                       justifyContent: "center",
                       borderWidth: 2,
-                      borderColor: "#FFFFFF",
+                      borderColor: isDark ? colors.cardBg : "#FFFFFF",
                     }}
                   >
                     <Feather name="camera" size={11} color="#FFFFFF" />
@@ -742,13 +856,13 @@ export default function ProfileScreen() {
                   onPress={openAvatarModalFromEdit}
                   style={{ marginTop: 6 }}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: AppColors.primary }}>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.primary }}>
                     Thay đổi ảnh đại diện
                   </Text>
                 </TouchableOpacity>
               </View>
 
-              <Text style={{ fontSize: 12, fontWeight: "700", color: AppColors.textSecondary, marginBottom: 4 }}>Họ và tên</Text>
+              <Text style={{ fontSize: 12, fontWeight: "700", color: colors.textSecondary, marginBottom: 4 }}>Họ và tên</Text>
               <TextInput
                 value={editForm.ho_ten}
                 onChangeText={(t) => setEditForm((f) => ({ ...f, ho_ten: t }))}
@@ -756,15 +870,16 @@ export default function ProfileScreen() {
                   height: 44,
                   borderRadius: 12,
                   borderWidth: 1,
-                  borderColor: AppColors.cardBorder,
+                  borderColor: colors.cardBorder,
                   paddingHorizontal: 12,
                   fontSize: 14,
                   marginBottom: 12,
-                  color: AppColors.text,
+                  color: colors.text,
+                  backgroundColor: isDark ? "#0F172A" : colors.cardBg,
                 }}
               />
 
-              <Text style={{ fontSize: 12, fontWeight: "700", color: AppColors.textSecondary, marginBottom: 4 }}>Email</Text>
+              <Text style={{ fontSize: 12, fontWeight: "700", color: colors.textSecondary, marginBottom: 4 }}>Email</Text>
               <TextInput
                 value={editForm.email}
                 onChangeText={(t) => setEditForm((f) => ({ ...f, email: t }))}
@@ -773,15 +888,16 @@ export default function ProfileScreen() {
                   height: 44,
                   borderRadius: 12,
                   borderWidth: 1,
-                  borderColor: AppColors.cardBorder,
+                  borderColor: colors.cardBorder,
                   paddingHorizontal: 12,
                   fontSize: 14,
                   marginBottom: 12,
-                  color: AppColors.text,
+                  color: colors.text,
+                  backgroundColor: isDark ? "#0F172A" : colors.cardBg,
                 }}
               />
 
-              <Text style={{ fontSize: 12, fontWeight: "700", color: AppColors.textSecondary, marginBottom: 4 }}>Số điện thoại</Text>
+              <Text style={{ fontSize: 12, fontWeight: "700", color: colors.textSecondary, marginBottom: 4 }}>Số điện thoại</Text>
               <TextInput
                 value={editForm.so_dien_thoai}
                 onChangeText={(t) => setEditForm((f) => ({ ...f, so_dien_thoai: t }))}
@@ -790,15 +906,16 @@ export default function ProfileScreen() {
                   height: 44,
                   borderRadius: 12,
                   borderWidth: 1,
-                  borderColor: AppColors.cardBorder,
+                  borderColor: colors.cardBorder,
                   paddingHorizontal: 12,
                   fontSize: 14,
                   marginBottom: 12,
-                  color: AppColors.text,
+                  color: colors.text,
+                  backgroundColor: isDark ? "#0F172A" : colors.cardBg,
                 }}
               />
 
-              <Text style={{ fontSize: 12, fontWeight: "700", color: AppColors.textSecondary, marginBottom: 4 }}>Lớp sinh hoạt</Text>
+              <Text style={{ fontSize: 12, fontWeight: "700", color: colors.textSecondary, marginBottom: 4 }}>Lớp sinh hoạt</Text>
               <TextInput
                 value={editForm.lop}
                 onChangeText={(t) => setEditForm((f) => ({ ...f, lop: t }))}
@@ -806,15 +923,16 @@ export default function ProfileScreen() {
                   height: 44,
                   borderRadius: 12,
                   borderWidth: 1,
-                  borderColor: AppColors.cardBorder,
+                  borderColor: colors.cardBorder,
                   paddingHorizontal: 12,
                   fontSize: 14,
                   marginBottom: 12,
-                  color: AppColors.text,
+                  color: colors.text,
+                  backgroundColor: isDark ? "#0F172A" : colors.cardBg,
                 }}
               />
 
-              <Text style={{ fontSize: 12, fontWeight: "700", color: AppColors.textSecondary, marginBottom: 4 }}>Khoa</Text>
+              <Text style={{ fontSize: 12, fontWeight: "700", color: colors.textSecondary, marginBottom: 4 }}>Khoa</Text>
               <TextInput
                 value={editForm.khoa}
                 onChangeText={(t) => setEditForm((f) => ({ ...f, khoa: t }))}
@@ -822,11 +940,12 @@ export default function ProfileScreen() {
                   height: 44,
                   borderRadius: 12,
                   borderWidth: 1,
-                  borderColor: AppColors.cardBorder,
+                  borderColor: colors.cardBorder,
                   paddingHorizontal: 12,
                   fontSize: 14,
                   marginBottom: 20,
-                  color: AppColors.text,
+                  color: colors.text,
+                  backgroundColor: isDark ? "#0F172A" : colors.cardBg,
                 }}
               />
 
@@ -836,7 +955,7 @@ export default function ProfileScreen() {
                 style={{
                   height: 48,
                   borderRadius: 14,
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: colors.primary,
                   alignItems: "center",
                   justifyContent: "center",
                   marginBottom: 10,
@@ -877,10 +996,12 @@ export default function ProfileScreen() {
             style={{
               width: "100%",
               maxWidth: 340,
-              backgroundColor: AppColors.cardBg,
+              backgroundColor: colors.cardBg,
               borderRadius: 24,
               padding: 24,
               alignItems: "center",
+              borderWidth: isDark ? 1 : 0,
+              borderColor: colors.cardBorder,
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.15,
@@ -893,7 +1014,7 @@ export default function ProfileScreen() {
                 width: 56,
                 height: 56,
                 borderRadius: 28,
-                backgroundColor: "#FEF2F2",
+                backgroundColor: isDark ? "rgba(239, 68, 68, 0.18)" : "#FEF2F2",
                 alignItems: "center",
                 justifyContent: "center",
                 marginBottom: 16,
@@ -906,7 +1027,7 @@ export default function ProfileScreen() {
               style={{
                 fontSize: 18,
                 fontWeight: "900",
-                color: AppColors.text,
+                color: colors.text,
                 marginBottom: 8,
                 textAlign: "center",
               }}
@@ -917,7 +1038,7 @@ export default function ProfileScreen() {
             <Text
               style={{
                 fontSize: 14,
-                color: AppColors.textSecondary,
+                color: colors.textSecondary,
                 textAlign: "center",
                 lineHeight: 20,
                 marginBottom: 24,
@@ -935,12 +1056,12 @@ export default function ProfileScreen() {
                   flex: 1,
                   height: 46,
                   borderRadius: 12,
-                  backgroundColor: "#F1F5F9",
+                  backgroundColor: isDark ? "#334155" : "#F1F5F9",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Text style={{ fontSize: 14, fontWeight: "700", color: AppColors.textSecondary }}>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: isDark ? "#F8FAFC" : colors.textSecondary }}>
                   Hủy
                 </Text>
               </TouchableOpacity>
@@ -997,7 +1118,7 @@ export default function ProfileScreen() {
           />
           <View
             style={{
-              backgroundColor: AppColors.cardBg,
+              backgroundColor: colors.cardBg,
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
               padding: 24,
@@ -1006,15 +1127,15 @@ export default function ProfileScreen() {
           >
             <View style={[s.row, s.between, { marginBottom: 18 }]}>
               <View>
-                <Text style={{ fontSize: 18, fontWeight: "900", color: AppColors.text }}>
+                <Text style={{ fontSize: 18, fontWeight: "900", color: colors.text }}>
                   Chọn ảnh đại diện
                 </Text>
-                <Text style={{ fontSize: 12, color: AppColors.textMuted, marginTop: 2 }}>
+                <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
                   Tải ảnh từ máy, chụp ảnh mới hoặc chọn avatar mẫu
                 </Text>
               </View>
               <TouchableOpacity onPress={closeAvatarModal}>
-                <Feather name="x" size={22} color={AppColors.textMuted} />
+                <Feather name="x" size={22} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -1023,14 +1144,14 @@ export default function ProfileScreen() {
                 <View
                   style={{
                     padding: 14,
-                    backgroundColor: "#EEF2FF",
+                    backgroundColor: isDark ? "rgba(99, 102, 241, 0.2)" : "#EEF2FF",
                     borderRadius: 12,
                     alignItems: "center",
                     marginBottom: 16,
                   }}
                 >
-                  <ActivityIndicator size="small" color={AppColors.primary} />
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.primary, marginTop: 6 }}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.primary, marginTop: 6 }}>
                     Đang lưu ảnh đại diện...
                   </Text>
                 </View>
@@ -1045,9 +1166,9 @@ export default function ProfileScreen() {
                     flex: 1,
                     padding: 16,
                     borderRadius: 16,
-                    backgroundColor: "#EEF2FF",
+                    backgroundColor: isDark ? "rgba(99, 102, 241, 0.15)" : "#EEF2FF",
                     borderWidth: 1.5,
-                    borderColor: "#C7D2FE",
+                    borderColor: isDark ? "rgba(99, 102, 241, 0.3)" : "#C7D2FE",
                     alignItems: "center",
                     justifyContent: "center",
                     gap: 8,
@@ -1058,14 +1179,14 @@ export default function ProfileScreen() {
                       width: 44,
                       height: 44,
                       borderRadius: 22,
-                      backgroundColor: "#FFFFFF",
+                      backgroundColor: isDark ? "#0F172A" : "#FFFFFF",
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <Feather name="image" size={22} color={AppColors.primary} />
+                    <Feather name="image" size={22} color={colors.primary} />
                   </View>
-                  <Text style={{ fontSize: 13, fontWeight: "800", color: AppColors.primary }}>
+                  <Text style={{ fontSize: 13, fontWeight: "800", color: colors.primary }}>
                     Thư viện ảnh
                   </Text>
                 </TouchableOpacity>
@@ -1078,9 +1199,9 @@ export default function ProfileScreen() {
                     flex: 1,
                     padding: 16,
                     borderRadius: 16,
-                    backgroundColor: "#ECFDF5",
+                    backgroundColor: isDark ? "rgba(16, 185, 129, 0.15)" : "#ECFDF5",
                     borderWidth: 1.5,
-                    borderColor: "#A7F3D0",
+                    borderColor: isDark ? "rgba(16, 185, 129, 0.3)" : "#A7F3D0",
                     alignItems: "center",
                     justifyContent: "center",
                     gap: 8,
@@ -1091,20 +1212,20 @@ export default function ProfileScreen() {
                       width: 44,
                       height: 44,
                       borderRadius: 22,
-                      backgroundColor: "#FFFFFF",
+                      backgroundColor: isDark ? "#0F172A" : "#FFFFFF",
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <Feather name="camera" size={22} color="#059669" />
+                    <Feather name="camera" size={22} color={isDark ? "#34D399" : "#059669"} />
                   </View>
-                  <Text style={{ fontSize: 13, fontWeight: "800", color: "#059669" }}>
+                  <Text style={{ fontSize: 13, fontWeight: "800", color: isDark ? "#34D399" : "#059669" }}>
                     Chụp ảnh mới
                   </Text>
                 </TouchableOpacity>
               </View>
 
-              <Text style={{ fontSize: 13, fontWeight: "800", color: AppColors.text, marginBottom: 10 }}>
+              <Text style={{ fontSize: 13, fontWeight: "800", color: colors.text, marginBottom: 10 }}>
                 Hoặc chọn mẫu sinh viên có sẵn
               </Text>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
@@ -1119,20 +1240,22 @@ export default function ProfileScreen() {
                       alignItems: "center",
                       padding: 8,
                       borderRadius: 14,
-                      backgroundColor: profile.avatar === item.uri ? "#EEF2FF" : AppColors.muted,
+                      backgroundColor: profile.avatar === item.uri
+                        ? (isDark ? "rgba(99, 102, 241, 0.25)" : "#EEF2FF")
+                        : (isDark ? "#0F172A" : colors.muted),
                       borderWidth: profile.avatar === item.uri ? 2 : 1,
-                      borderColor: profile.avatar === item.uri ? AppColors.primary : "transparent",
+                      borderColor: profile.avatar === item.uri ? colors.primary : (isDark ? colors.cardBorder : "transparent"),
                     }}
                   >
                     <Image
                       source={{ uri: item.uri }}
-                      style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "#CBD5E1" }}
+                      style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: isDark ? "#334155" : "#CBD5E1" }}
                     />
                     <Text
                       style={{
                         fontSize: 11,
                         fontWeight: "600",
-                        color: AppColors.textSecondary,
+                        color: colors.textSecondary,
                         marginTop: 6,
                         textAlign: "center",
                       }}
@@ -1143,13 +1266,13 @@ export default function ProfileScreen() {
                 ))}
               </View>
 
-              <Text style={{ fontSize: 13, fontWeight: "800", color: AppColors.text, marginBottom: 8 }}>
+              <Text style={{ fontSize: 13, fontWeight: "800", color: colors.text, marginBottom: 8 }}>
                 Hoặc dán đường dẫn ảnh (URL)
               </Text>
               <View style={{ flexDirection: "row", gap: 8, marginBottom: 24 }}>
                 <TextInput
                   placeholder="https://example.com/avatar.jpg"
-                  placeholderTextColor={AppColors.textMuted}
+                  placeholderTextColor={colors.textMuted}
                   value={customAvatarUrl}
                   onChangeText={setCustomAvatarUrl}
                   style={{
@@ -1157,11 +1280,11 @@ export default function ProfileScreen() {
                     height: 44,
                     borderRadius: 12,
                     borderWidth: 1,
-                    borderColor: AppColors.cardBorder,
+                    borderColor: colors.cardBorder,
                     paddingHorizontal: 12,
                     fontSize: 13,
-                    color: AppColors.text,
-                    backgroundColor: AppColors.muted,
+                    color: colors.text,
+                    backgroundColor: isDark ? "#0F172A" : colors.muted,
                   }}
                 />
                 <TouchableOpacity
@@ -1172,7 +1295,7 @@ export default function ProfileScreen() {
                     height: 44,
                     paddingHorizontal: 16,
                     borderRadius: 12,
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: colors.primary,
                     alignItems: "center",
                     justifyContent: "center",
                   }}

@@ -566,7 +566,7 @@ const TAY_NGUYEN_CAMPUS_LOCATIONS = [
     "color": "#10B981"
   },
   {
-    "id": 43,
+    "id": 38,
     "name": "WC",
     "category": "WC",
     "building": "WC",
@@ -580,7 +580,7 @@ const TAY_NGUYEN_CAMPUS_LOCATIONS = [
     "color": "#06b6d4"
   },
   {
-    "id": 44,
+    "id": 39,
     "name": "WC",
     "category": "WC",
     "building": "Nhà 6",
@@ -594,7 +594,7 @@ const TAY_NGUYEN_CAMPUS_LOCATIONS = [
     "color": "#06b6d4"
   },
   {
-    "id": 45,
+    "id": 40,
     "name": "WC",
     "category": "WC",
     "building": "Nhà 2, Nhà 3",

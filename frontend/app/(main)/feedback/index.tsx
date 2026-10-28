@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Modal } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Modal, BackHandler } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { AppColors } from "../../../src/constants/appColors";
+import { useTheme } from "../../../src/context/ThemeContext";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
 import { apiSubmitFeedback, apiGetFeedbackConfig } from "../../../src/services/api";
@@ -19,6 +20,7 @@ const DEFAULT_CATEGORIES = [
 
 export default function FeedbackScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [category, setCategory] = useState("Cơ sở vật chất");
   const [rating, setRating] = useState(5);
@@ -48,6 +50,17 @@ export default function FeedbackScreen() {
     };
     fetchConfig();
   }, []);
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        router.replace("/(main)/home");
+        return true;
+      };
+      const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+      return () => sub.remove();
+    }, [router])
+  );
+
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -114,7 +127,7 @@ export default function FeedbackScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: AppColors.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <NavHeader
         title="Góp ý & Phản ánh"
         subtitle="Ý kiến của bạn giúp nâng cao chất lượng môi trường học"
@@ -124,7 +137,7 @@ export default function FeedbackScreen() {
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 110 }}>
         {/* Danh mục */}
-        <Text style={{ fontSize: 14, fontWeight: "800", color: AppColors.text, marginBottom: 8 }}>
+        <Text style={{ fontSize: 14, fontWeight: "800", color: colors.text, marginBottom: 8 }}>
           Lĩnh vực góp ý
         </Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 18 }}>
@@ -138,12 +151,12 @@ export default function FeedbackScreen() {
                   paddingVertical: 8,
                   paddingHorizontal: 14,
                   borderRadius: 20,
-                  backgroundColor: isSelected ? AppColors.primary : AppColors.muted,
+                  backgroundColor: isSelected ? colors.primary : (isDark ? "#0F172A" : colors.muted),
                   borderWidth: 1,
-                  borderColor: isSelected ? AppColors.primary : AppColors.cardBorder,
+                  borderColor: isSelected ? colors.primary : colors.cardBorder,
                 }}
               >
-                <Text style={{ fontSize: 12, fontWeight: "700", color: isSelected ? "#FFFFFF" : AppColors.textSecondary }}>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: isSelected ? "#FFFFFF" : colors.textSecondary }}>
                   {cat}
                 </Text>
               </TouchableOpacity>
@@ -152,7 +165,7 @@ export default function FeedbackScreen() {
         </View>
 
         {/* Đánh giá sao */}
-        <Text style={{ fontSize: 14, fontWeight: "800", color: AppColors.text, marginBottom: 8 }}>
+        <Text style={{ fontSize: 14, fontWeight: "800", color: colors.text, marginBottom: 8 }}>
           Mức độ hài lòng chung
         </Text>
         <View style={[s.row, { gap: 12, marginBottom: 20 }]}>
@@ -161,44 +174,44 @@ export default function FeedbackScreen() {
               <Feather
                 name="star"
                 size={28}
-                color={star <= rating ? "#F59E0B" : "#D1D5DB"}
+                color={star <= rating ? "#F59E0B" : (isDark ? "#475569" : "#D1D5DB")}
               />
             </TouchableOpacity>
           ))}
-          <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.textSecondary, marginLeft: 8 }}>
+          <Text style={{ fontSize: 13, fontWeight: "700", color: colors.textSecondary, marginLeft: 8 }}>
             {rating === 5 ? "Rất hài lòng" : rating === 4 ? "Hài lòng" : rating === 3 ? "Bình thường" : "Chưa hài lòng"}
           </Text>
         </View>
 
         {/* Tiêu đề */}
-        <Text style={{ fontSize: 14, fontWeight: "800", color: AppColors.text, marginBottom: 6 }}>
+        <Text style={{ fontSize: 14, fontWeight: "800", color: colors.text, marginBottom: 6 }}>
           Tiêu đề góp ý <Text style={{ color: AppColors.danger }}>*</Text>
         </Text>
         <TextInput
           placeholder="Ví dụ: Máy chiếu phòng B201 bị mờ, đèn hành lang hỏng..."
-          placeholderTextColor={AppColors.textMuted}
+          placeholderTextColor={colors.textMuted}
           value={title}
           onChangeText={setTitle}
           style={{
             height: 48,
             borderRadius: 14,
-            backgroundColor: AppColors.cardBg,
+            backgroundColor: isDark ? "#0F172A" : colors.cardBg,
             borderWidth: 1,
-            borderColor: AppColors.cardBorder,
+            borderColor: colors.cardBorder,
             paddingHorizontal: 14,
             fontSize: 14,
-            color: AppColors.text,
+            color: colors.text,
             marginBottom: 16,
           }}
         />
 
         {/* Nội dung chi tiết */}
-        <Text style={{ fontSize: 14, fontWeight: "800", color: AppColors.text, marginBottom: 6 }}>
+        <Text style={{ fontSize: 14, fontWeight: "800", color: colors.text, marginBottom: 6 }}>
           Nội dung chi tiết <Text style={{ color: AppColors.danger }}>*</Text>
         </Text>
         <TextInput
           placeholder="Mô tả cụ thể vấn đề hoặc đề xuất giải pháp của bạn..."
-          placeholderTextColor={AppColors.textMuted}
+          placeholderTextColor={colors.textMuted}
           value={content}
           onChangeText={setContent}
           multiline
@@ -207,12 +220,12 @@ export default function FeedbackScreen() {
           style={{
             height: 140,
             borderRadius: 14,
-            backgroundColor: AppColors.cardBg,
+            backgroundColor: isDark ? "#0F172A" : colors.cardBg,
             borderWidth: 1,
-            borderColor: AppColors.cardBorder,
+            borderColor: colors.cardBorder,
             padding: 14,
             fontSize: 14,
-            color: AppColors.text,
+            color: colors.text,
             marginBottom: 24,
           }}
         />
@@ -225,12 +238,12 @@ export default function FeedbackScreen() {
           style={{
             height: 50,
             borderRadius: 14,
-            backgroundColor: AppColors.primary,
+            backgroundColor: colors.primary,
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "center",
             gap: 8,
-            shadowColor: AppColors.primary,
+            shadowColor: colors.primary,
             shadowOffset: { width: 0, height: 3 },
             shadowOpacity: 0.3,
             shadowRadius: 6,
@@ -266,13 +279,15 @@ export default function FeedbackScreen() {
         >
           <View
             style={{
-              backgroundColor: "#FFFFFF",
+              backgroundColor: colors.cardBg,
               borderRadius: 24,
               paddingVertical: 26,
               paddingHorizontal: 22,
               width: "100%",
               maxWidth: 340,
               alignItems: "center",
+              borderWidth: isDark ? 1 : 0,
+              borderColor: colors.cardBorder,
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 10 },
               shadowOpacity: 0.15,
@@ -286,18 +301,22 @@ export default function FeedbackScreen() {
                 width: 64,
                 height: 64,
                 borderRadius: 32,
-                backgroundColor: popupState.type === "success" ? "#DCFCE7" : "#FEE2E2",
+                backgroundColor: popupState.type === "success"
+                  ? (isDark ? "rgba(16, 185, 129, 0.18)" : "#DCFCE7")
+                  : (isDark ? "rgba(239, 68, 68, 0.18)" : "#FEE2E2"),
                 alignItems: "center",
                 justifyContent: "center",
                 marginBottom: 16,
                 borderWidth: 3,
-                borderColor: popupState.type === "success" ? "#BBF7D0" : "#FECACA",
+                borderColor: popupState.type === "success"
+                  ? (isDark ? "rgba(16, 185, 129, 0.35)" : "#BBF7D0")
+                  : (isDark ? "rgba(239, 68, 68, 0.35)" : "#FECACA"),
               }}
             >
               <Feather
                 name={popupState.type === "success" ? "check" : "alert-circle"}
                 size={32}
-                color={popupState.type === "success" ? "#16A34A" : "#DC2626"}
+                color={popupState.type === "success" ? (isDark ? "#34D399" : "#16A34A") : (isDark ? "#F87171" : "#DC2626")}
               />
             </View>
 
@@ -306,7 +325,7 @@ export default function FeedbackScreen() {
               style={{
                 fontSize: 18,
                 fontWeight: "800",
-                color: "#0F172A",
+                color: colors.text,
                 textAlign: "center",
                 marginBottom: 8,
               }}
@@ -318,7 +337,7 @@ export default function FeedbackScreen() {
             <Text
               style={{
                 fontSize: 13.5,
-                color: "#64748B",
+                color: colors.textSecondary,
                 textAlign: "center",
                 lineHeight: 20,
                 marginBottom: 22,
@@ -340,7 +359,7 @@ export default function FeedbackScreen() {
                     flex: 1,
                     height: 46,
                     borderRadius: 14,
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: colors.primary,
                     alignItems: "center",
                     justifyContent: "center",
                   }}
@@ -357,12 +376,12 @@ export default function FeedbackScreen() {
                     paddingHorizontal: 16,
                     height: 46,
                     borderRadius: 14,
-                    backgroundColor: "#F1F5F9",
+                    backgroundColor: isDark ? "#334155" : "#F1F5F9",
                     alignItems: "center",
                     justifyContent: "center",
                   }}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#475569" }}>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: isDark ? "#F8FAFC" : "#475569" }}>
                     Ở lại
                   </Text>
                 </TouchableOpacity>

@@ -70,10 +70,10 @@ let activityFlushTimer = null;
 const MAX_ACTIVITY_QUEUE = 250;
 
 function flushActivityLogs() {
-  if (activityLogBatch.length === 0) return;
+  if (activityLogBatch.length === 0) return Promise.resolve();
   const batch = activityLogBatch.splice(0, activityLogBatch.length);
   const values = batch.map(b => [b.action, b.mssv, b.ip]);
-  db.query('INSERT INTO activity_logs (action, mssv, ip_address) VALUES ?', [values])
+  return db.query('INSERT INTO activity_logs (action, mssv, ip_address) VALUES ?', [values])
     .then(() => {
       if (io) io.emit('activity_update');
     })
@@ -91,8 +91,17 @@ app.use((req, res, next) => {
                      req.path.includes('/api-docs');
 
   if (isApi && !isInternal && req.method !== 'OPTIONS') {
-    const mssv = req.headers['x-mssv'] || 'guest';
+    let mssv = req.headers['x-mssv'] || 'guest';
+    if (mssv === 'guest') {
+      const authHeader = req.headers['authorization'];
+      if (authHeader && authHeader.startsWith('Bearer jwt-token-')) {
+        const parts = authHeader.replace(/^Bearer\s+/i, '').split('-');
+        if (parts.length >= 3 && parts[2]) mssv = parts[2].trim();
+      }
+    }
     const action = `${req.method} ${req.path.slice(0, 60)}`;
+    const rawIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || req.ip || '127.0.0.1';
+    const cleanIp = String(rawIp).replace(/^.*:/, '').slice(0, 45);
     
     // Giữ hàng đợi trong giới hạn để chống leak RAM khi DB tải nặng
     if (activityLogBatch.length >= MAX_ACTIVITY_QUEUE) {
@@ -102,7 +111,7 @@ app.use((req, res, next) => {
     activityLogBatch.push({
       action,
       mssv,
-      ip: req.ip || '127.0.0.1'
+      ip: cleanIp
     });
 
     if (activityLogBatch.length >= 25) {
@@ -231,7 +240,7 @@ async function startServer() {
   const gracefulShutdown = async (signal) => {
     console.log(`\n🛑 Nhận tín hiệu [${signal}]. Đang đóng máy chủ nhẹ nhàng...`);
     try {
-      flushActivityLogs();
+      await flushActivityLogs();
     } catch {}
     server.close(() => {
       console.log('🛑 [HTTP/Socket.IO] Đã đóng các kết nối đang chờ.');

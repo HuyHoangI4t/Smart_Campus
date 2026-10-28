@@ -1,19 +1,20 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Linking, ActivityIndicator, Modal } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Linking, ActivityIndicator, Modal, BackHandler } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import * as Location from "expo-location";
 import { AppColors } from "../../../src/constants/appColors";
+import { useTheme } from "../../../src/context/ThemeContext";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
 import { apiSubmitSos, apiGetSosConfig } from "../../../src/services/api";
 
 const DEFAULT_HOTLINES = [
-  { label: "Bảo vệ & An ninh cơ sở (Huy Hoàng)", phone: "0329106783", icon: "shield" as const },
-  { label: "Trạm Y tế sinh viên (Duyên)", phone: "0978269097", icon: "plus-circle" as const },
-  { label: "Cấp cứu 115 (Xuân Hoàng)", phone: "0326896303", icon: "phone-call" as const },
-  { label: "Cứu hỏa PCCC 114 (Kiên)", phone: "0968372005", icon: "alert-octagon" as const },
+  { label: "Bảo vệ & An ninh cơ sở", phone: "0329106783", icon: "shield" as const },
+  { label: "Trạm Y tế sinh viên", phone: "0978269097", icon: "plus-circle" as const },
+  { label: "Cấp cứu 115", phone: "0326896303", icon: "phone-call" as const },
+  { label: "Cứu hỏa PCCC 114", phone: "0968372005", icon: "alert-octagon" as const },
 ];
 
 const DEFAULT_INCIDENT_TYPES = [
@@ -26,6 +27,7 @@ const DEFAULT_INCIDENT_TYPES = [
 
 export default function SosScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const [hotlines, setHotlines] = useState(DEFAULT_HOTLINES);
   const [incidentTypes, setIncidentTypes] = useState(DEFAULT_INCIDENT_TYPES);
   const [incidentType, setIncidentType] = useState("Cần hỗ trợ y tế");
@@ -81,6 +83,17 @@ export default function SosScreen() {
   }, []);
 
   const handleCall = (phone: string) => {
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        router.replace("/(main)/home");
+        return true;
+      };
+      const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+      return () => sub.remove();
+    }, [router])
+  );
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     Linking.openURL(`tel:${phone}`).catch(() => {
       Alert.alert("Lỗi", `Không thể mở trình gọi điện thoại cho số ${phone}.`);
@@ -142,7 +155,7 @@ export default function SosScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: AppColors.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <NavHeader
         title="Trợ giúp khẩn cấp SOS"
         subtitle="Hệ thống báo động an ninh & y tế học đường"
@@ -157,9 +170,9 @@ export default function SosScreen() {
           style={{
             padding: 20,
             borderRadius: 20,
-            backgroundColor: "#FEF2F2",
+            backgroundColor: isDark ? "rgba(220, 38, 38, 0.15)" : "#FEF2F2",
             borderWidth: 2,
-            borderColor: "#FECACA",
+            borderColor: isDark ? "rgba(220, 38, 38, 0.35)" : "#FECACA",
             alignItems: "center",
             marginBottom: 24,
           }}
@@ -186,13 +199,13 @@ export default function SosScreen() {
           <Text style={{ fontSize: 18, fontWeight: "900", color: "#DC2626", textAlign: "center" }}>
             BÁO ĐỘNG KHẨN CẤP
           </Text>
-          <Text style={{ fontSize: 13, color: AppColors.textSecondary, textAlign: "center", marginTop: 4, paddingHorizontal: 10 }}>
+          <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: "center", marginTop: 4, paddingHorizontal: 10 }}>
             Chỉ sử dụng khi bạn hoặc người xung quanh gặp tình huống nguy hiểm về sức khỏe hoặc an ninh.
           </Text>
         </View>
 
         {/* Loại sự cố */}
-        <Text style={{ fontSize: 14, fontWeight: "800", color: AppColors.text, marginBottom: 8 }}>
+        <Text style={{ fontSize: 14, fontWeight: "800", color: colors.text, marginBottom: 8 }}>
           Loại sự cố khẩn cấp
         </Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
@@ -206,12 +219,12 @@ export default function SosScreen() {
                   paddingVertical: 8,
                   paddingHorizontal: 12,
                   borderRadius: 16,
-                  backgroundColor: isSelected ? "#DC2626" : AppColors.cardBg,
+                  backgroundColor: isSelected ? "#DC2626" : colors.cardBg,
                   borderWidth: 1,
-                  borderColor: isSelected ? "#DC2626" : AppColors.cardBorder,
+                  borderColor: isSelected ? "#DC2626" : colors.cardBorder,
                 }}
               >
-                <Text style={{ fontSize: 12, fontWeight: "700", color: isSelected ? "#FFFFFF" : AppColors.text }}>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: isSelected ? "#FFFFFF" : colors.text }}>
                   {type}
                 </Text>
               </TouchableOpacity>
@@ -220,23 +233,23 @@ export default function SosScreen() {
         </View>
 
         {/* Vị trí */}
-        <Text style={{ fontSize: 14, fontWeight: "800", color: AppColors.text, marginBottom: 6 }}>
+        <Text style={{ fontSize: 14, fontWeight: "800", color: colors.text, marginBottom: 6 }}>
           Vị trí hiện tại của bạn <Text style={{ color: "#DC2626" }}>*</Text>
         </Text>
         <TextInput
           placeholder="Ví dụ: Tầng 3 Nhà 7, trước cửa phòng 7.3.18..."
-          placeholderTextColor={AppColors.textMuted}
+          placeholderTextColor={colors.textMuted}
           value={locationText}
           onChangeText={setLocationText}
           style={{
             height: 48,
             borderRadius: 14,
-            backgroundColor: AppColors.cardBg,
+            backgroundColor: isDark ? "#0F172A" : colors.cardBg,
             borderWidth: 1,
-            borderColor: AppColors.cardBorder,
+            borderColor: colors.cardBorder,
             paddingHorizontal: 14,
             fontSize: 14,
-            color: AppColors.text,
+            color: colors.text,
             marginBottom: gpsCoords || isLocating ? 6 : 14,
           }}
         />
@@ -244,35 +257,35 @@ export default function SosScreen() {
         {gpsCoords ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 14 }}>
             <Feather name="navigation" size={12} color="#16A34A" />
-            <Text style={{ fontSize: 11, color: "#16A34A", fontWeight: "700" }}>
+            <Text style={{ fontSize: 11, color: isDark ? "#34D399" : "#16A34A", fontWeight: "700" }}>
               Đã định vị GPS: ({gpsCoords.latitude.toFixed(5)}, {gpsCoords.longitude.toFixed(5)})
             </Text>
           </View>
         ) : isLocating ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 14 }}>
             <ActivityIndicator size="small" color="#DC2626" />
-            <Text style={{ fontSize: 11, color: AppColors.textMuted }}>Đang lấy tọa độ GPS của bạn...</Text>
+            <Text style={{ fontSize: 11, color: colors.textMuted }}>Đang lấy tọa độ GPS của bạn...</Text>
           </View>
         ) : null}
 
         {/* Mô tả bổ sung */}
-        <Text style={{ fontSize: 14, fontWeight: "800", color: AppColors.text, marginBottom: 6 }}>
+        <Text style={{ fontSize: 14, fontWeight: "800", color: colors.text, marginBottom: 6 }}>
           Ghi chú thêm tình huống (tùy chọn)
         </Text>
         <TextInput
           placeholder="Mô tả số người liên quan hoặc tình trạng sơ bộ..."
-          placeholderTextColor={AppColors.textMuted}
+          placeholderTextColor={colors.textMuted}
           value={notes}
           onChangeText={setNotes}
           style={{
             height: 48,
             borderRadius: 14,
-            backgroundColor: AppColors.cardBg,
+            backgroundColor: isDark ? "#0F172A" : colors.cardBg,
             borderWidth: 1,
-            borderColor: AppColors.cardBorder,
+            borderColor: colors.cardBorder,
             paddingHorizontal: 14,
             fontSize: 14,
-            color: AppColors.text,
+            color: colors.text,
             marginBottom: 20,
           }}
         />
@@ -311,7 +324,7 @@ export default function SosScreen() {
         </TouchableOpacity>
 
         {/* Hotline liên hệ trực tiếp */}
-        <Text style={{ fontSize: 14, fontWeight: "800", color: AppColors.text, marginBottom: 12 }}>
+        <Text style={{ fontSize: 14, fontWeight: "800", color: colors.text, marginBottom: 12 }}>
           Đường dây nóng hỗ trợ trực tiếp
         </Text>
         <View style={{ gap: 10 }}>
@@ -323,9 +336,9 @@ export default function SosScreen() {
               style={{
                 padding: 14,
                 borderRadius: 14,
-                backgroundColor: AppColors.cardBg,
+                backgroundColor: colors.cardBg,
                 borderWidth: 1,
-                borderColor: AppColors.cardBorder,
+                borderColor: colors.cardBorder,
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -337,7 +350,7 @@ export default function SosScreen() {
                     width: 38,
                     height: 38,
                     borderRadius: 19,
-                    backgroundColor: "#FEF2F2",
+                    backgroundColor: isDark ? "rgba(220, 38, 38, 0.18)" : "#FEF2F2",
                     alignItems: "center",
                     justifyContent: "center",
                   }}
@@ -345,8 +358,8 @@ export default function SosScreen() {
                   <Feather name={h.icon} size={18} color="#DC2626" />
                 </View>
                 <View>
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: AppColors.text }}>{h.label}</Text>
-                  <Text style={{ fontSize: 13, color: AppColors.primary, fontWeight: "800", marginTop: 2 }}>{h.phone}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>{h.label}</Text>
+                  <Text style={{ fontSize: 13, color: colors.primary, fontWeight: "800", marginTop: 2 }}>{h.phone}</Text>
                 </View>
               </View>
 
@@ -355,12 +368,12 @@ export default function SosScreen() {
                   paddingHorizontal: 12,
                   paddingVertical: 6,
                   borderRadius: 10,
-                  backgroundColor: "#ECFDF5",
+                  backgroundColor: isDark ? "rgba(16, 185, 129, 0.18)" : "#ECFDF5",
                   borderWidth: 1,
-                  borderColor: "#A7F3D0",
+                  borderColor: isDark ? "rgba(16, 185, 129, 0.35)" : "#A7F3D0",
                 }}
               >
-                <Text style={{ fontSize: 12, fontWeight: "800", color: "#059669" }}>Gọi ngay</Text>
+                <Text style={{ fontSize: 12, fontWeight: "800", color: isDark ? "#34D399" : "#059669" }}>Gọi ngay</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -390,10 +403,12 @@ export default function SosScreen() {
             style={{
               width: "100%",
               maxWidth: 360,
-              backgroundColor: "#FFFFFF",
+              backgroundColor: colors.cardBg,
               borderRadius: 24,
               padding: 24,
               alignItems: "center",
+              borderWidth: isDark ? 1 : 0,
+              borderColor: colors.cardBorder,
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 10 },
               shadowOpacity: 0.25,
@@ -407,9 +422,9 @@ export default function SosScreen() {
                 width: 76,
                 height: 76,
                 borderRadius: 38,
-                backgroundColor: "#FEF2F2",
+                backgroundColor: isDark ? "rgba(220, 38, 38, 0.18)" : "#FEF2F2",
                 borderWidth: 5,
-                borderColor: "#FEE2E2",
+                borderColor: isDark ? "rgba(220, 38, 38, 0.3)" : "#FEE2E2",
                 alignItems: "center",
                 justifyContent: "center",
                 marginBottom: 16,
@@ -445,7 +460,7 @@ export default function SosScreen() {
             <Text
               style={{
                 fontSize: 13,
-                color: AppColors.textSecondary,
+                color: colors.textSecondary,
                 textAlign: "center",
                 marginTop: 6,
                 lineHeight: 18,
@@ -458,26 +473,26 @@ export default function SosScreen() {
             <View
               style={{
                 width: "100%",
-                backgroundColor: "#F8FAFC",
+                backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
                 borderRadius: 16,
                 padding: 14,
                 marginTop: 16,
                 borderWidth: 1,
-                borderColor: "#E2E8F0",
+                borderColor: colors.cardBorder,
                 gap: 8,
               }}
             >
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                <Text style={{ fontSize: 12, fontWeight: "700", color: "#64748B" }}>Sự cố:</Text>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: colors.textSecondary }}>Sự cố:</Text>
                 <Text style={{ fontSize: 12, fontWeight: "800", color: "#DC2626" }}>{sentInfo.type}</Text>
               </View>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <Text style={{ fontSize: 12, fontWeight: "700", color: "#64748B" }}>Vị trí:</Text>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: colors.textSecondary }}>Vị trí:</Text>
                 <Text
                   style={{
                     fontSize: 12,
                     fontWeight: "700",
-                    color: "#0F172A",
+                    color: colors.text,
                     flex: 1,
                     textAlign: "right",
                     marginLeft: 8,
@@ -488,8 +503,8 @@ export default function SosScreen() {
                 </Text>
               </View>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                <Text style={{ fontSize: 12, fontWeight: "700", color: "#64748B" }}>Thời gian:</Text>
-                <Text style={{ fontSize: 12, fontWeight: "700", color: "#0F172A" }}>{sentInfo.time}</Text>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: colors.textSecondary }}>Thời gian:</Text>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: colors.text }}>{sentInfo.time}</Text>
               </View>
             </View>
 
@@ -499,17 +514,17 @@ export default function SosScreen() {
                 flexDirection: "row",
                 alignItems: "center",
                 gap: 8,
-                backgroundColor: "#FFFBEB",
+                backgroundColor: isDark ? "rgba(245, 158, 11, 0.15)" : "#FFFBEB",
                 borderWidth: 1,
-                borderColor: "#FDE68A",
+                borderColor: isDark ? "rgba(245, 158, 11, 0.35)" : "#FDE68A",
                 borderRadius: 12,
                 padding: 10,
                 marginTop: 12,
                 width: "100%",
               }}
             >
-              <Feather name="alert-circle" size={16} color="#D97706" />
-              <Text style={{ fontSize: 11, color: "#B45309", fontWeight: "600", flex: 1, lineHeight: 15 }}>
+              <Feather name="alert-circle" size={16} color={isDark ? "#FBBF24" : "#D97706"} />
+              <Text style={{ fontSize: 11, color: isDark ? "#FBBF24" : "#B45309", fontWeight: "600", flex: 1, lineHeight: 15 }}>
                 Vui lòng giữ bình tĩnh, ở nguyên vị trí an toàn. Lực lượng cứu hộ đang tiếp cận!
               </Text>
             </View>
@@ -548,13 +563,13 @@ export default function SosScreen() {
                 activeOpacity={0.8}
                 style={{
                   height: 44,
-                  backgroundColor: "#F1F5F9",
+                  backgroundColor: isDark ? "#334155" : "#F1F5F9",
                   borderRadius: 14,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Text style={{ fontSize: 13, fontWeight: "700", color: "#475569" }}>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: isDark ? "#F8FAFC" : "#475569" }}>
                   Đã hiểu & Về trang chủ
                 </Text>
               </TouchableOpacity>

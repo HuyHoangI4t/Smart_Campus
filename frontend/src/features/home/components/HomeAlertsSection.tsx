@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet, TouchableOpacity } from "react-nativ
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { AppColors } from "../../../constants/appColors";
+import { useTheme } from "../../../context/ThemeContext";
 import { LoginRequiredCard } from "../../../components/LoginRequiredCard";
 import { NotificationAlertItem } from "../types";
 
@@ -21,6 +22,8 @@ export const HomeAlertsSection = React.memo(function HomeAlertsSection({
   onDismissAlert,
   onDismissAll,
 }: HomeAlertsSectionProps) {
+  const { colors, isDark } = useTheme();
+
   const handleAlertPress = (item: NotificationAlertItem) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     onSelectAlert(item);
@@ -30,9 +33,19 @@ export const HomeAlertsSection = React.memo(function HomeAlertsSection({
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <View style={styles.titleWithBadge}>
-          <Text style={styles.title}>Thông báo & Cảnh báo</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Thông báo & Cảnh báo</Text>
           {isLoggedIn && notificationAlerts && notificationAlerts.length > 0 ? (
-            <Text style={styles.countBadge}>{notificationAlerts.length} tin mới</Text>
+            <Text
+              style={[
+                styles.countBadge,
+                {
+                  backgroundColor: isDark ? "rgba(59, 130, 246, 0.2)" : "#EFF6FF",
+                  color: isDark ? "#60A5FA" : colors.info,
+                },
+              ]}
+            >
+              {notificationAlerts.length} tin mới
+            </Text>
           ) : null}
         </View>
 
@@ -42,7 +55,10 @@ export const HomeAlertsSection = React.memo(function HomeAlertsSection({
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
               onDismissAll();
             }}
-            style={styles.clearAllBtn}
+            style={[
+              styles.clearAllBtn,
+              isDark && { backgroundColor: "rgba(239, 68, 68, 0.2)" },
+            ]}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityRole="button"
             accessibilityLabel="Xoá tất cả thông báo"
@@ -63,20 +79,20 @@ export const HomeAlertsSection = React.memo(function HomeAlertsSection({
       ) : notificationAlerts && notificationAlerts.length > 0 ? (
         <View style={styles.list}>
           {notificationAlerts.map((item) => {
-            let bg = "#F0FDF4";
-            let border = "#BBF7D0";
-            let iconColor = AppColors.success;
+            let bg = isDark ? "rgba(16, 185, 129, 0.15)" : "#F0FDF4";
+            let border = isDark ? "rgba(16, 185, 129, 0.35)" : "#BBF7D0";
+            let iconColor = colors.success;
             let iconName: keyof typeof Feather.glyphMap = "check";
 
             if (item.variant === "warning") {
-              bg = "#FFFBEB";
-              border = "#FDE68A";
-              iconColor = AppColors.warning;
+              bg = isDark ? "rgba(245, 158, 11, 0.15)" : "#FFFBEB";
+              border = isDark ? "rgba(245, 158, 11, 0.35)" : "#FDE68A";
+              iconColor = colors.warning;
               iconName = "alert-triangle";
             } else if (item.variant === "info") {
-              bg = "#EFF6FF";
-              border = "#BFDBFE";
-              iconColor = AppColors.info;
+              bg = isDark ? "rgba(59, 130, 246, 0.15)" : "#EFF6FF";
+              border = isDark ? "rgba(59, 130, 246, 0.35)" : "#BFDBFE";
+              iconColor = colors.info;
               iconName = "info";
             }
 
@@ -97,10 +113,10 @@ export const HomeAlertsSection = React.memo(function HomeAlertsSection({
               >
                 <Feather name={iconName} size={18} color={iconColor} />
                 <View style={styles.itemContent}>
-                  <Text style={styles.itemTitle} numberOfLines={1}>
+                  <Text style={[styles.itemTitle, { color: colors.text }]} numberOfLines={1}>
                     {item.title}
                   </Text>
-                  <Text style={styles.itemDate}>
+                  <Text style={[styles.itemDate, { color: colors.textSecondary }]}>
                     {item.date || item.subtitle || "Hôm nay"}
                   </Text>
                 </View>
@@ -117,19 +133,19 @@ export const HomeAlertsSection = React.memo(function HomeAlertsSection({
                     accessibilityRole="button"
                     accessibilityLabel={`Xoá thông báo ${item.title}`}
                   >
-                    <Feather name="x" size={15} color="#94A3B8" />
+                    <Feather name="x" size={15} color={colors.textSubtle} />
                   </TouchableOpacity>
                 ) : (
-                  <Feather name="chevron-right" size={16} color={AppColors.textSubtle} />
+                  <Feather name="chevron-right" size={16} color={colors.textSubtle} />
                 )}
               </Pressable>
             );
           })}
         </View>
       ) : (
-        <View style={styles.emptyCard}>
-          <Feather name="bell-off" size={16} color={AppColors.textSubtle} />
-          <Text style={styles.emptyText}>Chưa có thông báo từ trường</Text>
+        <View style={[styles.emptyCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
+          <Feather name="bell-off" size={16} color={colors.textSubtle} />
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Chưa có thông báo từ trường</Text>
         </View>
       )}
     </View>
@@ -155,13 +171,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: "900",
-    color: AppColors.text,
   },
   countBadge: {
     fontSize: 12,
     fontWeight: "700",
-    color: AppColors.info,
-    backgroundColor: "#EFF6FF",
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 8,
@@ -211,18 +224,14 @@ const styles = StyleSheet.create({
   itemTitle: {
     fontSize: 13.5,
     fontWeight: "700",
-    color: AppColors.text,
     marginBottom: 3,
   },
   itemDate: {
     fontSize: 11,
-    color: AppColors.textSecondary,
     fontWeight: "500",
   },
   emptyCard: {
-    backgroundColor: AppColors.cardBg,
     borderWidth: 1,
-    borderColor: AppColors.cardBorder,
     borderRadius: 16,
     paddingVertical: 18,
     paddingHorizontal: 16,
@@ -233,7 +242,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 13,
-    color: AppColors.textSecondary,
     fontWeight: "500",
   },
 });

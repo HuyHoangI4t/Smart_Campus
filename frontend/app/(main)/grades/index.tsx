@@ -4,12 +4,14 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { AppColors } from "../../../src/constants/appColors";
+import { useTheme } from "../../../src/context/ThemeContext";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
 import { apiGetGrades, readLocalCache } from "../../../src/services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTabBarScrollHandler } from "../../../src/components/MainTabs";
 import { GradesSkeleton } from "../../../src/components/Skeleton";
+import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
 
 interface CourseGrade {
   code: string;
@@ -30,11 +32,13 @@ const FALLBACK_GRADES: CourseGrade[] = [
 
 export default function GradesScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const { onScroll: onTabBarScroll, bottomPadding } = useTabBarScrollHandler();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [grades, setGrades] = useState<CourseGrade[]>(FALLBACK_GRADES);
   const [studentInfo, setStudentInfo] = useState<{ mssv: string; name: string }>({ mssv: "", name: "" });
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [isOfflineData, setIsOfflineData] = useState(false);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
 
@@ -50,8 +54,15 @@ export default function GradesScreen() {
         setStudentInfo({ mssv, name });
       }
 
-      const isRealAccount = mssv && mssv !== "guest";
-      const cacheKey = `@offline_grades_${isRealAccount ? mssv : 'current'}`;
+      const isRealAccount = Boolean(mssv && mssv !== "guest");
+      setIsLoggedIn(isRealAccount);
+      if (!isRealAccount) {
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
+      const cacheKey = `@offline_grades_${mssv}`;
       const cached = await readLocalCache<any>(cacheKey);
       if (cached && cached.data && Array.isArray(cached.data.data) && cached.data.data.length > 0) {
         const parsed: CourseGrade[] = cached.data.data.map((item: any) => ({
@@ -74,19 +85,25 @@ export default function GradesScreen() {
         setIsOfflineData(false);
       }
 
-      if (res && res.success && res.data && res.data.length > 0) {
+      if (res && res.success) {
         if (res.ho_ten && (!name || name === "Sinh viên")) {
           setStudentInfo((prev) => ({ ...prev, name: res.ho_ten }));
         }
-        const parsed: CourseGrade[] = res.data.map((item: any, idx: number) => ({
-          code: item.code || "",
-          name: item.ten_hp || item.name || "Học phần",
-          credits: Number(item.so_tin_chi || item.credits || 3),
-          grade10: item.diem_hp !== null && item.diem_hp !== undefined && !isNaN(Number(item.diem_hp)) ? Number(item.diem_hp) : (item.grade10 ? Number(item.grade10) : 0),
-          gradeLetter: item.diem_chu || (item.diem_hp >= 8.5 ? "A" : item.diem_hp >= 7.0 ? "B" : "C"),
-          semester: item.hoc_ky || "HK1 (2026)",
-        }));
-        setGrades(parsed);
+        if (Array.isArray(res.data)) {
+          if (res.data.length > 0) {
+            const parsed: CourseGrade[] = res.data.map((item: any) => ({
+              code: item.code || "",
+              name: item.ten_hp || item.name || "Học phần",
+              credits: Number(item.so_tin_chi || item.credits || 3),
+              grade10: item.diem_hp !== null && item.diem_hp !== undefined && !isNaN(Number(item.diem_hp)) ? Number(item.diem_hp) : (item.grade10 ? Number(item.grade10) : 0),
+              gradeLetter: item.diem_chu || (item.diem_hp >= 8.5 ? "A" : item.diem_hp >= 7.0 ? "B" : "C"),
+              semester: item.hoc_ky || "HK1 (2026)",
+            }));
+            setGrades(parsed);
+          } else if (isRealAccount) {
+            setGrades([]);
+          }
+        }
       }
     } catch {
       // Keep fallbacks
@@ -108,7 +125,16 @@ export default function GradesScreen() {
 
   const [selectedSemester, setSelectedSemester] = useState("Tất cả");
 
-  const convertTo4Scale = (score10: number): number => {
+  const convertTo4Scale = (score10: number, diemChu?: string): number => {
+    if (diemChu) {
+      const uc = diemChu.toUpperCase().trim();
+      if (uc === "A") return 4.0;
+      if (uc === "B") return 3.0;
+      if (uc === "C") return 2.0;
+      if (uc === "D") return 1.0;
+      if (uc === "F") return 0.0;
+      if (uc === "P" || uc === "X") return 0.0;
+    }
     if (score10 >= 8.5) return 4.0;
     if (score10 >= 7.0) return 3.0;
     if (score10 >= 5.5) return 2.0;
@@ -149,7 +175,7 @@ export default function GradesScreen() {
       totalGradedCredits > 0
         ? (gradedCourses.reduce((acc, curr) => acc + curr.grade10 * curr.credits, 0) / totalGradedCredits).toFixed(2)
         : "0.00";
-    const totalPoints4 = gradedCourses.reduce((acc, curr) => acc + convertTo4Scale(curr.grade10) * curr.credits, 0);
+    const totalPoints4 = gradedCourses.reduce((acc, curr) => acc + convertTo4Scale(curr.grade10, curr.gradeLetter) * curr.credits, 0);
     const calculatedGpa4 =
       totalGradedCredits > 0 ? (totalPoints4 / totalGradedCredits).toFixed(2) : "0.00";
     const rank = getAcademicRank(Number(calculatedGpa4));
@@ -164,14 +190,13 @@ export default function GradesScreen() {
 
   const getBadgeColor = (letter: string) => {
     const uc = (letter || "").toUpperCase().trim();
-    if (uc === "A") return { bg: "#ECFDF5", text: "#059669", border: "#A7F3D0" };
-    if (uc === "B") return { bg: "#EFF6FF", text: "#2563EB", border: "#BFDBFE" };
-    if (uc === "C") return { bg: "#FFFBEB", text: "#D97706", border: "#FDE68A" };
-    if (uc === "D") return { bg: "#FEF3C7", text: "#B45309", border: "#FDE68A" };
-    if (uc === "P") return { bg: "#F0FDF4", text: "#16A34A", border: "#BBF7D0" };
-    if (uc === "F") return { bg: "#FEF2F2", text: "#DC2626", border: "#FECACA" };
-    if (uc === "X") return { bg: "#FEF2F2", text: "#EF4444", border: "#FECACA" };
-    return { bg: "#F3F4F6", text: "#4B5563", border: "#E5E7EB" };
+    if (uc === "A") return isDark ? { bg: "rgba(16, 185, 129, 0.18)", text: "#34D399", border: "rgba(52, 211, 153, 0.3)" } : { bg: "#ECFDF5", text: "#059669", border: "#A7F3D0" };
+    if (uc === "B") return isDark ? { bg: "rgba(59, 130, 246, 0.18)", text: "#60A5FA", border: "rgba(96, 165, 250, 0.3)" } : { bg: "#EFF6FF", text: "#2563EB", border: "#BFDBFE" };
+    if (uc === "C") return isDark ? { bg: "rgba(245, 158, 11, 0.18)", text: "#FBBF24", border: "rgba(251, 191, 36, 0.3)" } : { bg: "#FFFBEB", text: "#D97706", border: "#FDE68A" };
+    if (uc === "D") return isDark ? { bg: "rgba(217, 119, 6, 0.18)", text: "#F59E0B", border: "rgba(245, 158, 11, 0.3)" } : { bg: "#FEF3C7", text: "#B45309", border: "#FDE68A" };
+    if (uc === "P") return isDark ? { bg: "rgba(34, 197, 94, 0.18)", text: "#4ADE80", border: "rgba(74, 222, 128, 0.3)" } : { bg: "#F0FDF4", text: "#16A34A", border: "#BBF7D0" };
+    if (uc === "F" || uc === "X") return isDark ? { bg: "rgba(239, 68, 68, 0.18)", text: "#F87171", border: "rgba(248, 113, 113, 0.3)" } : { bg: "#FEF2F2", text: "#DC2626", border: "#FECACA" };
+    return isDark ? { bg: "#1E293B", text: "#94A3B8", border: "#334155" } : { bg: "#F3F4F6", text: "#4B5563", border: "#E5E7EB" };
   };
 
   const subtitle = studentInfo.mssv && studentInfo.mssv !== "guest"
@@ -179,62 +204,78 @@ export default function GradesScreen() {
     : "Tra cứu điểm thi & Điểm tích lũy";
 
   return (
-    <View style={{ flex: 1, backgroundColor: AppColors.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <NavHeader
         title="Kết quả học tập"
-        subtitle={subtitle}
+        subtitle={isLoggedIn ? subtitle : "Tra cứu điểm thi & Điểm tích lũy"}
         rightElement={
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-              router.push("/(main)/grades/grades_detail");
-            }}
-            style={({ pressed }) => [
-              {
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 14,
-                backgroundColor: "rgba(255,255,255,0.2)",
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 4,
-                minHeight: 36,
-              },
-              pressed && { opacity: 0.75, transform: [{ scale: 0.96 }] },
-            ]}
-            hitSlop={6}
-            accessibilityRole="button"
-            accessibilityLabel="Xem chi tiết bảng điểm"
-          >
-            <Feather name="file-text" size={13} color="#FFFFFF" />
-            <Text style={{ fontSize: 11.5, fontWeight: "700", color: "#FFFFFF" }}>Chi tiết</Text>
-          </Pressable>
+          isLoggedIn ? (
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                router.push("/(main)/grades/grades_detail");
+              }}
+              style={({ pressed }) => [
+                {
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 14,
+                  backgroundColor: "rgba(255,255,255,0.2)",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 4,
+                  minHeight: 36,
+                },
+                pressed && { opacity: 0.75, transform: [{ scale: 0.96 }] },
+              ]}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel="Xem chi tiết bảng điểm"
+            >
+              <Feather name="file-text" size={13} color="#FFFFFF" />
+              <Text style={{ fontSize: 11.5, fontWeight: "700", color: "#FFFFFF" }}>Chi tiết</Text>
+            </Pressable>
+          ) : null
         }
       />
 
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16, paddingBottom: bottomPadding }}
-        onScroll={onTabBarScroll}
-        scrollEventThrottle={16}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      >
+      {isLoggedIn === null || loading ? (
+        <View style={{ flex: 1, padding: 16 }}>
+          <GradesSkeleton />
+        </View>
+      ) : !isLoggedIn ? (
+        <View style={{ flex: 1, paddingBottom: bottomPadding }}>
+          <LoginRequiredCard
+            mode="fullscreen"
+            icon="bar-chart-2"
+            title="Vui lòng đăng nhập để tiếp tục"
+            message="Tính năng Kết quả học tập dành riêng cho sinh viên Đại học Tây Nguyên. Vui lòng đăng nhập tài khoản sinh viên để tra cứu điểm thi và GPA."
+          />
+        </View>
+      ) : (
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: bottomPadding }}
+          onScroll={onTabBarScroll}
+          scrollEventThrottle={16}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+        >
         {isOfflineData && (
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
-              backgroundColor: "#FEF3C7",
+              backgroundColor: isDark ? "rgba(245, 158, 11, 0.15)" : "#FEF3C7",
               borderWidth: 1,
-              borderColor: "#FDE68A",
+              borderColor: isDark ? "rgba(245, 158, 11, 0.3)" : "#FDE68A",
               paddingVertical: 8,
               paddingHorizontal: 12,
               borderRadius: 12,
               marginBottom: 14,
             }}
           >
-            <Feather name="wifi-off" size={15} color="#D97706" style={{ marginRight: 8 }} />
-            <Text style={{ fontSize: 12, color: "#92400E", fontWeight: "600", flex: 1 }}>
+            <Feather name="wifi-off" size={15} color={isDark ? "#FBBF24" : "#D97706"} style={{ marginRight: 8 }} />
+            <Text style={{ fontSize: 12, color: isDark ? "#FBBF24" : "#92400E", fontWeight: "600", flex: 1 }}>
               Đang xem điểm số lưu ngoại tuyến {cachedAt ? `(lưu lúc ${cachedAt})` : ""} • Vuốt xuống để cập nhật lại
             </Text>
           </View>
@@ -245,9 +286,9 @@ export default function GradesScreen() {
           style={{
             padding: 20,
             borderRadius: 20,
-            backgroundColor: AppColors.primary,
+            backgroundColor: colors.primary,
             marginBottom: 16,
-            shadowColor: AppColors.primary,
+            shadowColor: colors.primary,
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.25,
             shadowRadius: 8,
@@ -339,9 +380,9 @@ export default function GradesScreen() {
                     paddingVertical: 8,
                     paddingHorizontal: 16,
                     borderRadius: 20,
-                    backgroundColor: isSelected ? AppColors.primary : AppColors.cardBg,
+                    backgroundColor: isSelected ? colors.primary : colors.cardBg,
                     borderWidth: 1,
-                    borderColor: isSelected ? AppColors.primary : AppColors.cardBorder,
+                    borderColor: isSelected ? colors.primary : colors.cardBorder,
                     minHeight: 38,
                     justifyContent: "center",
                   },
@@ -355,7 +396,7 @@ export default function GradesScreen() {
                   style={{
                     fontSize: 12.5,
                     fontWeight: isSelected ? "800" : "600",
-                    color: isSelected ? "#FFFFFF" : AppColors.textSecondary,
+                    color: isSelected ? "#FFFFFF" : colors.textSecondary,
                   }}
                 >
                   {sem}
@@ -367,10 +408,10 @@ export default function GradesScreen() {
 
         {/* Danh sách học phần */}
         <View style={[s.row, s.between, { alignItems: "center", marginBottom: 12 }]}>
-          <Text style={{ fontSize: 16, fontWeight: "800", color: AppColors.text }}>
+          <Text style={{ fontSize: 16, fontWeight: "800", color: colors.text }}>
             Học phần đã có điểm ({displayedGrades.length})
           </Text>
-          <Text style={{ fontSize: 12, color: AppColors.textMuted }}>Kéo xuống để cập nhật</Text>
+          <Text style={{ fontSize: 12, color: colors.textMuted }}>Kéo xuống để cập nhật</Text>
         </View>
 
         {loading || refreshing ? (
@@ -380,10 +421,10 @@ export default function GradesScreen() {
             style={{
               paddingVertical: 40,
               paddingHorizontal: 24,
-              backgroundColor: AppColors.cardBg,
+              backgroundColor: colors.cardBg,
               borderRadius: 16,
               borderWidth: 1,
-              borderColor: AppColors.cardBorder,
+              borderColor: colors.cardBorder,
               alignItems: "center",
               justifyContent: "center",
             }}
@@ -393,18 +434,18 @@ export default function GradesScreen() {
                 width: 48,
                 height: 48,
                 borderRadius: 24,
-                backgroundColor: AppColors.muted,
+                backgroundColor: colors.muted,
                 alignItems: "center",
                 justifyContent: "center",
                 marginBottom: 10,
               }}
             >
-              <Feather name="inbox" size={24} color={AppColors.textSubtle} />
+              <Feather name="inbox" size={24} color={colors.textSubtle} />
             </View>
-            <Text style={{ fontSize: 14, fontWeight: "700", color: AppColors.text, marginBottom: 4 }}>
+            <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
               Không có học phần nào
             </Text>
-            <Text style={{ color: AppColors.textSecondary, fontSize: 12, textAlign: "center", marginBottom: 14 }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 12, textAlign: "center", marginBottom: 14 }}>
               Không tìm thấy điểm của học kỳ này. Bạn có thể chọn xem tất cả học kỳ.
             </Text>
             {selectedSemester !== "Tất cả" && (
@@ -415,9 +456,9 @@ export default function GradesScreen() {
                 }}
                 style={({ pressed }) => [
                   {
-                    backgroundColor: `${AppColors.primary}12`,
+                    backgroundColor: isDark ? "rgba(99, 102, 241, 0.15)" : `${colors.primary}12`,
                     borderWidth: 1,
-                    borderColor: `${AppColors.primary}30`,
+                    borderColor: isDark ? "rgba(99, 102, 241, 0.3)" : `${colors.primary}30`,
                     paddingHorizontal: 16,
                     paddingVertical: 9,
                     borderRadius: 12,
@@ -427,7 +468,7 @@ export default function GradesScreen() {
                   pressed && { opacity: 0.8 },
                 ]}
               >
-                <Text style={{ fontSize: 13, fontWeight: "700", color: AppColors.primary }}>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.primary }}>
                   Xem tất cả học kỳ
                 </Text>
               </Pressable>
@@ -443,9 +484,9 @@ export default function GradesScreen() {
                   style={{
                     padding: 16,
                     borderRadius: 16,
-                    backgroundColor: AppColors.cardBg,
+                    backgroundColor: colors.cardBg,
                     borderWidth: 1,
-                    borderColor: AppColors.cardBorder,
+                    borderColor: colors.cardBorder,
                     flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "space-between",
@@ -454,16 +495,16 @@ export default function GradesScreen() {
                   <View style={{ flex: 1, paddingRight: 12 }}>
                     <View style={[s.row, { gap: 6, marginBottom: 4 }]}>
                       {item.code ? (
-                        <Text style={{ fontSize: 11, fontWeight: "700", color: AppColors.primary }}>{item.code}</Text>
+                        <Text style={{ fontSize: 11, fontWeight: "700", color: colors.primary }}>{item.code}</Text>
                       ) : null}
-                      <Text style={{ fontSize: 11, color: AppColors.textMuted }}>
+                      <Text style={{ fontSize: 11, color: colors.textMuted }}>
                         {item.code ? "• " : ""}{item.credits} tín chỉ
                       </Text>
                     </View>
-                    <Text style={{ fontSize: 14, fontWeight: "700", color: AppColors.text }} numberOfLines={2}>
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }} numberOfLines={2}>
                       {item.name}
                     </Text>
-                    <Text style={{ fontSize: 11, color: AppColors.textMuted, marginTop: 2 }}>{item.semester}</Text>
+                    <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>{item.semester}</Text>
                   </View>
 
                   <View style={{ alignItems: "flex-end" }}>
@@ -483,7 +524,7 @@ export default function GradesScreen() {
                         {item.gradeLetter === "X" ? "Đang học" : item.gradeLetter === "P" ? "Đạt" : item.gradeLetter}
                       </Text>
                     </View>
-                    <Text style={{ fontSize: 12, fontWeight: "700", color: AppColors.textSecondary, marginTop: 4 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.textSecondary, marginTop: 4 }}>
                       {item.gradeLetter === "X"
                         ? "Chưa có điểm"
                         : item.gradeLetter === "P"
@@ -497,6 +538,7 @@ export default function GradesScreen() {
           </View>
         )}
       </ScrollView>
+      )}
     </View>
   );
 }

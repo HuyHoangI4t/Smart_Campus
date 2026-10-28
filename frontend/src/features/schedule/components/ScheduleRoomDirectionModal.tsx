@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, ScrollView, TouchableOpacity, Modal, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { AppColors } from "../../../constants/appColors";
+import { useTheme } from "../../../context/ThemeContext";
 import { ScheduleItem, RoomDirectionInfo } from "../types";
 
 export interface ScheduleRoomDirectionModalProps {
@@ -21,6 +22,7 @@ export const ScheduleRoomDirectionModal = React.memo(function ScheduleRoomDirect
   onOpenCampusMap,
   onOpenGoogleMaps,
 }: ScheduleRoomDirectionModalProps) {
+  const { colors, isDark } = useTheme();
   if (!item || !direction) return null;
 
   return (
@@ -33,17 +35,17 @@ export const ScheduleRoomDirectionModal = React.memo(function ScheduleRoomDirect
     >
       <View style={styles.backdrop}>
         <TouchableOpacity activeOpacity={1} onPress={onClose} style={styles.backdropTouch} />
-        <View style={styles.sheetContainer}>
+        <View style={[styles.sheetContainer, { backgroundColor: colors.cardBg }]}>
           {/* Modal Header */}
-          <View style={styles.headerRow}>
+          <View style={[styles.headerRow, { borderColor: colors.cardBorder }]}>
             <View style={styles.headerTitleGroup}>
-              <View style={styles.iconCircle}>
-                <Feather name="navigation" size={18} color={AppColors.primary} />
+              <View style={[styles.iconCircle, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.2)' : '#EEF2FF' }]}>
+                <Feather name="navigation" size={18} color={colors.primary} />
               </View>
-              <Text style={styles.headerTitle}>Chỉ đường phòng học</Text>
+              <Text style={[styles.headerTitle, { color: colors.text }]}>Chỉ đường phòng học</Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Feather name="x" size={18} color={AppColors.textSecondary} />
+            <TouchableOpacity onPress={onClose} style={[styles.closeButton, { backgroundColor: colors.muted }]}>
+              <Feather name="x" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -54,33 +56,33 @@ export const ScheduleRoomDirectionModal = React.memo(function ScheduleRoomDirect
           >
             <View style={{ gap: 16 }}>
               {/* Card thông tin môn học & phòng */}
-              <View style={styles.courseSummaryCard}>
-                <Text style={styles.courseName}>{item.course}</Text>
+              <View style={[styles.courseSummaryCard, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: colors.cardBorder }]}>
+                <Text style={[styles.courseName, { color: colors.text }]}>{item.course}</Text>
 
                 <View style={styles.tagWrapRow}>
-                  <View style={styles.roomTag}>
+                  <View style={[styles.roomTag, { backgroundColor: colors.primary }]}>
                     <Text style={styles.roomTagText}>{direction.room}</Text>
                   </View>
-                  <View style={styles.floorTag}>
-                    <Text style={styles.floorTagText}>{direction.floor}</Text>
+                  <View style={[styles.floorTag, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.2)' : '#EEF2FF' }]}>
+                    <Text style={[styles.floorTagText, { color: colors.primary }]}>{direction.floor}</Text>
                   </View>
-                  <View style={styles.buildingTag}>
-                    <Text style={styles.buildingTagText}>{direction.buildingCode}</Text>
+                  <View style={[styles.buildingTag, { backgroundColor: colors.muted }]}>
+                    <Text style={[styles.buildingTagText, { color: colors.textSecondary }]}>{direction.buildingCode}</Text>
                   </View>
                 </View>
 
                 <View style={{ gap: 4 }}>
                   <View style={styles.metaRow}>
-                    <Feather name="clock" size={12} color={AppColors.textMuted} />
-                    <Text style={styles.metaText}>{item.time}</Text>
+                    <Feather name="clock" size={12} color={colors.textMuted} />
+                    <Text style={[styles.metaText, { color: colors.textSecondary }]}>{item.time}</Text>
                   </View>
                   <View style={styles.metaRow}>
-                    <Feather name="user" size={12} color={AppColors.textMuted} />
-                    <Text style={styles.metaText}>{item.lecturer}</Text>
+                    <Feather name="user" size={12} color={colors.textMuted} />
+                    <Text style={[styles.metaText, { color: colors.textSecondary }]}>{item.lecturer}</Text>
                   </View>
                   <View style={styles.metaRow}>
-                    <Feather name="map" size={12} color={AppColors.primary} />
-                    <Text style={[styles.metaText, { fontWeight: "600", color: AppColors.primary }]}>
+                    <Feather name="map" size={12} color={colors.primary} />
+                    <Text style={[styles.metaText, { fontWeight: "600", color: colors.primary }]}>
                       {direction.building}
                     </Text>
                   </View>
@@ -89,7 +91,7 @@ export const ScheduleRoomDirectionModal = React.memo(function ScheduleRoomDirect
 
               {/* Lộ trình từng bước */}
               <View>
-                <Text style={styles.stepsSectionTitle}>Lộ trình di chuyển chi tiết</Text>
+                <Text style={[styles.stepsSectionTitle, { color: colors.text }]}>Lộ trình di chuyển chi tiết</Text>
 
                 <View style={{ gap: 14 }}>
                   {direction.steps.map((step, idx) => (
@@ -100,28 +102,28 @@ export const ScheduleRoomDirectionModal = React.memo(function ScheduleRoomDirect
                           style={[
                             styles.stepNumberBadge,
                             {
-                              backgroundColor: idx === 0 ? AppColors.primary : "#EEF2FF",
-                              borderColor: idx === 0 ? AppColors.primary : "#C7D2FE",
+                              backgroundColor: idx === 0 ? colors.primary : (isDark ? '#1E293B' : '#EEF2FF'),
+                              borderColor: idx === 0 ? colors.primary : (isDark ? colors.cardBorder : '#C7D2FE'),
                             },
                           ]}
                         >
                           <Feather
                             name={step.icon}
                             size={14}
-                            color={idx === 0 ? "#FFFFFF" : AppColors.primary}
+                            color={idx === 0 ? "#FFFFFF" : colors.primary}
                           />
                         </View>
                         {idx < direction.steps.length - 1 && (
-                          <View style={styles.stepConnectorLine} />
+                          <View style={[styles.stepConnectorLine, { backgroundColor: colors.cardBorder }]} />
                         )}
                       </View>
 
                       {/* Content */}
                       <View style={{ flex: 1, paddingTop: 3 }}>
-                        <Text style={styles.stepTitle}>
+                        <Text style={[styles.stepTitle, { color: colors.text }]}>
                           {step.step}. {step.title}
                         </Text>
-                        <Text style={styles.stepDesc}>{step.desc}</Text>
+                        <Text style={[styles.stepDesc, { color: colors.textSecondary }]}>{step.desc}</Text>
                       </View>
                     </View>
                   ))}
@@ -129,15 +131,15 @@ export const ScheduleRoomDirectionModal = React.memo(function ScheduleRoomDirect
               </View>
 
               {/* Lưu ý & tiện ích gần phòng */}
-              <View style={styles.tipsBox}>
+              <View style={[styles.tipsBox, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.12)' : '#F0FDF4', borderColor: isDark ? 'rgba(16, 185, 129, 0.25)' : '#BBF7D0' }]}>
                 <View style={styles.metaRow}>
-                  <Feather name="check-circle" size={14} color="#16A34A" />
-                  <Text style={styles.tipsTitle}>Tiện ích & Lưu ý</Text>
+                  <Feather name="check-circle" size={14} color={isDark ? "#34D399" : "#16A34A"} />
+                  <Text style={[styles.tipsTitle, { color: isDark ? "#34D399" : "#16A34A" }]}>Tiện ích & Lưu ý</Text>
                 </View>
                 {direction.tips.map((tip, idx) => (
                   <View key={idx} style={styles.tipItemRow}>
-                    <Text style={styles.tipBullet}>•</Text>
-                    <Text style={styles.tipText}>{tip}</Text>
+                    <Text style={[styles.tipBullet, { color: isDark ? "#34D399" : "#16A34A" }]}>•</Text>
+                    <Text style={[styles.tipText, { color: isDark ? "#A7F3D0" : "#15803D" }]}>{tip}</Text>
                   </View>
                 ))}
               </View>
@@ -147,7 +149,7 @@ export const ScheduleRoomDirectionModal = React.memo(function ScheduleRoomDirect
                 <TouchableOpacity
                   onPress={onOpenCampusMap}
                   activeOpacity={0.8}
-                  style={styles.mapPrimaryBtn}
+                  style={[styles.mapPrimaryBtn, { backgroundColor: colors.primary }]}
                 >
                   <Feather name="map" size={16} color="#FFFFFF" />
                   <Text style={styles.mapPrimaryBtnText}>Xem trên Bản đồ trường</Text>
@@ -158,7 +160,7 @@ export const ScheduleRoomDirectionModal = React.memo(function ScheduleRoomDirect
                   activeOpacity={0.7}
                   style={styles.closeModalBtn}
                 >
-                  <Text style={styles.closeModalBtnText}>Đóng lại</Text>
+                  <Text style={[styles.closeModalBtnText, { color: colors.textSecondary }]}>Đóng lại</Text>
                 </TouchableOpacity>
               </View>
             </View>

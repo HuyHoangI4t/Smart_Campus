@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { AppColors } from "../../../constants/appColors";
+import { useTheme } from "../../../context/ThemeContext";
 
 export interface QuickActionItem {
   icon: keyof typeof Feather.glyphMap;
@@ -29,6 +29,8 @@ export const HomeQuickActions = React.memo(function HomeQuickActions({
   onNavigate,
   actions = DEFAULT_QUICK_ACTIONS,
 }: HomeQuickActionsProps) {
+  const { colors, isDark } = useTheme();
+
   const handleActionPress = (screen: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     onNavigate(screen);
@@ -36,7 +38,7 @@ export const HomeQuickActions = React.memo(function HomeQuickActions({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Tác vụ nhanh</Text>
+      <Text style={[styles.title, { color: colors.text }]}>Tác vụ nhanh</Text>
 
       <View style={styles.gridRow}>
         {actions.map((qa) => (
@@ -55,14 +57,14 @@ export const HomeQuickActions = React.memo(function HomeQuickActions({
               style={[
                 styles.iconBox,
                 {
-                  backgroundColor: qa.bg,
-                  borderColor: qa.border,
+                  backgroundColor: isDark ? colors.cardBg : qa.bg,
+                  borderColor: isDark ? colors.cardBorder : qa.border,
                 },
               ]}
             >
               <Feather name={qa.icon} size={22} color={qa.fg} />
             </View>
-            <Text style={styles.actionLabel}>{qa.label}</Text>
+            <Text style={[styles.actionLabel, { color: colors.textSecondary }]}>{qa.label}</Text>
           </Pressable>
         ))}
       </View>
@@ -77,41 +79,42 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: "900",
-    color: AppColors.text,
     marginBottom: 12,
     paddingHorizontal: 2,
+    letterSpacing: -0.2,
   },
   gridRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
   },
   actionItem: {
     alignItems: "center",
     width: "22%",
-    minHeight: 80,
+    minHeight: 44, // Touch target
   },
   actionItemPressed: {
-    opacity: 0.85,
+    opacity: 0.8,
     transform: [{ scale: 0.94 }],
   },
   iconBox: {
-    width: 60,
-    height: 60,
-    borderRadius: 18,
-    borderWidth: 1,
+    width: 54,
+    height: 54,
+    borderRadius: 18, // Squircle 18pt
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 6,
+    marginBottom: 8,
+    borderWidth: 1, // Viền Hairline siêu mỏng
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
+    shadowRadius: 5,
+    elevation: 2,
   },
   actionLabel: {
     fontSize: 12,
     fontWeight: "700",
-    color: AppColors.textSecondary,
     textAlign: "center",
+    letterSpacing: 0.1,
   },
 });

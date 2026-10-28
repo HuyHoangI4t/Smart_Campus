@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { AppColors } from "../../../constants/appColors";
+import { useTheme } from "../../../context/ThemeContext";
 import { SCHEDULE_TYPE_OPTIONS, PERIOD_OPTIONS } from "../constants";
 import { WeekDateItem, CustomScheduleType } from "../types";
 import { parseDateVN, formatDateVN, getDayLabelFromDate } from "../utils/dateUtils";
@@ -74,6 +75,7 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
   onSave,
   onClose,
 }: ScheduleCustomModalProps) {
+  const { colors, isDark } = useTheme();
   const { height: windowHeight } = useWindowDimensions();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -124,18 +126,18 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
           style={{ flex: 1 }}
         />
 
-        <View style={[styles.sheetContainer, { maxHeight: dynamicMaxHeight }]}>
+        <View style={[styles.sheetContainer, { maxHeight: dynamicMaxHeight, backgroundColor: colors.cardBg }]}>
           {/* Header Modal */}
-          <View style={styles.headerRow}>
+          <View style={[styles.headerRow, { borderColor: colors.cardBorder }]}>
             <View style={styles.headerTitleGroup}>
-              <View style={styles.iconCircle}>
+              <View style={[styles.iconCircle, { backgroundColor: isDark ? "rgba(245, 158, 11, 0.2)" : "#FEF3C7" }]}>
                 <Feather name={isEditing ? "edit" : "plus-circle"} size={18} color="#D97706" />
               </View>
               <View>
-                <Text style={styles.modalTitle}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>
                   {isEditing ? "Chỉnh sửa lịch học" : "Thêm lịch học / Thực hành"}
                 </Text>
-                <Text style={styles.modalSubtitle}>
+                <Text style={[styles.modalSubtitle, { color: colors.textMuted }]}>
                   {isEditing ? "Cập nhật thông tin ca học" : "Lịch thực hành đột xuất, học bù, kiểm tra"}
                 </Text>
               </View>
@@ -144,9 +146,9 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
             <TouchableOpacity
               onPress={onClose}
               disabled={submitting}
-              style={styles.closeBtn}
+              style={[styles.closeBtn, { backgroundColor: colors.muted }]}
             >
-              <Feather name="x" size={16} color={AppColors.textSecondary} />
+              <Feather name="x" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -162,21 +164,21 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
           >
             {/* Tên môn học */}
             <View>
-              <Text style={styles.fieldLabel}>
+              <Text style={[styles.fieldLabel, { color: colors.text }]}>
                 Tên môn học<Text style={{ color: "#EF4444" }}>*</Text>
               </Text>
               <TextInput
                 value={formCourse}
                 onChangeText={setFormCourse}
                 placeholder=""
-                placeholderTextColor={AppColors.textMuted}
-                style={styles.textInput}
+                placeholderTextColor={colors.textMuted}
+                style={[styles.textInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: colors.cardBorder, color: colors.text }]}
               />
             </View>
 
             {/* Phân loại lịch */}
             <View>
-              <Text style={styles.fieldLabel}>Phân loại lịch</Text>
+              <Text style={[styles.fieldLabel, { color: colors.text }]}>Phân loại lịch</Text>
               <View style={styles.typeGrid}>
                 {SCHEDULE_TYPE_OPTIONS.map((t) => {
                   const isSel = formType === t.key;
@@ -188,26 +190,26 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
                       style={[
                         styles.typeCard,
                         {
-                          backgroundColor: isSel ? t.lightBg : "#F8FAFC",
+                          backgroundColor: isSel ? (isDark ? "rgba(99, 102, 241, 0.18)" : t.lightBg) : (isDark ? "#0F172A" : "#F8FAFC"),
                           borderWidth: isSel ? 1.5 : 1,
-                          borderColor: isSel ? t.color : "#E2E8F0",
+                          borderColor: isSel ? t.color : colors.cardBorder,
                         },
                       ]}
                     >
                       <View
                         style={[
                           styles.typeIconCircle,
-                          { backgroundColor: isSel ? t.bg : "#EDF2F7" },
+                          { backgroundColor: isSel ? t.bg : (isDark ? "#1E293B" : "#EDF2F7") },
                         ]}
                       >
-                        <Feather name={t.icon as any} size={15} color={isSel ? t.color : "#64748B"} />
+                        <Feather name={t.icon as any} size={15} color={isSel ? t.color : colors.textMuted} />
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text
                           style={{
                             fontSize: 12,
                             fontWeight: isSel ? "700" : "600",
-                            color: isSel ? t.color : AppColors.text,
+                            color: isSel ? t.color : colors.text,
                           }}
                           numberOfLines={1}
                         >
@@ -222,17 +224,17 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
             </View>
 
             {/* Chọn ngày học */}
-            <View style={styles.datePickerContainer}>
+            <View style={[styles.datePickerContainer, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: colors.cardBorder }]}>
               <View style={styles.datePickerHeader}>
                 <View style={styles.dateHeaderLeft}>
-                  <View style={styles.calendarIconCircle}>
-                    <Feather name="calendar" size={16} color={AppColors.primary} />
+                  <View style={[styles.calendarIconCircle, { backgroundColor: isDark ? "rgba(99, 102, 241, 0.2)" : "#EEF2FF" }]}>
+                    <Feather name="calendar" size={16} color={colors.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.fieldLabel}>
+                    <Text style={[styles.fieldLabel, { color: colors.text }]}>
                       Ngày học <Text style={{ color: "#EF4444" }}>*</Text>
                     </Text>
-                    <Text style={styles.dateSubText} numberOfLines={1}>
+                    <Text style={[styles.dateSubText, { color: colors.textSecondary }]} numberOfLines={1}>
                       {formDate ? (() => {
                         const p = parseDateVN(formDate);
                         return p ? `${getDayLabelFromDate(p)}, ngày ${formDate}` : formDate;
@@ -246,30 +248,30 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
                   <TouchableOpacity
                     onPress={() => onShiftDate(-1)}
                     activeOpacity={0.7}
-                    style={styles.shiftArrowBtn}
+                    style={[styles.shiftArrowBtn, { backgroundColor: isDark ? "#1E293B" : "#F1F5F9" }]}
                   >
-                    <Feather name="chevron-left" size={14} color={AppColors.textSecondary} />
+                    <Feather name="chevron-left" size={14} color={colors.textSecondary} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => onSelectDate(formatDateVN(new Date()))}
                     activeOpacity={0.7}
-                    style={styles.todayBtn}
+                    style={[styles.todayBtn, { backgroundColor: isDark ? "rgba(99, 102, 241, 0.2)" : "#EEF2FF" }]}
                   >
-                    <Text style={styles.todayBtnText}>Hôm nay</Text>
+                    <Text style={[styles.todayBtnText, { color: colors.primary }]}>Hôm nay</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => onShiftDate(1)}
                     activeOpacity={0.7}
-                    style={styles.shiftArrowBtn}
+                    style={[styles.shiftArrowBtn, { backgroundColor: isDark ? "#1E293B" : "#F1F5F9" }]}
                   >
-                    <Feather name="chevron-right" size={14} color={AppColors.textSecondary} />
+                    <Feather name="chevron-right" size={14} color={colors.textSecondary} />
                   </TouchableOpacity>
                 </View>
               </View>
 
               {/* Chọn nhanh 7 ngày */}
               <View>
-                <Text style={styles.quickDateLabel}>Chọn nhanh các ngày trong tuần:</Text>
+                <Text style={[styles.quickDateLabel, { color: colors.textSecondary }]}>Chọn nhanh các ngày trong tuần:</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
                   {weekDates.map((w) => {
                     const isSel = formDate === w.dateStr;
@@ -281,15 +283,15 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
                         style={[
                           styles.quickDateChip,
                           {
-                            backgroundColor: isSel ? AppColors.primary : "#FFFFFF",
-                            borderColor: isSel ? AppColors.primary : "#E2E8F0",
+                            backgroundColor: isSel ? colors.primary : (isDark ? colors.cardBg : "#FFFFFF"),
+                            borderColor: isSel ? colors.primary : colors.cardBorder,
                           },
                         ]}
                       >
-                        <Text style={{ fontSize: 11, fontWeight: "700", color: isSel ? "#FFFFFF" : AppColors.text }}>
+                        <Text style={{ fontSize: 11, fontWeight: "700", color: isSel ? "#FFFFFF" : colors.text }}>
                           {w.label}
                         </Text>
-                        <Text style={{ fontSize: 10, color: isSel ? "rgba(255,255,255,0.85)" : AppColors.textMuted }}>
+                        <Text style={{ fontSize: 10, color: isSel ? "rgba(255,255,255,0.85)" : colors.textMuted }}>
                           {w.dateShort}
                         </Text>
                       </TouchableOpacity>
@@ -300,20 +302,20 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
 
               {/* Ô nhập ngày */}
               <View style={styles.manualDateRow}>
-                <Text style={styles.manualDateText}>Nhập ngày:</Text>
+                <Text style={[styles.manualDateText, { color: colors.textSecondary }]}>Nhập ngày:</Text>
                 <TextInput
                   value={formDate}
                   onChangeText={onSelectDate}
                   placeholder="DD/MM/YYYY"
-                  placeholderTextColor={AppColors.textMuted}
-                  style={styles.manualDateInput}
+                  placeholderTextColor={colors.textMuted}
+                  style={[styles.manualDateInput, { backgroundColor: isDark ? colors.cardBg : "#FFFFFF", borderColor: colors.cardBorder, color: colors.text }]}
                 />
               </View>
             </View>
 
             {/* Tiết học - Dropdown */}
             <View style={{ position: "relative", zIndex: periodDropdownOpen ? 1000 : 1, elevation: periodDropdownOpen ? 20 : 1 }}>
-              <Text style={styles.fieldLabel}>
+              <Text style={[styles.fieldLabel, { color: colors.text }]}>
                 Tiết học <Text style={{ color: "#EF4444" }}>*</Text>
               </Text>
               <View style={{ position: "relative", zIndex: periodDropdownOpen ? 1001 : 1 }}>
@@ -322,16 +324,19 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
                   activeOpacity={0.7}
                   style={[
                     styles.periodSelector,
-                    { borderColor: periodDropdownOpen ? AppColors.primary : AppColors.cardBorder },
+                    {
+                      borderColor: periodDropdownOpen ? colors.primary : colors.cardBorder,
+                      backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
+                    },
                   ]}
                 >
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
-                    <Feather name="clock" size={14} color={AppColors.primary} />
+                    <Feather name="clock" size={14} color={colors.primary} />
                     <Text
                       style={{
                         fontSize: 13,
                         fontWeight: "600",
-                        color: formTime ? AppColors.text : AppColors.textMuted,
+                        color: formTime ? colors.text : colors.textMuted,
                       }}
                       numberOfLines={1}
                     >
@@ -341,12 +346,12 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
                   <Feather
                     name={periodDropdownOpen ? "chevron-up" : "chevron-down"}
                     size={16}
-                    color={AppColors.textSecondary}
+                    color={colors.textSecondary}
                   />
                 </TouchableOpacity>
 
                 {periodDropdownOpen && (
-                  <View style={styles.periodDropdownList}>
+                  <View style={[styles.periodDropdownList, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
                     <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={true}>
                       {PERIOD_OPTIONS.map((p) => {
                         const isSel = formTime === p.label;
@@ -361,7 +366,7 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
                             activeOpacity={0.7}
                             style={[
                               styles.periodOptionItem,
-                              { backgroundColor: isSel ? "#EEF2FF" : "#FFFFFF" },
+                              { backgroundColor: isSel ? (isDark ? "rgba(99, 102, 241, 0.22)" : "#EEF2FF") : colors.cardBg },
                             ]}
                           >
                             <View>
@@ -369,16 +374,16 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
                                 style={{
                                   fontSize: 12.5,
                                   fontWeight: isSel ? "700" : "600",
-                                  color: isSel ? AppColors.primary : AppColors.text,
+                                  color: isSel ? colors.primary : colors.text,
                                 }}
                               >
                                 {p.label}
                               </Text>
-                              <Text style={{ fontSize: 10, color: AppColors.textMuted, marginTop: 1 }}>
+                              <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 1 }}>
                                 {p.desc}
                               </Text>
                             </View>
-                            {isSel && <Feather name="check" size={13} color={AppColors.primary} />}
+                            {isSel && <Feather name="check" size={13} color={colors.primary} />}
                           </TouchableOpacity>
                         );
                       })}
@@ -390,11 +395,11 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
                         activeOpacity={0.7}
                         style={[
                           styles.periodOptionItem,
-                          { backgroundColor: isCustomTime ? "#EEF2FF" : "#FAFAFA" },
+                          { backgroundColor: isCustomTime ? (isDark ? "rgba(99, 102, 241, 0.22)" : "#EEF2FF") : (isDark ? "#1E293B" : "#FAFAFA") },
                         ]}
                       >
-                        <Feather name="edit-2" size={12} color={AppColors.primary} />
-                        <Text style={{ fontSize: 12, fontWeight: "600", color: AppColors.primary }}>
+                        <Feather name="edit-2" size={12} color={colors.primary} />
+                        <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>
                           Tự nhập khác...
                         </Text>
                       </TouchableOpacity>
@@ -407,9 +412,9 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
                     value={formTime}
                     onChangeText={setFormTime}
                     placeholder="Ví dụ: 13:50 - 15:30"
-                    placeholderTextColor={AppColors.textMuted}
+                    placeholderTextColor={colors.textMuted}
                     autoFocus
-                    style={styles.customTimeInput}
+                    style={[styles.customTimeInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: colors.primary, color: colors.text }]}
                   />
                 )}
               </View>
@@ -417,48 +422,48 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
 
             {/* Phòng học */}
             <View>
-              <Text style={styles.fieldLabel}>
+              <Text style={[styles.fieldLabel, { color: colors.text }]}>
                 Phòng <Text style={{ color: "#EF4444" }}>*</Text>
               </Text>
               <TextInput
                 value={formRoom}
                 onChangeText={setFormRoom}
                 placeholder="Phòng học"
-                placeholderTextColor={AppColors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 onFocus={() => {
                   setTimeout(() => {
                     scrollViewRef.current?.scrollTo({ y: 320, animated: true });
                   }, 120);
                 }}
-                style={styles.textInput}
+                style={[styles.textInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: colors.cardBorder, color: colors.text }]}
               />
             </View>
 
             {/* Giảng viên */}
             <View>
-              <Text style={styles.fieldLabel}>Giảng viên</Text>
+              <Text style={[styles.fieldLabel, { color: colors.text }]}>Giảng viên</Text>
               <TextInput
                 value={formLecturer}
                 onChangeText={setFormLecturer}
                 placeholder="Tên giảng viên"
-                placeholderTextColor={AppColors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 onFocus={() => {
                   setTimeout(() => {
                     scrollViewRef.current?.scrollTo({ y: 390, animated: true });
                   }, 120);
                 }}
-                style={styles.textInput}
+                style={[styles.textInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: colors.cardBorder, color: colors.text }]}
               />
             </View>
 
             {/* Ghi chú */}
             <View>
-              <Text style={styles.fieldLabel}>Ghi chú cho ca học</Text>
+              <Text style={[styles.fieldLabel, { color: colors.text }]}>Ghi chú cho ca học</Text>
               <TextInput
                 value={formNote}
                 onChangeText={setFormNote}
                 placeholder=""
-                placeholderTextColor={AppColors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 multiline
                 numberOfLines={2}
                 onFocus={() => {
@@ -466,7 +471,7 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
                     scrollViewRef.current?.scrollToEnd({ animated: true });
                   }, 120);
                 }}
-                style={[styles.textInput, { minHeight: 50 }]}
+                style={[styles.textInput, { minHeight: 50, backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: colors.cardBorder, color: colors.text }]}
               />
             </View>
 
@@ -476,7 +481,7 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
                 onPress={onSave}
                 disabled={submitting}
                 activeOpacity={0.8}
-                style={styles.saveBtn}
+                style={[styles.saveBtn, { backgroundColor: colors.primary }]}
               >
                 {submitting ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
@@ -496,7 +501,7 @@ export const ScheduleCustomModal = React.memo(function ScheduleCustomModal({
                 activeOpacity={0.7}
                 style={styles.cancelBtn}
               >
-                <Text style={styles.cancelBtnText}>Hủy bỏ</Text>
+                <Text style={[styles.cancelBtnText, { color: colors.textSecondary }]}>Hủy bỏ</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>

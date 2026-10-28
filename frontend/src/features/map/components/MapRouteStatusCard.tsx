@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { AppColors } from "../../../constants/appColors";
+import { useTheme } from "../../../context/ThemeContext";
 import { LocationItem, ParsedCampusRoom } from "../types";
 
 export interface MapRouteStatusCardProps {
@@ -34,6 +35,8 @@ export const MapRouteStatusCard = React.memo(function MapRouteStatusCard({
   selectedLoc,
   onClearRoute,
 }: MapRouteStatusCardProps) {
+  const { colors, isDark } = useTheme();
+
   const handleStop = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     onClearRoute();
@@ -45,13 +48,15 @@ export const MapRouteStatusCard = React.memo(function MapRouteStatusCard({
         styles.container,
         {
           bottom: bottomOffset,
+          backgroundColor: isDark ? "rgba(30, 41, 59, 0.96)" : "rgba(255, 255, 255, 0.96)",
+          borderColor: isDark ? "rgba(51, 65, 85, 0.95)" : "rgba(226, 232, 240, 0.95)",
         },
       ]}
     >
       <View style={styles.contentRow}>
         <View style={styles.leftInfoGroup}>
-          <View style={styles.iconCircle}>
-            <Feather name="navigation" size={20} color={AppColors.primary} />
+          <View style={[styles.iconCircle, isDark && { backgroundColor: `${colors.primary}22`, borderColor: `${colors.primary}44` }]}>
+            <Feather name="navigation" size={20} color={colors.primary} />
           </View>
           <View style={styles.textGroup}>
             <View style={styles.gateTagRow}>
@@ -63,18 +68,18 @@ export const MapRouteStatusCard = React.memo(function MapRouteStatusCard({
                   </Text>
                 </View>
               ) : (
-                <View style={styles.gateWireframePlaceholder} />
+                <View style={[styles.gateWireframePlaceholder, isDark && { backgroundColor: "#334155" }]} />
               )}
             </View>
 
             {activeRoute?.distanceMeters === undefined || activeRoute?.distanceMeters === null ? (
               <View style={styles.loadingWireframeContainer}>
-                <View style={styles.wireframeBarLarge} />
-                <View style={styles.wireframeBarSmall} />
+                <View style={[styles.wireframeBarLarge, isDark && { backgroundColor: "#334155" }]} />
+                <View style={[styles.wireframeBarSmall, isDark && { backgroundColor: "#1E293B" }]} />
               </View>
             ) : (
               <>
-                <Text style={styles.destinationTitle} numberOfLines={1}>
+                <Text style={[styles.destinationTitle, { color: colors.text }]} numberOfLines={1}>
                   {targetRoom && currentParsed ? currentParsed.fullDisplay : selectedLoc?.name || "Điểm đến"}
                 </Text>
                 <Text style={styles.distanceDurationText}>
@@ -91,6 +96,7 @@ export const MapRouteStatusCard = React.memo(function MapRouteStatusCard({
           onPress={handleStop}
           style={({ pressed }) => [
             styles.stopPillButton,
+            isDark && { backgroundColor: "rgba(239, 68, 68, 0.2)", borderColor: "rgba(239, 68, 68, 0.4)" },
             pressed && styles.stopButtonPressed,
           ]}
           hitSlop={8}

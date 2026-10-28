@@ -3,10 +3,12 @@ import { View, Text, Pressable, Image, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { AppColors } from "../../../constants/appColors";
+import { useTheme } from "../../../context/ThemeContext";
 import { LoginRequiredCard } from "../../../components/LoginRequiredCard";
 import { NewsOrAnnouncementItem, getNewsImageUrl, CAMPUS_FALLBACK_IMAGES } from "../../../services/api";
 
 export function NewsCardImage({ imageUrl, index }: { imageUrl?: string; index: number }) {
+  const { isDark } = useTheme();
   const [currentUri, setCurrentUri] = useState(getNewsImageUrl(imageUrl, index));
 
   return (
@@ -17,7 +19,7 @@ export function NewsCardImage({ imageUrl, index }: { imageUrl?: string; index: n
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         },
       }}
-      style={styles.newsImage}
+      style={[styles.newsImage, { backgroundColor: isDark ? "#1E293B" : AppColors.muted }]}
       resizeMode="cover"
       onError={() => {
         const fallback = CAMPUS_FALLBACK_IMAGES[index % CAMPUS_FALLBACK_IMAGES.length];
@@ -42,6 +44,8 @@ export const HomeNewsSection = React.memo(function HomeNewsSection({
   onViewAll,
   onOpenDetail,
 }: HomeNewsSectionProps) {
+  const { colors, isDark } = useTheme();
+
   const handleItemPress = (item: NewsOrAnnouncementItem, idx: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     onOpenDetail(item, idx);
@@ -55,7 +59,7 @@ export const HomeNewsSection = React.memo(function HomeNewsSection({
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Tin tức & Hoạt động</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Tin tức & Hoạt động</Text>
         {isLoggedIn && news.length > 0 ? (
           <Pressable
             onPress={handleViewAllPress}
@@ -67,8 +71,8 @@ export const HomeNewsSection = React.memo(function HomeNewsSection({
             accessibilityRole="button"
             accessibilityLabel="Xem tất cả tin tức"
           >
-            <Text style={styles.viewAllText}>Xem tất cả</Text>
-            <Feather name="chevron-right" size={14} color={AppColors.accentLight} />
+            <Text style={[styles.viewAllText, { color: colors.accentLight }]}>Xem tất cả</Text>
+            <Feather name="chevron-right" size={14} color={colors.accentLight} />
           </Pressable>
         ) : null}
       </View>
@@ -82,12 +86,12 @@ export const HomeNewsSection = React.memo(function HomeNewsSection({
         />
       ) : news.length === 0 ? (
         /* Empty State chỉn chu */
-        <View style={styles.emptyContainer}>
-          <View style={styles.emptyIconCircle}>
-            <Feather name="inbox" size={24} color={AppColors.textSubtle} />
+        <View style={[styles.emptyContainer, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
+          <View style={[styles.emptyIconCircle, { backgroundColor: isDark ? "#334155" : AppColors.muted }]}>
+            <Feather name="inbox" size={24} color={colors.textSubtle} />
           </View>
-          <Text style={styles.emptyTitle}>Chưa có tin tức mới</Text>
-          <Text style={styles.emptySubtitle}>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>Chưa có tin tức mới</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
             Các bài viết mới nhất từ cổng thông tin trường sẽ hiển thị tại đây khi có cập nhật.
           </Text>
         </View>
@@ -99,6 +103,10 @@ export const HomeNewsSection = React.memo(function HomeNewsSection({
               onPress={() => handleItemPress(item, idx)}
               style={({ pressed }) => [
                 styles.card,
+                {
+                  backgroundColor: colors.cardBg,
+                  borderColor: colors.cardBorder,
+                },
                 pressed && styles.cardPressed,
               ]}
               accessibilityRole="button"
@@ -114,8 +122,8 @@ export const HomeNewsSection = React.memo(function HomeNewsSection({
                       {
                         backgroundColor:
                           item.isFallback || item.badge?.toLowerCase().includes("mẫu")
-                            ? "#FEF3C7"
-                            : `${AppColors.info}15`,
+                            ? (isDark ? "rgba(245, 158, 11, 0.2)" : "#FEF3C7")
+                            : (isDark ? "rgba(59, 130, 246, 0.2)" : `${colors.info}15`),
                       },
                     ]}
                   >
@@ -128,8 +136,8 @@ export const HomeNewsSection = React.memo(function HomeNewsSection({
                       size={10}
                       color={
                         item.isFallback || item.badge?.toLowerCase().includes("mẫu")
-                          ? AppColors.warning
-                          : AppColors.info
+                          ? colors.warning
+                          : colors.info
                       }
                     />
                     <Text
@@ -138,8 +146,8 @@ export const HomeNewsSection = React.memo(function HomeNewsSection({
                         {
                           color:
                             item.isFallback || item.badge?.toLowerCase().includes("mẫu")
-                              ? AppColors.warning
-                              : AppColors.info,
+                              ? colors.warning
+                              : colors.info,
                         },
                       ]}
                     >
@@ -148,29 +156,29 @@ export const HomeNewsSection = React.memo(function HomeNewsSection({
                         : item.badge || "Tin hoạt động"}
                     </Text>
                   </View>
-                  <Text style={styles.dateText}>{item.date}</Text>
+                  <Text style={[styles.dateText, { color: colors.textSecondary }]}>{item.date}</Text>
                 </View>
 
-                <Text style={styles.cardTitle} numberOfLines={2}>
+                <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>
                   {item.title}
                 </Text>
 
                 {item.summary ? (
-                  <Text style={styles.summaryText} numberOfLines={2}>
+                  <Text style={[styles.summaryText, { color: colors.textSecondary }]} numberOfLines={2}>
                     {item.summary}
                   </Text>
                 ) : null}
 
-                <View style={styles.cardFooter}>
+                <View style={[styles.cardFooter, { borderTopColor: colors.cardBorder }]}>
                   <View style={styles.authorRow}>
-                    <Feather name="globe" size={11} color={AppColors.textMuted} />
-                    <Text style={styles.authorText} numberOfLines={1}>
+                    <Feather name="globe" size={11} color={colors.textSecondary} />
+                    <Text style={[styles.authorText, { color: colors.textSecondary }]} numberOfLines={1}>
                       {item.author || item.sourceName || "Ban Biên tập TTN"}
                     </Text>
                   </View>
                   <View style={styles.detailBtn}>
-                    <Text style={styles.detailText}>Chi tiết bài viết</Text>
-                    <Feather name="arrow-right" size={11} color={AppColors.accentLight} />
+                    <Text style={[styles.detailText, { color: colors.accentLight }]}>Chi tiết bài viết</Text>
+                    <Feather name="arrow-right" size={11} color={colors.accentLight} />
                   </View>
                 </View>
               </View>
@@ -196,7 +204,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: "900",
-    color: AppColors.text,
   },
   viewAllButton: {
     flexDirection: "row",
@@ -211,21 +218,18 @@ const styles = StyleSheet.create({
   viewAllText: {
     fontSize: 13,
     fontWeight: "700",
-    color: AppColors.accentLight,
   },
   list: {
     gap: 12,
   },
   card: {
-    backgroundColor: AppColors.cardBg,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: AppColors.cardBorder,
-    overflow: "hidden",
+    borderRadius: 18, // Squircle 18pt
+    borderWidth: 1, // Viền Hairline siêu mỏng
+    overflow: "hidden", // Cắt góc cho ảnh
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 4,
+    shadowRadius: 5,
     elevation: 2,
   },
   cardPressed: {
@@ -235,7 +239,6 @@ const styles = StyleSheet.create({
   newsImage: {
     width: "100%",
     height: 155,
-    backgroundColor: AppColors.muted,
   },
   cardBody: {
     padding: 14,
@@ -260,19 +263,16 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 10.5,
-    color: AppColors.textMuted,
     fontWeight: "600",
   },
   cardTitle: {
     fontSize: 14,
     fontWeight: "800",
-    color: AppColors.text,
     lineHeight: 20,
     marginBottom: 4,
   },
   summaryText: {
     fontSize: 11.5,
-    color: AppColors.textSecondary,
     lineHeight: 16,
     marginBottom: 8,
   },
@@ -281,7 +281,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     borderTopWidth: 1,
-    borderTopColor: AppColors.muted,
     paddingTop: 8,
     marginTop: 4,
   },
@@ -294,7 +293,6 @@ const styles = StyleSheet.create({
   },
   authorText: {
     fontSize: 11,
-    color: AppColors.textMuted,
   },
   detailBtn: {
     flexDirection: "row",
@@ -304,13 +302,10 @@ const styles = StyleSheet.create({
   detailText: {
     fontSize: 11,
     fontWeight: "700",
-    color: AppColors.accentLight,
   },
   emptyContainer: {
-    backgroundColor: AppColors.cardBg,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: AppColors.cardBorder,
     padding: 24,
     alignItems: "center",
     justifyContent: "center",
@@ -319,7 +314,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: AppColors.muted,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 10,
@@ -327,13 +321,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: AppColors.text,
     marginBottom: 4,
   },
   emptySubtitle: {
     fontSize: 12,
-    color: AppColors.textSecondary,
     textAlign: "center",
     lineHeight: 18,
+    paddingHorizontal: 16,
   },
 });

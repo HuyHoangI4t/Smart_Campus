@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { AppColors } from "../../../constants/appColors";
+import { useTheme } from "../../../context/ThemeContext";
 import { LoginRequiredCard } from "../../../components/LoginRequiredCard";
 import { NewsOrAnnouncementItem } from "../../../services/api";
 
@@ -19,6 +20,8 @@ export const HomeAnnouncementsSection = React.memo(function HomeAnnouncementsSec
   onViewAll,
   onOpenDetail,
 }: HomeAnnouncementsSectionProps) {
+  const { colors, isDark } = useTheme();
+
   const handleItemPress = (item: NewsOrAnnouncementItem, idx: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     onOpenDetail(item, idx);
@@ -32,7 +35,7 @@ export const HomeAnnouncementsSection = React.memo(function HomeAnnouncementsSec
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Thông báo Sinh viên</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Thông báo Sinh viên</Text>
         {isLoggedIn && announcements.length > 0 ? (
           <Pressable
             onPress={handleViewAllPress}
@@ -44,8 +47,8 @@ export const HomeAnnouncementsSection = React.memo(function HomeAnnouncementsSec
             accessibilityRole="button"
             accessibilityLabel="Xem tất cả thông báo sinh viên"
           >
-            <Text style={styles.viewAllText}>Xem tất cả</Text>
-            <Feather name="chevron-right" size={14} color={AppColors.accentLight} />
+            <Text style={[styles.viewAllText, { color: colors.accentLight }]}>Xem tất cả</Text>
+            <Feather name="chevron-right" size={14} color={colors.accentLight} />
           </Pressable>
         ) : null}
       </View>
@@ -59,12 +62,12 @@ export const HomeAnnouncementsSection = React.memo(function HomeAnnouncementsSec
         />
       ) : announcements.length === 0 ? (
         /* Empty State chỉn chu */
-        <View style={styles.emptyContainer}>
-          <View style={styles.emptyIconCircle}>
-            <Feather name="inbox" size={24} color={AppColors.textSubtle} />
+        <View style={[styles.emptyContainer, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
+          <View style={[styles.emptyIconCircle, { backgroundColor: isDark ? "#334155" : AppColors.muted }]}>
+            <Feather name="inbox" size={24} color={colors.textSubtle} />
           </View>
-          <Text style={styles.emptyTitle}>Chưa có thông báo mới</Text>
-          <Text style={styles.emptySubtitle}>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>Chưa có thông báo mới</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
             Các thông báo học vụ, lịch thi và học bổng mới nhất sẽ hiển thị tại đây khi có tin tức mới.
           </Text>
         </View>
@@ -76,6 +79,10 @@ export const HomeAnnouncementsSection = React.memo(function HomeAnnouncementsSec
               onPress={() => handleItemPress(ann, idx)}
               style={({ pressed }) => [
                 styles.card,
+                {
+                  backgroundColor: colors.cardBg,
+                  borderColor: colors.cardBorder,
+                },
                 pressed && styles.cardPressed,
               ]}
               accessibilityRole="button"
@@ -89,8 +96,8 @@ export const HomeAnnouncementsSection = React.memo(function HomeAnnouncementsSec
                       {
                         backgroundColor:
                           ann.isFallback || ann.badge?.toLowerCase().includes("mẫu")
-                            ? "#FEF3C7"
-                            : `${AppColors.success}15`,
+                            ? (isDark ? "rgba(245, 158, 11, 0.2)" : "#FEF3C7")
+                            : (isDark ? "rgba(16, 185, 129, 0.2)" : `${colors.success}15`),
                       },
                     ]}
                   >
@@ -103,8 +110,8 @@ export const HomeAnnouncementsSection = React.memo(function HomeAnnouncementsSec
                       size={10}
                       color={
                         ann.isFallback || ann.badge?.toLowerCase().includes("mẫu")
-                          ? AppColors.warning
-                          : AppColors.success
+                          ? colors.warning
+                          : colors.success
                       }
                     />
                     <Text
@@ -113,8 +120,8 @@ export const HomeAnnouncementsSection = React.memo(function HomeAnnouncementsSec
                         {
                           color:
                             ann.isFallback || ann.badge?.toLowerCase().includes("mẫu")
-                              ? AppColors.warning
-                              : AppColors.success,
+                              ? colors.warning
+                              : colors.success,
                         },
                       ]}
                     >
@@ -124,31 +131,31 @@ export const HomeAnnouncementsSection = React.memo(function HomeAnnouncementsSec
                     </Text>
                   </View>
                   {ann.attachments && ann.attachments.length > 0 ? (
-                    <View style={styles.attachBadge}>
-                      <Feather name="paperclip" size={9} color={AppColors.textSecondary} />
-                      <Text style={styles.attachText}>
+                    <View style={[styles.attachBadge, { backgroundColor: isDark ? "#334155" : AppColors.muted }]}>
+                      <Feather name="paperclip" size={9} color={colors.textSecondary} />
+                      <Text style={[styles.attachText, { color: colors.textSecondary }]}>
                         {ann.attachments.length} file
                       </Text>
                     </View>
                   ) : null}
                 </View>
-                <Text style={styles.dateText}>{ann.date}</Text>
+                <Text style={[styles.dateText, { color: colors.textSecondary }]}>{ann.date}</Text>
               </View>
 
-              <Text style={styles.cardTitle} numberOfLines={2}>
+              <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>
                 {ann.title}
               </Text>
 
-              <View style={styles.cardFooter}>
+              <View style={[styles.cardFooter, { borderTopColor: colors.cardBorder }]}>
                 <View style={styles.authorRow}>
-                  <Feather name="home" size={11} color={AppColors.textMuted} />
-                  <Text style={styles.authorText} numberOfLines={1}>
+                  <Feather name="home" size={11} color={colors.textSecondary} />
+                  <Text style={[styles.authorText, { color: colors.textSecondary }]} numberOfLines={1}>
                     {ann.author || ann.sender || "Phòng Công tác SV"}
                   </Text>
                 </View>
                 <View style={styles.detailBtn}>
-                  <Text style={styles.detailText}>Chi tiết</Text>
-                  <Feather name="arrow-right" size={11} color={AppColors.accentLight} />
+                  <Text style={[styles.detailText, { color: colors.accentLight }]}>Chi tiết</Text>
+                  <Feather name="arrow-right" size={11} color={colors.accentLight} />
                 </View>
               </View>
             </Pressable>
@@ -173,7 +180,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: "900",
-    color: AppColors.text,
   },
   viewAllButton: {
     flexDirection: "row",
@@ -188,16 +194,13 @@ const styles = StyleSheet.create({
   viewAllText: {
     fontSize: 13,
     fontWeight: "700",
-    color: AppColors.accentLight,
   },
   list: {
     gap: 10,
   },
   card: {
-    backgroundColor: AppColors.cardBg,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: AppColors.cardBorder,
     padding: 14,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
@@ -236,25 +239,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
-    backgroundColor: AppColors.muted,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
   },
   attachText: {
     fontSize: 10,
-    color: AppColors.textSecondary,
     fontWeight: "600",
   },
   dateText: {
     fontSize: 10.5,
-    color: AppColors.textMuted,
     fontWeight: "600",
   },
   cardTitle: {
     fontSize: 13.5,
     fontWeight: "800",
-    color: AppColors.text,
     lineHeight: 19,
     marginBottom: 6,
   },
@@ -263,7 +262,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     borderTopWidth: 1,
-    borderTopColor: AppColors.muted,
     paddingTop: 8,
     marginTop: 4,
   },
@@ -276,7 +274,6 @@ const styles = StyleSheet.create({
   },
   authorText: {
     fontSize: 11,
-    color: AppColors.textMuted,
   },
   detailBtn: {
     flexDirection: "row",
@@ -286,13 +283,10 @@ const styles = StyleSheet.create({
   detailText: {
     fontSize: 11,
     fontWeight: "700",
-    color: AppColors.accentLight,
   },
   emptyContainer: {
-    backgroundColor: AppColors.cardBg,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: AppColors.cardBorder,
     padding: 24,
     alignItems: "center",
     justifyContent: "center",
@@ -301,21 +295,19 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: AppColors.muted,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 10,
   },
   emptyTitle: {
     fontSize: 14,
-    fontWeight: "700",
-    color: AppColors.text,
+    fontWeight: "800",
     marginBottom: 4,
   },
   emptySubtitle: {
     fontSize: 12,
-    color: AppColors.textSecondary,
     textAlign: "center",
     lineHeight: 18,
+    paddingHorizontal: 16,
   },
 });

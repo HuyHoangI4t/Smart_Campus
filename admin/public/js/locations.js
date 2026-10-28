@@ -387,6 +387,9 @@ const LocationsModule = {
     const badgeEl = document.getElementById('totalLocationsCount');
     if (badgeEl) badgeEl.textContent = count;
 
+    const panelBadgeEl = document.getElementById('panelLocationsBadge');
+    if (panelBadgeEl) panelBadgeEl.textContent = count;
+
     const dashStat = document.getElementById('statTotalLocations');
     if (dashStat) dashStat.textContent = count.toLocaleString();
 
@@ -548,10 +551,7 @@ const LocationsModule = {
       weight: 6.5,
       opacity: 0.95
     }).addTo(this.map);
-    baseWall.bindTooltip('Tường rào ranh giới khuôn viên trường ĐH Tây Nguyên (Không cho đi xuyên qua)', {
-      sticky: true
-    });
-    this.boundaryWallLayers.push(baseWall);
+        this.boundaryWallLayers.push(baseWall);
 
     // 2. Hoa văn gạch/đá thân tường ranh giới
     const innerWall = L.polyline(closedBoundary, {
@@ -593,61 +593,10 @@ const LocationsModule = {
       gateMarker.bindPopup(`
         <div class="p-1 font-sans text-slate-800 text-xs">
           <div class="font-bold text-sm mb-1 text-slate-900 flex items-center gap-1.5"><svg class="w-4 h-4 text-emerald-600 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 21h18M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16M9 9h.01M9 15h.01"/></svg><span>${escapeHtml(g.name)}</span></div>
-          <p class="text-slate-600 mb-2">Cổng kiểm soát ra/vào trường chính thức. Lối đi chỉ được phép vượt qua ranh giới khuôn viên tại đây.</p>
-          <div class="bg-emerald-50 text-emerald-800 p-1.5 rounded text-[11px] font-semibold border border-emerald-100">
-            <span class="inline-flex items-center gap-1"><svg class="w-3.5 h-3.5 text-emerald-600 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Kết nối thông suốt với điểm đón ngoài đường phố</span>
-          </div>
+          <p class="text-slate-600">Cổng ra vào trường ĐH Tây Nguyên</p>
         </div>
       `);
       this.gateLayers.push(gateMarker);
-
-      // Marker Điểm đón ngoài đường phố (Lê Duẩn / Y Wang)
-      const outIcon = L.divIcon({
-        className: 'custom-campus-marker',
-        html: `
-          <div style="
-            width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            background: #2563EB;
-            border: 2.5px solid #FFFFFF;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-          ">
-            <div style="width: 7px; height: 7px; border-radius: 50%; background: #FFFFFF;"></div>
-          </div>
-        `,
-        iconSize: [22, 22],
-        iconAnchor: [11, 11]
-      });
-
-      const outMarker = L.marker(g.outsidePoint, { icon: outIcon, zIndexOffset: 860 }).addTo(this.map);
-      outMarker.bindTooltip(`Điểm đón ngoài: ${escapeHtml(g.name)} (Kết nối Google Maps)`, {
-        permanent: false,
-        direction: 'top'
-      });
-      outMarker.bindPopup(`
-        <div class="p-1 font-sans text-slate-800 text-xs">
-          <div class="font-bold text-sm mb-1 text-blue-900 flex items-center gap-1.5"><svg class="w-4 h-4 text-blue-600 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>Điểm đón ngoài: ${escapeHtml(g.name)}</span></div>
-          <p class="text-slate-600 mb-1">Tọa độ trên mặt đường công cộng kết nối trực tiếp với mạng lưới giao thông Google Maps.</p>
-          <div class="text-[11px] font-mono text-slate-500 bg-slate-50 p-1 rounded border">
-            ${g.outsidePoint[0].toFixed(6)}, ${g.outsidePoint[1].toFixed(6)}
-          </div>
-        </div>
-      `);
-      this.gateLayers.push(outMarker);
-
-      // Đường thông hành qua cổng (nối ngoài -> cổng -> trong)
-      const connector = L.polyline([g.outsidePoint, g.gatePoint, g.insidePoint], {
-        color: '#10B981',
-        weight: 3.5,
-        dashArray: '3, 5',
-        opacity: 0.95
-      }).addTo(this.map);
-      this.gateLayers.push(connector);
     });
   },
 
@@ -814,13 +763,10 @@ const LocationsModule = {
     const lat = alert.latitude !== undefined && alert.latitude !== null ? Number(alert.latitude) : (alert.vi_do !== undefined ? Number(alert.vi_do) : (alert.lat !== undefined ? Number(alert.lat) : null));
     const lng = alert.longitude !== undefined && alert.longitude !== null ? Number(alert.longitude) : (alert.kinh_do !== undefined ? Number(alert.kinh_do) : (alert.lng !== undefined ? Number(alert.lng) : null));
 
-    // 1. Nếu có tọa độ GPS hợp lệ: Kiểm tra nghiêm ngặt có thuộc khuôn viên trường không
+    // 1. Nếu có tọa độ GPS hợp lệ: Luôn hiển thị vị trí cứu hộ của sinh viên
     if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
-      if (this.isInsideCampus(lat, lng)) {
-        return { lat, lng, source: 'gps' };
-      }
-      console.warn(`⚠️ [SOS Campus Map] Tọa độ GPS (${lat}, ${lng}) nằm NGOÀI ranh giới khuôn viên trường ĐH Tây Nguyên. Bỏ qua không hiển thị trên bản đồ trường.`);
-      return null;
+      const isInside = this.isInsideCampus(lat, lng);
+      return { lat, lng, source: 'gps', isInside };
     }
 
     // 2. Nếu không có tọa độ GPS hoặc thiết bị chưa gửi GPS, tìm kiếm khớp với địa điểm trong trường (VD: "Nhà 7", "Ký túc xá")
@@ -835,9 +781,7 @@ const LocationsModule = {
       if (matched && matched.lat && matched.lng) {
         const mLat = Number(matched.lat);
         const mLng = Number(matched.lng);
-        if (this.isInsideCampus(mLat, mLng)) {
-          return { lat: mLat, lng: mLng, source: 'matched_building', buildingName: matched.name };
-        }
+        return { lat: mLat, lng: mLng, source: 'matched_building', buildingName: matched.name, isInside: true };
       }
     }
 
@@ -853,17 +797,31 @@ const LocationsModule = {
       const res = await AdminAPI.getSosAlerts();
       if (!res || !res.success) return;
       const alerts = res.alerts || [];
-      const unresolved = alerts.filter(a => a.status !== 'Đã xử lý' && a.status !== 'Đã giải quyết');
 
-      const currentIds = new Set(unresolved.map(a => Number(a.id)));
+      // Cập nhật số lượng SOS chưa xử lý lên badge
+      const unresolved = alerts.filter(a => a.status !== 'Đã xử lý' && a.status !== 'Đã giải quyết');
+      const badge = document.getElementById('mapSosActiveCount');
+      if (badge) badge.textContent = unresolved.length;
+
+      const panelSosBadge = document.getElementById('panelSosBadge');
+      if (panelSosBadge) {
+        panelSosBadge.textContent = unresolved.length;
+        if (unresolved.length > 0) {
+          panelSosBadge.classList.remove('hidden');
+        } else {
+          panelSosBadge.classList.add('hidden');
+        }
+      }
+
+      const allIds = new Set(alerts.map(a => Number(a.id)));
       for (const [id, marker] of this.sosMarkers.entries()) {
-        if (!currentIds.has(id)) {
+        if (!allIds.has(id)) {
           this.map.removeLayer(marker);
           this.sosMarkers.delete(id);
         }
       }
 
-      unresolved.forEach(alert => {
+      alerts.forEach(alert => {
         this.addSosAlert(alert, false);
       });
     } catch (e) {
@@ -871,8 +829,35 @@ const LocationsModule = {
     }
   },
 
+  toggleSosLayer() {
+    if (!this.map) return;
+    this.sosLayerHidden = !this.sosLayerHidden;
+    for (const marker of this.sosMarkers.values()) {
+      if (this.sosLayerHidden) {
+        if (this.map.hasLayer(marker)) this.map.removeLayer(marker);
+      } else {
+        if (!this.map.hasLayer(marker)) this.map.addLayer(marker);
+      }
+    }
+    const btn = document.getElementById('btnToggleSosLayer');
+    if (btn) {
+      if (this.sosLayerHidden) {
+        btn.classList.add('opacity-50');
+      } else {
+        btn.classList.remove('opacity-50');
+      }
+    }
+    if (!this.sosLayerHidden && this.sosMarkers.size > 0) {
+      const firstMarker = this.sosMarkers.values().next().value;
+      if (firstMarker) {
+        this.map.flyTo(firstMarker.getLatLng(), 18, { animate: true, duration: 0.8 });
+        setTimeout(() => firstMarker.openPopup(), 900);
+      }
+    }
+  },
+
   /**
-   * Thêm 1 marker chớp đỏ khẩn cấp tại vị trí SOS (chỉ trong khuôn viên trường)
+   * Thêm 1 marker SOS lên bản đồ khuôn viên
    */
   addSosAlert(alert, shouldFocus = false) {
     if (!this.map || !window.L || !alert) return;
@@ -889,56 +874,86 @@ const LocationsModule = {
     }
 
     const { lat, lng } = coords;
+    const isResolved = alert.status === 'Đã xử lý' || alert.status === 'Đã giải quyết';
     const mssv = alert.mssv || 'N/A';
     const hoTen = alert.ho_ten || 'Sinh viên';
     const locationName = alert.location || alert.location_name || coords.buildingName || 'Trong khuôn viên trường';
     const phone = alert.so_dien_thoai || alert.phone || '';
     const lop = alert.lop || '';
-    const message = alert.message || alert.description || 'Yêu cầu cứu trợ khẩn cấp';
+    const message = alert.message || alert.description || alert.incident_type || 'Yêu cầu cứu trợ khẩn cấp';
 
-    const beaconHtml = `
-      <div class="sos-beacon-wrapper" title="CẢNH BÁO SOS: ${escapeHtml(hoTen)} (${escapeHtml(mssv)})">
-        <div class="sos-beacon-ring"></div>
-        <div class="sos-beacon-ring delayed"></div>
-        <div class="sos-beacon-core">
-          <svg style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.5;" viewBox="0 0 24 24">
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-            <line x1="12" y1="9" x2="12" y2="13"/>
-            <line x1="12" y1="17" x2="12.01" y2="17"/>
+    let icon;
+    if (!isResolved) {
+      const beaconHtml = `
+        <div class="sos-beacon-wrapper" title="CẢNH BÁO SOS: ${escapeHtml(hoTen)} (${escapeHtml(mssv)})">
+          <div class="sos-beacon-ring"></div>
+          <div class="sos-beacon-ring delayed"></div>
+          <div class="sos-beacon-core">
+            <svg style="width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.5;" viewBox="0 0 24 24">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </div>
+          <div class="sos-beacon-label">
+            <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#fff;animation:sosBeaconFlash 0.8s infinite;"></span>
+            SOS: ${escapeHtml(mssv)}
+          </div>
+        </div>
+      `;
+      icon = L.divIcon({
+        className: 'sos-custom-leaflet-marker',
+        html: beaconHtml,
+        iconSize: [52, 52],
+        iconAnchor: [26, 26],
+        popupAnchor: [0, -32]
+      });
+    } else {
+      const resolvedHtml = `
+        <div style="
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          background: #10B981;
+          border: 2.5px solid #ffffff;
+          border-radius: 50%;
+          box-shadow: 0 2px 8px rgba(16,185,129,0.5);
+        " title="Đã xử lý: ${escapeHtml(hoTen)} (${escapeHtml(mssv)})">
+          <svg style="width: 16px; height: 16px; stroke: #ffffff; fill: none; stroke-width: 2.5;" viewBox="0 0 24 24">
+            <path d="M20 6L9 17l-5-5"/>
           </svg>
         </div>
-        <div class="sos-beacon-label">
-          <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#fff;animation:sosBeaconFlash 0.8s infinite;"></span>
-          SOS: ${escapeHtml(mssv)}
-        </div>
-      </div>
-    `;
+      `;
+      icon = L.divIcon({
+        className: 'sos-resolved-marker',
+        html: resolvedHtml,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+        popupAnchor: [0, -20]
+      });
+    }
 
-    const icon = L.divIcon({
-      className: 'sos-custom-leaflet-marker',
-      html: beaconHtml,
-      iconSize: [52, 52],
-      iconAnchor: [26, 26],
-      popupAnchor: [0, -32]
-    });
-
-    const marker = L.marker([lat, lng], { icon, zIndexOffset: 9999 }).addTo(this.map);
+    const marker = L.marker([lat, lng], { icon, zIndexOffset: isResolved ? 100 : 9999 }).addTo(this.map);
 
     const popupHtml = `
       <div class="p-2 text-slate-800 font-sans" style="min-width: 260px; max-width: 320px;">
-        <div class="flex items-center gap-2 pb-2 mb-2 border-b border-red-100">
-          <span class="w-3 h-3 rounded-full bg-red-600 animate-ping"></span>
-          <span class="font-extrabold text-sm text-red-600">🚨 CẢNH BÁO SOS KHẨN CẤP</span>
+        <div class="flex items-center gap-2 pb-2 mb-2 border-b ${isResolved ? 'border-emerald-100' : 'border-red-100'}">
+          <span class="w-3 h-3 rounded-full ${isResolved ? 'bg-emerald-500' : 'bg-red-600 animate-ping'}"></span>
+          <span class="font-extrabold text-sm ${isResolved ? 'text-emerald-700' : 'text-red-600'}">
+            ${isResolved ? '✅ ĐÃ XỬ LÝ AN TOÀN' : '🚨 CẢNH BÁO SOS KHẨN CẤP'}
+          </span>
         </div>
         <div class="space-y-1.5 text-xs mb-3">
           <p class="font-bold text-sm text-slate-900">${escapeHtml(hoTen)} <span class="font-mono text-brand-700 text-xs font-semibold">(${escapeHtml(mssv)})</span></p>
           ${lop ? `<p class="text-slate-500 text-[11px]">Lớp: <b>${escapeHtml(lop)}</b></p>` : ''}
-          <div class="bg-red-50 text-red-800 p-2 rounded-lg border border-red-200">
+          <div class="${isResolved ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-red-50 text-red-800 border-red-200'} p-2 rounded-lg border">
             <p class="font-bold mb-0.5 flex items-center gap-1">
-              <svg class="w-3.5 h-3.5 inline text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <svg class="w-3.5 h-3.5 inline ${isResolved ? 'text-emerald-600' : 'text-red-600'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
               ${escapeHtml(locationName)}
             </p>
-            <p class="italic text-[11px] text-red-700 mt-1">"${escapeHtml(message)}"</p>
+            <p class="italic text-[11px] ${isResolved ? 'text-emerald-700' : 'text-red-700'} mt-1">"${escapeHtml(message)}"</p>
           </div>
           <p class="text-[11px] text-slate-400">Tọa độ: <span class="font-mono font-bold text-slate-600">${lat.toFixed(6)}, ${lng.toFixed(6)}</span></p>
         </div>
@@ -949,10 +964,12 @@ const LocationsModule = {
               Gọi (${phone})
             </a>
           ` : ''}
-          <button onclick="LocationsModule.resolveSosFromMap(${id})" class="flex-1 py-1.5 px-2 bg-brand-800 hover:bg-brand-900 text-white rounded-lg text-xs font-bold text-center flex items-center justify-center gap-1 shadow-sm transition">
-            <svg class="w-3.5 h-3.5 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
-            Đã xử lý
-          </button>
+          ${!isResolved ? `
+            <button onclick="LocationsModule.resolveSosFromMap(${id})" class="flex-1 py-1.5 px-2 bg-brand-800 hover:bg-brand-900 text-white rounded-lg text-xs font-bold text-center flex items-center justify-center gap-1 shadow-sm transition">
+              <svg class="w-3.5 h-3.5 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+              Đã xử lý
+            </button>
+          ` : ''}
         </div>
       </div>
     `;
@@ -987,7 +1004,7 @@ const LocationsModule = {
           try {
             await AdminAPI.updateSosStatus(sosId, 'Đã xử lý');
             window.App.showToast('Đã xử lý cảnh báo SOS an toàn', 'success');
-            this.removeSosAlert(sosId);
+            await this.loadActiveSosAlerts();
             window.App.refreshSosBadge();
           } catch (e) {
             window.App.showToast('Lỗi cập nhật SOS: ' + e.message, 'error');
@@ -997,24 +1014,32 @@ const LocationsModule = {
     }
   },
 
-  focusSosOnMap(sosId) {
+  async focusSosOnMap(sosId) {
     const id = Number(sosId);
+    if (!this.map || !window.L) return;
+
     if (this.sosMarkers.has(id)) {
       const marker = this.sosMarkers.get(id);
       const latlng = marker.getLatLng();
       this.map.flyTo(latlng, 18, { animate: true, duration: 1 });
       setTimeout(() => marker.openPopup(), 1000);
-    } else {
-      this.loadActiveSosAlerts().then(() => {
-        if (this.sosMarkers.has(id)) {
-          const marker = this.sosMarkers.get(id);
-          this.map.flyTo(marker.getLatLng(), 18, { animate: true, duration: 1 });
-          setTimeout(() => marker.openPopup(), 1000);
-        } else {
-          window.App.showToast('Cảnh báo SOS này nằm ngoài ranh giới khuôn viên trường hoặc đã được xử lý.', 'warning');
-        }
-      });
+      return;
     }
+
+    try {
+      const res = await AdminAPI.getSosAlerts();
+      if (res && res.success && res.alerts) {
+        const target = res.alerts.find(a => Number(a.id) === id);
+        if (target) {
+          this.addSosAlert(target, true);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Lỗi lấy chi tiết SOS:', e);
+    }
+
+    window.App.showToast('Không tìm thấy tọa độ của cảnh báo SOS này.', 'warning');
   },
 
   updatePickerMarker(latlng) {
@@ -1762,7 +1787,7 @@ const LocationsModule = {
       const lastPt = currentBranch[currentBranch.length - 1];
       if (this.checkCrossesWall(lastPt, pt)) {
         if (window.App) {
-          window.App.showToast('Nhắc nhở: Ranh giới trường là tường bao kiên cố không thể đi xuyên qua! Lối đi chỉ được kết nối ra ngoài qua các cổng chính thức (Cổng trước, Cổng sau hoặc Cổng bệnh viện).', 'warning');
+          window.App.showToast('Lưu ý: Đoạn đường vẽ cắt qua ranh giới tường bao khuôn viên trường.', 'warning');
         }
       }
     }
@@ -1779,9 +1804,9 @@ const LocationsModule = {
     }).addTo(this.map);
 
     if (isSnapped) {
-      marker.bindTooltip('Điểm giao lộ (Đã bắt điểm)', { permanent: false, direction: 'top' });
+      marker.bindTooltip('Điểm giao lộ', { permanent: false, direction: 'top' });
       if (window.App) {
-        window.App.showToast(`Đã hít vào điểm giao lộ (${this.currentBranchIndex > 0 ? 'rẽ nhánh' : 'kết nối'})!`, 'info');
+        window.App.showToast('Đã bắt điểm vào giao lộ', 'info');
       }
     }
 

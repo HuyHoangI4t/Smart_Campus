@@ -4,7 +4,13 @@
 
 const getApiBase = () => {
   if (typeof window !== 'undefined') {
-    if (window.__ENV__ && window.__ENV__.API_URL) return window.__ENV__.API_URL;
+    if (window.__ENV__ && window.__ENV__.API_URL) {
+      if (window.__ENV__.API_URL.includes('localhost') && window.location.hostname && window.location.hostname !== 'localhost') {
+        const proto = window.location.protocol || 'http:';
+        return `${proto}//${window.location.hostname}:5000`;
+      }
+      return window.__ENV__.API_URL;
+    }
     const host = window.location.hostname || 'localhost';
     const proto = window.location.protocol || 'http:';
     return `${proto}//${host}:5000`;
@@ -180,6 +186,10 @@ const AdminAPI = {
   },
 
   // Notifications
+  async getNotifications() {
+    return this.request('/api/admin/notifications');
+  },
+
   async createNotification(data) {
     return this.request('/api/admin/notifications', {
       method: 'POST',

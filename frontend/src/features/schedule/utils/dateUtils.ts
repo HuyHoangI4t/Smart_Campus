@@ -1,3 +1,5 @@
+import { AvailableWeekItem } from "../types";
+
 export const getTodayDayNum = (): number => {
   const jsDay = new Date().getDay();
   return jsDay === 0 ? 1 : jsDay + 1; // 1: CN, 2: T2, 3: T3, 4: T4...
@@ -57,3 +59,40 @@ export function getWeekRangeFromDate(d: Date): string {
   return `Từ ngày ${formatDateVN(mon)} đến ngày ${formatDateVN(sun)}`;
 }
 
+/**
+ * Sinh danh sách các tuần khả dụng dự phòng dựa trên tuần mốc (hoặc ngày hiện tại)
+ * Giúp giao diện chọn tuần luôn luôn có sẵn danh sách các tuần (Tuần trước, Tuần này, Tuần sau,...)
+ * để sinh viên có thể chuyển tuần duyệt lịch hoặc thêm lịch học tùy biến.
+ */
+export function generateDefaultAvailableWeeks(baseRangeText?: string): AvailableWeekItem[] {
+  let anchorMonday: Date;
+  const parsed = parseWeekRangeDates(baseRangeText || "");
+  if (parsed.startDate) {
+    anchorMonday = parsed.startDate;
+  } else {
+    const now = new Date();
+    const jsDay = now.getDay();
+    const distToMon = (jsDay + 6) % 7;
+    anchorMonday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - distToMon);
+  }
+
+  const offsets = [-1, 0, 1, 2, 3, 4];
+  return offsets.map((off, idx) => {
+    const mon = new Date(anchorMonday.getFullYear(), anchorMonday.getMonth(), anchorMonday.getDate() + off * 7);
+    const sun = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6);
+    const weekRange = `Từ ngày ${formatDateVN(mon)} đến ngày ${formatDateVN(sun)}`;
+    let label = `Tuần ${idx + 1}`;
+    if (off === -1) label = "Tuần trước";
+    else if (off === 0) label = "Tuần này";
+    else if (off === 1) label = "Tuần sau";
+
+    return {
+      index: idx,
+      weekRange,
+      label,
+      isCurrent: off === 0,
+      isNext: off === 1,
+      schedules: [],
+    };
+  });
+}

@@ -4,6 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppColors } from '../constants/appColors';
+import { useTheme } from '../context/ThemeContext';
 import { getHeaderTopPadding } from '../utils/safeArea';
 
 export interface NavHeaderProps {
@@ -37,6 +38,7 @@ export function NavHeader({
 }: NavHeaderProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { colors, isDark } = useTheme();
 
   const handleBack = () => {
     if (onBack) {
@@ -47,7 +49,7 @@ export function NavHeader({
   };
 
   const shouldShowBack = showBack || !!onBack;
-  const headerBg = bg || backgroundColor || AppColors.primary;
+  const headerBg = bg || backgroundColor || colors.primary;
   const paddingTop = getHeaderTopPadding(insets.top, 14);
 
   return (
@@ -61,7 +63,7 @@ export function NavHeader({
           backgroundColor: headerBg,
           zIndex: 10,
           borderBottomWidth: 1,
-          borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+          borderBottomColor: isDark ? colors.cardBorder : 'rgba(255, 255, 255, 0.08)',
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.12,
@@ -74,6 +76,9 @@ export function NavHeader({
             <TouchableOpacity
               onPress={handleBack}
               activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Quay lại"
               style={{
                 width: 38,
                 height: 38,
@@ -123,7 +128,7 @@ export function NavHeader({
                 style={{
                   fontSize: 12,
                   fontWeight: '600',
-                  color: titleColor === '#FFFFFF' ? 'rgba(255, 255, 255, 0.76)' : AppColors.textMuted,
+                  color: titleColor === '#FFFFFF' ? 'rgba(255, 255, 255, 0.76)' : colors.textMuted,
                   marginTop: 2,
                 }}
                 numberOfLines={1}
@@ -139,6 +144,9 @@ export function NavHeader({
             <TouchableOpacity
               onPress={onRight}
               activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Tác vụ"
               style={{
                 width: 38,
                 height: 38,

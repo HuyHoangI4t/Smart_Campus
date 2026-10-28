@@ -3,6 +3,7 @@ import { View, Text, TextInput, Pressable, ScrollView, Keyboard, StyleSheet } fr
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { AppColors } from "../../../constants/appColors";
+import { useTheme } from "../../../context/ThemeContext";
 import { LocationItem } from "../types";
 import { parseCampusRoom, HOUSE_NUM_TO_ID } from "../utils";
 
@@ -42,6 +43,7 @@ interface MapSearchBarProps {
  * Thanh tìm kiếm bản đồ nổi (MapSearchBar) - Ngôn ngữ thiết kế Hybrid Android 16 & iOS HIG
  * Nền kính mờ Glassmorphism (Vibrancy), hình khối Pill-shape tròn tối đa (borderRadius 999),
  * các chip danh mục con nhộng và viền siêu mỏng Hairline tinh xảo.
+ * Tương thích trọn vẹn Dark Mode OLED/Slate.
  */
 const MapSearchBarComponent: React.FC<MapSearchBarProps> = ({
   search,
@@ -56,6 +58,8 @@ const MapSearchBarComponent: React.FC<MapSearchBarProps> = ({
   onSelectCategory,
   onSubmitSearch,
 }) => {
+  const { colors, isDark } = useTheme();
+
   const handleCategoryPress = (catId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     Keyboard.dismiss();
@@ -77,11 +81,19 @@ const MapSearchBarComponent: React.FC<MapSearchBarProps> = ({
   return (
     <View style={styles.container}>
       {/* ── THANH TÌM KIẾM NỔI DẠNG PILL (GLASSMORPHIC SEARCH PILL) ── */}
-      <View style={styles.searchPill}>
-        <Feather name="search" size={17} color={AppColors.primary} style={{ marginRight: 8 }} />
+      <View
+        style={[
+          styles.searchPill,
+          {
+            backgroundColor: isDark ? "rgba(30, 41, 59, 0.96)" : "rgba(255, 255, 255, 0.96)",
+            borderColor: isDark ? "rgba(51, 65, 85, 0.95)" : "rgba(226, 232, 240, 0.95)",
+          },
+        ]}
+      >
+        <Feather name="search" size={17} color={colors.primary} style={{ marginRight: 8 }} />
         <TextInput
           placeholder="Tìm tòa nhà, phòng học (vd: 2.20, 8.3.4)..."
-          placeholderTextColor={AppColors.textMuted}
+          placeholderTextColor={colors.textSecondary}
           value={search}
           onChangeText={onSearchChange}
           onFocus={onFocus}
@@ -90,7 +102,7 @@ const MapSearchBarComponent: React.FC<MapSearchBarProps> = ({
             Keyboard.dismiss();
             onSubmitSearch?.();
           }}
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: colors.text }]}
         />
         {search ? (
           <Pressable
@@ -103,11 +115,11 @@ const MapSearchBarComponent: React.FC<MapSearchBarProps> = ({
             accessibilityRole="button"
             accessibilityLabel="Xóa ô tìm kiếm"
           >
-            <Feather name="x-circle" size={18} color={AppColors.textMuted} />
+            <Feather name="x-circle" size={18} color={colors.textSecondary} />
           </Pressable>
         ) : (
-          <View style={styles.countBadgePill}>
-            <Text style={styles.countBadgeText}>
+          <View style={[styles.countBadgePill, { backgroundColor: isDark ? "rgba(91, 97, 244, 0.2)" : `${colors.primary}12` }]}>
+            <Text style={[styles.countBadgeText, { color: colors.primary }]}>
               {totalLocations} điểm
             </Text>
           </View>
@@ -130,8 +142,12 @@ const MapSearchBarComponent: React.FC<MapSearchBarProps> = ({
                 style={({ pressed }) => [
                   styles.categoryPill,
                   {
-                    backgroundColor: isActive ? AppColors.primary : "rgba(255, 255, 255, 0.94)",
-                    borderColor: isActive ? AppColors.primary : AppColors.cardBorder,
+                    backgroundColor: isActive
+                      ? colors.primary
+                      : isDark
+                      ? colors.cardBg
+                      : "rgba(255, 255, 255, 0.94)",
+                    borderColor: isActive ? colors.primary : colors.cardBorder,
                   },
                   pressed && styles.categoryPillPressed,
                 ]}
@@ -142,13 +158,13 @@ const MapSearchBarComponent: React.FC<MapSearchBarProps> = ({
                 <Feather
                   name={cat.icon}
                   size={12}
-                  color={isActive ? "#FFFFFF" : AppColors.primary}
+                  color={isActive ? "#FFFFFF" : colors.primary}
                 />
                 <Text
                   style={{
                     fontSize: 11.5,
                     fontWeight: isActive ? "800" : "600",
-                    color: isActive ? "#FFFFFF" : AppColors.text,
+                    color: isActive ? "#FFFFFF" : colors.text,
                   }}
                 >
                   {cat.label}
@@ -161,9 +177,9 @@ const MapSearchBarComponent: React.FC<MapSearchBarProps> = ({
 
       {/* ── DROPDOWN GỢI Ý ĐỊA ĐIỂM (GROUPED INSET SUGGESTIONS) ── */}
       {showSuggestions && searchResults.length > 0 && (
-        <View style={styles.suggestionsBox}>
-          <View style={styles.suggestionsHeader}>
-            <Text style={styles.suggestionsTitle}>
+        <View style={[styles.suggestionsBox, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
+          <View style={[styles.suggestionsHeader, { backgroundColor: isDark ? "#0F172A" : AppColors.muted, borderColor: colors.cardBorder }]}>
+            <Text style={[styles.suggestionsTitle, { color: colors.textSecondary }]}>
               Gợi ý ({searchResults.length})
             </Text>
             <Pressable
@@ -172,7 +188,7 @@ const MapSearchBarComponent: React.FC<MapSearchBarProps> = ({
               accessibilityRole="button"
               accessibilityLabel="Đóng gợi ý tìm kiếm"
             >
-              <Text style={styles.closeSuggestionsText}>Đóng</Text>
+              <Text style={[styles.closeSuggestionsText, { color: colors.primary }]}>Đóng</Text>
             </Pressable>
           </View>
           <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
@@ -189,7 +205,10 @@ const MapSearchBarComponent: React.FC<MapSearchBarProps> = ({
                   style={({ pressed }) => [
                     styles.suggestionItem,
                     {
-                      backgroundColor: isRoomMatch ? "#F0FDF4" : AppColors.cardBg,
+                      backgroundColor: isRoomMatch
+                        ? (isDark ? "rgba(16, 185, 129, 0.2)" : "#F0FDF4")
+                        : colors.cardBg,
+                      borderBottomColor: colors.cardBorder,
                     },
                     pressed && styles.suggestionItemPressed,
                   ]}
@@ -199,24 +218,24 @@ const MapSearchBarComponent: React.FC<MapSearchBarProps> = ({
                   <View
                     style={[
                       styles.locIconBox,
-                      { backgroundColor: loc.color || AppColors.primary },
+                      { backgroundColor: loc.color || colors.primary },
                     ]}
                   >
                     <Feather name={(loc.icon as any) || "map-pin"} size={16} color="#FFFFFF" />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.locNameText} numberOfLines={1}>
+                    <Text style={[styles.locNameText, { color: colors.text }]} numberOfLines={1}>
                       {loc.name}
                     </Text>
                     {isRoomMatch ? (
                       <View style={styles.roomMatchRow}>
-                        <Feather name="check-circle" size={11} color={AppColors.success} />
-                        <Text style={styles.roomMatchText}>
+                        <Feather name="check-circle" size={11} color={colors.success} />
+                        <Text style={[styles.roomMatchText, { color: colors.success }]}>
                           Khớp phòng: {parsed.fullDisplay}
                         </Text>
                       </View>
                     ) : (
-                      <Text style={styles.locSubtitleText} numberOfLines={1}>
+                      <Text style={[styles.locSubtitleText, { color: colors.textSecondary }]} numberOfLines={1}>
                         {loc.building} {loc.floor ? `• ${loc.floor}` : ""}
                       </Text>
                     )}
@@ -224,7 +243,7 @@ const MapSearchBarComponent: React.FC<MapSearchBarProps> = ({
                   <Feather
                     name="chevron-right"
                     size={16}
-                    color={isRoomMatch ? AppColors.success : AppColors.textSubtle}
+                    color={isRoomMatch ? colors.success : colors.textSubtle}
                   />
                 </Pressable>
               );
@@ -252,9 +271,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: 48,
     borderRadius: 999, // Pill-shape hoàn hảo
-    backgroundColor: "rgba(255, 255, 255, 0.96)", // Glassmorphic translucent surface
     borderWidth: 1, // Viền Hairline siêu mỏng
-    borderColor: "rgba(226, 232, 240, 0.95)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
@@ -264,7 +281,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 13,
-    color: AppColors.text,
     height: "100%",
     fontWeight: "500",
   },
@@ -279,12 +295,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 4,
     borderRadius: 999, // Pill-shape
-    backgroundColor: `${AppColors.primary}12`,
   },
   countBadgeText: {
     fontSize: 10.5,
     fontWeight: "800",
-    color: AppColors.primary,
   },
   categoryScrollContent: {
     paddingVertical: 8,
@@ -312,7 +326,6 @@ const styles = StyleSheet.create({
   },
   suggestionsBox: {
     marginTop: 6,
-    backgroundColor: AppColors.cardBg,
     borderRadius: 20, // Squircle bo lớn
     maxHeight: 260,
     shadowColor: "#000",
@@ -321,15 +334,12 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
     borderWidth: 1,
-    borderColor: AppColors.cardBorder,
     overflow: "hidden",
   },
   suggestionsHeader: {
     paddingHorizontal: 16,
     paddingVertical: 9,
-    backgroundColor: AppColors.muted,
     borderBottomWidth: 1,
-    borderColor: AppColors.cardBorder,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -337,13 +347,11 @@ const styles = StyleSheet.create({
   suggestionsTitle: {
     fontSize: 11,
     fontWeight: "800",
-    color: AppColors.textSecondary,
     textTransform: "uppercase",
     letterSpacing: 0.4,
   },
   closeSuggestionsText: {
     fontSize: 11.5,
-    color: AppColors.primary,
     fontWeight: "700",
   },
   suggestionItem: {
@@ -352,7 +360,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 14,
     borderBottomWidth: 1,
-    borderColor: AppColors.muted,
     minHeight: 52, // Touch target >= 44pt
   },
   suggestionItemPressed: {
@@ -369,7 +376,6 @@ const styles = StyleSheet.create({
   locNameText: {
     fontSize: 13,
     fontWeight: "800",
-    color: AppColors.text,
   },
   roomMatchRow: {
     flexDirection: "row",
@@ -379,11 +385,9 @@ const styles = StyleSheet.create({
   },
   roomMatchText: {
     fontSize: 11,
-    color: AppColors.success,
     fontWeight: "800",
   },
   locSubtitleText: {
     fontSize: 11,
-    color: AppColors.textSecondary,
   },
 });

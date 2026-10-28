@@ -1,6 +1,15 @@
 import { GpaSummary } from "../types";
 
-export const convertTo4Scale = (score10: number): number => {
+export const convertTo4Scale = (score10: number, diemChu?: string): number => {
+  if (diemChu) {
+    const uc = diemChu.toUpperCase().trim();
+    if (uc === "A") return 4.0;
+    if (uc === "B") return 3.0;
+    if (uc === "C") return 2.0;
+    if (uc === "D") return 1.0;
+    if (uc === "F") return 0.0;
+    if (uc === "P" || uc === "X") return 0.0;
+  }
   if (score10 >= 8.5) return 4.0;
   if (score10 >= 7.0) return 3.0;
   if (score10 >= 5.5) return 2.0;
@@ -61,8 +70,9 @@ export const parseGpaSummary = (gradeItems: any[]): GpaSummary | null => {
       c.diem_hp !== null && c.diem_hp !== undefined && !isNaN(Number(c.diem_hp))
         ? Number(c.diem_hp)
         : (c.grade10 ? Number(c.grade10) : 0);
+    const letter = (c.diem_chu || c.gradeLetter || "").toUpperCase();
     const cred = Number(c.so_tin_chi || c.credits || 0);
-    return acc + convertTo4Scale(score10) * cred;
+    return acc + convertTo4Scale(score10, letter) * cred;
   }, 0);
 
   const gpa10Val = (sum10 / totalGradedCredits).toFixed(2);

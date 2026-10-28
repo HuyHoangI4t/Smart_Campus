@@ -1,15 +1,19 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
 import { SkeletonBox } from "./BaseSkeleton";
+import { useTheme } from "../../context/ThemeContext";
 
 /**
  * Skeleton Wireframe cho Màn hình Thời khóa biểu (ScheduleScreen)
+ * Tương thích trọn vẹn Dark Mode OLED/Slate
  */
 export function ScheduleSkeleton() {
+  const { colors } = useTheme();
+
   return (
     <View style={styles.container}>
       {/* 1. Thanh chọn thứ trong tuần (T2 -> CN) */}
-      <View style={styles.weekSelector}>
+      <View style={[styles.weekSelector, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
         {[1, 2, 3, 4, 5, 6, 7].map((i) => (
           <View key={i} style={styles.weekDayItem}>
             <SkeletonBox width={26} height={12} borderRadius={3} style={{ marginBottom: 6 }} />
@@ -26,7 +30,7 @@ export function ScheduleSkeleton() {
 
       {/* 3. Danh sách ca học */}
       {[1, 2, 3].map((i) => (
-        <View key={i} style={styles.scheduleCard}>
+        <View key={i} style={[styles.scheduleCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <SkeletonBox width={90} height={22} borderRadius={6} backgroundColor="#CBD5E1" />
             <SkeletonBox width={65} height={22} borderRadius={6} />
@@ -37,7 +41,7 @@ export function ScheduleSkeleton() {
             <SkeletonBox width={120} height={16} borderRadius={4} />
           </View>
           <SkeletonBox width={140} height={14} borderRadius={4} style={{ marginBottom: 14 }} />
-          <View style={{ borderTopWidth: 1, borderTopColor: "#EEF2F6", paddingTop: 10, flexDirection: "row", justifyContent: "space-between" }}>
+          <View style={{ borderTopWidth: 1, borderTopColor: colors.cardBorder, paddingTop: 10, flexDirection: "row", justifyContent: "space-between" }}>
             <SkeletonBox width={110} height={30} borderRadius={6} />
             <SkeletonBox width={90} height={30} borderRadius={6} />
           </View>
@@ -56,22 +60,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     paddingVertical: 10,
-    backgroundColor: "#FFFFFF",
     borderRadius: 14,
     paddingHorizontal: 10,
     borderWidth: 1,
-    borderColor: "#EEF2F6",
   },
   weekDayItem: {
     alignItems: "center",
   },
   scheduleCard: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 14,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#EEF2F6",
     marginBottom: 12,
   },
 });
-

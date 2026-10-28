@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  BackHandler,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -20,6 +21,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppColors } from "../../../src/constants/appColors";
 import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
 import { SkeletonBox } from "../../../src/components/Skeleton";
+import { useTheme } from "../../../src/context/ThemeContext";
 import { getHeaderTopPadding } from "../../../src/utils/safeArea";
 import {
   getNewsImageUrl,
@@ -65,6 +67,7 @@ function parseArticleContent(rawText?: string): ContentParagraph[] {
 export default function HomeDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
   const params = useLocalSearchParams<{
     id?: string;
     title?: string;
@@ -148,12 +151,26 @@ export default function HomeDetailScreen() {
     }
   };
 
+  const handleBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(main)/home");
+    }
+  }, [router]);
+
   // Luôn cuộn ngay về đỉnh trang mỗi khi màn hình được kích hoạt / hiển thị và kiểm tra quyền đăng nhập
   useFocusEffect(
     useCallback(() => {
       checkAuth();
       scrollRef.current?.scrollTo({ y: 0, animated: false });
-    }, [])
+      const onBackPress = () => {
+        handleBack();
+        return true;
+      };
+      const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+      return () => sub.remove();
+    }, [handleBack])
   );
 
   // Khi người dùng bấm vào bài viết khác, xóa sạch dữ liệu bài cũ và cuộn lên đỉnh ngay lập tức
@@ -292,13 +309,13 @@ export default function HomeDetailScreen() {
     const topPadding = getHeaderTopPadding(insets.top, 14);
 
     return (
-      <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
-        <StatusBar barStyle="light-content" backgroundColor="#0F2964" translucent={Platform.OS === "android"} />
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <StatusBar barStyle="light-content" backgroundColor={colors.primary} translucent={Platform.OS === "android"} />
 
         {/* ─── HEADER NAVY BLUE ─── */}
         <View
           style={{
-            backgroundColor: "#0F2964",
+            backgroundColor: colors.primary,
             paddingTop: topPadding,
             paddingBottom: 16,
             paddingHorizontal: 16,
@@ -313,8 +330,11 @@ export default function HomeDetailScreen() {
         >
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={handleBack}
               activeOpacity={0.8}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Quay lại"
               style={{
                 width: 38,
                 height: 38,
@@ -366,9 +386,9 @@ export default function HomeDetailScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar
-        barStyle={hasImage ? "light-content" : "dark-content"}
+        barStyle={hasImage || isDark ? "light-content" : "dark-content"}
         backgroundColor="transparent"
         translucent
       />
@@ -413,8 +433,11 @@ export default function HomeDetailScreen() {
             }}
           >
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={handleBack}
               activeOpacity={0.8}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Quay lại"
               style={{
                 width: 40,
                 height: 40,
@@ -524,12 +547,12 @@ export default function HomeDetailScreen() {
         /* ─── NẾU KHÔNG CÓ ẢNH (HEADER TIÊU CHUẨN) ──────────────────────── */
         <View
           style={{
-            backgroundColor: "#FFFFFF",
+            backgroundColor: colors.cardBg,
             paddingTop: getHeaderTopPadding(insets.top, 10),
             paddingBottom: 14,
             paddingHorizontal: 16,
             borderBottomWidth: 1,
-            borderBottomColor: "#E2E8F0",
+            borderBottomColor: colors.cardBorder,
             flexDirection: "row",
             justifyContent: "space-between",
             alignItems: "center",
@@ -542,19 +565,19 @@ export default function HomeDetailScreen() {
               width: 38,
               height: 38,
               borderRadius: 19,
-              backgroundColor: "#F1F5F9",
+              backgroundColor: isDark ? "#334155" : "#F1F5F9",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <Feather name="arrow-left" size={20} color="#1E293B" />
+            <Feather name="arrow-left" size={20} color={colors.text} />
           </TouchableOpacity>
 
           <View style={{ alignItems: "center" }}>
-            <Text style={{ fontSize: 14, fontWeight: "800", color: "#153242" }}>
+            <Text style={{ fontSize: 14, fontWeight: "800", color: colors.text }}>
               {isNews ? "Bản tin Trường" : "Văn bản Thông báo"}
             </Text>
-            <Text style={{ fontSize: 10, color: AppColors.textMuted }}>
+            <Text style={{ fontSize: 10, color: colors.subtext }}>
               Đại học Tây Nguyên
             </Text>
           </View>
@@ -567,12 +590,12 @@ export default function HomeDetailScreen() {
                 height: 38,
                 paddingHorizontal: 10,
                 borderRadius: 19,
-                backgroundColor: "#F1F5F9",
+                backgroundColor: isDark ? "#334155" : "#F1F5F9",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Text style={{ fontSize: 12, fontWeight: "800", color: "#1E293B" }}>
+              <Text style={{ fontSize: 12, fontWeight: "800", color: colors.text }}>
                 Aa {fontScale > 0 ? `+${fontScale}` : ""}
               </Text>
             </TouchableOpacity>
@@ -584,12 +607,12 @@ export default function HomeDetailScreen() {
                 width: 38,
                 height: 38,
                 borderRadius: 19,
-                backgroundColor: "#F1F5F9",
+                backgroundColor: isDark ? "#334155" : "#F1F5F9",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Feather name="share-2" size={17} color="#1E293B" />
+              <Feather name="share-2" size={17} color={colors.text} />
             </TouchableOpacity>
           </View>
         </View>
@@ -686,7 +709,7 @@ export default function HomeDetailScreen() {
           style={{
             fontSize: 20,
             fontWeight: "900",
-            color: "#0F172A",
+            color: colors.text,
             lineHeight: 28,
             marginBottom: 14,
             letterSpacing: -0.3,
@@ -703,13 +726,13 @@ export default function HomeDetailScreen() {
             gap: 12,
             padding: 14,
             borderRadius: 14,
-            backgroundColor: "#FFFFFF",
+            backgroundColor: colors.cardBg,
             borderWidth: 1,
-            borderColor: "#E2E8F0",
+            borderColor: colors.cardBorder,
             marginBottom: 20,
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.03,
+            shadowOpacity: isDark ? 0.3 : 0.03,
             shadowRadius: 4,
             elevation: 1,
           }}
@@ -719,7 +742,7 @@ export default function HomeDetailScreen() {
               width: 40,
               height: 40,
               borderRadius: 20,
-              backgroundColor: isNews ? "#EFF6FF" : "#F1F5F9",
+              backgroundColor: isNews ? (isDark ? "rgba(59, 130, 246, 0.2)" : "#EFF6FF") : (isDark ? "#334155" : "#F1F5F9"),
               alignItems: "center",
               justifyContent: "center",
             }}
@@ -727,20 +750,20 @@ export default function HomeDetailScreen() {
             <Feather
               name={isNews ? "book-open" : "user-check"}
               size={18}
-              color={isNews ? "#2563EB" : "#0F172A"}
+              color={isNews ? (isDark ? "#60A5FA" : "#2563EB") : colors.text}
             />
           </View>
 
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 13, fontWeight: "800", color: "#0F172A" }}>
+            <Text style={{ fontSize: 13, fontWeight: "800", color: colors.text }}>
               {author}
             </Text>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
-              <Text style={{ fontSize: 11, color: AppColors.textMuted }}>
+              <Text style={{ fontSize: 11, color: colors.subtext }}>
                 {category}
               </Text>
-              <Text style={{ fontSize: 10, color: "#94A3B8" }}>•</Text>
-              <Text style={{ fontSize: 11, color: AppColors.textMuted }}>
+              <Text style={{ fontSize: 10, color: colors.subtext }}>•</Text>
+              <Text style={{ fontSize: 11, color: colors.subtext }}>
                 {date}
               </Text>
             </View>
@@ -750,17 +773,17 @@ export default function HomeDetailScreen() {
         {/* ─── NỘI DUNG CHÍNH CỦA BÀI VIẾT (TỪ WEBSITE / RSS) ─── */}
         <View
           style={{
-            backgroundColor: "#FFFFFF",
+            backgroundColor: colors.cardBg,
             padding: 18,
             borderRadius: 16,
             borderWidth: 1,
-            borderColor: "#E2E8F0",
+            borderColor: colors.cardBorder,
             marginBottom: 20,
             borderLeftWidth: 4,
-            borderLeftColor: isNews ? "#2563EB" : "#0F172A",
+            borderLeftColor: isNews ? (isDark ? "#60A5FA" : "#2563EB") : colors.primary,
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.04,
+            shadowOpacity: isDark ? 0.3 : 0.04,
             shadowRadius: 6,
             elevation: 1,
           }}
@@ -774,20 +797,20 @@ export default function HomeDetailScreen() {
               paddingBottom: 12,
               marginBottom: 14,
               borderBottomWidth: 1,
-              borderBottomColor: "#F1F5F9",
+              borderBottomColor: colors.cardBorder,
             }}
           >
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Feather
                 name={isNews ? "file-text" : "clipboard"}
                 size={16}
-                color={isNews ? "#2563EB" : "#0F172A"}
+                color={isNews ? (isDark ? "#60A5FA" : "#2563EB") : colors.primary}
               />
               <Text
                 style={{
                   fontSize: 13,
                   fontWeight: "900",
-                  color: isNews ? "#1E40AF" : "#0F172A",
+                  color: isNews ? (isDark ? "#60A5FA" : "#1E40AF") : colors.text,
                   textTransform: "uppercase",
                   letterSpacing: 0.5,
                 }}
@@ -838,7 +861,7 @@ export default function HomeDetailScreen() {
                         <Text
                           style={{
                             fontSize: 12,
-                            color: "#64748B",
+                            color: colors.subtext,
                             fontStyle: "italic",
                             textAlign: "center",
                             marginTop: 6,
@@ -870,7 +893,7 @@ export default function HomeDetailScreen() {
                               style={{
                                 fontSize: baseFontSize + 1,
                                 fontWeight: "800",
-                                color: isNews ? "#1E40AF" : "#0F172A",
+                                color: isNews ? (isDark ? "#93C5FD" : "#1E40AF") : colors.text,
                                 lineHeight: baseLineHeight + 3,
                                 marginTop: 4,
                               }}
@@ -893,7 +916,7 @@ export default function HomeDetailScreen() {
                               <Text
                                 style={{
                                   fontSize: baseFontSize,
-                                  color: isNews ? "#2563EB" : "#0F172A",
+                                  color: isNews ? (isDark ? "#60A5FA" : "#2563EB") : colors.primary,
                                   fontWeight: "900",
                                   lineHeight: baseLineHeight,
                                 }}
@@ -904,7 +927,7 @@ export default function HomeDetailScreen() {
                                 style={{
                                   flex: 1,
                                   fontSize: baseFontSize,
-                                  color: "#1E293B",
+                                  color: colors.text,
                                   lineHeight: baseLineHeight,
                                   fontWeight: "500",
                                 }}
@@ -919,7 +942,7 @@ export default function HomeDetailScreen() {
                             key={pIdx}
                             style={{
                               fontSize: baseFontSize,
-                              color: "#1E293B",
+                              color: colors.text,
                               lineHeight: baseLineHeight,
                               fontWeight: "400",
                             }}
@@ -943,7 +966,7 @@ export default function HomeDetailScreen() {
                       style={{
                         fontSize: baseFontSize + 1,
                         fontWeight: "800",
-                        color: isNews ? "#1E40AF" : "#0F172A",
+                        color: isNews ? (isDark ? "#93C5FD" : "#1E40AF") : colors.text,
                         lineHeight: baseLineHeight + 3,
                         marginTop: idx > 0 ? 6 : 0,
                       }}
@@ -966,7 +989,7 @@ export default function HomeDetailScreen() {
                       <Text
                         style={{
                           fontSize: baseFontSize,
-                          color: isNews ? "#2563EB" : "#0F172A",
+                          color: isNews ? (isDark ? "#60A5FA" : "#2563EB") : colors.primary,
                           fontWeight: "900",
                           lineHeight: baseLineHeight,
                         }}
@@ -977,7 +1000,7 @@ export default function HomeDetailScreen() {
                         style={{
                           flex: 1,
                           fontSize: baseFontSize,
-                          color: "#1E293B",
+                          color: colors.text,
                           lineHeight: baseLineHeight,
                           fontWeight: "500",
                         }}
@@ -992,7 +1015,7 @@ export default function HomeDetailScreen() {
                     key={idx}
                     style={{
                       fontSize: baseFontSize,
-                      color: "#1E293B",
+                      color: colors.text,
                       lineHeight: baseLineHeight,
                       fontWeight: "400",
                     }}
@@ -1014,7 +1037,7 @@ export default function HomeDetailScreen() {
               <Text
                 style={{
                   fontSize: baseFontSize,
-                  color: "#64748B",
+                  color: colors.subtext,
                   lineHeight: baseLineHeight,
                 }}
               >
@@ -1032,15 +1055,15 @@ export default function HomeDetailScreen() {
           return (
             <View
               style={{
-                backgroundColor: "#FFFFFF",
+                backgroundColor: colors.cardBg,
                 padding: 16,
                 borderRadius: 16,
                 borderWidth: 1,
-                borderColor: "#E2E8F0",
+                borderColor: colors.cardBorder,
                 marginBottom: 20,
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.04,
+                shadowOpacity: isDark ? 0.3 : 0.04,
                 shadowRadius: 6,
                 elevation: 1,
               }}
@@ -1053,15 +1076,15 @@ export default function HomeDetailScreen() {
                   paddingBottom: 10,
                   marginBottom: 12,
                   borderBottomWidth: 1,
-                  borderBottomColor: "#F1F5F9",
+                  borderBottomColor: colors.cardBorder,
                 }}
               >
-                <Feather name="paperclip" size={16} color="#0F172A" />
+                <Feather name="paperclip" size={16} color={colors.text} />
                 <Text
                   style={{
                     fontSize: 13,
                     fontWeight: "900",
-                    color: "#0F172A",
+                    color: colors.text,
                     textTransform: "uppercase",
                     letterSpacing: 0.5,
                   }}
@@ -1085,9 +1108,9 @@ export default function HomeDetailScreen() {
                         justifyContent: "space-between",
                         padding: 12,
                         borderRadius: 14,
-                        backgroundColor: "#F8FAFC",
+                        backgroundColor: isDark ? "#141E33" : "#F8FAFC",
                         borderWidth: 1,
-                        borderColor: isDownloading ? AppColors.primary : "#E2E8F0",
+                        borderColor: isDownloading ? colors.primary : colors.cardBorder,
                       }}
                     >
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1, marginRight: 10 }}>
@@ -1116,7 +1139,7 @@ export default function HomeDetailScreen() {
                             style={{
                               fontSize: 13,
                               fontWeight: "700",
-                              color: "#1E293B",
+                              color: colors.text,
                             }}
                             numberOfLines={1}
                           >
@@ -1125,7 +1148,7 @@ export default function HomeDetailScreen() {
                           <Text
                             style={{
                               fontSize: 11,
-                              color: isDownloading ? AppColors.primary : AppColors.textMuted,
+                              color: isDownloading ? colors.primary : colors.subtext,
                               marginTop: 2,
                               fontWeight: isDownloading ? "600" : "400",
                             }}
@@ -1169,11 +1192,11 @@ export default function HomeDetailScreen() {
         {/* Hộp chỉ dẫn sinh viên */}
         <View
           style={{
-            backgroundColor: "#F0F7FF",
+            backgroundColor: isDark ? "rgba(37, 99, 235, 0.12)" : "#F0F7FF",
             borderRadius: 12,
             padding: 14,
             borderWidth: 1,
-            borderColor: "#BFDBFE",
+            borderColor: isDark ? "rgba(59, 130, 246, 0.3)" : "#BFDBFE",
             marginBottom: 20,
           }}
         >
@@ -1185,13 +1208,13 @@ export default function HomeDetailScreen() {
               marginBottom: 8,
             }}
           >
-            <Feather name="info" size={15} color="#1D4ED8" />
-            <Text style={{ fontSize: 12, fontWeight: "800", color: "#1D4ED8" }}>
+            <Feather name="info" size={15} color={isDark ? "#60A5FA" : "#1D4ED8"} />
+            <Text style={{ fontSize: 12, fontWeight: "800", color: isDark ? "#60A5FA" : "#1D4ED8" }}>
               HƯỚNG DẪN DÀNH CHO SINH VIÊN
             </Text>
           </View>
 
-          <Text style={{ fontSize: 12, color: "#1E3A8A", lineHeight: 19 }}>
+          <Text style={{ fontSize: 12, color: isDark ? "#93C5FD" : "#1E3A8A", lineHeight: 19 }}>
             • Kiểm tra thông tin cá nhân và đối chiếu học phần trên Cổng thông tin đào
             tạo của nhà trường.{"\n"}
             • Mọi vướng mắc liên hệ trực tiếp văn phòng Khoa hoặc Phòng Công tác Sinh
@@ -1207,14 +1230,14 @@ export default function HomeDetailScreen() {
             onPress={handleOpenOriginal}
             activeOpacity={0.8}
             style={{
-              backgroundColor: AppColors.primary,
+              backgroundColor: colors.primary,
               borderRadius: 14,
               paddingVertical: 14,
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "center",
               gap: 8,
-              shadowColor: AppColors.primary,
+              shadowColor: colors.primary,
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.2,
               shadowRadius: 8,
@@ -1233,7 +1256,7 @@ export default function HomeDetailScreen() {
               activeOpacity={0.8}
               style={{
                 flex: 1,
-                backgroundColor: "#FFFFFF",
+                backgroundColor: colors.cardBg,
                 borderRadius: 14,
                 paddingVertical: 12,
                 flexDirection: "row",
@@ -1241,11 +1264,11 @@ export default function HomeDetailScreen() {
                 justifyContent: "center",
                 gap: 6,
                 borderWidth: 1,
-                borderColor: "#E2E8F0",
+                borderColor: colors.cardBorder,
               }}
             >
-              <Feather name="share-2" size={15} color="#334155" />
-              <Text style={{ color: "#334155", fontWeight: "700", fontSize: 13 }}>
+              <Feather name="share-2" size={15} color={colors.text} />
+              <Text style={{ color: colors.text, fontWeight: "700", fontSize: 13 }}>
                 Chia sẻ
               </Text>
             </TouchableOpacity>
@@ -1255,7 +1278,7 @@ export default function HomeDetailScreen() {
               activeOpacity={0.8}
               style={{
                 flex: 1,
-                backgroundColor: "#F1F5F9",
+                backgroundColor: isDark ? "#334155" : "#F1F5F9",
                 borderRadius: 14,
                 paddingVertical: 12,
                 flexDirection: "row",
@@ -1264,8 +1287,8 @@ export default function HomeDetailScreen() {
                 gap: 6,
               }}
             >
-              <Feather name="arrow-left" size={14} color="#475569" />
-              <Text style={{ color: "#475569", fontWeight: "700", fontSize: 13 }}>
+              <Feather name="arrow-left" size={14} color={colors.text} />
+              <Text style={{ color: colors.text, fontWeight: "700", fontSize: 13 }}>
                 Quay lại
               </Text>
             </TouchableOpacity>
