@@ -71,6 +71,9 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
   const stopAllTracking = useCallback(() => {
     stopHeadingTracking();
     stopPositionWatch();
+    if (isMountedRef.current) {
+      setLocationLoading(false);
+    }
   }, [stopHeadingTracking, stopPositionWatch]);
 
   // Bắt đầu theo dõi và tinh chỉnh tọa độ ngầm có độ chính xác cao (Background Refinement)
@@ -79,6 +82,8 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
     if (!isTabFocusedRef.current || !isMountedRef.current) return;
     try {
       if (await isGuestUser()) return;
+      if (!isTabFocusedRef.current || !isMountedRef.current) return;
+
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (!isTabFocusedRef.current || !isMountedRef.current || status !== "granted") return;
 
@@ -105,6 +110,12 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
           onLocationUpdated?.(freshCoords, acc, false);
         }
       );
+
+      // Nếu người dùng đã chuyển tab hoặc unmount trong lúc await, hủy ngay lập tức
+      if (!isTabFocusedRef.current || !isMountedRef.current) {
+        sub.remove();
+        return;
+      }
 
       positionSubscriptionRef.current = sub;
       if (isMountedRef.current) setIsWatchingPosition(true);
@@ -288,6 +299,12 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
         }
       });
 
+      // Nếu người dùng đã chuyển tab hoặc unmount trong lúc await, hủy ngay lập tức
+      if (!isTabFocusedRef.current || !isMountedRef.current) {
+        sub.remove();
+        return;
+      }
+
       headingSubscriptionRef.current = sub;
     } catch {
       // Thiết bị không có cảm biến la bàn
@@ -373,5 +390,6 @@ export function useMapGps(options: UseMapGpsOptions = {}) {
     rotateStep,
     setBearing,
     stopCompassTracking,
+    stopAllTracking,
   };
 }

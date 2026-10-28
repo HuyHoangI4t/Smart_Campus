@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
 import { tabBarStyles } from '../constants/globalStyles';
 
@@ -20,13 +21,23 @@ interface TabItemConfig {
   isCenter?: boolean;
 }
 
-const TAB_ITEMS: TabItemConfig[] = [
+// Danh sách Tab dành riêng cho chế độ Khách (Chỉ có 3 tab: Trang chủ, Bản đồ, Hồ sơ)
+export const GUEST_TAB_ITEMS: TabItemConfig[] = [
+  { route: 'home/index', label: 'Trang chủ', icon: 'home' },
+  { route: 'map/index', label: 'Bản đồ', icon: 'navigation', isCenter: true },
+  { route: 'profile/index', label: 'Hồ sơ', icon: 'user' },
+];
+
+// Danh sách Tab đầy đủ 5 mục dành cho Sinh viên đã đăng nhập
+export const STUDENT_TAB_ITEMS: TabItemConfig[] = [
   { route: 'home/index', label: 'Trang chủ', icon: 'home' },
   { route: 'schedule/index', label: 'Lịch học', icon: 'calendar' },
   { route: 'map/index', label: 'Bản đồ', icon: 'navigation', isCenter: true },
   { route: 'grades/index', label: 'Điểm', icon: 'bar-chart-2' },
   { route: 'profile/index', label: 'Hồ sơ', icon: 'user' },
 ];
+
+export const TAB_ITEMS = STUDENT_TAB_ITEMS;
 
 type TabBarVisibilityListener = (visible: boolean) => void;
 const visibilityListeners: Set<TabBarVisibilityListener> = new Set();
@@ -35,6 +46,24 @@ let currentTabBarVisible = true;
 export function setTabBarVisible(visible: boolean) {
   currentTabBarVisible = visible;
   visibilityListeners.forEach((listener) => listener(visible));
+}
+
+// Bộ lắng nghe sự kiện đăng nhập / đăng xuất để cập nhật ngay thanh Bottom Nav
+type AuthChangeListener = (guest: boolean) => void;
+const authChangeListeners: Set<AuthChangeListener> = new Set();
+
+export function notifyAuthChanged() {
+  AsyncStorage.getItem('@auth_user').then((userStr) => {
+    let guest = true;
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr);
+        const mssv = u.mssv || u.masv || '';
+        guest = !mssv || mssv === 'guest';
+      } catch {}
+    }
+    authChangeListeners.forEach((fn) => fn(guest));
+  }).catch(() => {});
 }
 
 // Khoảng đệm cố định ở đáy trang ScrollView khi thanh nav đang hiển thị
@@ -131,6 +160,39 @@ export function CustomBottomNav(props: CustomBottomNavProps) {
   const translateY = useRef(new Animated.Value(currentTabBarVisible ? 0 : hideDistance)).current;
   const opacity = useRef(new Animated.Value(currentTabBarVisible ? 1 : 0)).current;
   const [isVisible, setIsVisible] = useState(currentTabBarVisible);
+  const [isGuest, setIsGuest] = useState<boolean>(true);
+
+  // Tự động kiểm tra quyền khách / sinh viên để ẩn hoặc hiện tab Lịch học & Điểm số
+  useEffect(() => {
+    let isMounted = true;
+    const checkUserRole = async () => {
+      try {
+        const userStr = await AsyncStorage.getItem('@auth_user');
+        if (!isMounted) return;
+        if (userStr) {
+          const u = JSON.parse(userStr);
+          const mssv = u.mssv || u.masv || '';
+          setIsGuest(!mssv || mssv === 'guest');
+        } else {
+          setIsGuest(true);
+        }
+      } catch {
+        if (isMounted) setIsGuest(true);
+      }
+    };
+
+    checkUserRole();
+
+    const listener = (guest: boolean) => {
+      if (isMounted) setIsGuest(guest);
+    };
+    authChangeListeners.add(listener);
+
+    return () => {
+      isMounted = false;
+      authChangeListeners.delete(listener);
+    };
+  }, [props]);
 
   useEffect(() => {
     const listener = (visible: boolean) => {
@@ -155,6 +217,7 @@ export function CustomBottomNav(props: CustomBottomNavProps) {
   }, [hideDistance, translateY, opacity]);
 
   const isTabBarProps = 'state' in props;
+  const currentTabs = isGuest ? GUEST_TAB_ITEMS : STUDENT_TAB_ITEMS;
 
   let activeIndex = 0;
   let isSubScreenHidden = false;
@@ -167,8 +230,9 @@ export function CustomBottomNav(props: CustomBottomNavProps) {
       isSubScreenHidden = true;
     }
 
-    const matchIndex = TAB_ITEMS.findIndex((t) => t.route === currentRoute?.name);
-    // Ẩn tab bar trên các màn hình phụ như feedback, sos, grades_detail, change_password, test
+    const matchIndex = currentTabs.findIndex((t) => t.route === currentRoute?.name);
+    // Ẩn tab bar trên các màn hình phụ như feedback, sos, grades_detail, change_password,
+    // hoặc khi khách ở màn hình lịch học / điểm số
     if (matchIndex === -1) {
       isSubScreenHidden = true;
     } else {
@@ -203,7 +267,7 @@ export function CustomBottomNav(props: CustomBottomNavProps) {
 
   const handleSelect = (index: number) => {
     if (isTabBarProps) {
-      const targetItem = TAB_ITEMS[index];
+      const targetItem = currentTabs[index];
       const isSelected = activeIndex === index;
       const event = props.navigation.emit({
         type: 'tabPress',
@@ -242,7 +306,7 @@ export function CustomBottomNav(props: CustomBottomNavProps) {
           },
         ]}
       >
-        {TAB_ITEMS.map((item, index) => {
+        {currentTabs.map((item, index) => {
           const isSelected = index === activeIndex;
 
           if (item.isCenter) {

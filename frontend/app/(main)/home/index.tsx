@@ -37,6 +37,8 @@ import {
   HomeNextClassCard,
   HomeGpaCard,
   HomeQuickActions,
+  DEFAULT_QUICK_ACTIONS,
+  GUEST_QUICK_ACTIONS,
   HomeAlertsSection,
   HomeAnnouncementsSection,
   HomeNewsSection,
@@ -411,6 +413,7 @@ export default function HomeScreen() {
       return;
     }
     if (screen === "home") router.push("/(main)/home");
+    else if (screen === "all_articles" || screen === "home/all_articles") router.push("/(main)/home/all_articles");
     else router.push(`/(main)/${screen}` as any);
   };
 
@@ -517,34 +520,26 @@ export default function HomeScreen() {
               </View>
             )}
 
-            {/* 3. LỚP HỌC TIẾP THEO HOẶC ĐANG DIỄN RA */}
-            <HomeNextClassCard
-              nextClass={nextClass}
-              onPress={handleOpenMapDirections}
-            />
+            {/* 3. LỚP HỌC TIẾP THEO HOẶC ĐANG DIỄN RA (ẨN HOÀN TOÀN KHI LÀ KHÁCH) */}
+            {isLoggedIn && (
+              <HomeNextClassCard
+                nextClass={nextClass}
+                onPress={handleOpenMapDirections}
+              />
+            )}
 
-            {/* 4. TỔNG KẾT GPA HỆ 4 & HỆ 10 */}
-            <HomeGpaCard
-              gpaSummary={gpaSummary}
-              onPress={() => {
-                if (!isLoggedIn) {
-                  Alert.alert(
-                    "Vui lòng đăng nhập để tiếp tục",
-                    "Tính năng Kết quả học tập chỉ dành riêng cho sinh viên Đại học Tây Nguyên. Bạn có muốn đăng nhập không?",
-                    [
-                      { text: "Để sau", style: "cancel" },
-                      { text: "Đăng nhập", onPress: () => router.replace("/(auth)") },
-                    ]
-                  );
-                  return;
-                }
-                router.push("/(main)/grades");
-              }}
-            />
+            {/* 4. TỔNG KẾT GPA HỆ 4 & HỆ 10 (ẨN HOÀN TOÀN KHI LÀ KHÁCH) */}
+            {isLoggedIn && (
+              <HomeGpaCard
+                gpaSummary={gpaSummary}
+                onPress={() => router.push("/(main)/grades")}
+              />
+            )}
 
             {/* 5. TÁC VỤ NHANH */}
             <HomeQuickActions
               onNavigate={onNavigate}
+              actions={isLoggedIn ? DEFAULT_QUICK_ACTIONS : GUEST_QUICK_ACTIONS}
             />
 
             {/* 6. THÔNG BÁO & CẢNH BÁO */}

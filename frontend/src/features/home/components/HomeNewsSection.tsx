@@ -4,7 +4,6 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { AppColors } from "../../../constants/appColors";
 import { useTheme } from "../../../context/ThemeContext";
-import { LoginRequiredCard } from "../../../components/LoginRequiredCard";
 import { NewsOrAnnouncementItem, getNewsImageUrl, CAMPUS_FALLBACK_IMAGES } from "../../../services/api";
 
 export function NewsCardImage({ imageUrl, index }: { imageUrl?: string; index: number }) {
@@ -60,7 +59,7 @@ export const HomeNewsSection = React.memo(function HomeNewsSection({
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={[styles.title, { color: colors.text }]}>Tin tức & Hoạt động</Text>
-        {isLoggedIn && news.length > 0 ? (
+        {news.length > 0 ? (
           <Pressable
             onPress={handleViewAllPress}
             style={({ pressed }) => [
@@ -77,14 +76,7 @@ export const HomeNewsSection = React.memo(function HomeNewsSection({
         ) : null}
       </View>
 
-      {!isLoggedIn ? (
-        <LoginRequiredCard
-          mode="card"
-          icon="globe"
-          title="Vui lòng đăng nhập để xem tin tức"
-          message="Đăng nhập tài khoản sinh viên để theo dõi các sự kiện, tin tức hoạt động Đoàn - Hội và Nhà trường."
-        />
-      ) : news.length === 0 ? (
+      {news.length === 0 ? (
         /* Empty State chỉn chu */
         <View style={[styles.emptyContainer, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
           <View style={[styles.emptyIconCircle, { backgroundColor: isDark ? "#334155" : AppColors.muted }]}>

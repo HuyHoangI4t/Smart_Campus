@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppColors } from '@/src/constants/appColors';
 import { authStyles } from '@/src/constants/globalStyles';
 import { AuthHeader } from '@/src/components/AuthHeader';
+import { notifyAuthChanged } from '@/src/components/MainTabs';
 import { 
   apiLogin, 
   apiRegister, 
@@ -206,6 +207,7 @@ export default function AuthScreen() {
               fullName: res.user.fullName || res.user.full_name || res.user.ho_ten || ('Sinh viên ' + res.user.mssv),
             };
             await AsyncStorage.setItem('@auth_user', JSON.stringify(userPayload));
+            notifyAuthChanged();
           }
 
           const targetMssv = res.user?.mssv;
@@ -580,6 +582,7 @@ export default function AuthScreen() {
                     setLoadingButtonText('Đang đăng nhập như Khách...');
                     await clearAuthAndCache();
                     await AsyncStorage.setItem('@auth_user', JSON.stringify({ mssv: 'guest', fullName: 'Khách' }));
+                    notifyAuthChanged();
                     await Promise.allSettled([
                       apiGetDashboard(),
                       apiGetNews(),

@@ -31,14 +31,67 @@
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
-        "READ_MEDIA_IMAGES"
-      ]
+        "READ_MEDIA_IMAGES",
+        "POST_NOTIFICATIONS",
+        "SCHEDULE_EXACT_ALARM",
+        "VIBRATE",
+        "WAKE_LOCK",
+        "RECEIVE_BOOT_COMPLETED"
+      ],
+      "package": "com.smartcampus.tnu"
     },
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "GradesWidget",
+              "label": "Smart Campus - Điểm số & Tín chỉ",
+              "description": "Hiển thị điểm GPA hệ 4, hệ 10, tín chỉ tích lũy và xếp loại học lực",
+              "minWidth": "180dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 3,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 3600000
+            },
+            {
+              "name": "ScheduleWidget",
+              "label": "Smart Campus - Lịch học hôm nay",
+              "description": "Hiển thị môn học sắp tới, thời gian, phòng học và tiết học trong ngày",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "SosWidget",
+              "label": "Smart Campus - SOS Cứu Hộ",
+              "description": "Nút bấm gọi cứu hộ khẩn cấp 1-chạm từ màn hình chính",
+              "minWidth": "110dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "resizeMode": "none",
+              "updatePeriodMillis": 0
+            }
+          ]
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/favicon.png",
+          "color": "#1D4ED8"
+        }
+      ],
       "expo-router",
       [
         "expo-location",

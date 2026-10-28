@@ -338,6 +338,9 @@ ${LEAFLET_JS}
       }
       mapRotator.style.transform = 'rotate(' + (-currentBearing) + 'deg)';
       document.documentElement.style.setProperty('--counter-rot', currentBearing + 'deg');
+      if (typeof updateArrowVisualRotation === 'function') {
+        updateArrowVisualRotation();
+      }
     }
 
     // Đảm bảo lúc mới mở bản đồ luôn theo đúng chuẩn hướng Bắc - Nam (0 độ)
@@ -680,6 +683,12 @@ ${LEAFLET_JS}
     var currentUserLng = null;
     var currentUserHeading = 0;
     var routeLayerGroup = L.layerGroup().addTo(map);
+    var isCompassMode = false;
+
+    function isNavOrCompassActive() {
+      return Boolean((activeRouteState && activeRouteState.isActive) || isCompassMode);
+    }
+
     var activeRouteState = {
       isActive: false,
       coords: [],
@@ -764,30 +773,55 @@ ${LEAFLET_JS}
       callback(fallbackDist, Math.max(1, Math.round(fallbackDist / 75)));
     }
 
+    var currentArrowCumulativeAngle = 0;
+    var hasArrowRotatedOnce = false;
+
+    function setArrowRotationShortestArc(targetAngle) {
+      var arrowEl = document.getElementById('user-nav-arrow');
+      if (!arrowEl) return;
+
+      var normTarget = ((targetAngle % 360) + 360) % 360;
+      if (!hasArrowRotatedOnce) {
+        currentArrowCumulativeAngle = normTarget;
+        hasArrowRotatedOnce = true;
+      } else {
+        var curNorm = ((currentArrowCumulativeAngle % 360) + 360) % 360;
+        var diff = normTarget - curNorm;
+        if (diff > 180) diff -= 360;
+        if (diff < -180) diff += 360;
+        currentArrowCumulativeAngle += diff;
+      }
+      arrowEl.style.transform = 'rotate(' + currentArrowCumulativeAngle + 'deg)';
+    }
+
+    // Cập nhật góc hiển thị của mũi tên tam giác:
+    // Khi đang chỉ đường HOẶC bật la bàn: tam giác LUÔN hướng thẳng lên trên màn hình (0 độ so với khung nhìn thiết bị)
+    // Khi ở chế độ bản đồ tự do: tam giác quay theo hướng la bàn người dùng
+    function updateArrowVisualRotation() {
+      if (isNavOrCompassActive()) {
+        setArrowRotationShortestArc(currentBearing);
+      } else {
+        setArrowRotationShortestArc(currentUserHeading);
+      }
+    }
+
     function updateUserHeading(heading) {
       if (typeof heading !== 'number' || isNaN(heading)) return;
-      var targetAngle = ((heading % 360) + 360) % 360;
-      currentUserHeading = targetAngle;
+      currentUserHeading = ((heading % 360) + 360) % 360;
 
-      var arrowEl = document.getElementById('user-nav-arrow');
-      if (arrowEl) {
-        if (!hasArrowRotatedOnce) {
-          currentArrowCumulativeAngle = targetAngle;
-          hasArrowRotatedOnce = true;
-        } else {
-          var diff = (targetAngle - (((currentArrowCumulativeAngle % 360) + 360) % 360));
-          if (diff > 180) diff -= 360;
-          if (diff < -180) diff += 360;
-          currentArrowCumulativeAngle += diff;
-        }
-        arrowEl.style.transform = 'rotate(' + currentArrowCumulativeAngle + 'deg)';
+      if (isCompassMode) {
+        // Khi bật la bàn: xoay bản đồ theo hướng nhìn người dùng (Heading Up)
+        applyBearing(currentUserHeading, true);
+      } else {
+        updateArrowVisualRotation();
       }
     }
 
     function createUserNavIconHtml() {
+      var initialRot = isNavOrCompassActive() ? currentBearing : currentUserHeading;
       return '<div class="user-nav-marker-wrapper">' +
         '<div class="user-nav-pulse-ring"></div>' +
-        '<div class="user-nav-arrow" id="user-nav-arrow" style="transform: rotate(' + currentUserHeading + 'deg);">' +
+        '<div class="user-nav-arrow" id="user-nav-arrow" style="transform: rotate(' + initialRot + 'deg);">' +
           '<svg viewBox="0 0 24 24" class="user-nav-arrow-svg">' +
             '<path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" fill="#2563EB" stroke="#FFFFFF" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>' +
           '</svg>' +
@@ -810,10 +844,6 @@ ${LEAFLET_JS}
 
       if (userLocationMarker) {
         userLocationMarker.setLatLng([lat, lng]);
-        var arrowEl = document.getElementById('user-nav-arrow');
-        if (arrowEl) {
-          arrowEl.style.transform = 'rotate(' + currentUserHeading + 'deg)';
-        }
       } else {
         var userIcon = L.divIcon({
           className: 'user-nav-marker-container',
@@ -823,6 +853,8 @@ ${LEAFLET_JS}
         });
         userLocationMarker = L.marker([lat, lng], { icon: userIcon, zIndexOffset: 1000 }).addTo(map);
       }
+
+      updateArrowVisualRotation();
 
       // Vòng tròn bán kính sai số (Accuracy Circle)
       if (accuracy && accuracy > 0 && accuracy <= 500) {
@@ -844,18 +876,15 @@ ${LEAFLET_JS}
         userAccuracyCircle = null;
       }
 
-      // Xử lý cập nhật tâm bản đồ mượt mà (Google Maps Style):
-      // - Lần đầu tiên nhận tọa độ (Instant Cache/Network): setView hoặc panTo ngay trong <100ms
-      // - Khi có tinh chỉnh độ chính xác cao (Refinement): panTo mượt mà (animation duration 0.5s), không giật nảy
-      if (centerOnUser) {
-        map.panTo([lat, lng], { animate: true, duration: 0.6 });
+      // KHI ĐANG CHỈ ĐƯỜNG HOẶC BẬT LA BÀN: HÌNH TAM GIÁC LUÔN Ở CHÍNH GIỮA MÀN HÌNH
+      if (isNavOrCompassActive() || centerOnUser) {
+        map.panTo([lat, lng], { animate: true, duration: 0.4 });
         isFirstLocationUpdate = false;
       } else if (isFirstLocationUpdate) {
         map.setView([lat, lng], map.getZoom() || 17, { animate: false });
         isFirstLocationUpdate = false;
       } else if (prevLat !== null && prevLng !== null) {
         var dShift = getDistanceMeters(prevLat, prevLng, lat, lng);
-        // Nếu tọa độ tinh chỉnh có độ dịch chuyển đáng kể (5m - 100m) và người dùng chưa chủ động kéo bản đồ ra xa
         if (dShift >= 5 && dShift <= 120) {
           var bounds = map.getBounds();
           if (bounds.contains([lat, lng])) {
@@ -1588,6 +1617,16 @@ ${LEAFLET_JS}
         activeRouteState.lastPassedSegmentIndex = bestIdx;
       }
 
+      // Khi chỉ đường (không bật la bàn): Tự động xoay bản đồ theo hướng đoạn đường tiếp theo (đoạn đường phía trước luôn hướng lên trên)
+      if (!isCompassMode && coords[bestIdx + 1]) {
+        var segBearing = computeInitialRouteBearing([coords[bestIdx], coords[bestIdx + 1]]);
+        var bDiff = Math.abs(segBearing - currentBearing);
+        if (bDiff > 180) bDiff = 360 - bDiff;
+        if (bDiff >= 8) {
+          applyBearing(segBearing, true);
+        }
+      }
+
       // Tạo mảng tọa độ đã đi qua (Màu xám)
       var traversed = [];
       for (var k = 0; k <= bestIdx; k++) {
@@ -1879,6 +1918,14 @@ ${LEAFLET_JS}
 
           case 'CLEAR_ROUTE':
             clearRoute();
+            break;
+
+          case 'SET_COMPASS_MODE':
+            isCompassMode = Boolean(msg.active);
+            updateArrowVisualRotation();
+            if (isCompassMode && currentUserLat !== null && currentUserLng !== null) {
+              map.panTo([currentUserLat, currentUserLng], { animate: true, duration: 0.4 });
+            }
             break;
 
           case 'UPDATE_USER_LOCATION':

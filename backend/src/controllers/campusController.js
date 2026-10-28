@@ -225,10 +225,10 @@ exports.getSosConfig = (req, res) => {
   res.json({
     success: true,
     hotlines: [
-      { label: "Bảo vệ & An ninh cơ sở (Huy Hoàng)", phone: "0329106783", icon: "shield" },
-      { label: "Trạm Y tế sinh viên (Duyên)", phone: "0978269097", icon: "plus-circle" },
-      { label: "Cấp cứu 115 (Xuân Hoàng)", phone: "0326896303", icon: "phone-call" },
-      { label: "Cứu hỏa PCCC 114 (Kiên)", phone: "0968372005", icon: "alert-octagon" },
+      { label: "Bảo vệ & An ninh cơ sở", phone: "0329106783", icon: "shield" },
+      { label: "Trạm Y tế sinh viên", phone: "0978269097", icon: "plus-circle" },
+      { label: "Cấp cứu 115", phone: "0326896303", icon: "phone-call" },
+      { label: "Cứu hỏa PCCC 114", phone: "0968372005", icon: "alert-octagon" },
     ],
     incidentTypes: [
       "Cần hỗ trợ y tế",

@@ -94,6 +94,7 @@ export default function MapScreen() {
     stopCompassTracking,
     startPositionWatch,
     stopPositionWatch,
+    stopAllTracking,
   } = useMapGps({
     onLocationUpdated: useCallback((coords: UserCoords, accuracy: number, centerOnUser: boolean) => {
       webViewRef.current?.postMessage(
@@ -209,16 +210,33 @@ export default function MapScreen() {
         fetchRealGpsLocation(false, true);
       }
       return () => {
-        // Chỉ khôi phục tab bar khi rời khỏi màn hình Map hoàn toàn (chuyển sang tab khác)
+        // Thoát khỏi màn hình bản đồ: Tự động tắt GPS và dừng theo dõi
+        stopAllTracking();
         setTabBarVisible(true);
       };
-    }, [fetchRealGpsLocation])
+    }, [fetchRealGpsLocation, stopAllTracking])
   );
+
+  // Đồng bộ chế độ la bàn sang WebView
+  useEffect(() => {
+    webViewRef.current?.postMessage(
+      JSON.stringify({
+        type: "SET_COMPASS_MODE",
+        active: compassMode,
+      })
+    );
+  }, [compassMode]);
 
   // Khi bản đồ sẵn sàng trong WebView
   const handleMapReady = useCallback(() => {
     isMapReadyRef.current = true;
     resetBearing();
+    webViewRef.current?.postMessage(
+      JSON.stringify({
+        type: "SET_COMPASS_MODE",
+        active: compassMode,
+      })
+    );
     if (userLocation) {
       webViewRef.current?.postMessage(
         JSON.stringify({
@@ -226,6 +244,7 @@ export default function MapScreen() {
           lat: userLocation.latitude,
           lng: userLocation.longitude,
           accuracy: 10,
+          centerOnUser: true,
         })
       );
     }
@@ -272,7 +291,7 @@ export default function MapScreen() {
         })
       );
     }
-  }, [userLocation, selectedLoc, locations, campusPaths, resetBearing, defaultSatelliteMap]);
+  }, [userLocation, selectedLoc, locations, campusPaths, resetBearing, defaultSatelliteMap, compassMode]);
 
   // Ref lưu mốc yêu cầu tính khoảng cách gần nhất để triệt tiêu bridge message spam
   const lastDistanceRequestRef = useRef<{ locId?: number; lat?: number; lng?: number }>({});
@@ -517,6 +536,17 @@ export default function MapScreen() {
     setTabBarVisible(false);
     startPositionWatch();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    if (origCoords) {
+      webViewRef.current?.postMessage(
+        JSON.stringify({
+          type: "UPDATE_USER_LOCATION",
+          lat: origCoords.latitude,
+          lng: origCoords.longitude,
+          accuracy: 10,
+          centerOnUser: true,
+        })
+      );
+    }
 
     webViewRef.current?.postMessage(
       JSON.stringify({
@@ -635,8 +665,12 @@ export default function MapScreen() {
       resetBearing();
     } else {
       toggleCompassMode();
+      // Khi bật la bàn: tự động đưa vị trí người dùng về giữa màn hình
+      if (!compassMode && userLocation) {
+        fetchRealGpsLocation(true, true);
+      }
     }
-  }, [bearing, compassMode, resetBearing, toggleCompassMode]);
+  }, [bearing, compassMode, resetBearing, toggleCompassMode, userLocation, fetchRealGpsLocation]);
 
   const handleUserLocationPress = useCallback(() => {
     fetchRealGpsLocation(true, false);

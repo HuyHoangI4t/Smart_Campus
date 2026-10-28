@@ -20,6 +20,13 @@ export const DEFAULT_QUICK_ACTIONS: QuickActionItem[] = [
   { icon: "bar-chart-2", label: "Kết quả", screen: "grades", bg: "#DCFCE7", border: "#BBF7D0", fg: "#16A34A" },
 ];
 
+export const GUEST_QUICK_ACTIONS: QuickActionItem[] = [
+  { icon: "navigation", label: "Bản đồ", screen: "map", bg: "#EEF2FF", border: "#E0E7FF", fg: "#6366F1" },
+  { icon: "book-open", label: "Tin tức", screen: "home/all_articles", bg: "#E0F2FE", border: "#BAE6FD", fg: "#0284C7" },
+  { icon: "message-square", label: "Phản hồi", screen: "feedback", bg: "#FEF3C7", border: "#FDE68A", fg: "#D97706" },
+  { icon: "shield", label: "SOS khẩn", screen: "sos", bg: "#FEE2E2", border: "#FECACA", fg: "#DC2626" },
+];
+
 export interface HomeQuickActionsProps {
   onNavigate: (screen: string) => void;
   actions?: QuickActionItem[];

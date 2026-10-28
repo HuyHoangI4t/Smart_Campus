@@ -3,7 +3,6 @@ import { View, Text, Pressable, StyleSheet, TouchableOpacity } from "react-nativ
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../../context/ThemeContext";
-import { LoginRequiredCard } from "../../../components/LoginRequiredCard";
 import { NotificationAlertItem } from "../types";
 
 export interface HomeAlertsSectionProps {
@@ -33,7 +32,7 @@ export const HomeAlertsSection = React.memo(function HomeAlertsSection({
       <View style={styles.headerRow}>
         <View style={styles.titleWithBadge}>
           <Text style={[styles.title, { color: colors.text }]}>Thông báo & Cảnh báo</Text>
-          {isLoggedIn && notificationAlerts && notificationAlerts.length > 0 ? (
+          {notificationAlerts && notificationAlerts.length > 0 ? (
             <Text
               style={[
                 styles.countBadge,
@@ -48,7 +47,7 @@ export const HomeAlertsSection = React.memo(function HomeAlertsSection({
           ) : null}
         </View>
 
-        {isLoggedIn && notificationAlerts && notificationAlerts.length > 0 && onDismissAll ? (
+        {notificationAlerts && notificationAlerts.length > 0 && onDismissAll ? (
           <TouchableOpacity
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -68,14 +67,7 @@ export const HomeAlertsSection = React.memo(function HomeAlertsSection({
         ) : null}
       </View>
 
-      {!isLoggedIn ? (
-        <LoginRequiredCard
-          mode="card"
-          icon="bell"
-          title="Vui lòng đăng nhập để xem thông báo"
-          message="Đăng nhập tài khoản sinh viên để nhận các thông báo, phản hồi và cảnh báo quan trọng từ nhà trường."
-        />
-      ) : notificationAlerts && notificationAlerts.length > 0 ? (
+      {notificationAlerts && notificationAlerts.length > 0 ? (
         <View style={styles.list}>
           {notificationAlerts.map((item) => {
             let bg = isDark ? "rgba(16, 185, 129, 0.15)" : "#F0FDF4";

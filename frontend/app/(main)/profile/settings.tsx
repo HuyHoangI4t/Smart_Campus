@@ -13,6 +13,9 @@ import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { NavHeader } from '../../../src/components/NavHeader';
 import { useTheme, ACCENT_PRESETS, AccentColor } from '../../../src/context/ThemeContext';
+// [KHI BUILD APK]: Bỏ comment 2 dòng dưới để bật chức năng test Widget & Thông báo
+// import { triggerTestNotification } from '../../../src/services/notificationService';
+// import { syncAllWidgets } from '../../../src/services/widgetService';
 import { mainStyles as s } from '../../../src/constants/globalStyles';
 
 export default function SettingsScreen() {
@@ -469,6 +472,11 @@ export default function SettingsScreen() {
                 thumbColor={Platform.OS === 'android' ? '#FFFFFF' : undefined}
               />
             </View>
+
+            {/* [KHI BUILD APK]: Bỏ comment khối bên dưới để hiện các nút test thông báo đẩy & đồng bộ Widget
+            <View style={{ height: 1, backgroundColor: colors.cardBorder }} />
+            ...
+            */}
           </View>
         </View>
 

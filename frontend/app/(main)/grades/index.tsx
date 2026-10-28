@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { View, Text, ScrollView, Pressable, RefreshControl } from "react-native";
+import { View, Text, ScrollView, Pressable, RefreshControl, Alert } from "react-native";
+// [KHI BUILD APK]: Bỏ comment 2 dòng dưới để bật Widget & Thông báo điểm
+// import { saveGradesForWidget } from "../../../src/services/widgetService";
+// import { triggerTestNotification } from "../../../src/services/notificationService";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -187,6 +190,24 @@ export default function GradesScreen() {
     };
   }, [displayedGrades]);
 
+  // [KHI BUILD APK]: Bỏ comment khối bên dưới để tự động nạp điểm số vào Widget Android
+  /*
+  useEffect(() => {
+    if (isLoggedIn && (Number(totalCredits) > 0 || Number(gpa4) > 0)) {
+      saveGradesForWidget(
+        {
+          gpa4,
+          gpa10,
+          totalCredits: Number(totalCredits),
+          rank: academicRank.label,
+          rankColor: academicRank.color,
+        },
+        studentInfo
+      ).catch(() => {});
+    }
+  }, [gpa4, gpa10, totalCredits, academicRank, studentInfo, isLoggedIn]);
+  */
+
   const getBadgeColor = (letter: string) => {
     const uc = (letter || "").toUpperCase().trim();
     if (uc === "A") return isDark ? { bg: "rgba(16, 185, 129, 0.18)", text: "#34D399", border: "rgba(52, 211, 153, 0.3)" } : { bg: "#ECFDF5", text: "#059669", border: "#A7F3D0" };
@@ -357,6 +378,22 @@ export default function GradesScreen() {
             <Feather name="chevron-right" size={16} color="#FFFFFF" />
           </Pressable>
         </View>
+
+        {/* [KHI BUILD APK]: Bỏ comment khối bên dưới để hiện thanh tiện ích Widget & Thông báo điểm
+        <View
+          style={{
+            padding: 14,
+            borderRadius: 16,
+            backgroundColor: colors.cardBg,
+            borderWidth: 1,
+            borderColor: colors.cardBorder,
+            marginBottom: 16,
+            gap: 10,
+          }}
+        >
+          ...
+        </View>
+        */}
 
         {/* Bộ lọc học kỳ */}
         <ScrollView

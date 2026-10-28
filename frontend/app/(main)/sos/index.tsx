@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Linking, ActivityIndicator, Modal, BackHandler } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -35,6 +35,7 @@ export default function SosScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [gpsCoords, setGpsCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
+  const locationSubRef = useRef<Location.LocationSubscription | null>(null);
 
   // Popup Modal Đã gửi SOS
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -56,39 +57,90 @@ export default function SosScreen() {
     };
     fetchConfig();
 
-    // Tự động yêu cầu quyền vị trí và lấy tọa độ GPS chính xác
-    const fetchGps = async () => {
-      try {
-        setIsLocating(true);
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-          const loc = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
-          if (loc?.coords) {
-            setGpsCoords({
-              latitude: loc.coords.latitude,
-              longitude: loc.coords.longitude,
-            });
-          }
-        }
-      } catch (e) {
-        console.warn('Lỗi định vị GPS SOS:', e);
-      } finally {
-        setIsLocating(false);
+    return () => {
+      if (locationSubRef.current) {
+        locationSubRef.current.remove();
+        locationSubRef.current = null;
       }
     };
-    fetchGps();
   }, []);
 
   useFocusEffect(
     useCallback(() => {
+      let isCancelled = false;
+
+      // 1. Tự động yêu cầu quyền vị trí và theo dõi GPS khi vào trang SOS
+      const startGps = async () => {
+        try {
+          setIsLocating(true);
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (isCancelled || status !== 'granted') {
+            if (!isCancelled) setIsLocating(false);
+            return;
+          }
+
+          // Lấy nhanh tọa độ gần nhất
+          try {
+            const lastLoc = await Location.getLastKnownPositionAsync({ maxAge: 60000 });
+            if (!isCancelled && lastLoc?.coords) {
+              setGpsCoords({
+                latitude: lastLoc.coords.latitude,
+                longitude: lastLoc.coords.longitude,
+              });
+            }
+          } catch {}
+
+          if (isCancelled) return;
+
+          // Theo dõi liên tục vị trí thời gian thực khi đang ở màn hình SOS
+          const sub = await Location.watchPositionAsync(
+            {
+              accuracy: Location.Accuracy.Balanced,
+              distanceInterval: 3,
+              timeInterval: 2000,
+            },
+            (loc) => {
+              if (isCancelled || !loc?.coords) return;
+              setGpsCoords({
+                latitude: loc.coords.latitude,
+                longitude: loc.coords.longitude,
+              });
+            }
+          );
+
+          if (isCancelled) {
+            sub.remove();
+            return;
+          }
+
+          locationSubRef.current = sub;
+        } catch (e) {
+          console.warn('Lỗi định vị GPS SOS:', e);
+        } finally {
+          if (!isCancelled) {
+            setIsLocating(false);
+          }
+        }
+      };
+
+      startGps();
+
       const onBackPress = () => {
         router.replace("/(main)/home");
         return true;
       };
       const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
-      return () => sub.remove();
+
+      // KHI RỜI KHỎI TRANG SOS: TỰ ĐỘNG TẮT GPS VÀ DỌN DẸP SUBSCRIPTION
+      return () => {
+        isCancelled = true;
+        sub.remove();
+        setIsLocating(false);
+        if (locationSubRef.current) {
+          locationSubRef.current.remove();
+          locationSubRef.current = null;
+        }
+      };
     }, [router])
   );
 

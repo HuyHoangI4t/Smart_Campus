@@ -4,7 +4,6 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { AppColors } from "../../../constants/appColors";
 import { useTheme } from "../../../context/ThemeContext";
-import { LoginRequiredCard } from "../../../components/LoginRequiredCard";
 import { NewsOrAnnouncementItem } from "../../../services/api";
 
 export interface HomeAnnouncementsSectionProps {
@@ -36,7 +35,7 @@ export const HomeAnnouncementsSection = React.memo(function HomeAnnouncementsSec
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={[styles.title, { color: colors.text }]}>Thông báo Sinh viên</Text>
-        {isLoggedIn && announcements.length > 0 ? (
+        {announcements.length > 0 ? (
           <Pressable
             onPress={handleViewAllPress}
             style={({ pressed }) => [
@@ -53,14 +52,7 @@ export const HomeAnnouncementsSection = React.memo(function HomeAnnouncementsSec
         ) : null}
       </View>
 
-      {!isLoggedIn ? (
-        <LoginRequiredCard
-          mode="card"
-          icon="file-text"
-          title="Vui lòng đăng nhập để xem thông báo sinh viên"
-          message="Đăng nhập tài khoản sinh viên để xem chi tiết các thông báo học vụ, lịch thi và học bổng."
-        />
-      ) : announcements.length === 0 ? (
+      {announcements.length === 0 ? (
         /* Empty State chỉn chu */
         <View style={[styles.emptyContainer, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
           <View style={[styles.emptyIconCircle, { backgroundColor: isDark ? "#334155" : AppColors.muted }]}>

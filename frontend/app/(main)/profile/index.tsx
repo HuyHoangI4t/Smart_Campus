@@ -23,7 +23,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTheme } from "../../../src/context/ThemeContext";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
-import { setTabBarVisible, useTabBarScrollHandler } from "../../../src/components/MainTabs";
+import { setTabBarVisible, useTabBarScrollHandler, notifyAuthChanged } from "../../../src/components/MainTabs";
 import { ProfileSkeleton } from "../../../src/components/Skeleton";
 import { requestPhotoLibraryPermission, requestCameraPermission } from "../../../src/services/permissionService";
 import { apiGetProfile, apiUpdateProfile, apiLogout, clearAuthAndCache } from "../../../src/services/api";
@@ -371,6 +371,7 @@ export default function ProfileScreen() {
       console.error("Lỗi apiLogout:", err);
     } finally {
       await clearAuthAndCache();
+      notifyAuthChanged();
       setLoggingOut(false);
       setLogoutModalVisible(false);
       router.replace("/(auth)");
@@ -410,16 +411,18 @@ export default function ProfileScreen() {
       <StatusBar style="light" backgroundColor="transparent" translucent={true} />
       
       <NavHeader
-        title="Hồ sơ sinh viên"
-        subtitle="Thông tin cá nhân & Tài khoản"
+        title={isGuest ? "Tài khoản khách" : "Hồ sơ sinh viên"}
+        subtitle={isGuest ? "Chế độ trải nghiệm khách" : "Thông tin cá nhân & Tài khoản"}
         rightElement={
           <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
             <TouchableOpacity onPress={() => router.push("/(main)/profile/settings")}>
               <Feather name="settings" size={19} color="#FFFFFF" />
             </TouchableOpacity>
-            <TouchableOpacity onPress={openEditModal}>
-              <Feather name="edit-2" size={18} color="#FFFFFF" />
-            </TouchableOpacity>
+            {!isGuest && (
+              <TouchableOpacity onPress={openEditModal}>
+                <Feather name="edit-2" size={18} color="#FFFFFF" />
+              </TouchableOpacity>
+            )}
           </View>
         }
       />
@@ -453,163 +456,210 @@ export default function ProfileScreen() {
             elevation: 3,
           }}
         >
-          {/* Avatar Container với Badge Camera */}
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={openAvatarModal}
-            style={{ position: "relative", marginBottom: 12 }}
-          >
-            {profile.avatar ? (
-              <Image
-                source={{ uri: profile.avatar }}
-                style={{
-                  width: 90,
-                  height: 90,
-                  borderRadius: 45,
-                  backgroundColor: isDark ? "#1E293B" : "#E2E8F0",
-                  borderWidth: 3,
-                  borderColor: isDark ? colors.cardBorder : "#EEF2FF",
-                }}
-              />
-            ) : (
+          {isGuest ? (
+            <>
               <View
                 style={{
                   width: 90,
                   height: 90,
                   borderRadius: 45,
-                  backgroundColor: colors.primary,
+                  backgroundColor: isDark ? "rgba(99, 102, 241, 0.2)" : "#EEF2FF",
                   alignItems: "center",
                   justifyContent: "center",
+                  borderWidth: 3,
+                  borderColor: isDark ? colors.cardBorder : "#EEF2FF",
+                  marginBottom: 12,
                 }}
               >
-                <Text style={{ fontSize: 36, fontWeight: "900", color: "#FFFFFF" }}>
-                  {profile.ho_ten ? profile.ho_ten.charAt(0).toUpperCase() : "S"}
-                </Text>
+                <Feather name="user" size={42} color={colors.primary} />
               </View>
-            )}
+              <Text style={{ fontSize: 20, fontWeight: "900", color: colors.text, textAlign: "center" }}>
+                Khách tham quan
+              </Text>
+              <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: "600", marginTop: 4 }}>
+                Chế độ trải nghiệm ứng dụng
+              </Text>
+              <View
+                style={{
+                  marginTop: 10,
+                  paddingHorizontal: 12,
+                  paddingVertical: 4,
+                  borderRadius: 12,
+                  backgroundColor: isDark ? "#1E293B" : "#F1F5F9",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 5,
+                }}
+              >
+                <Feather name="shield" size={12} color={colors.primary} />
+                <Text style={{ fontSize: 11, fontWeight: "700", color: colors.textSecondary }}>Đang dùng quyền khách</Text>
+              </View>
+            </>
+          ) : (
+            <>
+              {/* Avatar Container với Badge Camera */}
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={openAvatarModal}
+                style={{ position: "relative", marginBottom: 12 }}
+              >
+                {profile.avatar ? (
+                  <Image
+                    source={{ uri: profile.avatar }}
+                    style={{
+                      width: 90,
+                      height: 90,
+                      borderRadius: 45,
+                      backgroundColor: isDark ? "#1E293B" : "#E2E8F0",
+                      borderWidth: 3,
+                      borderColor: isDark ? colors.cardBorder : "#EEF2FF",
+                    }}
+                  />
+                ) : (
+                  <View
+                    style={{
+                      width: 90,
+                      height: 90,
+                      borderRadius: 45,
+                      backgroundColor: colors.primary,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Text style={{ fontSize: 36, fontWeight: "900", color: "#FFFFFF" }}>
+                      {profile.ho_ten ? profile.ho_ten.charAt(0).toUpperCase() : "S"}
+                    </Text>
+                  </View>
+                )}
 
-            {/* Nút biểu tượng máy ảnh để thay đổi */}
+                {/* Nút biểu tượng máy ảnh để thay đổi */}
+                <View
+                  style={{
+                    position: "absolute",
+                    bottom: 0,
+                    right: 0,
+                    width: 30,
+                    height: 30,
+                    borderRadius: 15,
+                    backgroundColor: colors.primary,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderWidth: 2.5,
+                    borderColor: isDark ? colors.cardBg : "#FFFFFF",
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 3,
+                    elevation: 4,
+                  }}
+                >
+                  <Feather name="camera" size={13} color="#FFFFFF" />
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={openAvatarModal}
+                activeOpacity={0.7}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 4,
+                  paddingHorizontal: 12,
+                  paddingVertical: 4,
+                  borderRadius: 12,
+                  backgroundColor: isDark ? "rgba(99, 102, 241, 0.2)" : "#EEF2FF",
+                  marginBottom: 10,
+                }}
+              >
+                <Feather name="image" size={12} color={colors.primary} />
+                <Text style={{ fontSize: 11, fontWeight: "700", color: colors.primary }}>
+                  Đổi ảnh đại diện
+                </Text>
+              </TouchableOpacity>
+
+              <Text style={{ fontSize: 20, fontWeight: "900", color: colors.text, textAlign: "center" }}>
+                {profile.ho_ten}
+              </Text>
+              <Text style={{ fontSize: 13, color: colors.primary, fontWeight: "700", marginTop: 4 }}>
+                MSSV: {profile.mssv || "Chưa có"}
+              </Text>
+              <View
+                style={{
+                  marginTop: 10,
+                  paddingHorizontal: 12,
+                  paddingVertical: 4,
+                  borderRadius: 12,
+                  backgroundColor: isDark ? "rgba(16, 185, 129, 0.18)" : "#ECFDF5",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 5,
+                }}
+              >
+                <Feather name="check-circle" size={12} color={isDark ? "#34D399" : "#059669"} />
+                <Text style={{ fontSize: 11, fontWeight: "700", color: isDark ? "#34D399" : "#059669" }}>Đang theo học chính quy</Text>
+              </View>
+            </>
+          )}
+        </View>
+
+        {/* Thông tin chi tiết (Chỉ sinh viên) */}
+        {!isGuest && (
+          <>
+            <Text style={{ fontSize: 15, fontWeight: "800", color: colors.text, marginBottom: 12 }}>
+              Thông tin học tập & liên hệ
+            </Text>
+
             <View
               style={{
-                position: "absolute",
-                bottom: 0,
-                right: 0,
-                width: 30,
-                height: 30,
-                borderRadius: 15,
-                backgroundColor: colors.primary,
-                alignItems: "center",
-                justifyContent: "center",
-                borderWidth: 2.5,
-                borderColor: isDark ? colors.cardBg : "#FFFFFF",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.2,
-                shadowRadius: 3,
-                elevation: 4,
+                padding: 16,
+                borderRadius: 20,
+                backgroundColor: colors.cardBg,
+                borderWidth: 1,
+                borderColor: colors.cardBorder,
+                gap: 14,
+                marginBottom: 24,
               }}
             >
-              <Feather name="camera" size={13} color="#FFFFFF" />
+              <View style={[s.row, s.between]}>
+                <View style={[s.row, { gap: 10 }]}>
+                  <Feather name="book" size={16} color={colors.primary} />
+                  <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: "600" }}>Khoa đào tạo</Text>
+                </View>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>{profile.khoa || "Chưa cập nhật"}</Text>
+              </View>
+
+              <View style={{ height: 1, backgroundColor: colors.cardBorder }} />
+
+              <View style={[s.row, s.between]}>
+                <View style={[s.row, { gap: 10 }]}>
+                  <Feather name="users" size={16} color={colors.primary} />
+                  <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: "600" }}>Lớp sinh hoạt</Text>
+                </View>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>{profile.lop || "Chưa cập nhật"}</Text>
+              </View>
+
+              <View style={{ height: 1, backgroundColor: colors.cardBorder }} />
+
+              <View style={[s.row, s.between]}>
+                <View style={[s.row, { gap: 10 }]}>
+                  <Feather name="mail" size={16} color={colors.primary} />
+                  <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: "600" }}>Email trường</Text>
+                </View>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>{profile.email || "Chưa cập nhật"}</Text>
+              </View>
+
+              <View style={{ height: 1, backgroundColor: colors.cardBorder }} />
+
+              <View style={[s.row, s.between]}>
+                <View style={[s.row, { gap: 10 }]}>
+                  <Feather name="phone" size={16} color={colors.primary} />
+                  <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: "600" }}>Số điện thoại</Text>
+                </View>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>{profile.so_dien_thoai || "Chưa cập nhật"}</Text>
+              </View>
             </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={openAvatarModal}
-            activeOpacity={0.7}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 4,
-              paddingHorizontal: 12,
-              paddingVertical: 4,
-              borderRadius: 12,
-              backgroundColor: isDark ? "rgba(99, 102, 241, 0.2)" : "#EEF2FF",
-              marginBottom: 10,
-            }}
-          >
-            <Feather name="image" size={12} color={colors.primary} />
-            <Text style={{ fontSize: 11, fontWeight: "700", color: colors.primary }}>
-              Đổi ảnh đại diện
-            </Text>
-          </TouchableOpacity>
-
-          <Text style={{ fontSize: 20, fontWeight: "900", color: colors.text, textAlign: "center" }}>
-            {profile.ho_ten}
-          </Text>
-          <Text style={{ fontSize: 13, color: colors.primary, fontWeight: "700", marginTop: 4 }}>
-            MSSV: {profile.mssv || "Chưa có"}
-          </Text>
-          <View
-            style={{
-              marginTop: 10,
-              paddingHorizontal: 12,
-              paddingVertical: 4,
-              borderRadius: 12,
-              backgroundColor: isDark ? "rgba(16, 185, 129, 0.18)" : "#ECFDF5",
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 5,
-            }}
-          >
-            <Feather name="check-circle" size={12} color={isDark ? "#34D399" : "#059669"} />
-            <Text style={{ fontSize: 11, fontWeight: "700", color: isDark ? "#34D399" : "#059669" }}>Đang theo học chính quy</Text>
-          </View>
-        </View>
-
-        {/* Thông tin chi tiết */}
-        <Text style={{ fontSize: 15, fontWeight: "800", color: colors.text, marginBottom: 12 }}>
-          Thông tin học tập & liên hệ
-        </Text>
-
-        <View
-          style={{
-            padding: 16,
-            borderRadius: 20,
-            backgroundColor: colors.cardBg,
-            borderWidth: 1,
-            borderColor: colors.cardBorder,
-            gap: 14,
-            marginBottom: 24,
-          }}
-        >
-          <View style={[s.row, s.between]}>
-            <View style={[s.row, { gap: 10 }]}>
-              <Feather name="book" size={16} color={colors.primary} />
-              <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: "600" }}>Khoa đào tạo</Text>
-            </View>
-            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>{profile.khoa || "Chưa cập nhật"}</Text>
-          </View>
-
-          <View style={{ height: 1, backgroundColor: colors.cardBorder }} />
-
-          <View style={[s.row, s.between]}>
-            <View style={[s.row, { gap: 10 }]}>
-              <Feather name="users" size={16} color={colors.primary} />
-              <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: "600" }}>Lớp sinh hoạt</Text>
-            </View>
-            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>{profile.lop || "Chưa cập nhật"}</Text>
-          </View>
-
-          <View style={{ height: 1, backgroundColor: colors.cardBorder }} />
-
-          <View style={[s.row, s.between]}>
-            <View style={[s.row, { gap: 10 }]}>
-              <Feather name="mail" size={16} color={colors.primary} />
-              <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: "600" }}>Email trường</Text>
-            </View>
-            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>{profile.email || "Chưa cập nhật"}</Text>
-          </View>
-
-          <View style={{ height: 1, backgroundColor: colors.cardBorder }} />
-
-          <View style={[s.row, s.between]}>
-            <View style={[s.row, { gap: 10 }]}>
-              <Feather name="phone" size={16} color={colors.primary} />
-              <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: "600" }}>Số điện thoại</Text>
-            </View>
-            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.text }}>{profile.so_dien_thoai || "Chưa cập nhật"}</Text>
-          </View>
-        </View>
+          </>
+        )}
 
         {/* Cài đặt & Tiện ích */}
         <Text style={{ fontSize: 15, fontWeight: "800", color: colors.text, marginBottom: 12 }}>
@@ -662,102 +712,78 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Thiết lập & Bảo mật */}
-        <Text style={{ fontSize: 15, fontWeight: "800", color: colors.text, marginBottom: 12 }}>
-          Bảo mật tài khoản
-        </Text>
+        {/* Thiết lập & Bảo mật (Chỉ sinh viên) */}
+        {!isGuest && (
+          <>
+            <Text style={{ fontSize: 15, fontWeight: "800", color: colors.text, marginBottom: 12 }}>
+              Bảo mật tài khoản
+            </Text>
 
-        <View style={{ gap: 10, marginBottom: 24 }}>
-          <TouchableOpacity
-            onPress={() => {
-              if (isGuest) {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-                Alert.alert(
-                  "Vui lòng đăng nhập để tiếp tục",
-                  "Tài khoản khách không sử dụng mật khẩu. Vui lòng đăng nhập tài khoản sinh viên để đổi mật khẩu.",
-                  [
-                    { text: "Để sau", style: "cancel" },
-                    { text: "Đăng nhập", onPress: () => router.replace("/(auth)") },
-                  ]
-                );
-                return;
-              }
-              router.push("/(main)/profile/change_password");
-            }}
-            activeOpacity={0.7}
-            style={{
-              padding: 16,
-              borderRadius: 16,
-              backgroundColor: colors.cardBg,
-              borderWidth: 1,
-              borderColor: colors.cardBorder,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <View style={[s.row, { gap: 12 }]}>
-              <Feather name="lock" size={18} color={colors.primary} />
-              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>Đổi mật khẩu tài khoản</Text>
+            <View style={{ gap: 10, marginBottom: 24 }}>
+              <TouchableOpacity
+                onPress={() => router.push("/(main)/profile/change_password")}
+                activeOpacity={0.7}
+                style={{
+                  padding: 16,
+                  borderRadius: 16,
+                  backgroundColor: colors.cardBg,
+                  borderWidth: 1,
+                  borderColor: colors.cardBorder,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <View style={[s.row, { gap: 12 }]}>
+                  <Feather name="lock" size={18} color={colors.primary} />
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>Đổi mật khẩu tài khoản</Text>
+                </View>
+                <Feather name="chevron-right" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={openEditModal}
+                activeOpacity={0.7}
+                style={{
+                  padding: 16,
+                  borderRadius: 16,
+                  backgroundColor: colors.cardBg,
+                  borderWidth: 1,
+                  borderColor: colors.cardBorder,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <View style={[s.row, { gap: 12 }]}>
+                  <Feather name="user-check" size={18} color={colors.primary} />
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>Chỉnh sửa hồ sơ cá nhân</Text>
+                </View>
+                <Feather name="chevron-right" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
             </View>
-            <Feather name="chevron-right" size={18} color={colors.textMuted} />
-          </TouchableOpacity>
+          </>
+        )}
 
-          <TouchableOpacity
-            onPress={openEditModal}
-            activeOpacity={0.7}
-            style={{
-              padding: 16,
-              borderRadius: 16,
-              backgroundColor: colors.cardBg,
-              borderWidth: 1,
-              borderColor: colors.cardBorder,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <View style={[s.row, { gap: 12 }]}>
-              <Feather name="user-check" size={18} color={colors.primary} />
-              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>Chỉnh sửa hồ sơ cá nhân</Text>
-            </View>
-            <Feather name="chevron-right" size={18} color={colors.textMuted} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Nút đăng xuất hoặc đăng nhập tài khoản */}
+        {/* Nút đăng xuất */}
         <TouchableOpacity
-          onPress={isGuest ? () => router.replace("/(auth)") : handleLogout}
+          onPress={handleLogout}
           activeOpacity={0.8}
           style={{
             height: 48,
             borderRadius: 14,
-            backgroundColor: isGuest
-              ? (isDark ? "rgba(99, 102, 241, 0.2)" : "#EFF6FF")
-              : (isDark ? "rgba(239, 68, 68, 0.15)" : "#FEF2F2"),
+            backgroundColor: isDark ? "rgba(239, 68, 68, 0.15)" : "#FEF2F2",
             borderWidth: 1,
-            borderColor: isGuest
-              ? (isDark ? "rgba(99, 102, 241, 0.4)" : "#BFDBFE")
-              : (isDark ? "rgba(239, 68, 68, 0.3)" : "#FECACA"),
+            borderColor: isDark ? "rgba(239, 68, 68, 0.3)" : "#FECACA",
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "center",
             gap: 8,
           }}
         >
-          <Feather
-            name={isGuest ? "log-in" : "log-out"}
-            size={18}
-            color={isGuest ? colors.primary : (isDark ? "#F87171" : "#DC2626")}
-          />
-          <Text
-            style={{
-              fontSize: 14,
-              fontWeight: "800",
-              color: isGuest ? colors.primary : (isDark ? "#F87171" : "#DC2626"),
-            }}
-          >
-            {isGuest ? "Đăng nhập tài khoản sinh viên" : "Đăng xuất khỏi thiết bị"}
+          <Feather name="log-out" size={18} color={isDark ? "#F87171" : "#DC2626"} />
+          <Text style={{ fontSize: 14, fontWeight: "800", color: isDark ? "#F87171" : "#DC2626" }}>
+            Đăng xuất
           </Text>
         </TouchableOpacity>
         </>
