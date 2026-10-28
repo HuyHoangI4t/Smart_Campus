@@ -2,16 +2,19 @@ import React, { useEffect } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
-import * as Notifications from 'expo-notifications';
-import { initNotifications } from '../src/services/notificationService';
-import { syncAllWidgets } from '../src/services/widgetService';
-import '../src/widgets/registerWidgets';
+// [KHI BUILD APK]: Bỏ comment 4 dòng bên dưới để bật Thông báo đẩy & Widget Android
+// import * as Notifications from 'expo-notifications';
+// import { initNotifications } from '../src/services/notificationService';
+// import { syncAllWidgets } from '../src/services/widgetService';
+// import '../src/widgets/registerWidgets';
 
 function RootStack() {
   const { colors } = useTheme();
   const router = useRouter();
 
   useEffect(() => {
+    // [KHI BUILD APK]: Bỏ comment toàn bộ khối bên dưới khi build APK / Development Client
+    /*
     // 1. Khởi tạo Notification channels & xin quyền thông báo
     initNotifications().catch((err) => console.warn('Lỗi init notifications:', err));
 
@@ -47,6 +50,7 @@ function RootStack() {
     return () => {
       responseSubscription.remove();
     };
+    */
   }, [router]);
 
   return (

@@ -48,6 +48,12 @@ export default function MainLayout() {
       screenOptions={{
         headerShown: false,
         lazy: true,
+        tabBarStyle: {
+          position: 'absolute',
+          backgroundColor: 'transparent',
+          borderTopWidth: 0,
+          elevation: 0,
+        },
         sceneStyle: { backgroundColor: colors.background },
       }}
       tabBar={(props) => <CustomBottomNav {...props} />}

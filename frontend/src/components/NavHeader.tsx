@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StatusBar, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StatusBar, Platform, StyleSheet } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +20,7 @@ export interface NavHeaderProps {
   backgroundColor?: string;
   titleColor?: string;
   children?: React.ReactNode;
+  blur?: boolean;
 }
 
 export function NavHeader({
@@ -34,6 +36,7 @@ export function NavHeader({
   backgroundColor,
   titleColor = '#FFFFFF',
   children,
+  blur = false,
 }: NavHeaderProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -48,12 +51,17 @@ export function NavHeader({
   };
 
   const shouldShowBack = showBack || !!onBack;
-  const headerBg = bg || backgroundColor || colors.primary;
+  const headerBg = blur ? 'transparent' : (bg || backgroundColor || colors.primary);
   const paddingTop = getHeaderTopPadding(insets.top, 14);
+  const effectiveTitleColor = titleColor !== '#FFFFFF' ? titleColor : (blur ? (isDark ? '#FFFFFF' : colors.text) : '#FFFFFF');
+  const effectiveSubtitleColor = blur ? (isDark ? 'rgba(255, 255, 255, 0.72)' : colors.textSecondary) : (titleColor === '#FFFFFF' ? 'rgba(255, 255, 255, 0.76)' : colors.textMuted);
+  const effectivePreTitleColor = blur ? (isDark ? 'rgba(255, 255, 255, 0.6)' : colors.primary) : 'rgba(255, 255, 255, 0.72)';
+  const backBtnBg = blur ? (isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.05)') : 'rgba(255, 255, 255, 0.16)';
+  const backBtnBorder = blur ? (isDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(0, 0, 0, 0.08)') : 'rgba(255, 255, 255, 0.22)';
 
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor={headerBg} translucent={Platform.OS === 'android'} />
+      <StatusBar barStyle={blur && !isDark ? 'dark-content' : 'light-content'} backgroundColor={blur ? 'transparent' : headerBg} translucent={Platform.OS === 'android'} />
       <View
         style={{
           paddingHorizontal: 20,
@@ -68,8 +76,22 @@ export function NavHeader({
           shadowOpacity: 0.12,
           shadowRadius: 10,
           elevation: 6,
+          overflow: 'hidden',
         }}
       >
+        {blur && (
+          <BlurView
+            intensity={Platform.OS === 'ios' ? 80 : 90}
+            tint={isDark ? 'dark' : 'light'}
+            experimentalBlurMethod="dimezisBlurView"
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                backgroundColor: isDark ? 'rgba(15, 23, 42, 0.82)' : 'rgba(255, 255, 255, 0.85)',
+              },
+            ]}
+          />
+        )}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: children ? 12 : 0 }}>
           {shouldShowBack ? (
             <TouchableOpacity
@@ -82,14 +104,14 @@ export function NavHeader({
                 width: 38,
                 height: 38,
                 borderRadius: 13,
-                backgroundColor: 'rgba(255, 255, 255, 0.16)',
+                backgroundColor: backBtnBg,
                 borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.22)',
+                borderColor: backBtnBorder,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Feather name="arrow-left" size={19} color={titleColor} />
+              <Feather name="arrow-left" size={19} color={effectiveTitleColor} />
             </TouchableOpacity>
           ) : (
             <View style={{ width: 2 }} />
@@ -101,7 +123,7 @@ export function NavHeader({
                 style={{
                   fontSize: 10.5,
                   fontWeight: '700',
-                  color: 'rgba(255, 255, 255, 0.72)',
+                  color: effectivePreTitleColor,
                   textTransform: 'uppercase',
                   letterSpacing: 0.6,
                   marginBottom: 1,
@@ -115,7 +137,7 @@ export function NavHeader({
               style={{
                 fontSize: 20,
                 fontWeight: '900',
-                color: titleColor,
+                color: effectiveTitleColor,
                 letterSpacing: 0.1,
               }}
               numberOfLines={1}
@@ -127,7 +149,7 @@ export function NavHeader({
                 style={{
                   fontSize: 12,
                   fontWeight: '600',
-                  color: titleColor === '#FFFFFF' ? 'rgba(255, 255, 255, 0.76)' : colors.textMuted,
+                  color: effectiveSubtitleColor,
                   marginTop: 2,
                 }}
                 numberOfLines={1}
@@ -150,14 +172,14 @@ export function NavHeader({
                 width: 38,
                 height: 38,
                 borderRadius: 13,
-                backgroundColor: 'rgba(255, 255, 255, 0.16)',
+                backgroundColor: backBtnBg,
                 borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.22)',
+                borderColor: backBtnBorder,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Feather name={rightIcon} size={18} color={titleColor} />
+              <Feather name={rightIcon} size={18} color={effectiveTitleColor} />
             </TouchableOpacity>
           ) : (
             <View style={{ width: shouldShowBack ? 2 : 6 }} />

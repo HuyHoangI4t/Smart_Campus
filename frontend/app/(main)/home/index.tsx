@@ -496,7 +496,7 @@ export default function HomeScreen() {
         }
       >
         {(isInitialLoading && latestNews.length === 0) || refreshing ? (
-          <HomeSkeleton />
+          <HomeSkeleton isLoggedIn={isLoggedIn} />
         ) : (
           <View style={{ paddingHorizontal: 16 }}>
             {isOfflineData && (

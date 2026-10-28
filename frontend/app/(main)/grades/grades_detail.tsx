@@ -6,7 +6,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTheme } from "../../../src/context/ThemeContext";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
-import { SkeletonBox } from "../../../src/components/Skeleton";
+import { GradesDetailSkeleton } from "../../../src/components/Skeleton";
 import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
 import { apiGetGrades } from "../../../src/services/api";
 
@@ -159,23 +159,7 @@ export default function GradesDetailScreen() {
 
       {isLoggedIn === null || loading ? (
         <View style={{ flex: 1, padding: 16 }}>
-          <View style={{ gap: 12 }}>
-            {[1, 2, 3, 4].map((i) => (
-              <View
-                key={i}
-                style={{
-                  padding: 16,
-                  borderRadius: 16,
-                  backgroundColor: colors.cardBg,
-                  borderWidth: 1,
-                  borderColor: colors.cardBorder,
-                }}
-              >
-                <SkeletonBox width="80%" height={18} borderRadius={4} style={{ marginBottom: 10 }} />
-                <SkeletonBox width="50%" height={14} borderRadius={4} />
-              </View>
-            ))}
-          </View>
+          <GradesDetailSkeleton />
         </View>
       ) : !isLoggedIn ? (
         <View style={{ flex: 1 }}>
@@ -249,34 +233,7 @@ export default function GradesDetailScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         {loading || refreshing ? (
-          <View style={{ gap: 12 }}>
-            {[1, 2, 3, 4].map((i) => (
-              <View
-                key={i}
-                style={{
-                  padding: 16,
-                  borderRadius: 16,
-                  backgroundColor: colors.cardBg,
-                  borderWidth: 1,
-                  borderColor: colors.cardBorder,
-                }}
-              >
-                <View style={[s.row, s.between, { marginBottom: 8 }]}>
-                  <View style={[s.row, { gap: 6, alignItems: "center" }]}>
-                    <SkeletonBox width={60} height={14} borderRadius={4} />
-                    <SkeletonBox width={70} height={14} borderRadius={4} />
-                  </View>
-                  <SkeletonBox width={36} height={20} borderRadius={6} />
-                </View>
-                <SkeletonBox width="85%" height={16} borderRadius={4} style={{ marginBottom: 12 }} />
-                <View style={{ flexDirection: "row", gap: 16, borderTopWidth: 1, borderTopColor: colors.cardBorder, paddingTop: 10 }}>
-                  <SkeletonBox width={65} height={28} borderRadius={6} />
-                  <SkeletonBox width={65} height={28} borderRadius={6} />
-                  <SkeletonBox width={65} height={28} borderRadius={6} />
-                </View>
-              </View>
-            ))}
-          </View>
+          <GradesDetailSkeleton />
         ) : filtered.length === 0 ? (
           <View style={{ paddingVertical: 50, alignItems: "center" }}>
             <Feather name="inbox" size={48} color={colors.cardBorder} />

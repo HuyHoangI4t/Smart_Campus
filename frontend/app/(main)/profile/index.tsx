@@ -436,7 +436,7 @@ export default function ProfileScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         {(loadingProfile && !profile.mssv) || refreshing ? (
-          <ProfileSkeleton />
+          <ProfileSkeleton isGuest={isGuest} />
         ) : (
           <>
             {/* Avatar & Header Card */}

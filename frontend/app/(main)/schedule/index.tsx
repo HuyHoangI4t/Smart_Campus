@@ -578,7 +578,7 @@ export default function ScheduleScreen() {
         )}
 
         {loading || refreshing ? (
-          <ScheduleSkeleton />
+          <ScheduleSkeleton cardsOnly={true} />
         ) : filtered.length === 0 ? (
           <View style={{ paddingVertical: 50, alignItems: "center" }}>
             <Feather name="calendar" size={48} color={colors.cardBorder} />

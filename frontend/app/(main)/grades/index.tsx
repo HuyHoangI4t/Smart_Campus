@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { View, Text, ScrollView, Pressable, RefreshControl, Alert } from "react-native";
+import { View, Text, ScrollView, Pressable, RefreshControl } from "react-native";
 // [KHI BUILD APK]: Bỏ comment 2 dòng dưới để bật Widget & Thông báo điểm
 // import { saveGradesForWidget } from "../../../src/services/widgetService";
 // import { triggerTestNotification } from "../../../src/services/notificationService";

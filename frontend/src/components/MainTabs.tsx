@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, Animated, StyleSheet, Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
@@ -23,17 +24,17 @@ interface TabItemConfig {
 
 // Danh sách Tab dành riêng cho chế độ Khách (Chỉ có 3 tab: Trang chủ, Bản đồ, Hồ sơ)
 export const GUEST_TAB_ITEMS: TabItemConfig[] = [
-  { route: 'home/index', label: 'Trang chủ', icon: 'home' },
-  { route: 'map/index', label: 'Bản đồ', icon: 'navigation', isCenter: true },
+  { route: 'home/index', label: 'Trang chủ', icon: 'grid' },
+  { route: 'map/index', label: 'Bản đồ', icon: 'navigation' },
   { route: 'profile/index', label: 'Hồ sơ', icon: 'user' },
 ];
 
 // Danh sách Tab đầy đủ 5 mục dành cho Sinh viên đã đăng nhập
 export const STUDENT_TAB_ITEMS: TabItemConfig[] = [
-  { route: 'home/index', label: 'Trang chủ', icon: 'home' },
+  { route: 'home/index', label: 'Trang chủ', icon: 'grid' },
   { route: 'schedule/index', label: 'Lịch học', icon: 'calendar' },
-  { route: 'map/index', label: 'Bản đồ', icon: 'navigation', isCenter: true },
-  { route: 'grades/index', label: 'Điểm', icon: 'bar-chart-2' },
+  { route: 'map/index', label: 'Bản đồ', icon: 'navigation' },
+  { route: 'grades/index', label: 'Điểm', icon: 'award' },
   { route: 'profile/index', label: 'Hồ sơ', icon: 'user' },
 ];
 
@@ -67,7 +68,7 @@ export function notifyAuthChanged() {
 }
 
 // Khoảng đệm cố định ở đáy trang ScrollView khi thanh nav đang hiển thị
-export const BOTTOM_NAV_HEIGHT = 115;
+export const BOTTOM_NAV_HEIGHT = 90;
 
 /**
  * Hook lắng nghe cuộn màn hình:
@@ -75,8 +76,8 @@ export const BOTTOM_NAV_HEIGHT = 115;
  * - Khi kéo ngược lên hoặc về gần đỉnh trang: thanh nav trượt hiện lại vị trí cũ, khôi phục bottomPadding (88px)
  */
 export function useTabBarScrollHandler(options?: { visiblePadding?: number; hiddenPadding?: number }) {
-  const visiblePad = options?.visiblePadding ?? 115;
-  const hiddenPad = options?.hiddenPadding ?? 115;
+  const visiblePad = options?.visiblePadding ?? 90;
+  const hiddenPad = options?.hiddenPadding ?? 24;
 
   const [isNavVisible, setIsNavVisible] = useState(true);
   const lastOffsetY = useRef(0);
@@ -299,13 +300,38 @@ export function CustomBottomNav(props: CustomBottomNavProps) {
         style={[
           tabBarStyles.navCard,
           {
-            backgroundColor: colors.cardBg,
+            backgroundColor: 'transparent',
             borderColor: isDark ? colors.cardBorder : 'rgba(19, 47, 115, 0.08)',
             shadowColor: isDark ? '#000000' : colors.primary,
             shadowOpacity: isDark ? 0.4 : 0.14,
           },
         ]}
       >
+        {/* Lớp hiệu ứng Blur Glassmorphism */}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              borderRadius: 36,
+              overflow: 'hidden',
+            },
+          ]}
+        >
+          <BlurView
+            intensity={Platform.OS === 'ios' ? 85 : 95}
+            tint={isDark ? 'dark' : 'light'}
+            experimentalBlurMethod="dimezisBlurView"
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                backgroundColor: isDark
+                  ? 'rgba(15, 23, 42, 0.82)'
+                  : 'rgba(255, 255, 255, 0.85)',
+              },
+            ]}
+          />
+        </View>
+
         {currentTabs.map((item, index) => {
           const isSelected = index === activeIndex;
 

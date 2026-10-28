@@ -13,6 +13,7 @@ const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreCl
 let requestWidgetUpdate: any = null;
 if (!isExpoGo) {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const pkg = require("react-native-android-widget");
     requestWidgetUpdate = pkg.requestWidgetUpdate;
   } catch (err) {
