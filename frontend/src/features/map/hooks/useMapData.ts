@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { LocationItem, CampusPath } from "../types";
 import { TAY_NGUYEN_CAMPUS_LOCATIONS } from "../constants";
 import { DEFAULT_CAMPUS_PATHS } from "../campusPaths";
@@ -153,12 +153,12 @@ export function useMapData(params: UseMapDataParams = {}) {
 
   // Tính khoảng cách tới địa điểm đang chọn theo mạng lưới đường đi bộ nội bộ (Dijkstra)
   const computedDistanceKm = useMemo(() => {
-    if (!selectedLoc || !params.userLocation) return null;
+    if (!selectedLoc || userLatQuantized === null || userLngQuantized === null) return null;
 
     // 1. Ưu tiên tính theo mạng lưới lối đi bộ nội bộ trường ĐH Tây Nguyên (Dijkstra)
     const walkwayMeters = findWalkwayDistanceMeters(
-      params.userLocation.latitude,
-      params.userLocation.longitude,
+      userLatQuantized,
+      userLngQuantized,
       selectedLoc.lat,
       selectedLoc.lng,
       campusPaths
@@ -169,12 +169,12 @@ export function useMapData(params: UseMapDataParams = {}) {
 
     // 2. Dự phòng (Fallback): Đường thẳng chim bay
     return calculateDistanceKm(
-      params.userLocation.latitude,
-      params.userLocation.longitude,
+      userLatQuantized,
+      userLngQuantized,
       selectedLoc.lat,
       selectedLoc.lng
     );
-  }, [selectedLoc?.id, userLatQuantized, userLngQuantized, campusPaths.length]);
+  }, [selectedLoc, userLatQuantized, userLngQuantized, campusPaths]);
 
   const computedDistanceText = useMemo(() => {
     if (computedDistanceKm === null) return "";

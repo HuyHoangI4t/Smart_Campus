@@ -1,5 +1,11 @@
 import { LocationItem, ParsedCampusRoom } from "./types";
 import { TNU_CAMPUS_GATES, TNU_OSM_WAY_241971731_BOUNDARY } from "./constants";
+import {
+  distanceLRUCache,
+  getCachedCampusGraph,
+  CampusGraph,
+  generateRouteKey,
+} from "./services/pathCache";
 
 /**
  * Kiểm tra tọa độ có nằm bên trong khuôn viên trường không qua Ray-Casting
@@ -367,14 +373,6 @@ export function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2
       Math.sin(dLon / 2);
   return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
-
-// Tích hợp bộ nhớ đệm LRU Cache & Graph Cache chuyên biệt
-import {
-  distanceLRUCache,
-  getCachedCampusGraph,
-  CampusGraph,
-  generateRouteKey,
-} from "./services/pathCache";
 
 /**
  * Xây dựng đồ thị giao lộ từ các tuyến đường nội bộ trường

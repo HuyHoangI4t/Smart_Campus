@@ -197,7 +197,7 @@ export async function apiCreateCustomSchedule(payload: CustomSchedulePayload) {
     const result = await handleResponse(response);
     if (result && result.success) return result;
     throw new Error(result?.message || 'Lỗi server');
-  } catch (err: any) {
+  } catch {
     // Lưu vào hàng đợi ngoại tuyến để tự động đồng bộ khi có mạng
     const tempId = `offline_${Date.now()}`;
     await addPendingScheduleMutation({
@@ -231,7 +231,7 @@ export async function apiUpdateCustomSchedule(id: string | number, payload: Part
     const result = await handleResponse(response);
     if (result && result.success) return result;
     throw new Error(result?.message || 'Lỗi server');
-  } catch (err: any) {
+  } catch {
     await addPendingScheduleMutation({
       action: 'UPDATE',
       id,
@@ -261,7 +261,7 @@ export async function apiDeleteCustomSchedule(id: string | number) {
     const result = await handleResponse(response);
     if (result && result.success) return result;
     throw new Error(result?.message || 'Lỗi server');
-  } catch (err: any) {
+  } catch {
     await addPendingScheduleMutation({
       action: 'DELETE',
       id,

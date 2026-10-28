@@ -11,7 +11,6 @@ import {
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { AppColors } from "../../../src/constants/appColors";
 import { useTheme } from "../../../src/context/ThemeContext";
 import { NavHeader } from "../../../src/components/NavHeader";
 import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";

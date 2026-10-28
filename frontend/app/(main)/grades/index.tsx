@@ -3,7 +3,6 @@ import { View, Text, ScrollView, Pressable, RefreshControl } from "react-native"
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { AppColors } from "../../../src/constants/appColors";
 import { useTheme } from "../../../src/context/ThemeContext";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";

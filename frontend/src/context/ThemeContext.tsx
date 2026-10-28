@@ -176,7 +176,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [notificationsEnabled, setNotificationsEnabledState] = useState<boolean>(true);
   const [defaultSatelliteMap, setDefaultSatelliteMapState] = useState<boolean>(false);
   const [compassEnabled, setCompassEnabledState] = useState<boolean>(true);
-  const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
   // Nạp cấu hình từ AsyncStorage khi khởi động app
   useEffect(() => {
@@ -218,8 +217,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
       } catch (err) {
         console.warn('[ThemeContext] Lỗi đọc cấu hình từ storage:', err);
-      } finally {
-        setIsLoaded(true);
       }
     }
     loadSettings();

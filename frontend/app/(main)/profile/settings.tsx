@@ -12,7 +12,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { NavHeader } from '../../../src/components/NavHeader';
-import { useTheme, ACCENT_PRESETS, ThemeMode, AccentColor } from '../../../src/context/ThemeContext';
+import { useTheme, ACCENT_PRESETS, AccentColor } from '../../../src/context/ThemeContext';
 import { mainStyles as s } from '../../../src/constants/globalStyles';
 
 export default function SettingsScreen() {
@@ -20,7 +20,6 @@ export default function SettingsScreen() {
   const {
     themeMode,
     setThemeMode,
-    effectiveTheme,
     isDark,
     accentColor,
     setAccentColor,

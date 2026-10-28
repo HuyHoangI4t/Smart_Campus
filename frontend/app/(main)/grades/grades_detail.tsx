@@ -3,7 +3,6 @@ import { View, Text, ScrollView, TextInput, TouchableOpacity, BackHandler, Refre
 import { Feather } from "@expo/vector-icons";
 import { useRouter, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { AppColors } from "../../../src/constants/appColors";
 import { useTheme } from "../../../src/context/ThemeContext";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";

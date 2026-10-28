@@ -468,7 +468,7 @@ export default function AllArticlesScreen() {
         </View>
       </TouchableOpacity>
     );
-  }, [openDetail]);
+  }, [colors, isDark, openDetail]);
 
   if (!isLoggedIn) {
     return (

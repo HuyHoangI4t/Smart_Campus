@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { AppColors } from '../constants/appColors';
 import { useTheme } from '../context/ThemeContext';
 import { tabBarStyles } from '../constants/globalStyles';
 

@@ -13,7 +13,6 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTabBarScrollHandler } from "../../../src/components/MainTabs";
-import { AppColors } from "../../../src/constants/appColors";
 import { useTheme } from "../../../src/context/ThemeContext";
 import { HomeSkeleton } from "../../../src/components/Skeleton";
 import { getHeaderTopPadding } from "../../../src/utils/safeArea";

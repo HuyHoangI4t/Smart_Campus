@@ -4,10 +4,8 @@ import { WebView } from "react-native-webview";
 //import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../../../src/context/ThemeContext";
-import { AppColors } from "../../../src/constants/appColors";
 import { NavHeader } from "../../../src/components/NavHeader";
 import { setTabBarVisible } from "../../../src/components/MainTabs";
 import { MapSkeleton } from "../../../src/components/Skeleton";
@@ -62,10 +60,7 @@ export default function MapScreen() {
   const webViewRef = useRef<WebView>(null);
   const isMapReadyRef = useRef<boolean>(false);
 
-  const { defaultSatelliteMap } = useTheme();
-
-  // Trạng thái xác thực tài khoản sinh viên
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const { defaultSatelliteMap, colors } = useTheme();
 
   // Trạng thái đang kích hoạt chế độ chỉ đường đi bộ (Ẩn thanh nav & nút phụ trợ để tối đa màn hình)
   const [isRoutingActive, setIsRoutingActive] = useState<boolean>(false);
@@ -80,26 +75,6 @@ export default function MapScreen() {
 
   // Lớp bản đồ đang hiển thị ("satellite" | "osm")
   const [mapLayer, setMapLayer] = useState<"osm" | "satellite">("satellite");
-
-  // Kiểm tra đăng nhập
-  const checkAuth = useCallback(async (): Promise<boolean> => {
-    try {
-      const userStr = await AsyncStorage.getItem("@auth_user");
-      if (userStr) {
-        const u = JSON.parse(userStr);
-        const mssv = u.mssv || u.masv || "";
-        if (mssv && mssv !== "guest") {
-          setIsLoggedIn(true);
-          return true;
-        }
-      }
-      setIsLoggedIn(false);
-      return false;
-    } catch {
-      setIsLoggedIn(false);
-      return false;
-    }
-  }, []);
 
   // Hook quản lý cảm biến GPS và La bàn (Tiết kiệm CPU & RAM trên điện thoại)
   const {
@@ -224,26 +199,20 @@ export default function MapScreen() {
 
   // Kích hoạt lấy tọa độ tức thì ngay khi component mount để loại bỏ hoàn toàn độ trễ khởi động (<100ms)
   useEffect(() => {
-    checkAuth().then((isAuthed) => {
-      if (isAuthed) {
-        fetchRealGpsLocation(false, true);
-      }
-    });
-  }, [checkAuth, fetchRealGpsLocation]);
+    fetchRealGpsLocation(false, true);
+  }, [fetchRealGpsLocation]);
 
   // Tự động kiểm tra quyền & làm mới vị trí khi tab được focus
   useFocusEffect(
     useCallback(() => {
-      checkAuth().then((isAuthed) => {
-        if (isAuthed && !userLocationRef.current) {
-          fetchRealGpsLocation(false, true);
-        }
-      });
+      if (!userLocationRef.current) {
+        fetchRealGpsLocation(false, true);
+      }
       return () => {
         // Chỉ khôi phục tab bar khi rời khỏi màn hình Map hoàn toàn (chuyển sang tab khác)
         setTabBarVisible(true);
       };
-    }, [checkAuth, fetchRealGpsLocation])
+    }, [fetchRealGpsLocation])
   );
 
   // Khi bản đồ sẵn sàng trong WebView
@@ -679,7 +648,7 @@ export default function MapScreen() {
   }, [setShowLocationPicker]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: AppColors.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       {/* ─── THANH TIÊU ĐỀ NAV HEADER ─────────────────────────────────── */}
       <NavHeader title="Bản đồ khuôn viên" subtitle="Đại học Tây Nguyên • Khuôn viên nội bộ" />
 

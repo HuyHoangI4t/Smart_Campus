@@ -4,7 +4,6 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter, useFocusEffect } from "expo-router";
 import * as Location from "expo-location";
-import { AppColors } from "../../../src/constants/appColors";
 import { useTheme } from "../../../src/context/ThemeContext";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
@@ -82,7 +81,6 @@ export default function SosScreen() {
     fetchGps();
   }, []);
 
-  const handleCall = (phone: string) => {
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
@@ -94,6 +92,7 @@ export default function SosScreen() {
     }, [router])
   );
 
+  const handleCall = (phone: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     Linking.openURL(`tel:${phone}`).catch(() => {
       Alert.alert("Lỗi", `Không thể mở trình gọi điện thoại cho số ${phone}.`);

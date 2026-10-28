@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, StatusBar, Platform } from 'react-native'
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppColors } from '../constants/appColors';
 import { useTheme } from '../context/ThemeContext';
 import { getHeaderTopPadding } from '../utils/safeArea';
 

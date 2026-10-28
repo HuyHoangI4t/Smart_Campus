@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -20,7 +20,6 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { AppColors } from "../../../src/constants/appColors";
 import { useTheme } from "../../../src/context/ThemeContext";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
@@ -197,7 +196,7 @@ export default function ProfileScreen() {
     }, 200);
   };
 
-  const closeAvatarModal = () => {
+  const closeAvatarModal = useCallback(() => {
     setAvatarModalVisible(false);
     if (returnToEditModal) {
       setReturnToEditModal(false);
@@ -205,7 +204,7 @@ export default function ProfileScreen() {
         setEditModalVisible(true);
       }, 200);
     }
-  };
+  }, [returnToEditModal]);
 
   const applyAvatar = async (newAvatarUri: string) => {
     if (!newAvatarUri) return;
@@ -378,11 +377,11 @@ export default function ProfileScreen() {
     }
   };
 
-  const cancelLogout = () => {
+  const cancelLogout = useCallback(() => {
     if (!loggingOut) {
       setLogoutModalVisible(false);
     }
-  };
+  }, [loggingOut]);
 
   // Xử lý nút Back vật lý / cử chỉ vuốt cạnh khi modal đang mở để không bị văng về Home
   useEffect(() => {
@@ -404,7 +403,7 @@ export default function ProfileScreen() {
 
     const backSubscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
     return () => backSubscription.remove();
-  }, [avatarModalVisible, editModalVisible, logoutModalVisible, uploadingAvatar, saving, loggingOut, returnToEditModal]);
+  }, [avatarModalVisible, editModalVisible, logoutModalVisible, uploadingAvatar, saving, loggingOut, returnToEditModal, cancelLogout, closeAvatarModal]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
