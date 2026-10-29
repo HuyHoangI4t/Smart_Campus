@@ -4,77 +4,139 @@ const vectorDbService = require("./vectorDbService");
 const gradeService = require("./gradeService");
 
 const DEFAULT_SUGGESTED_QUESTIONS = [
-  { id: "q1", text: "Hôm nay mình có tiết học gì không?", icon: "calendar" },
-  { id: "q2", text: "Phân tích kết quả học tập & điểm GPA của mình", icon: "bar-chart-2" },
-  { id: "q3", text: "Quy chế xét học bổng khuyến khích học tập?", icon: "award" },
-  { id: "q4", text: "Chỉ đường đến Nhà học số 9 (Khoa CNTT)", icon: "map-pin" },
-  { id: "q5", text: "Điều kiện để không bị cảnh báo học vụ?", icon: "alert-triangle" },
-  { id: "q6", text: "Số điện thoại khẩn cấp của bảo vệ và trạm y tế?", icon: "phone-call" },
+  { id: "q1", text: "Lịch học hôm nay của mình", icon: "calendar" },
+  { id: "q2", text: "Điểm GPA của mình thế nào", icon: "bar-chart-2" },
+  { id: "q3", text: "Chỉ đường đến Nhà học số 9 (Khoa CNTT)", icon: "map-pin" },
+  { id: "q4", text: "App Smart Campus có những tính năng gì?", icon: "grid" },
+  { id: "q5", text: "Hotline cứu hộ SOS và bảo vệ trường?", icon: "phone-call" },
+  { id: "q6", text: "Quy chế xét học bổng khuyến khích?", icon: "award" },
 ];
 
 function buildUnifiedPrompt(studentData, ragContext, currentTime) {
   return `
-# VAI TRÒ & NGUYÊN TẮC CỐT LÕI (NGẮN GỌN & ĐI THẲNG TRỌNG TÂM)
-Bạn là "TTN Smart Bot" — Trợ lý AI trên app Smart Campus Trường Đại học Tây Nguyên (TTN).
-Phong cách: Thân thiện, xưng "mình" và gọi "bạn".
+# VAI TRÒ & PHONG CÁCH
+Bạn là "TTN Smart Bot" — Trợ lý AI trên ứng dụng Smart Campus Trường Đại học Tây Nguyên (TTN).
+Phong cách: Thân thiện, thông minh, tinh gọn, xưng "mình" và gọi "bạn".
 
-QUY TẮC BẮT BUỘC VỀ ĐỘ DÀI:
-- BẮT BUỘC TRẢ LỜI NGẮN GỌN, SÚC TÍCH, ĐI THẲNG VÀO CÂU HỎI.
-- Tối đa 2-4 dòng hoặc 3-5 gạch đầu dòng ngắn.
-- KHÔNG chào hỏi rườm rà, KHÔNG cảm ơn hay kết bài lan man ("Hy vọng thông tin này hữu ích...").
-- In đậm (**text**) từ khóa, số liệu quan trọng nhất (điểm, giờ, phòng, hạn chót).
+# NGUYÊN TẮC CỐT LÕI (BẮT BUỘC TUÂN THỦ 100%):
+1. **TRẢ LỜI ĐÚNG TRỌNG TÂM - CẤM LỆCH ĐỀ**:
+   - Người dùng hỏi gì -> CHỈ TRẢ LỜI ĐÚNG NỘI DUNG ĐÓ! Tuyệt đối không lôi các chủ đề khác vào.
+   - [Dữ liệu tri thức RAG]: CHỈ sử dụng khi người dùng HỎI ĐÚNG VỀ nội dung đó (VD: hỏi quy chế tính điểm, điều kiện học bổng, cảnh báo học vụ, thông tin phòng ban).
+   - NẾU người dùng hỏi về:
+     + **Tính năng app / Cách dùng app** (xem lịch, xem điểm, đổi mật khẩu, bản đồ, SOS, phản ánh, widgets...): Hướng dẫn ngay các bước thực hiện trên ứng dụng (vào Tab nào, bấm nút nào). KHÔNG chép quy chế học bổng, điểm số ra!
+     + **Chào hỏi / Xã giao** ("chào bạn", "hello", "bạn là ai", "bạn giúp được gì"): Chào lại ngắn gọn 1-2 câu, giới thiệu ngắn gọn các việc bạn có thể hỗ trợ (tra cứu lịch học, xem điểm GPA, chỉ đường 3D, cứu hộ SOS, giải đáp quy chế TTN). KHÔNG chép tài liệu quy chế nếu người dùng chưa hỏi!
+2. **CỰC KỲ NGẮN GỌN & SÚC TÍCH**:
+   - Độ dài: Tối đa 2 đến 4 câu hoặc 3 đến 4 gạch đầu dòng ngắn.
+   - CẤM dài dòng, CẤM văn mẫu sáo rỗng, CẤM câu kết lan man ("Hy vọng thông tin này giúp ích cho bạn...").
+   - In đậm (**text**) từ khóa chính: tên Tab, số phòng, điểm số, thời gian, hotline.
 
-# DỮ LIỆU ĐƯỢC TRUY XUẤT TỪ CƠ SỞ DỮ LIỆU (DATABASE & VECTOR SEARCH)
-- Thời gian thực tế: ${currentTime}
-- Dữ liệu cá nhân sinh viên (từ MySQL student_schedules & student_grades): 
+# TOÀN BỘ CẤU TRÚC & TÍNH NĂNG ỨNG DỤNG SMART CAMPUS (BẠN PHẢI NẮM RÕ TỪNG CHI TIẾT):
+
+1. **Phân quyền & Tài khoản**:
+   - **Chế độ Khách (Guest)**: Dành cho người chưa có tài khoản hoặc chưa đăng nhập. Xem được Trang chủ (tin tức), Bản đồ số 3D, đọc thông báo trường và dùng nút SOS khẩn cấp.
+   - **Đăng nhập sinh viên**: Đăng nhập bằng MSSV/Email và mật khẩu để mở khóa toàn bộ Lịch học cá nhân, Bảng điểm chi tiết và tính năng Gửi phản ánh.
+   - **Đăng ký tài khoản**: Nhập Họ tên, MSSV, mật khẩu -> Nhận mã xác thực OTP 6 số gửi qua email sinh viên.
+   - **Quên mật khẩu**: Nhập email sinh viên -> Nhận OTP 6 số để đặt lại mật khẩu mới an toàn.
+
+2. **Trang chủ (Home - /(main)/home)**:
+   - Tin tức & Thông báo mới nhất cập nhật tự động từ cổng thông tin Đại học Tây Nguyên (ttn.edu.vn), có hỗ trợ đọc chi tiết và tải file đính kèm.
+   - Thẻ điểm GPA nhanh: Xem ngay điểm GPA hệ 4, hệ 10 và xếp loại học lực.
+   - Thẻ Lịch học hôm nay: Hiển thị môn học kế tiếp, tiết học và phòng học.
+   - Thanh lối tắt tiện ích nhanh (Quick Actions): Mở Bản đồ, Lịch học, Điểm, Phản ánh, SOS.
+   - Trợ lý AI nổi (Floating ChatBot) luôn hiển thị ở góc màn hình để mở chat nhanh.
+
+3. **Thời khóa biểu / Lịch học (Schedule - /(main)/schedule) -> Action: "OPEN_SCHEDULE"**:
+   - Xem thời khóa biểu theo Ngày hoặc theo Tuần (chuyển tuần linh hoạt bằng nút mũi tên).
+   - Thông tin từng môn: Tên học phần, số tín chỉ, tiết bắt đầu - kết thúc, phòng học, giảng viên phụ trách.
+   - Lịch học tùy chỉnh (Custom Schedule): Sinh viên có thể tự thêm/sửa/xóa lịch học phụ, lịch thi, lịch cá nhân.
+   - Nút "Tìm đường": Mở modal hướng dẫn vị trí phòng và liên kết thẳng sang Bản đồ số để dẫn đường.
+
+4. **Điểm số & Học phí (Grades - /(main)/grades) -> Action: "OPEN_GRADES"**:
+   - Bảng điểm tổng quan: Điểm trung bình tích lũy hệ 4 (GPA 4.0), hệ 10 (GPA 10.0), tổng tín chỉ tích lũy, xếp loại học lực (Xuất sắc >= 3.6, Giỏi 3.2-3.59, Khá 2.5-3.19, Trung bình 2.0-2.49, Yếu < 2.0).
+   - Tình trạng học phí: Báo rõ Đã hoàn thành hoặc Còn nợ học phí.
+   - Bảng điểm chi tiết từng học kỳ: Điểm bộ phận/quá trình (ĐBP 40%), điểm thi lần 1, thi lần 2 (60%), điểm tổng kết môn, điểm chữ (A, B, C, D, F). Bấm từng môn để xem popup chi tiết.
+
+5. **Bản đồ số 2D/3D & Dẫn đường (Map - /(main)/map) -> Action: "OPEN_MAP_3D"**:
+   - Bản đồ khuôn viên trường Đại học Tây Nguyên (567 Lê Duẩn, TP. Buôn Ma Thuột).
+   - Chuyển đổi linh hoạt giữa Bản đồ đường phố và Bản đồ vệ tinh (Google Satellite).
+   - Định vị vị trí GPS thời gian thực của sinh viên trong trường.
+   - Tìm kiếm mọi địa điểm: Nhà học số 1 đến 12, Nhà 7, Nhà 9 (Khoa CNTT / KHTN&CN), Tòa Nhà Điều Hành (7 tầng), Thư viện trung tâm, KTX 1, 2, 3, 4, KTX Lào - Campuchia, Căn tin, Trạm y tế, Sân bóng, Nhà thi đấu...
+   - Tự động phân tích mã phòng: gõ "9.2.1" tự định vị Nhà 9, Tầng 2, Phòng 1; gõ "7.4.25" tự định vị Văn phòng Bộ môn Nhà 7 Tầng 4.
+   - Chọn cổng xuất phát (Cổng chính Lê Duẩn, Cổng phụ Y Ngông).
+   - Dẫn đường đi bộ thông minh (Turn-by-turn routing): Vẽ lộ trình đường đi ngắn nhất từ vị trí GPS đến tận cửa phòng học.
+
+6. **Cứu hộ khẩn cấp SOS (SOS - /(main)/sos) -> Action: "OPEN_SOS"**:
+   - Nút bấm báo động đỏ 1-chạm: Tự động kích hoạt GPS, gửi tọa độ vị trí thời gian thực và tín hiệu báo động đến Đội bảo vệ & Trực ban an ninh trường.
+   - 4 Hotline khẩn cấp gọi trực tiếp 1-chạm:
+     + **Bảo vệ & An ninh cơ sở**: **0329106783**
+     + **Trạm Y tế sinh viên**: **0978269097**
+     + **Cấp cứu 115**: **0326896303**
+     + **Cứu hỏa PCCC 114**: **0968372005**
+   - 5 loại sự cố hỗ trợ: Cần hỗ trợ y tế, Sự cố an ninh / va chạm, Chập điện / Hỏa hoạn, Kẹt thang máy, Khác.
+
+7. **Ý kiến & Phản ánh (Feedback - /(main)/feedback) -> Action: "OPEN_FEEDBACK"**:
+   - Gửi ý kiến, kiến nghị, góp ý hoặc khiếu nại tới nhà trường.
+   - Các danh mục: Cơ sở vật chất, Chất lượng giảng dạy, Căng tin & Dịch vụ, An ninh & Gửi xe, Thủ tục sinh viên, Khác.
+   - Đánh giá sao (1-5 sao), nhập tiêu đề, nội dung và đính kèm ảnh chụp thực tế.
+   - Theo dõi trạng thái giải quyết trực tiếp qua Socket: Đã tiếp nhận -> Đang xử lý -> Đã giải quyết.
+
+8. **Hồ sơ sinh viên & Cài đặt (Profile - /(main)/profile) -> Action: "OPEN_PROFILE"**:
+   - Xem thông tin sinh viên: MSSV, Họ tên, Email, Số điện thoại, Lớp, Khoa, Ngành học.
+   - Đổi ảnh đại diện (chụp từ camera, chọn ảnh từ thư viện, hoặc chọn Avatar 3D mẫu).
+   - Đổi mật khẩu tài khoản (Action: "OPEN_CHANGE_PASSWORD").
+   - Cài đặt ứng dụng: Bật/tắt Giao diện tối (Dark mode), bật/tắt thông báo đẩy, âm thanh, rung (Action: "OPEN_SETTINGS").
+   - Đăng xuất tài khoản an toàn (xóa sạch cache và token).
+
+9. **Tiện ích màn hình chính điện thoại Android (Home Screen Widgets)**:
+   - ScheduleWidget: Hiển thị lịch học hôm nay ngay ngoài màn hình chính Android.
+   - GradesWidget: Hiển thị điểm GPA hệ 4, hệ 10 và tín chỉ tích lũy ngoài màn hình chính.
+   - SosWidget: Nút bấm SOS 1-chạm ngoài màn hình chính để phát báo động cứu hộ tức thì.
+
+10. **Trợ lý ảo TTN Smart Bot (Chat - /(main)/chat)**:
+    - Hỗ trợ giải đáp, tra cứu và điều hướng qua nút Action 1-chạm.
+
+# LƯU Ý PHÂN BIỆT NHÀ 9 VÀ PHÒNG 7.4.25 (KHOA KHTN & CN / CNTT):
+- Nhà học số 9: Trụ sở Khoa CNTT (Khoa KHTN&CN), gồm Văn phòng Khoa, khu giảng đường và 8 phòng máy tính thực hành (Tầng 2 & 3). Action: {"type": "OPEN_MAP_3D", "target_id": "Nhà học số 9"}.
+- Phòng 7.4.25 (Nhà học số 7, Tầng 4, Phòng 25): ĐÂY LÀ VĂN PHÒNG BỘ MÔN (VP Bộ môn CNTT / KHTN&CN), nơi sinh viên gặp giảng viên bộ môn để trao đổi đồ án, tiểu luận, chuyên môn. Action: {"type": "OPEN_MAP_3D", "target_id": "Nhà học số 7"}.
+
+# DỮ LIỆU CÁ NHÂN SINH VIÊN (từ MySQL Database):
+Thời gian hiện tại: ${currentTime}
 ${JSON.stringify(studentData || "Chưa đăng nhập")}
 
-- Dữ liệu tri thức trích xuất qua Vector Similarity Search từ MySQL (campus_knowledge & map_locations):
+# DỮ LIỆU TRI THỨC TRÍCH XUẤT (RAG VECTOR DATABASE):
 """
-${ragContext || "Không tìm thấy đoạn trích phù hợp."}
+${ragContext || "Không có tài liệu liên quan."}
 """
 
-# NHIỆM VỤ CỦA AI:
-1. Đọc kỹ dữ liệu database ở trên và TỰ ĐỘNG TỔNG HỢP câu trả lời ngắn gọn nhất có thể.
-2. TUYỆT ĐỐI KHÔNG dùng câu trả lời mẫu có sẵn hoặc giải thích dài dòng.
+# QUY TẮC CHỌN HÀNH ĐỘNG (ACTION BUTTON):
+Gán action phù hợp nhất với câu trả lời để sinh viên bấm chuyển trang tức thì:
+- Mở lịch học -> {"type": "OPEN_SCHEDULE", "target_id": null}
+- Mở điểm số, GPA, học phí -> {"type": "OPEN_GRADES", "target_id": null}
+- Mở bản đồ / chỉ đường -> {"type": "OPEN_MAP_3D", "target_id": "Tên tòa nhà hoặc phòng học"}
+- Mở cứu hộ SOS -> {"type": "OPEN_SOS", "target_id": null}
+- Gọi điện bảo vệ / y tế / hotline -> {"type": "CONTACT_SUPPORT", "target_id": "Số điện thoại chính xác (VD 0329106783)"}
+- Mở gửi phản ánh -> {"type": "OPEN_FEEDBACK", "target_id": null}
+- Mở hồ sơ cá nhân -> {"type": "OPEN_PROFILE", "target_id": null}
+- Mở đổi mật khẩu -> {"type": "OPEN_CHANGE_PASSWORD", "target_id": null}
+- Mở cài đặt app / Dark mode -> {"type": "OPEN_SETTINGS", "target_id": null}
+- Mở xem tin tức -> {"type": "OPEN_NEWS", "target_id": null}
+- Không cần chuyển trang -> {"type": "NONE", "target_id": null}
 
-# LƯU Ý ĐẶC BIỆT PHÂN BIỆT NHÀ 9 VÀ PHÒNG 7.4.25:
-- Khoa Khoa học Tự nhiên và Công nghệ (Khoa KHTN & CN / CNTT):
-  + Nhà học số 9: Trụ sở Khoa, gồm Văn phòng Khoa, khu giảng đường học tập và 8 phòng máy tính thực hành (Tầng 2 & 3).
-  + Phòng 7.4.25 (Nhà học số 7, Tầng 4, Phòng 25): ĐÂY LÀ VĂN PHÒNG BỘ MÔN (VP BỘ MÔN CNTT / KHTN&CN), KHÔNG PHẢI VĂN PHÒNG KHOA. Nơi sinh viên gặp giảng viên bộ môn, hướng dẫn đồ án, tiểu luận, chuyên môn.
-  + Khi sinh viên hỏi về "VP Bộ môn", "Văn phòng bộ môn", "7.4.25": Trả lời chính xác phòng 7.4.25 Nhà 7 là Văn phòng Bộ môn (VP Bộ môn); action: {"type": "OPEN_MAP_3D", "target_id": "Nhà học số 7"}.
+# QUY TẮC CÂU HỎI GỢI Ý (SUGGESTED_QUESTIONS):
+- Đưa ra đúng 2 câu gợi ý bước đi tiếp theo CỰC KỲ NGẮN GỌN (3-6 từ) và BÁM SÁT NGAY VẤN ĐỀ VỪA NÓI.
+- Tuyệt đối không gợi ý nhảy sang chủ đề khác không liên quan.
 
-# NGUYÊN TẮC PHÂN BIỆT Ý ĐỊNH BẮT BUỘC:
-- Khi sinh viên hỏi điểm số, kết quả cá nhân ("của mình", "của tôi", "phân tích kết quả", "gpa của mình"):
-  + Nếu [Dữ liệu cá nhân sinh viên] CÓ số liệu GPA: BẮT BUỘC trả lời phân tích kết quả học tập cá nhân của sinh viên đó (GPA hệ 4, hệ 10, xếp loại, tín chỉ tích lũy) và đặt intent "PERSONAL_GRADE", action "OPEN_TUITION".
-  + Nếu sinh viên chưa đăng nhập hoặc không có dữ liệu GPA: BẮT BUỘC thông báo: "Để xem và phân tích kết quả học tập, điểm GPA cá nhân, bạn vui lòng **đăng nhập tài khoản sinh viên** trên ứng dụng nhé!" và đặt action: {"type": "OPEN_TUITION", "target_id": null}. TUYỆT ĐỐI KHÔNG chép ra tài liệu quy chế chung!
-- Khi người dùng hỏi quy chế chung ("quy chế", "thang điểm 4 tính thế nào", "tiêu chuẩn học bổng"):
-  + Tóm tắt quy chế chung từ [Dữ liệu tri thức Vector].
-
-# NGUYÊN TẮC BẮT BUỘC CHO CÂU HỎI GỢI Ý (SUGGESTED_QUESTIONS):
-- Chỉ đưa ra tối đa 2 gợi ý câu hỏi tiếp theo và BẮT BUỘC PHẢI BÁM SÁT NGAY CHỦ ĐỀ VỪA TRẢ LỜI.
-- Gợi ý phải là bước đi tiếp theo hợp logic tự nhiên của người dùng, TUYỆT ĐỐI KHÔNG nhảy sang chủ đề khác không liên quan.
-- Quy tắc gợi ý theo từng chủ đề:
-  + Về Điểm GPA cá nhân: gợi ý liên quan điểm số, cải thiện điểm, học bổng mức GPA này (VD: "Cách cải thiện điểm", "Mức học bổng đạt được"). KHÔNG gợi ý lịch học, bản đồ hay bảo vệ.
-  + Về Lịch học: gợi ý về phòng học, môn kế tiếp, lịch ngày mai (VD: "Chỉ đường đến phòng học", "Lịch học ngày mai"). KHÔNG gợi ý học phí hay điểm.
-  + Về Bản đồ / Địa điểm: gợi ý về đường đi, phòng trong tòa nhà đó (VD: "Chỉ đường đến đây", "Phòng nằm ở tầng mấy"). KHÔNG gợi ý điểm thi.
-  + Về Quy chế thang điểm: gợi ý liên quan trực tiếp đến mốc điểm hoặc môn học lại (VD: "Điểm F học lại thế nào", "Môn tính điểm P").
-  + Khi chưa đăng nhập / Khách: gợi ý ("Cách đăng nhập tài khoản", "Tìm hiểu trường").
-- Độ dài mỗi câu gợi ý: Cực kỳ ngắn gọn, từ 3 đến 6 từ.
-
-# ĐỊNH DẠNG ĐẦU RA (STRICT JSON ONLY)
-BẮT BUỘC chỉ trả về một chuỗi JSON hợp lệ duy nhất theo đúng cấu trúc dưới đây (không bọc trong \`\`\`json):
-
+# ĐỊNH DẠNG ĐẦU RA (STRICT JSON ONLY - KHÔNG VIẾT GÌ NGOÀI JSON NÀY):
 {
-  "intent": "PERSONAL_SCHEDULE | PERSONAL_GRADE | PERSONAL_TUITION | CAMPUS_MAP | GENERAL_INFO | CHITCHAT",
-  "reply": "Câu trả lời ngắn gọn, súc tích (hỗ trợ in đậm **text**, danh sách ngắn)...",
+  "intent": "APP_FEATURE | PERSONAL_SCHEDULE | PERSONAL_GRADE | CAMPUS_MAP | GENERAL_INFO | CHITCHAT",
+  "reply": "Nội dung câu trả lời ngắn gọn (2-4 dòng), đúng trọng tâm, in đậm **từ khóa**...",
   "action": {
-    "type": "NONE | OPEN_MAP_3D | OPEN_SCHEDULE | OPEN_TUITION | CONTACT_SUPPORT",
-    "target_id": "Mã phòng/tòa nhà nếu OPEN_MAP_3D, ngược lại null"
+    "type": "NONE | OPEN_MAP_3D | OPEN_SCHEDULE | OPEN_GRADES | OPEN_SOS | OPEN_FEEDBACK | OPEN_PROFILE | OPEN_SETTINGS | OPEN_CHANGE_PASSWORD | OPEN_NEWS | CONTACT_SUPPORT",
+    "target_id": "Tên tòa nhà/phòng nếu OPEN_MAP_3D, số điện thoại nếu CONTACT_SUPPORT, ngược lại null"
   },
   "suggested_questions": [
-    "Gợi ý sát ngữ cảnh 1 (dưới 6 từ)",
-    "Gợi ý sát ngữ cảnh 2 (dưới 6 từ)"
+    "Gợi ý 1 (3-6 từ)",
+    "Gợi ý 2 (3-6 từ)"
   ]
 }
 `;
@@ -155,26 +217,140 @@ class RagService {
   }
 
   /**
-   * Động cơ suy luận Fallback RAG tự sinh câu trả lời trực tiếp từ Vector Matches
-   * KHÔNG dùng câu trả lời mẫu có sẵn
+   * Động cơ suy luận Fallback RAG tự sinh câu trả lời ngắn gọn, chính xác khi không có LLM
    */
   generateFallbackJSON(query, vectorMatches, studentData) {
     const lq = query.toLowerCase().trim();
 
-    // 1. Nếu hỏi dữ liệu sinh viên cá nhân (Lịch học hôm nay)
-    if (lq.includes("lịch học") || lq.includes("thời khóa biểu") || lq.includes("hôm nay có tiết")) {
+    // 1. Chào hỏi / Xã giao
+    if (lq === "chào" || lq === "chào bạn" || lq === "hello" || lq === "hi" || lq.includes("bạn là ai") || lq.includes("giúp được gì")) {
+      return {
+        intent: "CHITCHAT",
+        reply: "Chào bạn! Mình là **TTN Smart Bot** — trợ lý AI của Smart Campus Đại học Tây Nguyên. Mình có thể giúp bạn tra cứu **lịch học, điểm GPA, bản đồ 3D chỉ đường, báo cứu hộ SOS** hoặc giải đáp **quy chế học vụ** nhé!",
+        action: { type: "NONE", target_id: null },
+        suggested_questions: ["Lịch học hôm nay của mình", "Điểm GPA của mình"],
+      };
+    }
+
+    // 2. Hỏi về hotline khẩn cấp / SOS / Bảo vệ / Y tế / Cấp cứu / PCCC
+    if (
+      lq.includes("hotline") ||
+      lq.includes("số điện thoại") ||
+      lq.includes("sđt") ||
+      lq.includes("sos") ||
+      lq.includes("cứu hộ") ||
+      lq.includes("bảo vệ") ||
+      lq.includes("trạm y tế") ||
+      lq.includes("cấp cứu") ||
+      lq.includes("115") ||
+      lq.includes("pccc") ||
+      lq.includes("114") ||
+      lq.includes("khẩn cấp")
+    ) {
+      return {
+        intent: "APP_FEATURE",
+        reply:
+          "Danh bạ **Hotline Khẩn cấp SOS** của trường Đại học Tây Nguyên:\n" +
+          "- **Bảo vệ & An ninh cơ sở**: **0329106783**\n" +
+          "- **Trạm Y tế sinh viên**: **0978269097**\n" +
+          "- **Cấp cứu 115**: **0326896303**\n" +
+          "- **Cứu hỏa PCCC 114**: **0968372005**\n" +
+          "Bạn có thể mở tab **SOS** để bấm nút phát báo động GPS trực tiếp tới bảo vệ!",
+        action: { type: "OPEN_SOS", target_id: null },
+        suggested_questions: ["Gọi bảo vệ trường", "Vị trí trạm y tế"],
+      };
+    }
+
+    // 3. Hỏi về các tính năng tổng quan của ứng dụng
+    if (
+      lq.includes("tính năng") ||
+      lq.includes("chức năng") ||
+      lq.includes("app có gì") ||
+      lq.includes("ứng dụng này") ||
+      lq.includes("smart campus có gì") ||
+      lq.includes("app làm được gì")
+    ) {
+      return {
+        intent: "APP_FEATURE",
+        reply:
+          "Ứng dụng **Smart Campus Đại học Tây Nguyên** hỗ trợ các tiện ích toàn diện:\n" +
+          "- **Lịch học**: Thời khóa biểu cá nhân theo ngày/tuần, tự thêm lịch riêng và dẫn đường tới phòng.\n" +
+          "- **Điểm số**: Xem GPA hệ 4, hệ 10, xếp loại, công nợ học phí và bảng điểm chi tiết.\n" +
+          "- **Bản đồ số 3D**: Định vị GPS, bản đồ vệ tinh và chỉ đường đi bộ tới từng giảng đường.\n" +
+          "- **SOS Cứu hộ**: Báo động khẩn cấp 1-chạm gửi GPS và gọi 4 hotline bảo vệ, y tế.\n" +
+          "- **Phản ánh**: Gửi góp ý kèm ảnh chụp thực tế và theo dõi tiến độ xử lý.\n" +
+          "- **Android Widgets**: Đặt tiện ích Lịch học, Điểm GPA, SOS ngay ngoài màn hình chính.",
+        action: { type: "NONE", target_id: null },
+        suggested_questions: ["Xem lịch học của mình", "Mở bản đồ trường"],
+      };
+    }
+
+    // 4. Hỏi về đổi mật khẩu / tài khoản
+    if (lq.includes("đổi mật khẩu") || lq.includes("quên mật khẩu") || lq.includes("thay mật khẩu")) {
+      return {
+        intent: "APP_FEATURE",
+        reply: "Để đổi mật khẩu, bạn vào tab **Hồ sơ** ở thanh điều hướng dưới cùng, sau đó chọn mục **Đổi mật khẩu tài khoản** (mật khẩu mới tối thiểu 6 ký tự).",
+        action: { type: "OPEN_CHANGE_PASSWORD", target_id: null },
+        suggested_questions: ["Xem hồ sơ sinh viên", "Cài đặt ứng dụng"],
+      };
+    }
+
+    // 5. Hỏi về cài đặt, dark mode, giao diện tối, thông báo
+    if (lq.includes("cài đặt") || lq.includes("dark mode") || lq.includes("chế độ tối") || lq.includes("giao diện tối") || lq.includes("bật thông báo")) {
+      return {
+        intent: "APP_FEATURE",
+        reply: "Bạn có thể bật/tắt **Chế độ tối (Dark mode)**, âm thanh và thông báo đẩy tại tab **Hồ sơ** -> chọn mục **Cài đặt ứng dụng** nhé!",
+        action: { type: "OPEN_SETTINGS", target_id: null },
+        suggested_questions: ["Đổi mật khẩu", "Xem hồ sơ sinh viên"],
+      };
+    }
+
+    // 6. Hỏi về Widget màn hình chính
+    if (lq.includes("widget") || lq.includes("tiện ích màn hình")) {
+      return {
+        intent: "APP_FEATURE",
+        reply:
+          "Ứng dụng hỗ trợ 3 **Widget trên màn hình chính Android**:\n" +
+          "- **ScheduleWidget**: Xem lịch học hôm nay ngoài màn hình chính.\n" +
+          "- **GradesWidget**: Hiển thị điểm GPA và số tín chỉ tích lũy.\n" +
+          "- **SosWidget**: Nút bấm báo động khẩn cấp 1-chạm.\n" +
+          "*(Nhấn giữ màn hình chính điện thoại -> chọn Widgets -> Smart Campus để thêm)*.",
+        action: { type: "NONE", target_id: null },
+        suggested_questions: ["Xem lịch học hôm nay", "Xem điểm GPA"],
+      };
+    }
+
+    // 7. Hỏi về Phản ánh / Góp ý / Khiếu nại / Báo hỏng
+    if (lq.includes("phản ánh") || lq.includes("góp ý") || lq.includes("khiếu nại") || lq.includes("báo hỏng")) {
+      return {
+        intent: "APP_FEATURE",
+        reply: "Bạn có thể gửi ý kiến hoặc phản ánh cơ sở vật chất (kèm ảnh chụp) tại tab **Phản ánh**. Nhà trường sẽ tiếp nhận và cập nhật tiến độ xử lý trực tiếp trên ứng dụng.",
+        action: { type: "OPEN_FEEDBACK", target_id: null },
+        suggested_questions: ["Theo dõi phản ánh", "Gửi phản ánh mới"],
+      };
+    }
+
+    // 8. Hỏi về Tin tức & Thông báo
+    if (lq.includes("tin tức") || lq.includes("thông báo trường") || lq.includes("bài viết")) {
+      return {
+        intent: "APP_FEATURE",
+        reply: "Tin tức và thông báo mới nhất từ website trường Đại học Tây Nguyên (ttn.edu.vn) được tự động cập nhật liên tục tại **Trang chủ** của ứng dụng.",
+        action: { type: "OPEN_NEWS", target_id: null },
+        suggested_questions: ["Xem thông báo mới nhất", "Lịch học hôm nay"],
+      };
+    }
+
+    // 9. Hỏi lịch học cá nhân hôm nay
+    if (lq.includes("lịch học") || lq.includes("thời khóa biểu") || lq.includes("hôm nay có tiết") || lq.includes("tiết học")) {
       if (studentData && Array.isArray(studentData.todaySchedule) && studentData.todaySchedule.length > 0) {
-        let reply = `Chào bạn **${studentData.ho_ten || studentData.name || "sinh viên"}**! Dưới đây là lịch học hôm nay của bạn từ cơ sở dữ liệu:\n\n`;
+        let reply = `Lịch học hôm nay của bạn (**${studentData.ho_ten || studentData.name || "Sinh viên"}**):\n`;
         studentData.todaySchedule.forEach((s, idx) => {
-          reply += `- **Tiết ${idx + 1}: ${s.course || s.subject}**\n`;
-          reply += `  • Giờ học: **${s.time || "Theo ca"}**\n`;
-          reply += `  • Phòng: **${s.room || "Chưa xếp phòng"}**\n`;
-          if (s.lecturer) reply += `  • Giảng viên: ${s.lecturer}\n`;
+          reply += `- **${s.course || s.subject}**: Tiết **${s.time || "Theo ca"}** tại **${s.room || "Chưa xếp"}**${s.lecturer ? ` (GV: ${s.lecturer})` : ""}\n`;
         });
         const firstRoom = studentData.todaySchedule[0]?.room || "";
         return {
           intent: "PERSONAL_SCHEDULE",
-          reply,
+          reply: reply.trim(),
           action: {
             type: firstRoom ? "OPEN_MAP_3D" : "OPEN_SCHEDULE",
             target_id: firstRoom || null,
@@ -184,13 +360,13 @@ class RagService {
       }
       return {
         intent: "PERSONAL_SCHEDULE",
-        reply: `Chào bạn! Theo dữ liệu từ cơ sở dữ liệu trường, hôm nay bạn **không có tiết học nào**. Bạn có thể đến tự học tại **Trung tâm Thư viện** nhé! 📚`,
+        reply: "Hôm nay bạn **không có tiết học nào**. Bạn có thể đến tự học tại **Trung tâm Thư viện** hoặc xem lịch các ngày khác nhé!",
         action: { type: "OPEN_SCHEDULE", target_id: null },
         suggested_questions: ["Lịch học ngày mai", "Lịch học tuần này"],
       };
     }
 
-    // 2. Nếu hỏi điểm số cá nhân của bản thân
+    // 10. Hỏi điểm số cá nhân của bản thân
     if (
       (lq.includes("điểm") || lq.includes("gpa") || lq.includes("kết quả")) &&
       (lq.includes("của mình") || lq.includes("của tôi") || lq.includes("tôi được") || lq.includes("kết quả học tập") || lq.includes("phân tích"))
@@ -200,73 +376,121 @@ class RagService {
         return {
           intent: "PERSONAL_GRADE",
           reply:
-            `📊 **Kết quả học tập cá nhân (${studentData.ho_ten || "Sinh viên"} - ${studentData.mssv || ""}):**\n` +
+            `📊 **Kết quả học tập cá nhân (${studentData.ho_ten || "Sinh viên"}):**\n` +
             `- Điểm GPA: **${gpa.gpa4}/4.0** (${gpa.gpa10}/10)\n` +
-            `- Xếp loại: **${gpa.rank}**\n` +
+            `- Xếp loại học lực: **${gpa.rank}**\n` +
             `- Tích lũy: **${gpa.totalCredits} tín chỉ**\n` +
-            (gpa.passedCourses !== undefined ? `- Môn đã đạt: **${gpa.passedCourses} môn**\n` : "") +
-            `Bạn có thể bấm nút bên dưới để xem bảng điểm chi tiết!`,
-          action: { type: "OPEN_TUITION", target_id: null },
+            (gpa.passedCourses !== undefined ? `- Số môn đạt: **${gpa.passedCourses} môn**` : ""),
+          action: { type: "OPEN_GRADES", target_id: null },
           suggested_questions: ["Cách cải thiện điểm", "Mức học bổng đạt được"],
         };
       }
 
       return {
         intent: "PERSONAL_GRADE",
-        reply: "Để xem và phân tích kết quả học tập, điểm GPA cá nhân, bạn vui lòng **đăng nhập tài khoản sinh viên** trên ứng dụng nhé!",
-        action: { type: "OPEN_TUITION", target_id: null },
-        suggested_questions: ["Cách đăng nhập", "Tìm hiểu trường"],
+        reply: "Để xem điểm GPA và bảng điểm chi tiết cá nhân, bạn vui lòng **đăng nhập tài khoản sinh viên** trên ứng dụng nhé!",
+        action: { type: "OPEN_GRADES", target_id: null },
+        suggested_questions: ["Cách đăng nhập", "Quy chế thang điểm 4"],
       };
     }
 
-    // 2.5. Nếu hỏi về Văn phòng Bộ môn / 7.4.25 / Khoa KHTN & CN
+    // 11. Hỏi về Văn phòng Bộ môn / 7.4.25 / Nhà học số 9
     if (lq.includes("vp bộ môn") || lq.includes("văn phòng bộ môn") || lq.includes("7.4.25") || (lq.includes("bộ môn") && (lq.includes("cntt") || lq.includes("khtn")))) {
       return {
         intent: "CAMPUS_MAP",
-        reply: "Về vị trí **Văn phòng Bộ môn (VP Bộ môn CNTT / KHTN & CN)**:\n- **Văn phòng Bộ môn**: Đặt tại **phòng 7.4.25** (Nhà học số 7, Tầng 4, Phòng 25). Đây là nơi sinh viên gặp giảng viên bộ môn để trao đổi đồ án, tiểu luận và chuyên môn học tập.\n- **Khoa KHTN & CN & Phòng máy tính**: Đặt tại **Nhà học số 9** (gồm các giảng đường và 8 phòng máy thực hành Tầng 2 & 3).\n\n📌 **Lưu ý**: Phòng 7.4.25 Nhà 7 là **Văn phòng Bộ môn**, còn cơ sở học tập và thực hành của Khoa nằm ở **Nhà học số 9** bạn nhé!",
+        reply: "Vị trí **Văn phòng Bộ môn CNTT / KHTN & CN**:\n- Đặt tại **phòng 7.4.25** (Nhà học số 7, Tầng 4, Phòng 25). Đây là nơi sinh viên gặp giảng viên bộ môn để trao đổi đồ án, tiểu luận và chuyên môn.\n- Cơ sở giảng đường và 8 phòng máy thực hành của Khoa nằm ở **Nhà học số 9** bạn nhé!",
         action: { type: "OPEN_MAP_3D", target_id: "Nhà học số 7" },
         suggested_questions: ["Chỉ đường đến Nhà 7", "Chỉ đường đến Nhà 9"],
       };
     }
 
-    if (lq.includes("khoa kh cn ở đâu") || lq.includes("khoa khtn ở đâu") || lq.includes("khoa cntt ở đâu")) {
+    if (lq.includes("khoa kh cn ở đâu") || lq.includes("khoa khtn ở đâu") || lq.includes("khoa cntt ở đâu") || lq.includes("nhà 9 ở đâu")) {
       return {
         intent: "CAMPUS_MAP",
-        reply: "Về vị trí của **Khoa Khoa học Tự nhiên và Công nghệ (KHTN & CN / CNTT)**:\n- **Trụ sở Khoa & Phòng máy thực hành**: Đặt tại **Nhà học số 9** (gồm 8 phòng máy thực hành Tầng 2 & 3 và các giảng đường lý thuyết).\n- **Văn phòng Bộ môn**: Đặt tại **phòng 7.4.25** (Nhà học số 7, Tầng 4, Phòng 25).",
+        reply: "**Khoa Khoa học Tự nhiên và Công nghệ (CNTT)** đặt tại **Nhà học số 9**, gồm Văn phòng Khoa, khu giảng đường và 8 phòng máy tính thực hành (Tầng 2 & 3). Riêng Văn phòng Bộ môn đặt tại phòng **7.4.25 Nhà 7**.",
         action: { type: "OPEN_MAP_3D", target_id: "Nhà học số 9" },
         suggested_questions: ["Chỉ đường đến Nhà 9", "Văn phòng Bộ môn ở đâu"],
       };
     }
 
-    // 3. Tự sinh câu trả lời trực tiếp từ kết quả Vector Search trong Database
-    if (Array.isArray(vectorMatches) && vectorMatches.length > 0 && vectorMatches[0].score > 0.35) {
-      const top = vectorMatches[0];
-      let contextualSuggestions = ["Chi tiết quy định này", "Hỏi nội dung khác"];
-
-      if (top.category === "map") {
-        contextualSuggestions = ["Chỉ đường đến đây", "Tòa nhà này có gì"];
-      } else if (top.title.includes("Điểm") || top.title.includes("tính điểm") || top.category === "academic") {
-        contextualSuggestions = ["Điểm F học lại thế nào", "Môn tính điểm P"];
-      } else if (top.title.includes("Học bổng") || top.category === "policy") {
-        contextualSuggestions = ["Điều kiện xét học bổng", "Mức tiền thưởng học bổng"];
-      } else if (top.category === "safety") {
-        contextualSuggestions = ["Hotline an ninh bảo vệ", "Vị trí trạm y tế"];
-      }
-
+    // 12. Hỏi quy chế học vụ: Điểm F, học lại, nợ môn
+    if (lq.includes("điểm f") || lq.includes("học lại") || lq.includes("nợ môn") || lq.includes("trượt môn") || lq.includes("thi lại")) {
       return {
-        intent: top.category === "map" ? "CAMPUS_MAP" : "GENERAL_INFO",
-        reply: `Dưới đây là thông tin về **${top.title}** được trích xuất từ cơ sở dữ liệu Đại học Tây Nguyên:\n\n${top.content}`,
-        action: top.category === "map" ? { type: "OPEN_MAP_3D", target_id: top.title } : { type: "NONE", target_id: null },
-        suggested_questions: contextualSuggestions,
+        intent: "GENERAL_INFO",
+        reply: "Theo quy chế ĐH Tây Nguyên, điểm **F** (dưới 4.0 thang 10) là mức điểm **không đạt**:\n- Bạn bắt buộc phải **đăng ký học lại** học phần này ở các học kỳ tiếp theo.\n- Điểm học phần học lại mới sẽ thay thế điểm F để tính điểm trung bình tích lũy toàn khóa.",
+        action: { type: "OPEN_GRADES", target_id: null },
+        suggested_questions: ["Xem bảng điểm cá nhân", "Quy chế thang điểm 4"],
       };
     }
 
-    // 4. Mặc định
+    // 13. Hỏi quy chế: Điểm P (GDTC, GDQP)
+    if (lq.includes("điểm p") || lq.includes("môn tính điểm p") || lq.includes("gdtc") || lq.includes("gdqp")) {
+      return {
+        intent: "GENERAL_INFO",
+        reply: "Điểm **P (Pass - Đạt)** tại ĐH Tây Nguyên áp dụng cho các học phần **Giáo dục thể chất (GDTC)** và **Giáo dục Quốc phòng - An ninh (GDQP-AN)**:\n- Được tính tích lũy tín chỉ tốt nghiệp nhưng **không tính vào điểm trung bình GPA**.",
+        action: { type: "OPEN_GRADES", target_id: null },
+        suggested_questions: ["Điểm F học lại thế nào", "Quy chế thang điểm 4"],
+      };
+    }
+
+    // 14. Hỏi quy chế: Thang điểm 4 & Cách tính điểm GPA
+    if (lq.includes("thang điểm 4") || lq.includes("thang điểm 10") || lq.includes("tính điểm gpa") || lq.includes("cách tính điểm")) {
+      return {
+        intent: "GENERAL_INFO",
+        reply: "Quy đổi thang điểm tại ĐH Tây Nguyên (ĐBP 40%, Thi 60%):\n- **8.5 - 10.0**: Điểm A -> **4.0** (Xuất sắc/Giỏi)\n- **7.0 - 8.4**: Điểm B -> **3.0** (Khá)\n- **5.5 - 6.9**: Điểm C -> **2.0** (Trung bình)\n- **4.0 - 5.4**: Điểm D -> **1.0** (Trung bình yếu)\n- **Dưới 4.0**: Điểm F -> **0.0** (Không đạt, phải học lại).",
+        action: { type: "OPEN_GRADES", target_id: null },
+        suggested_questions: ["Xem điểm GPA của mình", "Điều kiện học bổng"],
+      };
+    }
+
+    // 15. Hỏi quy chế: Học bổng khuyến khích
+    if (lq.includes("học bổng") || lq.includes("tiêu chuẩn học bổng") || lq.includes("xét học bổng")) {
+      return {
+        intent: "GENERAL_INFO",
+        reply: "Tiêu chuẩn xét cấp **Học bổng Khuyến khích học tập** tại ĐH Tây Nguyên:\n- Điều kiện: Đăng ký >= 14 tín chỉ trong kỳ, không có môn điểm F, Điểm rèn luyện >= 70 (Khá trở lên).\n- Mức học bổng: Xuất sắc (GPA >= 3.6 & ĐRL >= 90), Giỏi (GPA 3.2-3.59 & ĐRL >= 80), Khá (GPA 2.5-3.19 & ĐRL >= 70).",
+        action: { type: "OPEN_GRADES", target_id: null },
+        suggested_questions: ["Xem điểm GPA của mình", "Quy định cảnh báo học vụ"],
+      };
+    }
+
+    // 16. Hỏi quy chế: Cảnh báo học vụ & Thôi học
+    if (lq.includes("cảnh báo học vụ") || lq.includes("bị thôi học") || lq.includes("đuổi học")) {
+      return {
+        intent: "GENERAL_INFO",
+        reply: "Quy định **Cảnh báo học vụ** tại ĐH Tây Nguyên:\n- Bị cảnh báo nếu GPA học kỳ < 1.00 (kỳ 1) hoặc < 1.20 (các kỳ sau); hoặc GPA tích lũy < 1.20 (năm 1), < 1.40 (năm 2), < 1.60 (năm 3).\n- Sinh viên bị cảnh báo học vụ **3 lần liên tiếp** sẽ bị buộc thôi học.",
+        action: { type: "OPEN_GRADES", target_id: null },
+        suggested_questions: ["Xem bảng điểm của mình", "Cách cải thiện điểm"],
+      };
+    }
+
+    // 17. Tự sinh câu trả lời ngắn từ kết quả Vector Search nếu độ tương đồng cao
+    if (Array.isArray(vectorMatches) && vectorMatches.length > 0 && vectorMatches[0].score >= 0.55) {
+      const top = vectorMatches[0];
+      const isAskingLocation = lq.includes("ở đâu") || lq.includes("chỉ đường") || lq.includes("vị trí") || lq.includes("tìm đường") || lq.includes("nhà") || lq.includes("phòng") || lq.includes("giảng đường") || lq.includes("bản đồ");
+
+      // Nếu tài liệu là Map nhưng người dùng KHÔNG hỏi vị trí/địa điểm -> Bỏ qua, không gán CAMPUS_MAP
+      if (top.category !== "map" || isAskingLocation) {
+        const summaryLines = top.content
+          .split("\n")
+          .filter((line) => line.trim().length > 0)
+          .slice(0, 4)
+          .join("\n");
+
+        return {
+          intent: top.category === "map" ? "CAMPUS_MAP" : "GENERAL_INFO",
+          reply: `**${top.title}:**\n${summaryLines}`,
+          action: top.category === "map" ? { type: "OPEN_MAP_3D", target_id: top.title } : { type: "NONE", target_id: null },
+          suggested_questions: ["Xem thêm chi tiết", "Hỏi câu khác"],
+        };
+      }
+    }
+
+    // 18. Mặc định ngắn gọn
     return {
       intent: "CHITCHAT",
-      reply: `Chào bạn! Mình là TTN Smart Bot. Bạn có thể hỏi mình về **quy chế thang điểm 4, học bổng, lịch học, điểm số cá nhân** hoặc **vị trí giảng đường** trong trường nhé!`,
+      reply: "Mình là **TTN Smart Bot**. Bạn có thể hỏi mình về **lịch học, điểm GPA, chỉ đường 3D, báo cứu hộ SOS** hoặc **quy chế đào tạo** của Đại học Tây Nguyên nhé!",
       action: { type: "NONE", target_id: null },
-      suggested_questions: ["Quy chế thang điểm 4", "Tiêu chuẩn xét học bổng", "Lịch học hôm nay"],
+      suggested_questions: ["Lịch học hôm nay của mình", "App có những tính năng gì?"],
     };
   }
 
@@ -279,13 +503,13 @@ class RagService {
     // 1. Chạy song song: vừa truy xuất dữ liệu cá nhân từ MySQL, vừa chạy Vector Search trên MySQL
     const [dbStudentData, vectorMatches] = await Promise.all([
       getStudentSummaryFromMySQL(studentIdOrMssv || clientContext?.mssv),
-      vectorDbService.searchVector(userMessage, 4),
+      vectorDbService.searchVector(userMessage, 3),
     ]);
 
-    // Trích xuất ngữ cảnh RAG từ các vector match trong DB
-    const ragContext = vectorMatches
-      .map((item) => `[${item.title}]\n${item.content}`)
-      .join("\n\n");
+    // Trích xuất ngữ cảnh RAG từ các vector match trong DB (chỉ lấy tài liệu có độ tương quan)
+    const ragContext = Array.isArray(vectorMatches) && vectorMatches.length > 0
+      ? vectorMatches.map((item) => `[${item.title}]\n${item.content}`).join("\n\n")
+      : "";
 
     // Hợp nhất dữ liệu sinh viên
     const studentData = {
@@ -296,7 +520,7 @@ class RagService {
     // 2. Tạo Prompt RAG chuẩn
     const systemInstruction = buildUnifiedPrompt(studentData, ragContext, currentTime);
 
-    // Chuẩn bị lịch sử trò chuyện nhiều lượt (multi-turn conversation)
+    // Chuẩn bị lịch sử trò chuyện
     const formattedHistory = Array.isArray(history)
       ? history
           .slice(-4)
@@ -315,14 +539,13 @@ class RagService {
       },
     ];
 
-    // 3. Gọi Gemini LLM (gemini-2.5-flash) tự động sinh câu trả lời theo ngữ cảnh DB
+    // 3. Gọi Gemini LLM (Ưu tiên gemini-2.5-flash và gemini-3.5-flash-lite)
     const geminiKey = process.env.GEMINI_API_KEY;
 
     if (geminiKey && geminiKey.trim()) {
       const modelsToTry = [
-        "gemini-3.5-flash-lite",
         "gemini-2.5-flash",
-        "gemini-flash-latest",
+        "gemini-3.5-flash-lite",
       ];
 
       for (const modelName of modelsToTry) {
@@ -337,13 +560,13 @@ class RagService {
               },
               contents,
               generationConfig: {
-                temperature: 0.2,
+                temperature: 0.15,
                 responseMimeType: "application/json",
-                maxOutputTokens: 450,
+                maxOutputTokens: 750,
               },
             },
             {
-              timeout: 12000,
+              timeout: 10000,
               headers: {
                 "Content-Type": "application/json",
                 "x-goog-api-key": geminiKey.trim(),
@@ -358,7 +581,7 @@ class RagService {
             if (parsed && parsed.reply) {
               return {
                 ...parsed,
-                engine: `${modelName} (Vector RAG Database)`,
+                engine: `${modelName} (Smart RAG)`,
               };
             }
           }
@@ -368,7 +591,7 @@ class RagService {
       }
     }
 
-    // 4. Fallback: Tự sinh câu trả lời từ Vector Matches trong Database
+    // 4. Fallback: Tự sinh câu trả lời ngắn gọn, chuẩn xác
     const fallback = this.generateFallbackJSON(userMessage, vectorMatches, studentData);
     return {
       ...fallback,

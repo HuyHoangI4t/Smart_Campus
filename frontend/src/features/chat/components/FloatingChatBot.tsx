@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   Pressable,
   Animated,
@@ -12,12 +11,13 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePathname, useSegments, useRouter } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../../context/ThemeContext';
 
-const ORB_SIZE = 56;
-const DOCKED_PEEK = 26; // Độ dày phần tab nhô ra khỏi mép màn hình khi ẩn
+const ORB_SIZE = 64;
+const DOCKED_PEEK = 36; // Độ dày phần tab nhô ra khỏi mép màn hình khi ẩn
 
 export function FloatingChatBot() {
   const router = useRouter();
@@ -56,7 +56,7 @@ export function FloatingChatBot() {
       toValue: isHiddenRoute ? 0 : 1,
       friction: 8,
       tension: 55,
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start();
   }, [isHiddenRoute, routeVisibilityAnim]);
 
@@ -126,22 +126,29 @@ export function FloatingChatBot() {
 
     Animated.spring(pan, {
       toValue: { x: targetX, y: safeY },
-      friction: 8,
-      tension: 50,
+      friction: 7,
+      tension: 62,
       useNativeDriver: false,
     }).start(() => {
       if (callback) callback();
     });
   };
 
-  // 1. Chủ động ẩn vào mép màn hình
+  // 1. Chủ động ẩn vào mép màn hình: trượt sang ngang rìa màn hình gần nhất
   const handleDockToEdge = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    const side = dockSideRef.current;
+    // Luôn xác định rìa màn hình gần nhất dựa theo tọa độ X hiện tại
+    const isRightSide = currentPos.current.x + ORB_SIZE / 2 >= screenWidth / 2;
+    const side = isRightSide ? 'right' : 'left';
+    setDockSide(side);
+    dockSideRef.current = side;
+
     const targetX = side === 'right' ? screenWidth - DOCKED_PEEK : -(ORB_SIZE - DOCKED_PEEK);
+    isDockedRef.current = true;
     setIsDocked(true);
     setShowTooltip(false);
-    animateToPosition(targetX);
+    // Trượt dứt khoát theo phương ngang thẳng vào mép màn hình gần nhất
+    animateToPosition(targetX, currentPos.current.y);
   };
 
   // 2. Chạm vào để mở ra khỏi mép màn hình
@@ -149,8 +156,10 @@ export function FloatingChatBot() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     const side = dockSideRef.current;
     const targetX = side === 'right' ? screenWidth - ORB_SIZE - 16 : 16;
+    isDockedRef.current = false;
     setIsDocked(false);
-    animateToPosition(targetX, undefined, () => {
+    // Trượt sang ngang bung ra khỏi mép màn hình về vị trí nổi tự do
+    animateToPosition(targetX, currentPos.current.y, () => {
       if (openChatDirectly) {
         router.push('/(main)/chat' as any);
       } else {
@@ -193,37 +202,40 @@ export function FloatingChatBot() {
         const totalMoveX = Math.abs(gesture.dx);
         const totalMoveY = Math.abs(gesture.dy);
 
-        // NẾU LÀ CÚ CHẠM (TAP - di chuyển rất ít < 6px)
-        if (totalMoveX < 6 && totalMoveY < 6) {
-          if (isDockedRef.current) {
-            // Khi đang ẩn ở cạnh: Chạm vào sẽ bung mở ra ("có thể mở khi chạm vào")!
-            handleUndockFromEdge();
-          } else {
-            // Khi đang mở bình thường: Chạm vào sẽ mở ngay Chatbot!
-            handleOpenChat();
-          }
+        // 1. NẾU ĐANG ẨN Ở CẠNH (DOCKED): Bất kỳ cú chạm hoặc vuốt nào vào tab nhô ra cũng BUNG MỞ RA NGAY!
+        if (isDockedRef.current) {
+          handleUndockFromEdge();
           return;
         }
 
-        // NẾU LÀ KÉO THẢ (DRAG)
+        // 2. NẾU ĐANG MỞ VÀ LÀ CÚ CHẠM (TAP < 14px): Mở màn hình chat ngay!
+        if (totalMoveX < 14 && totalMoveY < 14) {
+          handleOpenChat();
+          return;
+        }
+
+        // 3. NẾU LÀ KÉO THẢ (DRAG): Tính toán vị trí thả của quả bóng
         const finalX = currentPos.current.x;
         const finalY = currentPos.current.y;
         const isRightSide = finalX + ORB_SIZE / 2 > screenWidth / 2;
         const newSide = isRightSide ? 'right' : 'left';
         setDockSide(newSide);
+        dockSideRef.current = newSide;
 
-        // Nếu vuốt mạnh hoặc kéo sát cạnh màn hình (< 24px) -> Tự động thu gọn vào mép
+        // Nếu vuốt mạnh ra biên hoặc kéo sát cạnh màn hình (< 20px) -> Tự động thu gọn vào mép
         const closeToEdge =
           (isRightSide && finalX > screenWidth - ORB_SIZE - 20) ||
           (!isRightSide && finalX < 20) ||
-          (isRightSide && gesture.vx > 0.4) ||
-          (!isRightSide && gesture.vx < -0.4);
+          (isRightSide && gesture.vx > 0.5) ||
+          (!isRightSide && gesture.vx < -0.5);
 
         if (closeToEdge) {
+          isDockedRef.current = true;
           setIsDocked(true);
           const dockX = isRightSide ? screenWidth - DOCKED_PEEK : -(ORB_SIZE - DOCKED_PEEK);
           animateToPosition(dockX, finalY);
         } else {
+          isDockedRef.current = false;
           setIsDocked(false);
           const snapX = isRightSide ? screenWidth - ORB_SIZE - 16 : 16;
           animateToPosition(snapX, finalY);
@@ -246,7 +258,7 @@ export function FloatingChatBot() {
 
   const routeSlideX = routeVisibilityAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [isRight ? 65 : -65, 0],
+    outputRange: [isRight ? 80 : -80, 0],
   });
 
   return (
@@ -256,8 +268,6 @@ export function FloatingChatBot() {
         {
           opacity: routeOpacity,
           transform: [
-            { translateX: pan.x },
-            { translateY: pan.y },
             { translateX: routeSlideX },
             { scale: routeScale },
           ],
@@ -265,6 +275,14 @@ export function FloatingChatBot() {
       ]}
       pointerEvents={isHiddenRoute ? 'none' : 'box-none'}
     >
+      <Animated.View
+        style={{
+          transform: [
+            { translateX: pan.x },
+            { translateY: pan.y },
+          ],
+        }}
+      >
       {/* ─── BONG BÓNG GỢI Ý KHI VỪA MỞ RA KHỎI MÉP ─── */}
       {showTooltip && !isDocked && (
         <TouchableOpacity
@@ -276,11 +294,19 @@ export function FloatingChatBot() {
             { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' },
           ]}
         >
-          <Feather name="message-square" size={13} color="#2563EB" style={{ marginRight: 5 }} />
-          <Text style={[styles.tooltipText, { color: isDark ? '#F1F5F9' : '#1E293B' }]}>
+          <Feather name="message-square" size={13} color="#2563EB" style={{ marginRight: 6 }} />
+          <Text
+            numberOfLines={1}
+            style={[styles.tooltipText, { color: isDark ? '#F1F5F9' : '#1E293B' }]}
+          >
             Nhấn để chat với TTN AI
           </Text>
-          <Feather name="arrow-right" size={12} color="#2563EB" style={{ marginLeft: 4 }} />
+          <Feather
+            name={isRight ? 'arrow-right' : 'arrow-left'}
+            size={12}
+            color="#2563EB"
+            style={{ marginLeft: 6 }}
+          />
         </TouchableOpacity>
       )}
 
@@ -311,51 +337,60 @@ export function FloatingChatBot() {
           </TouchableOpacity>
         )}
 
-        {/* BÓNG TRÒN CHÍNH MANG LOGO TTN AI */}
+        {/* BÓNG TRÒN CHÍNH TRỢ LÝ AI */}
         <Pressable
           onPress={() => {
-            if (isDocked) {
+            if (isDockedRef.current) {
               handleUndockFromEdge();
             } else {
               handleOpenChat();
             }
           }}
-          style={({ pressed }) => [styles.orb, pressed && styles.orbPressed]}
+          hitSlop={isDocked ? { top: 18, bottom: 18, left: 30, right: 30 } : 8}
+          style={({ pressed }) => [styles.orbWrapper, pressed && styles.orbPressed]}
           accessibilityRole="button"
           accessibilityLabel={isDocked ? 'Chạm để mở chat bot' : 'Mở trợ lý ảo thông minh TTN AI'}
         >
-          {/* Logo chính thức Đại học Tây Nguyên */}
-          <Image
-            source={require('../../../../assets/images/favicon.png')}
-            style={styles.logo}
-            resizeMode="cover"
-          />
+          {/* Quả cầu Gradient sắc nét thay cho logo chữ nhỏ */}
+          <LinearGradient
+            colors={isDark ? ['#4F46E5', '#2563EB', '#0284C7'] : ['#6366F1', '#3B82F6', '#0EA5E9']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.orb}
+          >
+            {/* Biểu tượng AI Sparkles thông minh, sang trọng chuẩn Gemini / Apple Intelligence */}
+            <Ionicons
+              name="sparkles"
+              size={30}
+              color="#FFFFFF"
+            />
+          </LinearGradient>
 
-          {/* Viền kính mờ tinh tế */}
-          <View style={styles.glassRim} />
-
-          {/* Chấm tròn báo AI Online */}
-          <Animated.View
-            style={[
-              styles.pulseDot,
-              {
-                transform: [{ scale: pulseAnim }],
-              },
-            ]}
-          />
+          {/* Chấm tròn báo AI Online (Chỉ hiện khi KHÔNG ẩn, nằm ngoài overflow: hidden nên nguyên vẹn 100% không bị cắt!) */}
+          {!isDocked && (
+            <Animated.View
+              style={[
+                styles.pulseDot,
+                {
+                  transform: [{ scale: pulseAnim }],
+                },
+              ]}
+            />
+          )}
 
           {/* Mũi tên gợi ý chạm để mở khi đang ẩn ở mép */}
           {isDocked && (
-            <View style={[styles.dockedIndicator, isRight ? { left: 4 } : { right: 4 }]}>
+            <View style={[styles.dockedIndicator, isRight ? { left: 7 } : { right: 7 }]}>
               <Feather
                 name={isRight ? 'chevron-left' : 'chevron-right'}
-                size={14}
+                size={18}
                 color="#FFFFFF"
               />
             </View>
           )}
         </Pressable>
       </View>
+      </Animated.View>
     </Animated.View>
   );
 }
@@ -373,11 +408,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
   },
+  orbWrapper: {
+    position: 'relative',
+    width: ORB_SIZE,
+    height: ORB_SIZE,
+  },
   orb: {
     width: ORB_SIZE,
     height: ORB_SIZE,
     borderRadius: ORB_SIZE / 2,
-    backgroundColor: '#1D4ED8',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -388,98 +427,98 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 8,
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.75)',
+    borderColor: 'rgba(255, 255, 255, 0.85)',
   },
   orbPressed: {
     opacity: 0.88,
     transform: [{ scale: 0.94 }],
   },
-  logo: {
-    width: ORB_SIZE,
-    height: ORB_SIZE,
-    borderRadius: ORB_SIZE / 2,
-  },
-  glassRim: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: ORB_SIZE / 2,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-  },
   pulseDot: {
     position: 'absolute',
-    top: 3,
-    right: 3,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    top: 1,
+    right: 1,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: '#10B981',
-    borderWidth: 2,
+    borderWidth: 2.2,
     borderColor: '#FFFFFF',
-    zIndex: 10,
+    zIndex: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2,
+    elevation: 3,
   },
   // Nút chủ động ẩn vào cạnh
   dockButton: {
     position: 'absolute',
-    width: 20,
-    height: 28,
-    borderRadius: 10,
+    top: (ORB_SIZE - 32) / 2,
+    width: 24,
+    height: 32,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 20,
+    zIndex: 25,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.18,
     shadowRadius: 4,
     elevation: 4,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
+    borderColor: 'rgba(255, 255, 255, 0.65)',
   },
   dockButtonRight: {
-    right: -7,
+    right: -9,
   },
   dockButtonLeft: {
-    left: -7,
+    left: -9,
   },
   // Khi ẩn vào cạnh
   dockedRight: {
-    opacity: 0.92,
+    opacity: 0.94,
   },
   dockedLeft: {
-    opacity: 0.92,
+    opacity: 0.94,
   },
   dockedIndicator: {
     position: 'absolute',
     backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    borderRadius: 8,
-    padding: 1,
+    borderRadius: 10,
+    padding: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Bong bóng gợi ý
+  // Bong bóng gợi ý (căn ngang song song với bóng chat, không bao giờ bị bóp méo)
   tooltipBubble: {
     position: 'absolute',
-    top: -38,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 22,
+    minWidth: 180,
+    maxWidth: 250,
+    zIndex: 100,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 6,
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 8,
     borderWidth: 1,
     borderColor: 'rgba(37, 99, 235, 0.25)',
   },
   tooltipBubbleRight: {
-    right: 0,
+    right: ORB_SIZE + 12,
+    top: (ORB_SIZE - 40) / 2,
   },
   tooltipBubbleLeft: {
-    left: 0,
+    left: ORB_SIZE + 12,
+    top: (ORB_SIZE - 40) / 2,
   },
   tooltipText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
+    flexShrink: 0,
   },
 });

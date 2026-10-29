@@ -1,5 +1,5 @@
 /**
- * Locations Module - Quản lý Bản đồ & CRUD 40 Địa điểm Trường Đại học Tây Nguyên
+ * Locations Module - Quản lý Bản đồ & CRUD 37 Địa điểm Trường Đại học Tây Nguyên
  */
 
 const LocationsModule = {

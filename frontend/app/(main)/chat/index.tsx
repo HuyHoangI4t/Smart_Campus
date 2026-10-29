@@ -62,11 +62,30 @@ export default function ChatBotScreen() {
         case "OPEN_SCHEDULE":
           router.push("/(main)/schedule");
           break;
+        case "OPEN_GRADES":
         case "OPEN_TUITION":
           router.push("/(main)/grades");
           break;
+        case "OPEN_SOS":
+          router.push("/(main)/sos");
+          break;
+        case "OPEN_FEEDBACK":
+          router.push("/(main)/feedback");
+          break;
+        case "OPEN_PROFILE":
+          router.push("/(main)/profile");
+          break;
+        case "OPEN_SETTINGS":
+          router.push("/(main)/profile/settings");
+          break;
+        case "OPEN_CHANGE_PASSWORD":
+          router.push("/(main)/profile/change_password");
+          break;
+        case "OPEN_NEWS":
+          router.push("/(main)/home/all_articles");
+          break;
         case "CONTACT_SUPPORT":
-          Linking.openURL(`tel:${action.target_id || "02623825185"}`).catch(() => {});
+          Linking.openURL(`tel:${action.target_id || "0329106783"}`).catch(() => {});
           break;
       }
     },
@@ -115,7 +134,7 @@ export default function ChatBotScreen() {
         const errorMsg: ChatMessage = {
           id: `bot-err-${Date.now()}`,
           role: "assistant",
-          content: "Xin lÃ¡Â»âi bÃ¡ÂºÂ¡n, ÃâÃÂ£ xÃ¡ÂºÂ£y ra sÃ¡Â»Â± cÃ¡Â»â khi xÃ¡Â»Â­ lÃÂ½ cÃÂ¢u hÃ¡Â»Âi. Vui lÃÂ²ng thÃ¡Â»Â­ lÃ¡ÂºÂ¡i sau nhÃÂ©!",
+          content: "Xin lỗi, đã xảy ra lỗi khi xử lý yêu cầu. Vui lòng thử lại sau.",
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         };
         setMessages((prev) => [...prev, errorMsg]);
@@ -158,7 +177,7 @@ export default function ChatBotScreen() {
 
       <NavHeader
         title="TTN Smart Bot"
-        subtitle="Trợ lý AI • Vector RAG"
+        subtitle="Trợ lý AI"
         showBack={true}
         onBack={() => router.back()}
         blur={true}

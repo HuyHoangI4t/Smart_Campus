@@ -287,7 +287,7 @@ const DashboardModule = {
             labels: ['Sinh viên', 'Quản trị viên', 'Phản ánh', 'Cảnh báo SOS'],
             datasets: [{
               data: [students, admins, feedback, sos],
-              backgroundColor: ['#696CFF', '#FFAB00', '#71DD37', '#FF3E1D'],
+              backgroundColor: ['#2563EB', '#F59E0B', '#10B981', '#EF4444'],
               borderWidth: 3,
               borderRadius: 6,
               borderColor: '#FFFFFF',
@@ -400,8 +400,8 @@ const DashboardModule = {
             {
               label: 'Lượt truy cập',
               data: interactions,
-              backgroundColor: '#696CFF',
-              hoverBackgroundColor: '#5F61E6',
+              backgroundColor: '#2563EB',
+              hoverBackgroundColor: '#1D4ED8',
               borderRadius: 6,
               maxBarThickness: 24,
               categoryPercentage: 0.7,
@@ -410,8 +410,8 @@ const DashboardModule = {
             {
               label: 'Phản ánh sinh viên',
               data: feedbackData,
-              backgroundColor: '#03C3EC',
-              hoverBackgroundColor: '#02AFD4',
+              backgroundColor: '#38BDF8',
+              hoverBackgroundColor: '#0284C7',
               borderRadius: 6,
               maxBarThickness: 24,
               categoryPercentage: 0.7,

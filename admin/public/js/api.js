@@ -246,7 +246,7 @@ const AdminAPI = {
     });
   },
 
-  // Map Locations Management (CRUD 40 địa điểm)
+  // Map Locations Management (CRUD 37 địa điểm)
   async getLocations(params = {}) {
     const qs = new URLSearchParams();
     if (params.search) qs.append('search', params.search);

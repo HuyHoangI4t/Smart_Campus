@@ -13,7 +13,14 @@ import { messageStyles as styles } from "./chatMessage.styles";
 const ACTION_MAP: Record<string, { label: string; icon: keyof typeof Feather.glyphMap }> = {
   OPEN_MAP_3D: { label: "Mở vị trí trên bản đồ", icon: "map-pin" },
   OPEN_SCHEDULE: { label: "Xem thời khóa biểu", icon: "calendar" },
-  OPEN_TUITION: { label: "Xem học phí & công nợ", icon: "dollar-sign" },
+  OPEN_GRADES: { label: "Xem bảng điểm & GPA", icon: "award" },
+  OPEN_TUITION: { label: "Xem điểm & học phí", icon: "award" },
+  OPEN_SOS: { label: "Mở cứu hộ khẩn cấp SOS", icon: "alert-triangle" },
+  OPEN_FEEDBACK: { label: "Gửi ý kiến phản ánh", icon: "message-square" },
+  OPEN_PROFILE: { label: "Xem hồ sơ sinh viên", icon: "user" },
+  OPEN_SETTINGS: { label: "Mở cài đặt ứng dụng", icon: "settings" },
+  OPEN_CHANGE_PASSWORD: { label: "Đổi mật khẩu tài khoản", icon: "lock" },
+  OPEN_NEWS: { label: "Xem tin tức & thông báo", icon: "file-text" },
   CONTACT_SUPPORT: { label: "Gọi hotline hỗ trợ", icon: "phone-call" },
 };
 
@@ -68,6 +75,11 @@ export const ChatMessageItem = memo(function ChatMessageItem({
     intentBorder = isDark ? "rgba(14, 165, 233, 0.45)" : "rgba(2, 132, 199, 0.25)";
     intentText = "#0284C7";
     intentIcon = "calendar";
+  } else if (message.intent === "APP_FEATURE") {
+    intentBg = isDark ? "rgba(16, 185, 129, 0.22)" : "rgba(16, 185, 129, 0.10)";
+    intentBorder = isDark ? "rgba(16, 185, 129, 0.45)" : "rgba(16, 185, 129, 0.25)";
+    intentText = colors.success;
+    intentIcon = "grid";
   } else if (message.intent === "GENERAL_INFO") {
     intentBg = isDark ? "rgba(245, 158, 11, 0.22)" : "rgba(217, 119, 6, 0.10)";
     intentBorder = isDark ? "rgba(245, 158, 11, 0.45)" : "rgba(217, 119, 6, 0.25)";
@@ -121,6 +133,11 @@ export const ChatMessageItem = memo(function ChatMessageItem({
             </View>
           )}
         </View>
+
+        <View style={styles.botContentContainer}>
+          {parseBotMarkdown(message.content, colors.text, colors.primary)}
+        </View>
+
         {actionInfo && message.action && (
           <TouchableOpacity
             onPress={() => {
@@ -178,11 +195,6 @@ export const ChatMessageItem = memo(function ChatMessageItem({
         )}
 
         <Text style={[styles.messageTime, { color: colors.textSubtle }]}>{message.timestamp}</Text>
-
-
-        <View style={styles.botContentContainer}>
-          {parseBotMarkdown(message.content, colors.text, colors.primary)}
-        </View>
       </GlassView>
     </View>
   );

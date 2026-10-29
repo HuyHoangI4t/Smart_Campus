@@ -47,7 +47,7 @@ export default function GradesScreen() {
   const { onScroll: onTabBarScroll, bottomPadding } = useTabBarScrollHandler();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [grades, setGrades] = useState<CourseGrade[]>(FALLBACK_GRADES);
+  const [grades, setGrades] = useState<CourseGrade[]>([]);
   const [studentInfo, setStudentInfo] = useState<{ mssv: string; name: string }>({ mssv: "", name: "" });
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [isOfflineData, setIsOfflineData] = useState(false);
@@ -136,6 +136,9 @@ export default function GradesScreen() {
     } catch {
       // Keep fallbacks
       setIsOfflineData(true);
+      if (grades.length === 0) {
+        setGrades(FALLBACK_GRADES);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -144,6 +147,7 @@ export default function GradesScreen() {
 
   useEffect(() => {
     fetchGrades();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onRefresh = () => {
@@ -476,7 +480,7 @@ export default function GradesScreen() {
           <Text style={{ fontSize: 12, color: colors.textMuted }}>Kéo xuống để cập nhật</Text>
         </View>
 
-        {loading && grades.length === 0 ? (
+        {refreshing || (loading && grades.length === 0) ? (
           <GradesSkeleton cardsOnly={true} />
         ) : displayedGrades.length === 0 ? (
           <View

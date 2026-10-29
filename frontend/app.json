@@ -123,6 +123,10 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "apiUrl": "https://smart-campus-f012.onrender.com/api",
+      "backendUrl": "https://smart-campus-f012.onrender.com"
     }
   }
 }

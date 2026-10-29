@@ -1,7 +1,19 @@
 import { Feather } from "@expo/vector-icons";
 
 export interface ChatAction {
-  type: "NONE" | "OPEN_MAP_3D" | "OPEN_SCHEDULE" | "OPEN_TUITION" | "CONTACT_SUPPORT";
+  type:
+    | "NONE"
+    | "OPEN_MAP_3D"
+    | "OPEN_SCHEDULE"
+    | "OPEN_GRADES"
+    | "OPEN_TUITION"
+    | "OPEN_SOS"
+    | "OPEN_FEEDBACK"
+    | "OPEN_PROFILE"
+    | "OPEN_SETTINGS"
+    | "OPEN_CHANGE_PASSWORD"
+    | "OPEN_NEWS"
+    | "CONTACT_SUPPORT";
   target_id: string | null;
 }
 

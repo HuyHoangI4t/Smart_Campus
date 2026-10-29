@@ -1,603 +1,1756 @@
 <!DOCTYPE html>
-<html lang="vi" class="light">
+<html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sneat - TTN Smart Campus Admin Portal</title>
-  <link rel="icon" type="image/png" href="/favicon.png">
-  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-  <link rel="stylesheet" href="/css/style.css?v=2026.sneat">
-</head>
-<body>
-  <div id="mobileSidebarOverlay" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden" onclick="App.toggleSidebar()"></div>
-  <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col items-end pointer-events-none"></div>
+  <title>Trang Quản Trị Hệ Thống - Trường Đại Học Tây Nguyên</title>
 
-  <!-- LOGIN -->
-  <div id="loginView" class="min-h-screen w-full flex items-center justify-center p-4 bg-[#F5F5F9]">
-    <div class="card w-full max-w-[400px] p-6 shadow-md border-0">
-      <div class="flex items-center justify-center mb-6">
-        <div class="app-brand-logo mr-2"><i class="bx bxs-graduation"></i></div>
-        <span class="app-brand-text">sneat</span>
-      </div>
-      <h4 class="text-xl font-bold text-[#566A7F] mb-1">Welcome to Sneat! 👋</h4>
-      <p class="text-sm text-[#8592A3] mb-6">Đăng nhập Quản trị ĐH Tây Nguyên</p>
-      <div id="loginAlert" class="hidden mb-4 p-3 rounded text-sm bg-red-100 text-red-700"></div>
-      <form id="loginForm" onsubmit="App.handleLogin(event)" class="space-y-4">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Socket.IO Client (Realtime Event-Driven Architecture) -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+  <!-- Tailwind Custom Config -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#EFF6FF',
+              100: '#DBEAFE',
+              200: '#BFDBFE',
+              300: '#93C5FD',
+              400: '#60A5FA',
+              500: '#3B82F6',
+              600: '#2563EB',
+              700: '#1D4ED8',
+              800: '#1E40AF',
+              900: '#1E3A8A',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Dedicated Stylesheet (Apex / SaaS Style) -->
+  <link rel="stylesheet" href="/portal/css/style.css?v=2">
+
+  <!-- Leaflet Map CSS & JS for Campus Management -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Environment Variables -->
+  <script src="/env.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen antialiased">
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer"></div>
+
+  <!-- Mobile Sidebar Backdrop Overlay -->
+  <div id="mobileSidebarOverlay" class="hidden" onclick="App.toggleMobileSidebar()"></div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- 1. MÀN HÌNH ĐĂNG NHẬP ADMIN (MODERN APEX / SAAS SPLIT LAYOUT)         -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <div id="loginView" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-hidden">
+    <!-- Hiệu ứng ánh sáng nền đa tầng (Được bọc chặn tràn tuyệt đối) -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+      <div class="login-hero-glow w-[500px] h-[500px] bg-blue-600/20 rounded-full -top-24 -left-24"></div>
+      <div class="login-hero-glow w-[450px] h-[450px] bg-indigo-600/15 rounded-full -bottom-20 -right-20"></div>
+    </div>
+
+    <!-- Khung chính Split Layout (Enterprise Portal Standard) -->
+    <div class="w-full max-w-4xl max-h-[94vh] rounded-3xl overflow-hidden shadow-2xl border border-slate-700/60 grid grid-cols-1 lg:grid-cols-12 bg-slate-900/90 backdrop-blur-2xl relative z-10 animate-fade-in my-auto">
+      
+      <!-- CỘT TRÁI: SHOWCASE THƯƠNG HIỆU & HỆ THỐNG SMART CAMPUS (LG: 7 CỘT) -->
+      <div class="lg:col-span-7 p-8 sm:p-12 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-800/80 bg-gradient-to-br from-slate-900/95 via-brand-950/40 to-slate-900/95 relative overflow-hidden">
+        
+        <!-- Header thương hiệu -->
         <div>
-          <label class="block text-xs font-semibold uppercase text-[#566A7F] mb-1">Tài khoản</label>
-          <input type="text" id="loginUsername" class="form-control" placeholder="admin" required>
-        </div>
-        <div>
-          <label class="block text-xs font-semibold uppercase text-[#566A7F] mb-1">Mật khẩu</label>
-          <div class="relative">
-            <input type="password" id="loginPassword" class="form-control pr-10" placeholder="••••••••" required>
-            <button type="button" onclick="App.togglePasswordVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-              <i id="loginEyeIcon" class="bx bx-hide"></i>
-            </button>
+          <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-3.5">
+              <div class="w-12 h-12 bg-gradient-to-tr from-brand-600 to-blue-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-500/25 border border-white/20">
+                <i data-lucide="shield" class="w-6 h-6 text-white"></i>
+              </div>
+              <div>
+                <h3 class="text-xs font-black tracking-widest text-blue-400 uppercase">TRƯỜNG ĐẠI HỌC TÂY NGUYÊN</h3>
+                <p class="text-sm font-bold text-white tracking-wide">Trung Tâm Điều Hành Số</p>
+              </div>
+            </div>
+
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              <span>Trực tuyến 24/7</span>
+            </div>
+          </div>
+
+          <!-- Tiêu đề lớn -->
+          <div class="space-y-3 mb-8">
+            <span class="px-3 py-1.5 rounded-full text-[11px] font-mono font-extrabold tracking-wider uppercase bg-blue-500/20 text-sky-300 border border-sky-400/40 inline-flex items-center gap-2 shadow-sm">
+              <span class="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span>
+              SmartCampus Control Center v2.5
+            </span>
+            <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
+              Quản Trị Khuôn Viên Số <br>
+              <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-sky-300 to-teal-300">
+                Thời Gian Thực & Thông Minh
+              </span>
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-lg">
+              Hệ thống giám sát toàn diện dữ liệu sinh viên, bản đồ số định vị khuôn viên GPS, tiếp nhận xử lý phản ánh và kích hoạt cứu trợ khẩn cấp SOS tức thì.
+            </p>
+          </div>
+
+          <!-- 3 Thẻ Micro-Widget tính năng nổi bật đồng bộ với Dashboard -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            <div class="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/80 backdrop-blur-sm">
+              <div class="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center mb-2">
+                <i data-lucide="zap" class="w-4 h-4"></i>
+              </div>
+              <p class="text-xs font-bold text-white">Socket.IO Realtime</p>
+              <p class="text-[10px] text-slate-300 mt-0.5">Push sự kiện tức thì 0 polling</p>
+            </div>
+
+            <div class="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/80 backdrop-blur-sm">
+              <div class="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center mb-2">
+                <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+              </div>
+              <p class="text-xs font-bold text-white">Giám Sát SOS</p>
+              <p class="text-[10px] text-slate-300 mt-0.5">Phản ứng nhanh với âm thanh</p>
+            </div>
+
+            <div class="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/80 backdrop-blur-sm">
+              <div class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-2">
+                <i data-lucide="map-pin" class="w-4 h-4"></i>
+              </div>
+              <p class="text-xs font-bold text-white">Bản Đồ 37+ Điểm</p>
+              <p class="text-[10px] text-slate-300 mt-0.5">Định vị GPS khuôn viên trường</p>
+            </div>
           </div>
         </div>
-        <button type="submit" id="loginSubmitBtn" class="btn btn-primary w-full py-2.5 font-semibold">Đăng Nhập</button>
-      </form>
+
+        <!-- Trạng thái server ở đáy cột trái -->
+        <div class="pt-6 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-300">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>API Server: http://localhost:5000</span>
+          </div>
+          <span class="font-mono text-slate-400 font-medium">MySQL: smartcampus</span>
+        </div>
+      </div>
+
+      <!-- CỘT PHẢI: FORM ĐĂNG NHẬP SANG TRỌNG (LG: 5 CỘT) -->
+      <div class="lg:col-span-5 bg-white p-8 sm:p-10 flex flex-col justify-between relative">
+        <div>
+          <!-- Header Form -->
+          <div class="mb-6 text-center sm:text-left">
+            <div class="w-11 h-11 bg-brand-50 border border-brand-100 rounded-2xl flex items-center justify-center text-brand-600 mb-4 shadow-sm mx-auto sm:mx-0">
+              <i data-lucide="lock" class="w-5 h-5"></i>
+            </div>
+            <h2 class="text-xl font-black text-slate-900 tracking-tight">Đăng Nhập Quản Trị</h2>
+            <p class="text-xs text-slate-500 mt-1">Xác thực quyền quản trị để vào Bảng Điều Khiển Hệ Thống</p>
+          </div>
+
+          <!-- Alert box thông báo lỗi -->
+          <div id="loginAlert" class="hidden mb-4 p-3.5 rounded-xl text-xs font-semibold"></div>
+
+          <!-- Form đăng nhập -->
+          <form id="loginForm" onsubmit="App.handleLogin(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                <span>Tài khoản / Email</span>
+                <span class="text-[10px] text-slate-400 font-normal">Quyền: Admin</span>
+              </label>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <i data-lucide="user" class="w-4 h-4"></i>
+                </span>
+                <input type="text" id="loginUsername" required placeholder="admin" value="admin"
+                  class="w-full pl-10 pr-4 py-3 bg-slate-50 hover:bg-slate-100/70 focus:bg-white rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500 transition">
+              </div>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Mật khẩu</label>
+                <button type="button" onclick="App.togglePasswordVisibility()" class="text-[11px] font-bold text-brand-600 hover:text-brand-700">
+                  Hiện/Ẩn
+                </button>
+              </div>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <i data-lucide="key-round" class="w-4 h-4"></i>
+                </span>
+                <input type="password" id="loginPassword" required placeholder="••••••••" value="admin123"
+                  class="w-full pl-10 pr-10 py-3 bg-slate-50 hover:bg-slate-100/70 focus:bg-white rounded-xl border border-slate-200 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500 transition">
+                <button type="button" onclick="App.togglePasswordVisibility()" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600">
+                  <i data-lucide="eye" id="loginEyeIcon" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Gợi ý tài khoản nhanh & Ghi nhớ -->
+            <div class="flex items-center justify-between pt-1">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked class="w-4 h-4 rounded text-brand-600 focus:ring-brand-500 border-slate-300">
+                <span class="text-xs text-slate-600 font-medium">Ghi nhớ phiên</span>
+              </label>
+              <button type="button" onclick="document.getElementById('loginUsername').value='admin'; document.getElementById('loginPassword').value='admin123';"
+                class="px-2 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-bold border border-blue-200 transition">
+                Tài khoản mẫu: admin
+              </button>
+            </div>
+
+            <!-- Nút bấm submit -->
+            <button type="submit" id="loginSubmitBtn"
+              class="w-full py-3.5 bg-gradient-to-r from-brand-700 via-blue-600 to-indigo-700 hover:from-brand-800 hover:to-indigo-800 text-white rounded-xl font-bold text-sm transition shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 mt-2">
+              <span>Đăng nhập Quản Trị</span>
+              <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </button>
+          </form>
+        </div>
+
+        <!-- Chân trang bảo mật -->
+        <div class="mt-8 pt-5 border-t border-slate-100 flex items-center justify-center gap-2 text-[11px] text-slate-400">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-500"></i>
+          <span>Bảo mật 256-bit SSL • Đại Học Tây Nguyên © 2026</span>
+        </div>
+      </div>
+
     </div>
   </div>
 
-  <!-- MAIN LAYOUT -->
-  <div id="mainLayout" class="layout-wrapper hidden">
-    <aside id="appSidebar" class="layout-sidebar">
-      <div class="app-brand">
-        <div class="app-brand-logo"><i class="bx bxs-graduation"></i></div>
-        <span class="app-brand-text">sneat</span>
-        <span class="badge bg-[#E7E7FF] text-[#696CFF] text-[10px] font-bold px-2 py-0.5 ml-2">PRO</span>
-      </div>
-      <ul class="menu-inner">
-        <li class="menu-header">
-          <span>Dashboards</span>
-          <span class="badge rounded-full bg-[#FF3E1D] text-white text-[11px] font-bold px-2 py-0.5 ml-auto">5</span>
-        </li>
-        <li class="menu-item"><button type="button" class="menu-link active" data-view="dashboard" onclick="App.switchView('dashboard')"><i class="menu-icon bx bx-home-circle"></i><span>Tổng quan</span></button></li>
-        <li class="menu-header"><span>Quản Trị</span></li>
-        <li class="menu-item"><button type="button" class="menu-link" data-view="users" onclick="App.switchView('users')"><i class="menu-icon bx bx-user"></i><span>Sinh viên</span></button></li>
-        <li class="menu-item"><button type="button" class="menu-link" data-view="locations" onclick="App.switchView('locations')"><i class="menu-icon bx bx-map-pin"></i><span>Bản đồ 40 Điểm</span></button></li>
-        <li class="menu-item"><button type="button" class="menu-link" data-view="notifications" onclick="App.switchView('notifications')"><i class="menu-icon bx bx-bell"></i><span>Thông báo</span></button></li>
-        <li class="menu-item"><button type="button" class="menu-link" data-view="feedback" onclick="App.switchView('feedback')"><i class="menu-icon bx bx-message-square-detail"></i><span>Ý kiến SV</span></button></li>
-        <li class="menu-item"><button type="button" class="menu-link" data-view="sos" onclick="App.switchView('sos')"><i class="menu-icon bx bx-error-alt text-[#FF3E1D]"></i><span>SOS 24/7</span><span id="navBadgeSos" class="badge rounded-full bg-[#FFE0DB] text-[#FF3E1D] font-bold text-xs px-2 py-0.5 ml-auto hidden">0</span></button></li>
-        <li class="menu-header"><span>Hệ Thống</span></li>
-        <li class="menu-item"><a href="/api-docs" target="_blank" class="menu-link"><i class="menu-icon bx bx-file"></i><span>Swagger API</span></a></li>
-        <li class="menu-item"><button type="button" class="menu-link text-red-500 hover:bg-red-50" onclick="App.handleLogout()"><i class="menu-icon bx bx-power-off text-red-500"></i><span>Đăng xuất</span></button></li>
-      </ul>
-      <span id="sidebarAdminAvatar" class="hidden"></span>
-      <span id="sidebarAdminName" class="hidden"></span>
-      <span id="sidebarAdminRole" class="hidden"></span>
-      <span id="sidebarModeTag" class="hidden"></span>
-    </aside>
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- 2. GIAO DIỆN CHÍNH QUẢN TRỊ (MODERN SIDEBAR & TOPBAR LAYOUT)          -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <div id="mainView" class="hidden">
+    <div id="mainLayout" class="app-layout">
 
-    <!-- SNEAT PAGE CONTENT -->
-    <div class="layout-page">
-      <div class="layout-navbar-wrapper">
-        <header class="layout-navbar">
+      <!-- ─── 2.1 SIDEBAR NAVIGATION (VERTICAL & DETACHED) ─────────────── -->
+      <aside id="appSidebar" class="app-sidebar custom-scroll">
+        <!-- Brand Logo Header -->
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <button type="button" class="md:hidden text-2xl text-[#566A7F]" onclick="App.toggleSidebar()"><i class="bx bx-menu"></i></button>
-            <div class="navbar-search">
-              <i class="bx bx-search"></i>
-              <input type="text" id="globalSearchInput" placeholder="Search... (Ctrl+/)" onkeyup="App.handleGlobalSearch(event)">
+            <div class="w-10 h-10 bg-gradient-to-tr from-brand-700 to-blue-500 rounded-2xl flex items-center justify-center text-white shadow-md shadow-blue-500/20 shrink-0">
+              <i data-lucide="shield" class="w-5 h-5"></i>
+            </div>
+            <div class="min-w-0">
+              <h2 class="text-sm font-black text-slate-900 tracking-wide leading-tight truncate">ĐH TÂY NGUYÊN</h2>
+              <p class="text-[11px] font-semibold text-brand-600 truncate">Smart Campus Admin</p>
             </div>
           </div>
-          <div class="navbar-actions">
-            <div id="dashboardRealtimeBadge" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#E8FADF] text-[#71DD37]">
-              <span class="w-2 h-2 rounded-full bg-[#71DD37] animate-pulse"></span>
-              <span id="dashboardRealtimeText">Realtime Active</span>
+          <!-- Close button on Mobile Drawer -->
+          <button onclick="App.toggleMobileSidebar()" class="lg:hidden p-1.5 text-slate-400 hover:text-slate-600 rounded-lg">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- Admin Profile Mini-Badge (Matching Template) -->
+        <div class="p-4 mx-3 my-3 bg-slate-50 hover:bg-slate-100/80 rounded-2xl border border-slate-200/60 transition flex items-center gap-3">
+          <div class="relative shrink-0">
+            <img id="sidebarAdminAvatar" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTffzZtOfmsnGMh1O97etZoJGLvIZTQLuEwcT7BwgtIRQ&s=10" alt="Avatar Admin" class="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-sm" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3135/3135715.png'" />
+            <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white ring-1 ring-slate-100"></span>
+          </div>
+          <div class="min-w-0 flex-1">
+            <h4 id="sidebarAdminName" class="text-xs font-bold text-slate-900 truncate">Quản trị viên</h4>
+            <p id="sidebarAdminRole" class="text-[11px] text-slate-500 font-medium truncate">Ban Quản Trị Hệ Thống</p>
+          </div>
+        </div>
+
+        <!-- Navigation Links Menu -->
+        <div class="flex-1 px-3 py-2 space-y-6 overflow-y-auto custom-scroll">
+          
+          <!-- Category 1: DASHBOARD -->
+          <div>
+            <div class="nav-section-title">CHÍNH / DASHBOARD</div>
+            <div class="space-y-1">
+              <button id="navbtn-dashboard" onclick="App.switchTab('dashboard')" class="nav-link-btn active">
+                <i data-lucide="layout-dashboard" class="w-4 h-4 shrink-0"></i>
+                <span class="flex-1">Tổng Quan</span>
+                <span class="nav-badge-count px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white">Live</span>
+              </button>
             </div>
-            <span id="liveClock" class="hidden lg:inline text-xs text-[#8592A3] font-mono"></span>
-            <button type="button" id="btnThemeToggle" class="btn btn-outline-primary btn-sm px-2.5 py-1.5" onclick="App.toggleTheme()" title="Sáng / Tối">
-              <i class="bx bx-moon text-lg"></i>
+          </div>
+
+          <!-- Category 2: DỮ LIỆU & QUẢN LÝ -->
+          <div>
+            <div class="nav-section-title">QUẢN LÝ DỮ LIỆU</div>
+            <div class="space-y-1">
+              <button id="navbtn-users" onclick="App.switchTab('users')" class="nav-link-btn">
+                <i data-lucide="users" class="w-4 h-4 shrink-0 text-indigo-500"></i>
+                <span class="flex-1">Tài Khoản & Sinh Viên</span>
+              </button>
+
+              <button id="navbtn-locations" onclick="App.switchTab('locations')" class="nav-link-btn">
+                <i data-lucide="map-pin" class="w-4 h-4 shrink-0 text-emerald-500"></i>
+                <span class="flex-1">Bản Đồ & Địa Điểm</span>
+                <span id="totalLocationsCount" class="nav-badge-count px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-bold">37</span>
+              </button>
+
+              <button id="navbtn-notifications" onclick="App.switchTab('notifications')" class="nav-link-btn">
+                <i data-lucide="bell" class="w-4 h-4 shrink-0 text-amber-500"></i>
+                <span class="flex-1">Phát Thông Báo</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Category 3: HỖ TRỢ & KHẨN CẤP -->
+          <div>
+            <div class="nav-section-title">HỖ TRỢ & KHẨN CẤP</div>
+            <div class="space-y-1">
+              <button id="navbtn-feedback" onclick="App.switchTab('feedback')" class="nav-link-btn">
+                <i data-lucide="message-square" class="w-4 h-4 shrink-0 text-cyan-500"></i>
+                <span class="flex-1">Ý Kiến & Phản Ánh</span>
+              </button>
+
+              <button id="navbtn-sos" onclick="App.switchTab('sos')" class="nav-link-btn">
+                <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0 text-red-500"></i>
+                <span class="flex-1">Trực Ban Cứu Hộ SOS</span>
+                <span id="navBadgeSos" class="hidden px-2 py-0.5 bg-red-600 text-white rounded-full text-[10px] font-bold animate-pulse">0</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Category 4: HỆ THỐNG -->
+          <div>
+            <div class="nav-section-title">HỆ THỐNG</div>
+            <div class="space-y-1">
+              <a href="http://localhost:5000/api-docs" target="_blank" class="nav-link-btn text-slate-500 hover:text-slate-900">
+                <i data-lucide="file-code-2" class="w-4 h-4 shrink-0 text-blue-500"></i>
+                <span class="flex-1">Tài Liệu Swagger API</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-semibold">Docs</span>
+              </a>
+              <button onclick="App.toggleSidebarMode()" class="nav-link-btn text-slate-500 hover:text-slate-900">
+                <i data-lucide="layout" class="w-4 h-4 shrink-0 text-slate-400"></i>
+                <span class="flex-1">Kiểu Sidebar (Nổi/Dọc)</span>
+                <span id="sidebarModeTag" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 font-semibold">Dọc</span>
+              </button>
+              <button onclick="App.handleLogout()" class="nav-link-btn text-rose-600 hover:bg-rose-50 hover:text-rose-700">
+                <i data-lucide="log-out" class="w-4 h-4 shrink-0 text-rose-500"></i>
+                <span class="flex-1">Đăng Xuất</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar Bottom System Status Card -->
+        <div class="p-4 m-3 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl">
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+            <span class="text-[11px] font-bold text-slate-800">Máy Chủ Đang Trực Tuyến</span>
+          </div>
+          <p class="text-[11px] text-slate-500 leading-tight">API Backend v2.4.0 • MySQL Database kết nối ổn định</p>
+        </div>
+      </aside>
+
+      <!-- ─── 2.2 MAIN CONTENT WRAPPER ────────────────────────────────── -->
+      <div class="app-main-content">
+        
+        <!-- TOPBAR HEADER -->
+        <header class="app-topbar">
+          <!-- Left: Mobile Burger & Global Search Bar -->
+          <div class="flex items-center gap-3 flex-1 max-w-xl">
+            <button onclick="App.toggleMobileSidebar()" class="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-xl transition">
+              <i data-lucide="menu" class="w-5 h-5"></i>
             </button>
-            <div class="flex items-center gap-2 pl-2 border-l border-[#D9DEE3]">
-              <div class="avatar" onclick="App.toggleUserDropdown()">
-                <img id="headerAdminAvatar" src="/favicon.png" alt="Admin">
-                <span class="avatar-status-online"></span>
-              </div>
+
+            <!-- Search input matching modern template (Search anything Ctrl+K) -->
+            <div class="relative flex-1">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <i data-lucide="search" class="w-4 h-4"></i>
+              </span>
+              <input type="text" id="globalSearchInput" onkeyup="App.handleGlobalSearch(event)" placeholder="Tìm kiếm nhanh sinh viên, địa điểm, phản ánh... (Nhấn Enter)"
+                class="w-full pl-10 pr-10 py-2 bg-slate-50 hover:bg-slate-100/70 focus:bg-white rounded-xl border border-slate-200 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 transition">
+              <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[10px] text-slate-400 font-mono font-bold">
+                ⌘K
+              </span>
+            </div>
+          </div>
+
+          <!-- Right: Clock, Quick Refresh, Notifications, Profile Badge -->
+          <div class="flex items-center gap-2 sm:gap-3">
+            <!-- Real-time Clock -->
+            <div class="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 rounded-xl text-xs font-mono font-semibold text-slate-600 border border-slate-200/80">
+              <i data-lucide="clock" class="w-3.5 h-3.5 text-brand-600"></i>
+              <span id="liveClock">--:--:--</span>
+            </div>
+
+            <!-- Quick Refresh Button -->
+            <button onclick="App.refreshCurrentTab()" title="Làm mới dữ liệu"
+              class="p-2.5 text-slate-600 hover:text-brand-600 hover:bg-slate-100 rounded-xl border border-slate-200/60 transition shadow-sm">
+              <i data-lucide="rotate-cw" class="w-4 h-4"></i>
+            </button>
+
+            <!-- Swagger API Docs Button -->
+            <a href="http://localhost:5000/api-docs" target="_blank" title="Mở Swagger API Docs (http://localhost:5000/api-docs)"
+              class="hidden sm:flex p-2.5 text-slate-600 hover:text-brand-600 hover:bg-slate-100 rounded-xl border border-slate-200/60 transition shadow-sm">
+              <i data-lucide="file-code-2" class="w-4 h-4 text-blue-600"></i>
+            </a>
+
+            <!-- Detached / Vertical Layout Switch Button -->
+            <button onclick="App.toggleSidebarMode()" title="Chuyển đổi kiểu Sidebar Nổi / Dọc"
+              class="hidden sm:flex p-2.5 text-slate-600 hover:text-brand-600 hover:bg-slate-100 rounded-xl border border-slate-200/60 transition shadow-sm">
+              <i data-lucide="columns-2" class="w-4 h-4"></i>
+            </button>
+
+            <!-- Zoom Scale Toggle Button (Mặc định 80%) -->
+            <button onclick="App.cycleZoom()" id="btnZoomToggle" title="Tỷ lệ thu phóng (Nhấp để đổi 80% / 90% / 100%)"
+              class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200/80 transition shadow-sm">
+              <i data-lucide="zoom-in" class="w-3.5 h-3.5 text-brand-600"></i>
+              <span id="zoomLabel" class="font-mono">80%</span>
+            </button>
+
+            <!-- Admin Profile Badge -->
+            <div class="flex items-center gap-2.5 pl-2 border-l border-slate-200">
+              <img id="headerAdminAvatar" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTffzZtOfmsnGMh1O97etZoJGLvIZTQLuEwcT7BwgtIRQ&s=10" alt="Avatar Admin" class="w-9 h-9 rounded-xl object-cover border border-slate-200 shadow-sm" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3135/3135715.png'" />
               <div class="hidden sm:block text-left">
-                <div id="headerAdminName" class="text-xs font-bold text-[#566A7F]">Admin ĐH Tây Nguyên</div>
-                <div id="headerAdminEmail" class="text-[11px] text-[#8592A3]">Ban Quản Trị</div>
+                <p id="headerAdminName" class="text-xs font-bold text-slate-800 leading-none">Quản trị viên</p>
+                <p id="headerAdminEmail" class="text-[10px] text-slate-400 font-medium leading-none mt-1">admin@ttn.edu.vn</p>
               </div>
             </div>
+
+            <!-- Logout Button -->
+            <button onclick="App.handleLogout()" title="Đăng xuất"
+              class="p-2.5 text-rose-500 hover:bg-rose-50 rounded-xl border border-rose-200/60 transition">
+              <i data-lucide="log-out" class="w-4 h-4"></i>
+            </button>
           </div>
         </header>
-      </div>
 
-      <main id="mainView" class="content-wrapper">
-        <!-- VIEW: DASHBOARD -->
-        <section id="view-dashboard" class="space-y-6">
-          <!-- ROW 1: SNEAT HERO + 2 STAT CARDS -->
-          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <!-- Hero Congratulations Card -->
-            <div class="lg:col-span-8 card card-hero-sneat mb-0 p-6 flex flex-col justify-between">
-              <div class="max-w-[65%] z-10">
-                <h5 class="text-lg font-bold text-[#566A7F] mb-1">Congratulations Admin! 🎉</h5>
-                <p class="text-xs text-[#8592A3] mb-4">Hệ thống TTN Smart Campus đang hoạt động trực tuyến với đầy đủ 40 địa điểm và toàn bộ dữ liệu sinh viên.</p>
-                <button type="button" onclick="App.switchView('locations')" class="btn btn-outline-primary btn-sm font-semibold">Xem Bản Đồ 40 Điểm</button>
+        <!-- MAIN SCROLLABLE CONTENT CANVAS -->
+        <main class="flex-1 p-4 sm:p-6 lg:p-8 space-y-6">
+
+          <!-- ───────────────────────────────────────────────────────────── -->
+          <!-- TAB 1: TỔNG QUAN (DASHBOARD) - CHUẨN MẪU APEX / SAAS          -->
+          <!-- ───────────────────────────────────────────────────────────── -->
+          <section id="tab-dashboard" class="space-y-6">
+
+            <!-- Welcome Greeting Banner -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div class="space-y-1">
+                <div class="flex items-center gap-2">
+                  <h2 class="text-lg sm:text-xl font-black text-slate-900 tracking-tight">Bảng Điều Khiển Trung Tâm</h2>
+                  <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                    Hệ Thống Thông Minh
+                  </span>
+                </div>
+                <p class="text-xs text-slate-500">Giám sát toàn diện người dùng, khuôn viên trường học, phản ánh sinh viên và cứu hộ SOS theo thời gian thực.</p>
               </div>
-              <img src="/favicon.png" alt="Hero" class="card-hero-illustration opacity-30 sm:opacity-90 max-h-[120px] object-contain">
+
+              <div class="flex items-center gap-2 flex-wrap">
+                <!-- Realtime Status Indicator Badge -->
+                <div id="dashboardRealtimeBadge" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold shadow-sm">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                  <span id="dashboardRealtimeText">Socket.IO: Trực tiếp</span>
+                </div>
+                <button onclick="DashboardModule.loadStats(false)" title="Cập nhật dữ liệu ngay lập tức" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition flex items-center gap-1.5">
+                  <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                  <span class="hidden sm:inline">Làm mới</span>
+                </button>
+                <button onclick="App.switchTab('notifications')" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition">
+                  <i data-lucide="send" class="w-3.5 h-3.5 text-amber-500"></i>
+                  <span>Phát thông báo nhanh</span>
+                </button>
+                <button onclick="App.switchTab('locations')" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm">
+                  <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                  <span>Thêm địa điểm</span>
+                </button>
+              </div>
             </div>
 
-            <!-- 2 Stat Cards -->
-            <div class="lg:col-span-4 grid grid-cols-2 gap-4">
-              <!-- Profit / Students -->
-              <div class="card mb-0 p-4 flex flex-col justify-between">
-                <div class="flex items-center justify-between mb-2">
-                  <div class="avatar-initial rounded-lg bg-label-success"><i class="bx bx-user text-xl"></i></div>
-                  <span id="kpiStudentBadge" class="text-[11px] font-semibold text-[#71DD37] bg-[#E8FADF] px-1.5 py-0.5 rounded">+72.8%</span>
-                </div>
-                <div>
-                  <span class="text-xs text-[#8592A3] block">Sinh viên</span>
-                  <h4 id="statTotalStudents" class="text-lg font-bold text-[#566A7F] m-0">...</h4>
-                </div>
-              </div>
-              <!-- Sales / Locations -->
-              <div class="card mb-0 p-4 flex flex-col justify-between">
-                <div class="flex items-center justify-between mb-2">
-                  <div class="avatar-initial rounded-lg bg-label-info"><i class="bx bx-map-pin text-xl"></i></div>
-                  <span id="kpiLocationBadge" class="text-[11px] font-semibold text-[#03C3EC] bg-[#D7F5FC] px-1.5 py-0.5 rounded">40 Điểm</span>
-                </div>
-                <div>
-                  <span class="text-xs text-[#8592A3] block">Địa điểm TTN</span>
-                  <h4 id="statTotalLocations" class="text-lg font-bold text-[#566A7F] m-0">40</h4>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- ROW 2: SNEAT REVENUE / ACTIVITY CHART & RADIAL GROWTH -->
-          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <!-- 8 Cols: Total Revenue Chart -->
-            <div class="lg:col-span-8 card mb-0">
-              <div class="card-header pb-2 flex flex-wrap gap-2 items-center justify-between">
-                <div>
-                  <h5 class="text-base font-bold text-[#566A7F]">Hoạt Động & Tương Tác Hệ Thống</h5>
-                  <div class="flex items-center gap-2 mt-1">
-                    <span id="chartTrendCycleBadge" class="text-[11px] text-[#8592A3]">Tuần hiện tại</span>
-                    <span id="chartActivityWeekBadge" class="badge bg-[#E7E7FF] text-[#696CFF] text-[10px] px-2 py-0.5 rounded">Realtime</span>
+            <!-- ROW 1: 6 KPI CARDS (MATCHING TEMPLATE TOP ROW) -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+              <!-- KPI 1: Tổng tài khoản -->
+              <div class="kpi-card">
+                <div class="flex items-center justify-between mb-3">
+                  <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                    <i data-lucide="users" class="w-5 h-5"></i>
                   </div>
+                  <span id="kpiUserBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100">Hệ thống</span>
                 </div>
-                <div class="flex items-center gap-1.5">
-                  <button type="button" id="btnPrevChartWeek" class="btn btn-outline-primary btn-sm px-2"><i class="bx bx-chevron-left"></i></button>
-                  <select id="selectChartWeek" class="form-select text-xs py-1 px-2 w-auto">
-                    <option value="0">Tuần này</option>
-                    <option value="-1">Tuần trước</option>
-                    <option value="-2">2 tuần trước</option>
-                  </select>
-                  <button type="button" id="btnNextChartWeek" class="btn btn-outline-primary btn-sm px-2"><i class="bx bx-chevron-right"></i></button>
-                  <button type="button" id="btnResetCurrentWeek" class="btn btn-primary btn-sm px-2.5 text-xs">Hiện tại</button>
-                </div>
+                <p class="text-xs font-semibold text-slate-400">Tổng tài khoản</p>
+                <h3 id="statTotalUsers" class="text-xl sm:text-2xl font-black text-slate-900 mt-0.5">--</h3>
+                <p class="text-[11px] text-slate-400 mt-1 truncate">Tất cả tài khoản hệ thống</p>
               </div>
-              <div class="card-body pt-2">
-                <div class="h-64 w-full">
-                  <canvas id="chartTrend"></canvas>
-                  <canvas id="chartActivity" class="hidden"></canvas>
+
+              <!-- KPI 2: Sinh viên chính quy -->
+              <div class="kpi-card">
+                <div class="flex items-center justify-between mb-3">
+                  <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                    <i data-lucide="graduation-cap" class="w-5 h-5"></i>
+                  </div>
+                  <span id="kpiStudentBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">Chính quy</span>
                 </div>
-                <div class="flex items-center justify-between text-xs text-[#8592A3] mt-3 pt-3 border-t border-[#D9DEE3]">
-                  <span id="activityTrendSummary">Đang cập nhật xu hướng...</span>
-                  <span id="activityAvgSummary" class="font-semibold text-[#566A7F]">--</span>
-                  <span id="selectedWeekRangeBadge" class="hidden"></span>
+                <p class="text-xs font-semibold text-slate-400">Sinh viên</p>
+                <h3 id="statTotalStudents" class="text-xl sm:text-2xl font-black text-indigo-600 mt-0.5">--</h3>
+                <p class="text-[11px] text-slate-400 mt-1 truncate">Sinh viên chính quy</p>
+              </div>
+
+              <!-- KPI 3: Địa điểm bản đồ khuôn viên -->
+              <div class="kpi-card cursor-pointer hover:border-emerald-300" onclick="App.switchTab('locations')">
+                <div class="flex items-center justify-between mb-3">
+                  <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <i data-lucide="map-pin" class="w-5 h-5"></i>
+                  </div>
+                  <span id="kpiLocationBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">-- điểm</span>
                 </div>
+                <p class="text-xs font-semibold text-slate-400">Địa điểm ĐH</p>
+                <h3 id="statTotalLocations" class="text-xl sm:text-2xl font-black text-emerald-600 mt-0.5">--</h3>
+                <p class="text-[11px] text-slate-400 mt-1 truncate">Giảng đường, ký túc xá</p>
+              </div>
+
+              <!-- KPI 4: Thông báo đã đăng -->
+              <div class="kpi-card">
+                <div class="flex items-center justify-between mb-3">
+                  <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                    <i data-lucide="bell" class="w-5 h-5"></i>
+                  </div>
+                  <span id="kpiNotifBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100">Bản tin</span>
+                </div>
+                <p class="text-xs font-semibold text-slate-400">Thông báo</p>
+                <h3 id="statTotalNotifs" class="text-xl sm:text-2xl font-black text-amber-600 mt-0.5">--</h3>
+                <p class="text-[11px] text-slate-400 mt-1 truncate">Đã gửi tới sinh viên</p>
+              </div>
+
+              <!-- KPI 5: Ý kiến phản ánh -->
+              <div class="kpi-card">
+                <div class="flex items-center justify-between mb-3">
+                  <div class="w-10 h-10 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center shrink-0">
+                    <i data-lucide="message-square" class="w-5 h-5"></i>
+                  </div>
+                  <span id="kpiFeedbackBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-100">Góp ý SV</span>
+                </div>
+                <p class="text-xs font-semibold text-slate-400">Phản ánh</p>
+                <h3 id="statTotalFeedback" class="text-xl sm:text-2xl font-black text-cyan-600 mt-0.5">--</h3>
+                <p class="text-[11px] text-slate-400 mt-1 truncate">Khiếu nại & góp ý</p>
+              </div>
+
+              <!-- KPI 6: Cảnh báo SOS -->
+              <div class="kpi-card">
+                <div class="flex items-center justify-between mb-3">
+                  <div class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                    <i data-lucide="alert-triangle" class="w-5 h-4"></i>
+                  </div>
+                  <span id="kpiSosBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-100">24/7 Trực</span>
+                </div>
+                <p class="text-xs font-semibold text-slate-400">Cảnh báo SOS</p>
+                <h3 id="statTotalSos" class="text-xl sm:text-2xl font-black text-red-600 mt-0.5">--</h3>
+                <p class="text-[11px] text-slate-400 mt-1 truncate">Sự cố khẩn cấp</p>
               </div>
             </div>
 
-            <!-- 4 Cols: Growth Radial Gauge -->
-            <div class="lg:col-span-4 card mb-0 flex flex-col justify-between">
-              <div class="card-header pb-2">
-                <h5 class="text-base font-bold text-[#566A7F]">Phân Bổ Người Dùng</h5>
+            <!-- ANALYTICS HEADER & WEEK SELECTOR TOOLBAR -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 bg-white p-3.5 sm:px-5 rounded-2xl border border-slate-200/80 shadow-sm">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <i data-lucide="calendar" class="w-4 h-4"></i>
+                </div>
+                <div>
+                  <h4 class="text-xs font-bold text-slate-800">Thời Gian Phân Tích & Báo Cáo</h4>
+                  <p class="text-[11px] text-slate-400">Chọn tuần để tra cứu và so sánh dữ liệu hoạt động</p>
+                </div>
               </div>
-              <div class="card-body flex flex-col items-center justify-center pt-0">
-                <div class="relative w-44 h-44 my-2">
+
+              <!-- CONTROLS: PREV, SELECT, NEXT, RESET -->
+              <div class="flex items-center flex-wrap gap-2">
+                <button id="btnPrevChartWeek" type="button" title="Xem tuần trước đó" class="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+                  <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                </button>
+
+                <div class="relative">
+                  <select id="selectChartWeek" class="appearance-none bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer transition-colors">
+                    <option value="0">Tuần này (Hiện tại)</option>
+                    <option value="-1">1 tuần trước</option>
+                    <option value="-2">2 tuần trước</option>
+                    <option value="-3">3 tuần trước</option>
+                    <option value="-4">4 tuần trước</option>
+                    <option value="-5">5 tuần trước</option>
+                    <option value="-6">6 tuần trước</option>
+                    <option value="-7">7 tuần trước</option>
+                    <option value="-8">8 tuần trước</option>
+                    <option value="-9">9 tuần trước</option>
+                    <option value="-10">10 tuần trước</option>
+                    <option value="-11">11 tuần trước</option>
+                    <option value="-12">12 tuần trước (3 tháng)</option>
+                  </select>
+                  <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                </div>
+
+                <button id="btnNextChartWeek" type="button" title="Xem tuần tiếp theo" class="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                  <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                </button>
+
+                <span id="selectedWeekRangeBadge" class="hidden sm:inline-flex items-center text-[11px] font-bold px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-100">
+                  Đang tải...
+                </span>
+
+                <button id="btnResetCurrentWeek" type="button" class="text-[11px] font-bold text-blue-600 hover:text-blue-700 px-2 py-1 rounded-md hover:bg-blue-50 transition-colors">
+                  Về tuần này
+                </button>
+              </div>
+            </div>
+
+            <!-- ROW 2: 3 ANALYTICS CHARTS (DOUGHNUT, BAR, SPLINE LINE - MATCHING IMAGE ROW 2) -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <!-- Chart 1: Cơ Cấu Dữ Liệu (Donut Chart) -->
+              <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <h4 class="font-bold text-sm text-slate-900">Cơ Cấu Người Dùng & Dữ Liệu</h4>
+                    <span class="text-[11px] font-semibold text-slate-400">Hôm nay</span>
+                  </div>
+                  <p class="text-xs text-slate-500 mb-4">Tỷ trọng thành phần phân bổ trong hệ thống</p>
+                </div>
+                <div class="h-60 relative flex items-center justify-center">
                   <canvas id="chartDistribution"></canvas>
                 </div>
-                <div class="w-full grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-[#D9DEE3] text-center text-xs">
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-around text-center text-xs">
                   <div>
-                    <span class="text-[#8592A3] block">Sinh viên</span>
-                    <span id="distStudentPct" class="font-bold text-[#696CFF]">--%</span>
+                    <span class="text-[10px] text-slate-400 block font-medium">Sinh viên</span>
+                    <span id="distStudentPct" class="font-bold text-blue-600">--%</span>
                   </div>
                   <div>
-                    <span class="text-[#8592A3] block">Quản trị viên</span>
-                    <span id="distAdminPct" class="font-bold text-[#03C3EC]">--%</span>
+                    <span class="text-[10px] text-slate-400 block font-medium">Quản trị</span>
+                    <span id="distAdminPct" class="font-bold text-amber-500">--%</span>
+                  </div>
+                  <div>
+                    <span class="text-[10px] text-slate-400 block font-medium">Phản hồi</span>
+                    <span id="distFeedbackCount" class="font-bold text-emerald-500">--</span>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          <!-- ROW 3: 4 METRIC CARDS -->
-          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="card mb-0 p-4">
-              <div class="flex items-center justify-between mb-2">
-                <div class="avatar-initial rounded-lg bg-label-warning"><i class="bx bx-message-square-detail text-xl"></i></div>
-                <span id="kpiFeedbackBadge" class="text-[11px] font-semibold text-[#FFAB00] bg-[#FFF2D6] px-1.5 py-0.5 rounded">Tỉ lệ</span>
+              <!-- Chart 2: Tần Suất Hoạt Động & Tương Tác (Bar Chart) -->
+              <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <h4 class="font-bold text-sm text-slate-900">Tần Suất Hoạt Động & Tương Tác</h4>
+                    <span id="chartActivityWeekBadge" class="text-[11px] font-semibold px-2 py-0.5 bg-slate-100 text-slate-600 rounded-lg">7 ngày qua</span>
+                  </div>
+                  <p class="text-xs text-slate-500 mb-4">Thống kê lưu lượng truy cập và phản ánh sinh viên</p>
+                </div>
+                <div class="h-60 relative">
+                  <canvas id="chartActivity"></canvas>
+                </div>
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                  <span id="activityAvgSummary">Đang tải thống kê...</span>
+                  <span id="activityTrendSummary" class="text-emerald-600 font-semibold flex items-center gap-1"></span>
+                </div>
               </div>
-              <span class="text-xs text-[#8592A3] block">Ý kiến SV</span>
-              <h4 id="statTotalFeedback" class="text-lg font-bold text-[#566A7F] m-0">...</h4>
-              <span id="feedbackResolveRate" class="text-[11px] text-[#71DD37] mt-1 block">Xử lý: --%</span>
-            </div>
-            <div class="card mb-0 p-4">
-              <div class="flex items-center justify-between mb-2">
-                <div class="avatar-initial rounded-lg bg-label-danger"><i class="bx bx-error-alt text-xl"></i></div>
-                <span id="kpiSosBadge" class="text-[11px] font-semibold text-[#FF3E1D] bg-[#FFE0DB] px-1.5 py-0.5 rounded">SOS</span>
-              </div>
-              <span class="text-xs text-[#8592A3] block">Báo động SOS</span>
-              <h4 id="statTotalSos" class="text-lg font-bold text-[#566A7F] m-0">...</h4>
-              <span id="mapSosActiveCount" class="text-[11px] text-[#FF3E1D] mt-1 block">Đang hoạt động: 0</span>
-            </div>
-            <div class="card mb-0 p-4">
-              <div class="flex items-center justify-between mb-2">
-                <div class="avatar-initial rounded-lg bg-label-primary"><i class="bx bx-bell text-xl"></i></div>
-                <span id="kpiNotifBadge" class="text-[11px] font-semibold text-[#696CFF] bg-[#E7E7FF] px-1.5 py-0.5 rounded">Tin tức</span>
-              </div>
-              <span class="text-xs text-[#8592A3] block">Phát thông báo</span>
-              <h4 id="statTotalNotifs" class="text-lg font-bold text-[#566A7F] m-0">...</h4>
-              <span class="text-[11px] text-[#8592A3] mt-1 block">Toàn trường</span>
-            </div>
-            <div class="card mb-0 p-4">
-              <div class="flex items-center justify-between mb-2">
-                <div class="avatar-initial rounded-lg bg-label-secondary"><i class="bx bx-group text-xl"></i></div>
-                <span id="kpiUserBadge" class="text-[11px] font-semibold text-[#8592A3] bg-[#EBECEF] px-1.5 py-0.5 rounded">Tài khoản</span>
-              </div>
-              <span class="text-xs text-[#8592A3] block">Tổng tài khoản</span>
-              <h4 id="statTotalUsers" class="text-lg font-bold text-[#566A7F] m-0">...</h4>
-              <span class="text-[11px] text-[#71DD37] mt-1 block">Active</span>
-            </div>
-          </div>
 
-          <!-- ROW 4: RECENT TABLES -->
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="card mb-0 p-5">
-              <div class="flex items-center justify-between mb-3">
-                <h5 class="text-sm font-bold text-[#566A7F] uppercase tracking-wider">Cứu hộ SOS Gần nhất</h5>
-                <button type="button" onclick="App.switchView('sos')" class="text-xs text-[#696CFF] font-semibold hover:underline">Xem tất cả</button>
+              <!-- Chart 3: Xu Hướng Cảnh Báo SOS & Giải Quyết (Spline Line Chart) -->
+              <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <h4 class="font-bold text-sm text-slate-900">Xu Hướng Cảnh Báo SOS & Giải Quyết</h4>
+                    <span class="text-[11px] font-semibold px-2 py-0.5 bg-red-50 text-red-700 rounded-lg">Cảnh báo & Xử lý</span>
+                  </div>
+                  <p class="text-xs text-slate-500 mb-4">Thống kê cảnh báo khẩn cấp phát sinh và tiến độ xử lý giải quyết</p>
+                </div>
+                <div class="h-60 relative">
+                  <canvas id="chartTrend"></canvas>
+                </div>
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                  <span id="feedbackResolveRate">Đang tải tỷ lệ giải quyết...</span>
+                  <span id="chartTrendCycleBadge" class="text-slate-400">Chu kỳ T2 - CN</span>
+                </div>
               </div>
-              <div id="recentSosList" class="space-y-2 text-xs"></div>
             </div>
-            <div class="card mb-0 p-5">
-              <div class="flex items-center justify-between mb-3">
-                <h5 class="text-sm font-bold text-[#566A7F] uppercase tracking-wider">Ý kiến Sinh viên Mới</h5>
-                <button type="button" onclick="App.switchView('feedback')" class="text-xs text-[#696CFF] font-semibold hover:underline">Xem tất cả</button>
-              </div>
-              <div id="recentFeedbackList" class="space-y-2 text-xs"></div>
-            </div>
-          </div>
-        </section>
 
-        <!-- VIEW: USERS -->
-        <section id="view-users" class="hidden">
-          <div class="card">
-            <div class="card-header flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h5 class="text-base font-bold text-[#566A7F]">Danh Sách Tài Khoản Sinh Viên & Quản Trị</h5>
-                <span id="usersCountLabel" class="text-xs text-[#8592A3]">Đang tải danh sách...</span>
+            <!-- ROW 3: STAFF / TEAM & DEPARTMENT HIGHLIGHTS (MATCHING ROW 3 IN TEMPLATE) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <!-- Team Member 1 -->
+              <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3">
+                <div class="w-11 h-11 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0">
+                  PT
+                </div>
+                <div class="min-w-0 flex-1">
+                  <h5 class="text-xs font-bold text-slate-900 truncate">Phòng Đào Tạo</h5>
+                  <p class="text-[11px] text-slate-400 truncate">Thời khóa biểu & Sinh viên</p>
+                  <span id="statTeamStudentsCount" class="inline-block mt-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-semibold rounded-md">-- Sinh viên</span>
+                </div>
               </div>
-              <div class="flex flex-wrap items-center gap-2">
-                <input type="text" id="userSearchInput" class="form-control text-xs w-48 py-1.5" placeholder="Tìm tên, MSSV, email..." oninput="Users.handleSearch(this.value)">
-                <select id="userRoleFilter" class="form-select text-xs w-36 py-1.5" onchange="Users.handleRoleFilter(this.value)">
-                  <option value="">Tất cả vai trò</option>
-                  <option value="student">Sinh viên</option>
+
+              <!-- Team Member 2 -->
+              <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3">
+                <div class="w-11 h-11 rounded-full bg-emerald-100 text-emerald-700 font-bold flex items-center justify-center shrink-0">
+                  CT
+                </div>
+                <div class="min-w-0 flex-1">
+                  <h5 class="text-xs font-bold text-slate-900 truncate">Phòng Công Tác Sinh Viên</h5>
+                  <p class="text-[11px] text-slate-400 truncate">Ý kiến & Chế độ chính sách</p>
+                  <span id="statTeamFeedbackCount" class="inline-block mt-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-semibold rounded-md">-- Phản ánh</span>
+                </div>
+              </div>
+
+              <!-- Team Member 3 -->
+              <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3">
+                <div class="w-11 h-11 rounded-full bg-amber-100 text-amber-700 font-bold flex items-center justify-center shrink-0">
+                  QT
+                </div>
+                <div class="min-w-0 flex-1">
+                  <h5 class="text-xs font-bold text-slate-900 truncate">Phòng Quản Trị & CSVC</h5>
+                  <p class="text-[11px] text-slate-400 truncate">Bản đồ, Giảng đường & Tòa nhà</p>
+                  <span id="statTeamLocationsCount" class="inline-block mt-1 px-2 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-semibold rounded-md">-- Điểm ghim</span>
+                </div>
+              </div>
+
+              <!-- Team Member 4 -->
+              <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3">
+                <div class="w-11 h-11 rounded-full bg-red-100 text-red-700 font-bold flex items-center justify-center shrink-0">
+                  BV
+                </div>
+                <div class="min-w-0 flex-1">
+                  <h5 class="text-xs font-bold text-slate-900 truncate">Tổ Trực Ban & Bảo Vệ</h5>
+                  <p class="text-[11px] text-slate-400 truncate">Trực SOS khẩn cấp 24/7</p>
+                  <span id="statTeamSosCount" class="inline-block mt-1 px-2 py-0.5 bg-red-50 text-red-700 text-[10px] font-semibold rounded-md">-- Cảnh báo</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ROW 4: DATA TABLE WIDGETS (RECENT FEEDBACK & RECENT SOS - MATCHING BOTTOM ROW) -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <!-- Table Widget 1: Ý Kiến Phản Ánh Mới Nhất -->
+              <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col justify-between">
+                <div>
+                  <div class="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                      <div class="w-8 h-8 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center">
+                        <i data-lucide="message-square" class="w-4 h-4"></i>
+                      </div>
+                      <div>
+                        <h4 class="font-bold text-sm text-slate-900">Ý Kiến Phản Ánh Sinh Viên Gần Đây</h4>
+                        <p class="text-[11px] text-slate-400">Các nội dung góp ý gửi từ ứng dụng di động</p>
+                      </div>
+                    </div>
+                    <button onclick="App.switchTab('feedback')" class="text-xs text-brand-600 font-bold hover:underline">Xem tất cả</button>
+                  </div>
+                  <div id="recentFeedbackList" class="divide-y divide-slate-100">
+                    <div class="p-8 text-center text-slate-400 text-xs">Đang tải dữ liệu phản ánh...</div>
+                  </div>
+                </div>
+                <div class="p-3 bg-slate-50 border-t border-slate-100 text-center">
+                  <button onclick="App.switchTab('feedback')" class="text-xs font-bold text-slate-600 hover:text-brand-600">
+                    Xem toàn bộ danh sách phản ánh &raquo;
+                  </button>
+                </div>
+              </div>
+
+              <!-- Table Widget 2: Cảnh Báo SOS Khẩn Cấp -->
+              <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col justify-between">
+                <div>
+                  <div class="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                      <div class="w-8 h-8 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
+                        <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                      </div>
+                      <div>
+                        <h4 class="font-bold text-sm text-slate-900">Cảnh Báo SOS & Tình Huống Khẩn Cấp</h4>
+                        <p class="text-[11px] text-slate-400">Tọa độ và thông tin sinh viên gặp sự cố</p>
+                      </div>
+                    </div>
+                    <button onclick="App.switchTab('sos')" class="text-xs text-brand-600 font-bold hover:underline">Xem tất cả</button>
+                  </div>
+                  <div id="recentSosList" class="divide-y divide-slate-100">
+                    <div class="p-8 text-center text-slate-400 text-xs">Đang tải dữ liệu SOS...</div>
+                  </div>
+                </div>
+                <div class="p-3 bg-slate-50 border-t border-slate-100 text-center">
+                  <button onclick="App.switchTab('sos')" class="text-xs font-bold text-slate-600 hover:text-brand-600">
+                    Vào Trung Tâm Trực Ban SOS &raquo;
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ───────────────────────────────────────────────────────────── -->
+          <!-- TAB 2: QUẢN LÝ TÀI KHOẢN & SINH VIÊN                          -->
+          <!-- ───────────────────────────────────────────────────────────── -->
+          <section id="tab-users" class="hidden space-y-4">
+            <!-- Control Header -->
+            <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="flex flex-1 items-center gap-2 max-w-lg">
+                <div class="relative flex-1">
+                  <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <i data-lucide="search" class="w-4 h-4"></i>
+                  </span>
+                  <input type="text" id="userSearchInput" placeholder="Tìm theo MSSV, Họ tên, Email, Lớp, Khoa..."
+                    class="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+
+                <select id="userRoleFilter" class="py-2 px-3 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold bg-white text-slate-700">
+                  <option value="all">Tất cả vai trò</option>
+                  <option value="sinh_vien">Sinh viên</option>
                   <option value="admin">Quản trị viên</option>
                 </select>
-                <button type="button" class="btn btn-primary btn-sm font-semibold" onclick="Users.openModal()">
-                  <i class="bx bx-plus"></i> Thêm Người Dùng
+              </div>
+
+              <div class="flex items-center gap-3">
+                <span id="usersCountLabel" class="text-xs text-slate-500 font-medium">Đang tải...</span>
+                <button onclick="UsersModule.openCreateModal()"
+                  class="px-4 py-2 bg-brand-800 hover:bg-brand-900 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition shadow-sm">
+                  <i data-lucide="user-plus" class="w-4 h-4"></i>
+                  <span>Thêm Tài Khoản</span>
                 </button>
               </div>
             </div>
-            <div class="table-responsive">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>Sinh Viên</th>
-                    <th>MSSV / ID</th>
-                    <th>Khoa / Lớp</th>
-                    <th>Liên Hệ</th>
-                    <th>Vai Trò</th>
-                    <th class="text-right">Thao Tác</th>
-                  </tr>
-                </thead>
-                <tbody id="usersTableBody"></tbody>
-              </table>
-            </div>
-          </div>
-        </section>
 
-        <!-- VIEW: LOCATIONS -->
-        <section id="view-locations" class="hidden space-y-4">
-          <div id="adminCampusMapCard" class="card overflow-hidden mb-4">
-            <div class="card-header flex flex-wrap items-center justify-between gap-2 py-3">
-              <div class="flex items-center gap-2">
-                <i class="bx bx-map-pin text-[#696CFF] text-xl"></i>
-                <h5 class="text-base font-bold text-[#566A7F]">Bản Đồ 40 Điểm TTN</h5>
-                <span id="zoomLabel" class="text-[11px] text-[#8592A3]">Zoom: 17</span>
+            <!-- Table Card -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+              <div class="overflow-x-auto">
+                <table class="w-full text-left admin-table">
+                  <thead>
+                    <tr>
+                      <th class="w-12 text-center">STT</th>
+                      <th>Họ và Tên</th>
+                      <th>MSSV</th>
+                      <th>Vai Trò</th>
+                      <th>Lớp / Khoa</th>
+                      <th>Số Điện Thoại</th>
+                      <th class="text-right">Thao Tác</th>
+                    </tr>
+                  </thead>
+                  <tbody id="usersTableBody">
+                    <tr>
+                      <td colspan="7" class="py-12 text-center text-slate-400">Đang tải danh sách người dùng...</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-              <div class="flex flex-wrap items-center gap-1.5 text-xs">
-                <button type="button" id="btnMapRoadmap" class="btn btn-primary btn-sm py-1 px-2.5 text-xs" onclick="Locations.setMapTile('roadmap')">Bản đồ</button>
-                <button type="button" id="btnMapSatellite" class="btn btn-outline-primary btn-sm py-1 px-2.5 text-xs" onclick="Locations.setMapTile('satellite')">Vệ tinh</button>
-                <button type="button" id="btnToggleSosLayer" class="btn btn-outline-primary btn-sm py-1 px-2.5 text-xs text-red-500" onclick="Locations.toggleSosLayer()">SOS</button>
-                <button type="button" id="btnToggleShowPaths" class="btn btn-outline-primary btn-sm py-1 px-2.5 text-xs" onclick="Locations.togglePathsLayer()">
-                  <i id="iconToggleShowPaths" class="bx bx-show mr-1"></i><span id="labelToggleShowPaths">Đường</span>
-                  <span id="campusPathsCountBadge" class="badge bg-[#E7E7FF] text-[#696CFF] text-[10px] px-1 ml-1">0</span>
-                </button>
-                <button type="button" id="btnToggleDrawPath" class="btn btn-outline-primary btn-sm py-1 px-2.5 text-xs" onclick="Locations.toggleDrawPathMode()">Vẽ</button>
-                <button type="button" class="btn btn-primary btn-sm py-1 px-2.5 text-xs" onclick="Locations.openModal()"><i class="bx bx-plus"></i> Thêm</button>
-              </div>
             </div>
-            <div id="mapPickingBanner" class="hidden bg-amber-50 p-2 text-xs flex justify-between">
-              <span>Tọa độ: <b id="pickingBannerCoords">--</b></span>
-              <button type="button" id="btnSavePickedCoords" onclick="Locations.confirmPickedCoords()"><span id="btnSavePickedText">Chọn</span></button>
-              <span id="pickingBannerTitle" class="hidden"></span>
-            </div>
-            <div id="pathDrawingBanner" class="hidden bg-indigo-50 p-2 text-xs flex justify-between">
-              <span>Điểm: <b id="pathDrawingPointCount">0</b>, Khoảng cách: <b id="pathDrawingDistance">0m</b></span>
-              <button type="button" onclick="Locations.finishPathDrawing()">Lưu</button>
-              <span id="pathDrawingBranchCount" class="hidden">1</span>
-              <span id="pathDrawingBranchLabel" class="hidden"></span>
-              <span id="pathDrawingBranchPoints" class="hidden"></span>
-              <select id="pathDrawingBranchSelect" class="hidden"></select>
-            </div>
-            <div id="adminCampusMap" class="w-full h-[450px]"></div>
-          </div>
+          </section>
 
-          <div class="card">
-            <div class="card-header flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h5 class="text-base font-bold text-[#566A7F]">Danh Mục 40 Địa Điểm</h5>
-                <span class="text-xs text-[#8592A3]">Hiển thị <b id="locationsTableCount">40</b> / <b id="totalLocationsCount">40</b></span>
-              </div>
-              <div class="flex flex-wrap items-center gap-2">
-                <input type="text" id="locationSearchInput" class="form-control text-xs w-48 py-1.5" placeholder="Tìm kiếm..." oninput="Locations.handleSearch(this.value)">
-                <select id="locationCategoryFilter" class="form-select text-xs w-36 py-1.5" onchange="Locations.handleCategoryFilter(this.value)">
-                  <option value="Tất cả">Tất cả</option>
-                  <option value="Học tập">Học tập</option>
-                  <option value="Hành chính">Hành chính</option>
-                  <option value="Tiện ích">Tiện ích</option>
-                  <option value="Ký túc xá">Ký túc xá</option>
-                  <option value="Thể thao">Thể thao</option>
-                </select>
-                <button type="button" class="btn btn-outline-primary btn-sm text-xs" onclick="Locations.resetToDefault()">Khôi phục 40 gốc</button>
-              </div>
-            </div>
-            <div class="table-responsive">
-              <table class="table">
-                <thead><tr><th>Tên Địa Điểm</th><th>Tòa / Khu</th><th>Phân Loại</th><th>Tọa Độ</th><th class="text-right">Thao Tác</th></tr></thead>
-                <tbody id="locationsTableBody"></tbody>
-              </table>
-            </div>
-          </div>
-        </section>
+          <!-- ───────────────────────────────────────────────────────────── -->
+          <!-- TAB 3: BẢN ĐỒ, ĐỊA ĐIỂM KHUÔN VIÊN & CỨU HỘ KHẨN CẤP (SOS)      -->
+          <!-- ───────────────────────────────────────────────────────────── -->
+          <section id="tab-locations" class="hidden space-y-4">
+            <!-- 2-COLUMN GRID (Side by side): Bản đồ bên trái & Quản lý bên phải xếp cạnh nhau -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+              
+              <!-- CỘT TRÁI: BẢN ĐỒ KHUÔN VIÊN & ĐỊNH VỊ CỨU HỘ SOS (LG: 7 CỘT) -->
+              <div class="lg:col-span-7 xl:col-span-7 space-y-3 lg:sticky lg:top-4">
+                <div id="adminCampusMapCard" class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                    <div class="flex items-center gap-2.5">
+                      <div class="relative flex items-center justify-center">
+                        <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+                        <span class="w-3 h-3 rounded-full bg-red-500 animate-ping absolute inset-0"></span>
+                      </div>
+                      <div>
+                        <h4 class="font-bold text-sm text-slate-800">Bản Đồ Cứu Hộ & Địa Điểm Khuôn Viên</h4>
+                        <p class="text-[11px] text-slate-400">ĐH Tây Nguyên • Giám sát GPS & Cứu hộ SOS 24/7</p>
+                      </div>
+                    </div>
 
-        <!-- VIEW: NOTIFICATIONS -->
-        <section id="view-notifications" class="hidden space-y-4">
-          <div class="card p-5">
-            <h5 class="text-base font-bold text-[#566A7F] mb-3">Tạo & Phát Thông Báo Toàn Trường</h5>
-            <form id="notifForm" onsubmit="Notifications.handleCreate(event)" class="space-y-3">
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div class="md:col-span-2">
-                  <label class="block text-xs font-semibold text-[#566A7F] mb-1">Tiêu đề thông báo</label>
-                  <input type="text" id="notifTitleInput" class="form-control text-xs py-1.5" placeholder="Nhập tiêu đề..." required>
+                    <!-- Map Controls -->
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                      <button onclick="LocationsModule.openCreateModal()"
+                        class="px-2.5 py-1.5 bg-brand-800 hover:bg-brand-900 text-white rounded-xl text-xs font-bold flex items-center gap-1 transition shadow-sm" title="Thêm địa điểm mới">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        <span>Thêm điểm</span>
+                      </button>
+
+                      <button id="btnToggleDrawPath" onclick="LocationsModule.toggleDrawPathMode()"
+                        class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 transition shadow-sm" title="Tự vẽ đường đi trên khuôn viên">
+                        <i data-lucide="pen-tool" class="w-3.5 h-3.5"></i>
+                        <span>Vẽ đường</span>
+                      </button>
+
+                      <button id="btnManagePaths" onclick="LocationsModule.openManagePathsModal()"
+                        class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1 transition" title="Quản lý mạng lưới đường đi">
+                        <i data-lucide="footprints" class="w-3.5 h-3.5 text-emerald-600"></i>
+                        <span id="campusPathsCountBadge" class="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-black">0</span>
+                      </button>
+
+                      <!-- Switch view: 2D vs Satellite -->
+                      <div class="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200/60 text-xs">
+                        <button id="btnMapRoadmap" onclick="LocationsModule.setMapType('roadmap')"
+                          class="px-2.5 py-1 text-xs font-bold rounded-lg bg-brand-800 text-white shadow-sm transition">
+                          2D
+                        </button>
+                        <button id="btnMapSatellite" onclick="LocationsModule.setMapType('satellite')"
+                          class="px-2.5 py-1 text-xs font-bold rounded-lg text-slate-600 hover:bg-slate-100 transition">
+                          Vệ tinh
+                        </button>
+                      </div>
+
+                      <!-- Toggle SOS Markers -->
+                      <button id="btnToggleSosLayer" onclick="LocationsModule.toggleSosLayer()" title="Hiển thị hoặc ẩn các điểm cảnh báo SOS trên bản đồ"
+                        class="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-2xs">
+                        <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+                        <span>SOS (<span id="mapSosActiveCount">0</span>)</span>
+                      </button>
+
+                      <!-- Reset Map View Center -->
+                      <button onclick="LocationsModule.resetMapView()" title="Đưa khung nhìn về toàn khuôn viên"
+                        class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center justify-center">
+                        <i data-lucide="crosshair" class="w-3.5 h-3.5"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Leaflet Map Container (Proportional side-by-side, NOT stretched wide, NOT pushed down) -->
+                  <div class="relative w-full rounded-2xl overflow-hidden border border-slate-200 shadow-inner h-[400px] lg:h-[calc(100vh-235px)] lg:min-h-[540px] lg:max-h-[760px]" style="z-index: 10;">
+                    <!-- Floating Path Drawing Banner -->
+                    <div id="pathDrawingBanner" class="hidden absolute top-3 left-3 right-3 z-[1000] bg-slate-900/95 backdrop-blur-md text-white p-3.5 rounded-2xl shadow-2xl border border-emerald-500/40 flex flex-col sm:flex-row items-center justify-between gap-3 animate-fade-in">
+                      <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-emerald-600/50">
+                          <i data-lucide="footprints" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                          <p class="text-xs font-bold text-white flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                            <span>Chế độ Vẽ Mạng Lưới Đường Đi (Nhiều nhánh rẽ)</span>
+                          </p>
+                          <div class="flex items-center gap-2 mt-0.5 text-[11px] text-slate-300 flex-wrap">
+                            <span class="flex items-center gap-1.5">
+                              <span>Đang chọn:</span>
+                              <select id="pathDrawingBranchSelect" onchange="LocationsModule.switchDrawingBranch(parseInt(this.value, 10))"
+                                class="bg-slate-800 text-amber-300 text-[11px] font-bold rounded-lg px-2 py-0.5 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-amber-400 cursor-pointer">
+                                <option value="0">Nhánh 1</option>
+                              </select>
+                            </span>
+                            <span>•</span>
+                            <span>Tổng: <span id="pathDrawingBranchCount" class="font-bold text-emerald-300">1</span> nhánh, <span id="pathDrawingPointCount" class="font-bold text-emerald-300">0</span> mốc, <span id="pathDrawingDistance" class="font-bold text-emerald-300">0m</span></span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
+                        <button type="button" onclick="LocationsModule.startNewBranch()" title="Bắt đầu vẽ nhánh rẽ mới"
+                          class="px-3 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition">
+                          <i data-lucide="git-branch" class="w-3.5 h-3.5"></i>
+                          <span>+ Nhánh mới</span>
+                        </button>
+                        <button type="button" onclick="LocationsModule.confirmDeleteCurrentBranch()" title="Xóa nhánh đang chọn"
+                          class="px-3 py-2 bg-rose-500/20 hover:bg-rose-500/40 text-rose-200 border border-rose-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+                          <i data-lucide="trash-2" class="w-3.5 h-3.5 text-rose-300"></i>
+                          <span>Xóa nhánh</span>
+                        </button>
+                        <button type="button" onclick="LocationsModule.undoLastPathPoint()"
+                          class="px-3 py-2 bg-white/10 hover:bg-white/20 text-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1">
+                          <i data-lucide="undo" class="w-3.5 h-3.5"></i>
+                          <span>Lùi 1 điểm</span>
+                        </button>
+                        <button type="button" onclick="LocationsModule.openSavePathModal()"
+                          class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition">
+                          <i data-lucide="check" class="w-4 h-4"></i>
+                          <span>Hoàn tất & Lưu</span>
+                        </button>
+                        <button type="button" onclick="LocationsModule.cancelDrawPathMode()"
+                          class="px-3.5 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-200 rounded-xl text-xs font-bold transition">
+                          Hủy vẽ
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Floating Coordinate Picker Banner -->
+                    <div id="mapPickingBanner" class="hidden absolute top-3 left-3 right-3 z-[1000] bg-slate-900/95 backdrop-blur-md text-white p-3.5 rounded-2xl shadow-2xl border border-white/20 flex flex-col sm:flex-row items-center justify-between gap-3 animate-fade-in">
+                      <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-red-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-red-500/50">
+                          <i data-lucide="crosshair" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                          <p class="text-xs font-bold text-white flex items-center gap-1.5" id="pickingBannerTitle">
+                            <span>Đang chọn tọa độ vị trí</span>
+                          </p>
+                          <p class="text-[11px] font-mono text-emerald-300 mt-0.5" id="pickingBannerCoords">
+                            Tọa độ: 12.650900, 108.024100 (Nhấp vào bản đồ hoặc kéo chốt ghim đỏ)
+                          </p>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                        <button type="button" id="btnSavePickedCoords" onclick="LocationsModule.confirmSavePickedCoords()"
+                          class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition">
+                          <i data-lucide="check" class="w-4 h-4"></i>
+                          <span id="btnSavePickedText">Lưu vị trí này ngay</span>
+                        </button>
+                        <button type="button" onclick="LocationsModule.cancelPickingCoords()"
+                          class="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-slate-200 rounded-xl text-xs font-bold transition">
+                          Hủy
+                        </button>
+                      </div>
+                    </div>
+
+                    <div id="adminCampusMap" class="w-full h-full"></div>
+                  </div>
+                  
+                  <div class="flex flex-wrap items-center justify-between text-[11px] text-slate-500 pt-1 gap-2">
+                    <div class="flex flex-wrap items-center gap-3">
+                      <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping inline-block"></span> <b class="text-red-600 font-extrabold">🚨 SOS khẩn cấp</b></span>
+                      <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span> Hiệu bộ</span>
+                      <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"></span> Giảng đường</span>
+                      <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-cyan-500 inline-block"></span> Thí nghiệm</span>
+                      <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> Y tế</span>
+                    </div>
+                    <div class="text-slate-400 text-[10px]">
+                      567 Lê Duẩn, TP. Buôn Ma Thuột
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- CỘT PHẢI: QUẢN LÝ DỮ LIỆU ĐỊA ĐIỂM & TRỰC BAN CỨU HỘ SOS (LG: 5 CỘT) -->
+              <div class="lg:col-span-5 xl:col-span-5 space-y-3">
+                
+                <!-- Thanh chuyển đổi tab phụ (Segmented Control) -->
+                <div class="bg-white p-1.5 rounded-2xl border border-slate-200/80 shadow-sm">
+                  <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                    <button id="panelTabBtn-locations" onclick="App.switchMapSubTab('locations')"
+                      class="flex-1 py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-white text-emerald-700 shadow-xs">
+                      <i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-500"></i>
+                      <span>Địa Điểm</span>
+                      <span id="panelLocationsBadge" class="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-bold">37</span>
+                    </button>
+
+                    <button id="panelTabBtn-sos" onclick="App.switchMapSubTab('sos')"
+                      class="flex-1 py-2 px-3 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition flex items-center justify-center gap-1.5">
+                      <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-red-500"></i>
+                      <span>Trực Ban SOS</span>
+                      <span id="panelSosBadge" class="hidden px-1.5 py-0.2 bg-red-600 text-white rounded-full text-[10px] font-extrabold animate-pulse">0</span>
+                    </button>
+
+                    <button id="panelTabBtn-both" onclick="App.switchMapSubTab('both')"
+                      class="py-2 px-2.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition flex items-center justify-center gap-1" title="Hiển thị đồng thời cả Địa điểm và Cứu hộ SOS">
+                      <i data-lucide="columns-2" class="w-3.5 h-3.5"></i>
+                      <span class="hidden sm:inline">Cả hai</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- KHỐI 1: DANH SÁCH ĐỊA ĐIỂM KHUÔN VIÊN -->
+                <div id="panelContent-locations" class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden space-y-0">
+                  <div class="p-3.5 sm:p-4 border-b border-slate-100 space-y-2.5">
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                        <h5 class="text-xs sm:text-sm font-bold text-slate-800">Quản Lý Địa Điểm Khuôn Viên</h5>
+                      </div>
+                      <div id="locationsTableCount" class="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full whitespace-nowrap">
+                        Đang tải danh sách...
+                      </div>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      <div class="relative flex-1">
+                        <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5"></i>
+                        <input type="text" id="locationSearchInput" placeholder="Tìm tên địa điểm, tòa nhà..."
+                          class="w-full pl-9 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500">
+                      </div>
+
+                      <div class="w-full sm:w-40">
+                        <select id="locationCategoryFilter"
+                          class="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-medium bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+                          <option value="Tất cả">Tất cả phân loại</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="overflow-x-auto overflow-y-auto custom-scroll h-[420px] lg:h-[calc(100vh-325px)] lg:min-h-[460px]">
+                    <table class="w-full text-left admin-table text-xs">
+                      <thead class="sticky top-0 bg-slate-50/95 backdrop-blur-xs z-10">
+                        <tr>
+                          <th class="w-14">ID</th>
+                          <th>Tên Địa Điểm & Mô Tả</th>
+                          <th>Tòa Nhà / Vị Trí</th>
+                          <th>Phân Loại</th>
+                          <th>Tọa Độ GPS</th>
+                          <th class="text-right">Thao Tác</th>
+                        </tr>
+                      </thead>
+                      <tbody id="locationsTableBody">
+                        <tr>
+                          <td colspan="6" class="py-12 text-center text-slate-400">Đang tải danh sách địa điểm...</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- KHỐI 2: TRỰC BAN CỨU HỘ SOS KHẨN CẤP -->
+                <div id="panelContent-sos" class="hidden bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden space-y-0">
+                  <div class="p-3.5 sm:p-4 border-b border-slate-100 space-y-2.5 bg-red-50/40">
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg bg-red-600 text-white flex items-center justify-center shrink-0 sos-pulse">
+                          <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                        </div>
+                        <div>
+                          <h5 class="text-xs sm:text-sm font-black text-red-900">Báo Động Cứu Hộ SOS 24/7</h5>
+                          <p class="text-[10px] text-red-700">Tọa độ GPS & số điện thoại trực ban</p>
+                        </div>
+                      </div>
+                      <span id="sosCountLabel" class="text-[11px] font-bold text-red-800 px-2.5 py-1 bg-white rounded-full border border-red-200 shadow-2xs">
+                        Đang tải...
+                      </span>
+                    </div>
+
+                    <!-- Filter pills -->
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-100 text-xs w-full sm:w-auto">
+                        <button type="button" id="sosFilterActiveBtn" onclick="SosModule.setFilter('active')" class="flex-1 sm:flex-initial px-2.5 py-1 rounded-md font-bold text-xs bg-white text-red-600 shadow-xs">
+                          Cần cứu hộ
+                        </button>
+                        <button type="button" id="sosFilterAllBtn" onclick="SosModule.setFilter('all')" class="flex-1 sm:flex-initial px-2.5 py-1 rounded-md font-medium text-xs text-slate-600 hover:text-slate-900">
+                          Tất cả
+                        </button>
+                        <button type="button" id="sosFilterResolvedBtn" onclick="SosModule.setFilter('resolved')" class="flex-1 sm:flex-initial px-2.5 py-1 rounded-md font-medium text-xs text-slate-600 hover:text-slate-900">
+                          Đã xử lý
+                        </button>
+                      </div>
+                      <button type="button" onclick="SosModule.loadAlerts()" class="p-1.5 text-slate-500 hover:text-red-600 hover:bg-white rounded-lg transition shrink-0" title="Làm mới danh sách SOS">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="overflow-x-auto overflow-y-auto custom-scroll h-[420px] lg:h-[calc(100vh-325px)] lg:min-h-[460px]">
+                    <table class="w-full text-left admin-table text-xs">
+                      <thead class="sticky top-0 bg-slate-50/95 backdrop-blur-xs z-10">
+                        <tr>
+                          <th class="w-10 text-center">STT</th>
+                          <th>Sinh Viên Gặp Nạn</th>
+                          <th>Trạng Thái</th>
+                          <th>Số Điện Thoại Khẩn</th>
+                          <th>Vị Trí & Tọa Độ GPS</th>
+                          <th>Thời Điểm</th>
+                          <th class="text-right">Thao Tác</th>
+                        </tr>
+                      </thead>
+                      <tbody id="sosTableBody">
+                        <tr>
+                          <td colspan="7" class="py-12 text-center text-slate-400">Đang tải danh sách cảnh báo SOS...</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Fallback container for legacy sosCampusMap reference if any script checks it -->
+            <div id="sosCampusMap" class="hidden"></div>
+          </section>
+
+          <!-- ───────────────────────────────────────────────────────────── -->
+          <!-- TAB 4: PHÁT THÔNG BÁO                                         -->
+          <!-- ───────────────────────────────────────────────────────────── -->
+          <section id="tab-notifications" class="hidden space-y-6">
+            <!-- Notification Creator Form -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+              <div class="flex items-center gap-2 mb-4">
+                <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <i data-lucide="send" class="w-4 h-4"></i>
                 </div>
                 <div>
-                  <label class="block text-xs font-semibold text-[#566A7F] mb-1">Phân loại</label>
-                  <select id="notifTypeSelect" class="form-select text-xs py-1.5">
-                    <option value="Chung">Chung</option>
-                    <option value="Học vụ">Học vụ</option>
-                    <option value="Khẩn cấp">Khẩn cấp</option>
-                  </select>
+                  <h4 class="font-bold text-sm text-slate-800">Đăng Thông Báo Mới</h4>
+                  <p class="text-xs text-slate-400">Thông báo sẽ hiển thị trực tiếp trên trang chủ ứng dụng sinh viên</p>
                 </div>
               </div>
-              <input type="hidden" id="notifSenderInput" value="Ban Giám Hiệu">
+
+              <form id="notifForm" onsubmit="NotificationsModule.handleCreate(event)" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div class="md:col-span-2">
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Tiêu đề thông báo *</label>
+                    <input type="text" id="notifTitleInput" required placeholder="VD: Lịch thi học kỳ I năm học 2026 - 2027"
+                      class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 font-medium">
+                  </div>
+
+                  <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Loại thông báo</label>
+                    <select id="notifTypeSelect" class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm font-medium bg-white">
+                      <option value="general">Thông báo chung / Bảo trì (Thẻ Xanh Dương)</option>
+                      <option value="urgent">Cảnh báo khẩn / Đổi phòng học (Thẻ Vàng)</option>
+                      <option value="success">Phản hồi đã xử lý / Hoàn tất (Thẻ Xanh Lá)</option>
+                      <option value="academic">Học vụ & Đào tạo (Thẻ Xanh Dương)</option>
+                      <option value="event">Sự kiện & Hoạt động (Thẻ Xanh Dương)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Đơn vị phát hành</label>
+                  <input type="text" id="notifSenderInput" placeholder="Phòng Đào Tạo" value="Phòng Đào Tạo"
+                    class="w-full md:w-1/3 px-3.5 py-2 rounded-xl border border-slate-200 text-sm font-medium">
+                </div>
+
+                <div>
+                  <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nội dung chi tiết *</label>
+                  <textarea id="notifContentInput" required rows="4" placeholder="Nhập đầy đủ thông tin chi tiết của thông báo..."
+                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                </div>
+
+                <div class="flex justify-end">
+                  <button type="submit" id="createNotifBtn"
+                    class="px-5 py-2.5 bg-brand-800 hover:bg-brand-900 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition shadow-sm">
+                    <i data-lucide="check" class="w-4 h-4"></i>
+                    <span>Phát thông báo ngay</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- History Table -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+              <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+                <h4 class="font-bold text-sm text-slate-800">Lịch Sử Thông Báo Đã Đăng</h4>
+                <span id="notifCountLabel" class="text-xs text-slate-500 font-medium">Đang tải...</span>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-left admin-table">
+                  <thead>
+                    <tr>
+                      <th class="w-12 text-center">STT</th>
+                      <th>Tiêu Đề & Nội Dung</th>
+                      <th>Phân Loại</th>
+                      <th>Người Đăng & Ngày</th>
+                      <th class="text-right">Thao Tác</th>
+                    </tr>
+                  </thead>
+                  <tbody id="notificationsTableBody">
+                    <tr>
+                      <td colspan="5" class="py-12 text-center text-slate-400">Đang tải danh sách thông báo...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <!-- ───────────────────────────────────────────────────────────── -->
+          <!-- TAB 5: Ý KIẾN & PHẢN ÁNH                                      -->
+          <!-- ───────────────────────────────────────────────────────────── -->
+          <section id="tab-feedback" class="hidden space-y-4">
+            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
               <div>
-                <label class="block text-xs font-semibold text-[#566A7F] mb-1">Nội dung chi tiết</label>
-                <textarea id="notifContentInput" rows="3" class="form-control text-xs" placeholder="Nội dung thông báo..." required></textarea>
+                <h4 class="font-bold text-sm text-slate-800">Danh Sách Ý Kiến & Phản Ánh Sinh Viên</h4>
+                <p class="text-xs text-slate-400">Tiếp nhận khiếu nại, góp ý về cơ sở vật chất, giảng dạy và khuôn viên</p>
               </div>
-              <button type="submit" id="createNotifBtn" class="btn btn-primary btn-sm"><i class="bx bx-send"></i> Phát Thông Báo</button>
-            </form>
-          </div>
-          <div class="card">
-            <div class="card-header"><h5 class="text-base font-bold text-[#566A7F]">Lịch Sử Thông Báo (<span id="notifCountLabel">0</span>)</h5></div>
-            <div class="table-responsive"><table class="table"><thead><tr><th>Tiêu Đề</th><th>Loại</th><th>Người Gửi</th><th>Ngày Đăng</th><th class="text-right">Thao Tác</th></tr></thead><tbody id="notificationsTableBody"></tbody></table></div>
-          </div>
-        </section>
+              <span id="feedbackCountLabel" class="text-xs text-slate-500 font-medium">Đang tải...</span>
+            </div>
 
-        <!-- VIEW: FEEDBACK -->
-        <section id="view-feedback" class="hidden space-y-4">
-          <div class="card">
-            <div class="card-header"><h5 class="text-base font-bold text-[#566A7F]">Ý Kiến Phản Ánh Từ Sinh Viên (<span id="feedbackCountLabel">0</span>)</h5></div>
-            <div class="table-responsive"><table class="table"><thead><tr><th>Sinh Viên</th><th>Chủ Đề</th><th>Nội Dung</th><th>Thời Gian</th><th>Trạng Thái</th><th class="text-right">Thao Tác</th></tr></thead><tbody id="feedbackTableBody"></tbody></table></div>
-          </div>
-        </section>
-
-        <!-- VIEW: SOS -->
-        <section id="view-sos" class="hidden space-y-4">
-          <div class="card overflow-hidden">
-            <div class="card-header flex justify-between py-3">
-              <h5 class="text-base font-bold text-[#566A7F]">Bản Đồ Báo Động Khẩn Cấp SOS 24/7 (<span id="sosMapStatusCount">0</span>)</h5>
-              <div class="flex gap-1.5">
-                <button type="button" id="btnSosMapRoadmap" class="btn btn-primary btn-sm text-xs py-0.5 px-2">Bản đồ</button>
-                <button type="button" id="btnSosMapSatellite" class="btn btn-outline-primary btn-sm text-xs py-0.5 px-2">Vệ tinh</button>
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+              <div class="overflow-x-auto">
+                <table class="w-full text-left admin-table">
+                  <thead>
+                    <tr>
+                      <th class="w-12 text-center">STT</th>
+                      <th>Sinh Viên</th>
+                      <th>Chuyên Mục</th>
+                      <th>Trạng Thái</th>
+                      <th>Nội Dung Phản Ánh</th>
+                      <th>Thời Gian</th>
+                      <th class="text-right">Thao Tác</th>
+                    </tr>
+                  </thead>
+                  <tbody id="feedbackTableBody">
+                    <tr>
+                      <td colspan="7" class="py-12 text-center text-slate-400">Đang tải danh sách phản ánh...</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
-            <div id="sosCampusMap" class="w-full h-80"></div>
-          </div>
-          <div class="card">
-            <div class="card-header flex justify-between">
-              <h5 class="text-base font-bold text-[#566A7F]">Danh Sách Báo Động SOS (<span id="sosCountLabel">0</span>)</h5>
-              <div class="flex gap-1">
-                <button type="button" id="sosFilterAllBtn" class="btn btn-primary btn-sm text-xs py-1 px-2.5" onclick="Sos.filterStatus('all')">Tất cả</button>
-                <button type="button" id="sosFilterActiveBtn" class="btn btn-outline-primary btn-sm text-xs py-1 px-2.5" onclick="Sos.filterStatus('active')">Chưa xử lý</button>
-                <button type="button" id="sosFilterResolvedBtn" class="btn btn-outline-primary btn-sm text-xs py-1 px-2.5" onclick="Sos.filterStatus('resolved')">Đã giải quyết</button>
-              </div>
-            </div>
-            <div class="table-responsive"><table class="table"><thead><tr><th>Sinh Viên</th><th>Vị Trí</th><th>Thời Gian</th><th>Trạng Thái</th><th class="text-right">Hành Động</th></tr></thead><tbody id="sosTableBody"></tbody></table></div>
-          </div>
-        </section>
-      </main>
+          </section>
+
+          <!-- ───────────────────────────────────────────────────────────── -->
+          <!-- TAB 6: TRỰC BAN CỨU HỘ KHẨN CẤP (SOS) - ĐÃ GỘP VÀO TAB-LOCATIONS -->
+          <!-- ───────────────────────────────────────────────────────────── -->
+          <section id="tab-sos" class="hidden"></section>
+        </main>
+
+        <!-- FOOTER -->
+        <footer class="bg-white border-t border-slate-200/80 py-4 px-6 text-center text-xs text-slate-400">
+          <p>Trang Quản Trị Hệ Thống - SmartCampus &copy; 2026. Tất cả các quyền được bảo lưu.</p>
+        </footer>
+      </div>
     </div>
   </div>
 
-  <!-- MODALS -->
-  <!-- USER MODAL -->
-  <div id="userModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
-    <div class="card w-full max-w-lg p-6 shadow-2xl mb-0">
-      <div class="flex justify-between items-center mb-4">
-        <h5 id="userModalTitle" class="text-base font-bold text-[#566A7F]">Thêm Người Dùng</h5>
-        <button type="button" onclick="Users.closeModal()" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
-      </div>
-      <form id="userForm" onsubmit="Users.handleSave(event)" class="space-y-3">
-        <div class="grid grid-cols-2 gap-3">
-          <div><label class="block text-xs font-semibold mb-1">MSSV / Mã ID</label><input type="text" id="modalMssvInput" class="form-control text-xs" required></div>
-          <div><label class="block text-xs font-semibold mb-1">Họ và tên</label><input type="text" id="modalNameInput" class="form-control text-xs" required></div>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div><label class="block text-xs font-semibold mb-1">Email</label><input type="email" id="modalEmailInput" class="form-control text-xs" required></div>
-          <div><label class="block text-xs font-semibold mb-1">Số điện thoại</label><input type="text" id="modalPhoneInput" class="form-control text-xs"></div>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div><label class="block text-xs font-semibold mb-1">Khoa</label><input type="text" id="modalFacultyInput" class="form-control text-xs"></div>
-          <div><label class="block text-xs font-semibold mb-1">Lớp</label><input type="text" id="modalClassInput" class="form-control text-xs"></div>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-semibold mb-1">Vai trò</label>
-            <select id="modalRoleInput" class="form-select text-xs"><option value="student">Sinh viên</option><option value="admin">Quản trị viên</option></select>
-          </div>
-          <div>
-            <label class="block text-xs font-semibold mb-1">Mật khẩu</label>
-            <input type="password" id="modalPasswordInput" class="form-control text-xs" placeholder="Để trống nếu không đổi">
-            <span id="modalPasswordHelp" class="text-[10px] text-gray-400"></span>
-          </div>
-        </div>
-        <input type="hidden" id="modalAvatarInput" value="">
-        <span id="modalAvatarPreview" class="hidden"></span>
-        <div class="flex justify-end gap-2 pt-2">
-          <button type="button" class="btn btn-outline-primary btn-sm" onclick="Users.closeModal()">Hủy</button>
-          <button type="submit" id="saveUserBtn" class="btn btn-primary btn-sm font-semibold">Lưu Thay Đổi</button>
-        </div>
-      </form>
-    </div>
-  </div>
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- 3. CÁC MODAL CHI TIẾT (POPUPS)                                        -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
 
-  <!-- LOCATION MODAL -->
-  <div id="locationModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
-    <div class="card w-full max-w-lg p-6 shadow-2xl mb-0">
-      <div class="flex justify-between items-center mb-4">
-        <h5 id="locationModalTitle" class="text-base font-bold text-[#566A7F]">Thêm Địa Điểm</h5>
-        <button type="button" onclick="Locations.closeModal()" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+  <!-- Modal Thêm/Sửa Người Dùng -->
+  <div id="userModal" class="hidden fixed inset-0 z-50 items-center justify-center p-4">
+    <div class="modal-overlay absolute inset-0" onclick="closeModal('userModal')"></div>
+    <div class="modal-content relative bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-10 animate-fade-in">
+      <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 id="userModalTitle" class="font-bold text-sm text-slate-800">Thêm mới tài khoản</h3>
+        <button onclick="closeModal('userModal')" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
       </div>
-      <form id="locationForm" onsubmit="Locations.handleSave(event)" class="space-y-3">
-        <div class="grid grid-cols-2 gap-3">
-          <div><label class="block text-xs font-semibold mb-1">Tên địa điểm</label><input type="text" id="modalLocName" class="form-control text-xs" required></div>
-          <div><label class="block text-xs font-semibold mb-1">Tòa nhà / Khu</label><input type="text" id="modalLocBuilding" class="form-control text-xs"></div>
+
+      <form id="userForm" onsubmit="UsersModule.handleSaveUser(event)" class="p-6 space-y-4">
+        <!-- Ảnh đại diện / Avatar preview & input -->
+        <div class="flex items-center gap-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
+          <div class="relative w-14 h-14 rounded-2xl overflow-hidden bg-slate-200 border-2 border-white shadow-xs shrink-0 flex items-center justify-center">
+            <img id="modalAvatarPreview" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Avatar" class="w-full h-full object-cover" />
+          </div>
+          <div class="flex-1 min-w-0">
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Ảnh đại diện (URL hoặc tải ảnh)</label>
+            <div class="flex items-center gap-2">
+              <input type="text" id="modalAvatarInput" placeholder="https://... hoặc bấm tải ảnh"
+                class="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <label class="px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer transition shrink-0 flex items-center gap-1 shadow-2xs">
+                <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+                <span>Tải ảnh</span>
+                <input type="file" id="modalAvatarFileInput" accept="image/*" class="hidden" onchange="UsersModule.handleAvatarFileChange(event)" />
+              </label>
+            </div>
+          </div>
         </div>
-        <div class="grid grid-cols-2 gap-3">
+
+        <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs font-semibold mb-1">Phân loại</label>
-            <select id="modalLocCategory" class="form-select text-xs">
-              <option value="Học tập">Học tập</option><option value="Hành chính">Hành chính</option>
-              <option value="Tiện ích">Tiện ích</option><option value="Ký túc xá">Ký túc xá</option><option value="Thể thao">Thể thao</option>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Mã sinh viên (MSSV) *</label>
+            <input type="text" id="modalMssvInput" required placeholder="23103001"
+              class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-brand-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Vai trò</label>
+            <select id="modalRoleInput" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-semibold bg-white">
+              <option value="sinh_vien">Sinh viên</option>
+              <option value="admin">Quản trị viên</option>
             </select>
           </div>
-          <div><label class="block text-xs font-semibold mb-1">Tầng</label><input type="text" id="modalLocFloor" class="form-control text-xs"></div>
         </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div><label class="block text-xs font-semibold mb-1">Vĩ độ (Lat)</label><input type="number" step="any" id="modalLocLat" class="form-control text-xs" required></div>
-          <div><label class="block text-xs font-semibold mb-1">Kinh độ (Lng)</label><input type="number" step="any" id="modalLocLng" class="form-control text-xs" required></div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Họ và tên *</label>
+          <input type="text" id="modalNameInput" required placeholder="Nguyễn Văn A"
+            class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500">
         </div>
-        <input type="hidden" id="modalLocColor" value="#696CFF">
-        <div><label class="block text-xs font-semibold mb-1">Mô tả chi tiết</label><textarea id="modalLocDescription" rows="2" class="form-control text-xs"></textarea></div>
-        <div class="flex justify-between items-center pt-2">
-          <button type="button" class="btn btn-outline-primary btn-sm text-xs" onclick="Locations.pickCoordsOnMap()"><i class="bx bx-crosshair"></i> Chọn trên bản đồ</button>
-          <div class="flex gap-2">
-            <button type="button" class="btn btn-outline-primary btn-sm" onclick="Locations.closeModal()">Hủy</button>
-            <button type="submit" id="saveLocationBtn" class="btn btn-primary btn-sm font-semibold">Lưu Điểm</button>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Email</label>
+            <input type="email" id="modalEmailInput" placeholder="sinhvien@sv.ttn.edu.vn"
+              class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-medium">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Số điện thoại</label>
+            <input type="tel" id="modalPhoneInput" placeholder="0987654321"
+              class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-medium">
           </div>
         </div>
-      </form>
-    </div>
-  </div>
 
-  <div id="notifEditModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
-    <div class="card w-full max-w-lg p-6 shadow-2xl mb-0">
-      <div class="flex justify-between items-center mb-4">
-        <h5 id="notifEditModalTitle" class="text-base font-bold text-[#566A7F]">Sửa Thông Báo</h5>
-        <button type="button" onclick="Notifications.closeEditModal()" class="text-gray-400 text-xl">&times;</button>
-      </div>
-      <form onsubmit="Notifications.handleSaveEdit(event)" class="space-y-3">
-        <input type="hidden" id="editNotifIdInput"><input type="hidden" id="editNotifSenderInput">
-        <div><label class="block text-xs font-semibold mb-1">Tiêu đề</label><input type="text" id="editNotifTitleInput" class="form-control text-xs" required></div>
-        <div><label class="block text-xs font-semibold mb-1">Loại</label><select id="editNotifTypeSelect" class="form-select text-xs"><option value="Chung">Chung</option><option value="Học vụ">Học vụ</option><option value="Khẩn cấp">Khẩn cấp</option></select></div>
-        <div><label class="block text-xs font-semibold mb-1">Nội dung</label><textarea id="editNotifContentInput" rows="3" class="form-control text-xs" required></textarea></div>
-        <div class="flex justify-end gap-2 pt-2">
-          <button type="button" class="btn btn-outline-primary btn-sm" onclick="Notifications.closeEditModal()">Hủy</button>
-          <button type="submit" id="saveNotifEditBtn" class="btn btn-primary btn-sm">Cập Nhật</button>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Lớp</label>
+            <input type="text" id="modalClassInput" placeholder="K23"
+              class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-medium">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Khoa</label>
+            <input type="text" id="modalFacultyInput" placeholder="Công nghệ Thông tin"
+              class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-medium">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Mật khẩu</label>
+          <input type="password" id="modalPasswordInput" placeholder="••••••••"
+            class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-medium">
+          <p id="modalPasswordHelp" class="text-[11px] text-slate-400 mt-1 hidden">Để trống nếu không muốn đổi mật khẩu</p>
+        </div>
+
+        <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
+          <button type="button" onclick="closeModal('userModal')"
+            class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition">
+            Hủy
+          </button>
+          <button type="submit" id="saveUserBtn"
+            class="px-5 py-2 bg-brand-800 hover:bg-brand-900 text-white rounded-xl text-xs font-bold transition shadow-sm">
+            Lưu thông tin
+          </button>
         </div>
       </form>
     </div>
   </div>
 
-  <div id="feedbackDetailModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
-    <div class="card w-full max-w-md p-6 shadow-2xl mb-0">
-      <div class="flex justify-between items-center mb-3"><h5 class="text-base font-bold text-[#566A7F]">Chi Tiết Ý Kiến Phản Ánh</h5><button type="button" onclick="Feedback.closeDetailModal()">&times;</button></div>
-      <div class="space-y-2 text-xs">
-        <div><b>Sinh viên:</b> <span id="fbModalStudent"></span></div>
-        <div><b>Chủ đề:</b> <span id="fbModalTitle"></span></div>
-        <div><b>Phân loại:</b> <span id="fbModalCategory"></span></div>
-        <div><b>Thời gian:</b> <span id="fbModalDate"></span></div>
-        <div><b>Trạng thái:</b> <span id="fbModalStatus"></span></div>
-        <div class="pt-2 border-t"><b>Nội dung:</b><p id="fbModalContent" class="mt-1 p-2 bg-gray-50 rounded"></p></div>
+  <!-- Modal Chỉnh Sửa Thông Báo -->
+  <div id="notifEditModal" class="hidden fixed inset-0 z-50 items-center justify-center p-4">
+    <div class="modal-overlay absolute inset-0" onclick="closeModal('notifEditModal')"></div>
+    <div class="modal-content relative bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-10 animate-fade-in">
+      <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 id="notifEditModalTitle" class="font-bold text-sm text-slate-800">Chỉnh sửa thông báo</h3>
+        <button onclick="closeModal('notifEditModal')" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
       </div>
-      <div class="flex justify-end mt-4"><button type="button" class="btn btn-primary btn-sm" onclick="Feedback.closeDetailModal()">Đóng</button></div>
+
+      <form id="notifEditForm" onsubmit="NotificationsModule.handleSaveEdit(event)" class="p-6 space-y-4">
+        <input type="hidden" id="editNotifIdInput">
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Tiêu đề thông báo *</label>
+          <input type="text" id="editNotifTitleInput" required placeholder="Nhập tiêu đề thông báo..."
+            class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Loại thông báo</label>
+            <select id="editNotifTypeSelect" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-medium bg-white">
+              <option value="general">Thông báo chung</option>
+              <option value="urgent">Cảnh báo khẩn / Đổi phòng</option>
+              <option value="success">Đã giải quyết / Hoàn tất</option>
+              <option value="academic">Học vụ & Đào tạo</option>
+              <option value="event">Sự kiện & Hoạt động</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Đơn vị phát hành</label>
+            <input type="text" id="editNotifSenderInput" placeholder="Phòng Đào Tạo"
+              class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-medium">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nội dung chi tiết *</label>
+          <textarea id="editNotifContentInput" required rows="5" placeholder="Nhập nội dung thông báo..."
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+        </div>
+
+        <div class="pt-2 flex justify-end gap-3 border-t border-slate-100">
+          <button type="button" onclick="closeModal('notifEditModal')"
+            class="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition">
+            Hủy bỏ
+          </button>
+          <button type="submit" id="saveNotifEditBtn"
+            class="px-5 py-2 bg-brand-800 hover:bg-brand-900 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5">
+            <i data-lucide="check" class="w-3.5 h-3.5"></i>
+            <span>Lưu thay đổi</span>
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 
-  <div id="confirmModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
-    <div class="card w-full max-w-sm p-6 shadow-2xl mb-0 text-center">
-      <div class="avatar-initial rounded-full bg-label-danger mx-auto mb-3"><i class="bx bx-trash text-2xl"></i></div>
-      <h5 id="confirmModalTitle" class="text-base font-bold text-[#566A7F] mb-1">Xác Nhận Xóa</h5>
-      <p id="confirmModalMessage" class="text-xs text-[#8592A3] mb-4">Hành động này không thể hoàn tác.</p>
-      <div class="flex justify-center gap-2">
-        <button type="button" class="btn btn-outline-primary btn-sm" onclick="App.closeConfirmModal()">Hủy</button>
-        <button type="button" class="btn btn-primary btn-sm bg-[#FF3E1D] border-[#FF3E1D]" onclick="App.executeConfirmAction()">Xóa Vĩnh Viễn</button>
+  <!-- Modal Chi Tiết Phản Ánh -->
+  <div id="feedbackDetailModal" class="hidden fixed inset-0 z-50 items-center justify-center p-4">
+    <div class="modal-overlay absolute inset-0" onclick="closeModal('feedbackDetailModal')"></div>
+    <div class="modal-content relative bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-10 animate-fade-in">
+      <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="font-bold text-sm text-slate-800">Chi Tiết Ý Kiến Phản Ánh</h3>
+        <button onclick="closeModal('feedbackDetailModal')" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <div>
+          <span class="text-[11px] uppercase font-bold text-slate-400 tracking-wider">Người gửi</span>
+          <p id="fbModalStudent" class="text-sm font-bold text-slate-800 mt-0.5">--</p>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <span class="text-[11px] uppercase font-bold text-slate-400 tracking-wider">Chuyên mục</span>
+            <p id="fbModalCategory" class="text-xs font-semibold text-brand-800 mt-0.5">--</p>
+          </div>
+          <div>
+            <span class="text-[11px] uppercase font-bold text-slate-400 tracking-wider">Trạng thái</span>
+            <p id="fbModalStatus" class="text-xs font-bold mt-0.5">--</p>
+          </div>
+          <div>
+            <span class="text-[11px] uppercase font-bold text-slate-400 tracking-wider">Thời gian</span>
+            <p id="fbModalDate" class="text-xs text-slate-500 mt-0.5">--</p>
+          </div>
+        </div>
+
+        <div>
+          <span class="text-[11px] uppercase font-bold text-slate-400 tracking-wider">Tiêu đề</span>
+          <p id="fbModalTitle" class="text-sm font-bold text-slate-900 mt-0.5">--</p>
+        </div>
+
+        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+          <span class="text-[11px] uppercase font-bold text-slate-400 tracking-wider block mb-1">Nội dung phản ánh</span>
+          <p id="fbModalContent" class="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">--</p>
+        </div>
+
+        <div class="pt-2 flex items-center justify-between gap-2 border-t border-slate-100">
+          <div class="flex items-center gap-2">
+            <button type="button" id="fbModalResolveBtn" onclick="FeedbackModule.resolveCurrentModal()"
+              class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+              <i data-lucide="check" class="w-3.5 h-3.5"></i>
+              Đã giải quyết
+            </button>
+            <button type="button" id="fbModalProgressBtn" onclick="FeedbackModule.progressCurrentModal()"
+              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+              <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+              Đang xử lý
+            </button>
+          </div>
+          <button type="button" onclick="closeModal('feedbackDetailModal')"
+            class="px-4 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl text-xs font-bold transition">
+            Đóng
+          </button>
+        </div>
       </div>
     </div>
   </div>
 
-  <div id="managePathsModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
-    <div class="card w-full max-w-md p-6 shadow-2xl mb-0">
-      <div class="flex justify-between items-center mb-3"><h5 class="text-base font-bold text-[#566A7F]">Lưu Tuyến Đường (<span id="managePathsTotalCount">0</span>)</h5><button type="button" onclick="Locations.closeManagePathsModal()">&times;</button></div>
-      <div class="space-y-3">
-        <div><input type="text" id="modalPathName" class="form-control text-xs" placeholder="Tên tuyến đường..."></div>
-        <div><select id="modalPathType" class="form-select text-xs"><option value="walkway">Đường đi bộ</option><option value="road">Đường xe chạy</option></select></div>
-        <div id="managePathsList" class="max-h-40 overflow-y-auto text-xs space-y-1"></div>
-        <div class="flex justify-end gap-2 pt-2"><button type="button" class="btn btn-outline-primary btn-sm" onclick="Locations.closeManagePathsModal()">Đóng</button><button type="button" id="btnSubmitSavePath" class="btn btn-primary btn-sm" onclick="Locations.saveDrawnPath()">Lưu Tuyến</button></div>
+  <!-- Modal Thêm / Chỉnh Sửa Địa Điểm Khuôn Viên -->
+  <div id="locationModal" class="hidden fixed inset-0 z-50 items-center justify-center p-4">
+    <div class="modal-overlay absolute inset-0" onclick="closeModal('locationModal')"></div>
+    <div class="modal-content relative bg-white w-full max-w-xl rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-10 animate-fade-in max-h-[90vh] flex flex-col">
+      <!-- Modal Header -->
+      <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <i data-lucide="map-pin" class="w-4 h-4"></i>
+          </div>
+          <h3 id="locationModalTitle" class="font-bold text-sm text-slate-800">Thêm Địa Điểm Khuôn Viên Mới</h3>
+        </div>
+        <button onclick="closeModal('locationModal')" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body Form -->
+      <form id="locationForm" class="p-6 space-y-4 overflow-y-auto custom-scroll flex-1">
+        <!-- Tên địa điểm -->
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Tên địa điểm / Công trình *</label>
+          <input type="text" id="modalLocName" required placeholder="VD: Tòa nhà Điều hành (Khu Hiệu bộ), Nhà học số 2..."
+            class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500">
+        </div>
+
+        <!-- Phân loại & Màu sắc -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Phân loại danh mục</label>
+            <select id="modalLocCategory" class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <option value="Giảng đường">Giảng đường</option>
+              <option value="Hành chính">Hành chính</option>
+              <option value="Phòng thí nghiệm">Phòng thí nghiệm</option>
+              <option value="Y tế">Y tế</option>
+              <option value="Thư viện">Thư viện</option>
+              <option value="Ký túc xá">Ký túc xá</option>
+              <option value="Thể thao">Thể thao</option>
+              <option value="Dịch vụ">Dịch vụ</option>
+              <option value="Tiện ích">Tiện ích</option>
+              <option value="Phòng máy">Phòng máy</option>
+              <option value="Khác">Khác</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Màu sắc ghim bản đồ</label>
+            <div class="flex items-center gap-2">
+              <input type="color" id="modalLocColor" value="#3B82F6"
+                class="w-10 h-9 p-0.5 rounded-lg border border-slate-200 cursor-pointer bg-white">
+              <span class="text-xs text-slate-500 font-medium">Nhấp chọn màu hiển thị</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tòa nhà & Tầng -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Khu / Tên tòa nhà</label>
+            <input type="text" id="modalLocBuilding" placeholder="VD: Tòa Hiệu Bộ, Nhà học số 5..."
+              class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm font-medium">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Tầng / Vị trí phòng</label>
+            <input type="text" id="modalLocFloor" placeholder="VD: Tầng 1 - 7, Tầng trệt..."
+              class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm font-medium">
+          </div>
+        </div>
+
+        <!-- Tọa độ GPS -->
+        <div class="bg-blue-50/70 p-4 rounded-xl border border-blue-100 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-brand-800 uppercase flex items-center gap-1.5">
+              <i data-lucide="crosshair" class="w-3.5 h-3.5"></i>
+              Tọa độ vị trí GPS (Bắt buộc)
+            </span>
+            <button type="button" onclick="LocationsModule.pickCoordsFromMapHelp()"
+              class="text-[11px] font-bold text-brand-800 hover:text-brand-900 underline flex items-center gap-1">
+              <i data-lucide="map" class="w-3 h-3"></i>
+              Chọn nhanh trên bản đồ
+            </button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-0.5">Vĩ độ (Lat) *</label>
+              <input type="number" step="any" id="modalLocLat" required placeholder="12.650900"
+                class="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-mono bg-white">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-0.5">Kinh độ (Lng) *</label>
+              <input type="number" step="any" id="modalLocLng" required placeholder="108.024100"
+                class="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-mono bg-white">
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-500 italic">
+            <i data-lucide="info" class="w-4 h-4 text-blue-600 inline mr-1"></i> Bạn có thể nhấp chuột bất kỳ đâu trên bản đồ chính hoặc kéo chốt ghim đỏ để cập nhật tọa độ tự động.
+          </p>
+        </div>
+
+        <!-- Mô tả -->
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Mô tả chi tiết / Các phòng ban</label>
+          <textarea id="modalLocDescription" rows="3" placeholder="Nhập các đơn vị, phòng ban hoặc thông tin giới thiệu..."
+            class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+        </div>
+
+        <!-- Actions -->
+        <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-2 shrink-0">
+          <button type="button" onclick="closeModal('locationModal')"
+            class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition">
+            Hủy
+          </button>
+          <button type="submit" id="saveLocationBtn"
+            class="px-5 py-2 bg-brand-800 hover:bg-brand-900 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-2">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>Lưu địa điểm</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Lưu Tuyến Đường / Lối Đi Mới -->
+  <div id="savePathModal" class="hidden fixed inset-0 z-50 items-center justify-center p-4">
+    <div class="modal-overlay absolute inset-0" onclick="closeModal('savePathModal')"></div>
+    <div class="modal-content relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-100 p-6 z-10 animate-fade-in space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <i data-lucide="footprints" class="w-4 h-4"></i>
+          </div>
+          <h3 class="font-bold text-sm text-slate-800">Lưu Tuyến Đường / Lối Đi Mới</h3>
+        </div>
+        <button onclick="closeModal('savePathModal')" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <form id="savePathForm" onsubmit="LocationsModule.confirmSavePath(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Tên tuyến đường / lối đi *</label>
+          <input type="text" id="modalPathName" required placeholder="VD: Lối đi bộ Khu Giảng đường - Ký túc xá..."
+            class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Loại lối đi</label>
+          <select id="modalPathType" class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            <option value="walkway">Lối đi bộ (Ưu tiên sinh viên)</option>
+            <option value="main_road">Trục đường chính nội bộ</option>
+            <option value="secondary_road">Đường nhánh / Lối vòng</option>
+          </select>
+        </div>
+
+        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60 text-xs text-slate-600 space-y-1">
+          <p class="flex items-center gap-1.5"><i data-lucide="git-branch" class="w-4 h-4 text-amber-500"></i> Số nhánh rẽ: <span id="savePathModalBranches" class="font-bold text-amber-600">1</span> nhánh</p>
+          <p class="flex items-center gap-1.5"><i data-lucide="map-pin" class="w-4 h-4 text-emerald-500"></i> Tổng mốc tọa độ: <span id="savePathModalCount" class="font-bold text-emerald-600">0</span> điểm</p>
+          <p class="flex items-center gap-1.5"><i data-lucide="activity" class="w-4 h-4 text-emerald-500"></i> Tổng chiều dài mạng lưới: <span id="savePathModalDistance" class="font-bold text-emerald-600">0m</span></p>
+          <p class="text-[11px] text-slate-400 pt-1">Mạng lưới nhiều nhánh này sẽ lập tức đồng bộ cho ứng dụng Sinh viên để dẫn đường đi bộ qua các ngã rẽ trong khuôn viên.</p>
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+          <button type="button" onclick="closeModal('savePathModal')"
+            class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition">
+            Tiếp tục vẽ
+          </button>
+          <button type="submit" id="btnSubmitSavePath"
+            class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>Lưu tuyến đường</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Quản Lý Danh Sách Lối Đi Nội Bộ -->
+  <div id="managePathsModal" class="hidden fixed inset-0 z-50 items-center justify-center p-4">
+    <div class="modal-overlay absolute inset-0" onclick="closeModal('managePathsModal')"></div>
+    <div class="modal-content relative bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-10 animate-fade-in max-h-[85vh] flex flex-col">
+      <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <i data-lucide="footprints" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-sm text-slate-800">Danh Sách Tuyến Đường Nội Bộ</h3>
+            <p class="text-[11px] text-slate-500">Mạng lưới lối đi phục vụ thuật toán chỉ đường trong khuôn viên</p>
+          </div>
+        </div>
+        <button onclick="closeModal('managePathsModal')" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div id="managePathsList" class="p-6 divide-y divide-slate-100 overflow-y-auto custom-scroll flex-1">
+        <div class="text-center text-slate-400 text-xs py-8">Đang tải danh sách đường đi...</div>
+      </div>
+
+      <div class="bg-slate-50 px-6 py-3 border-t border-slate-100 flex items-center justify-between shrink-0">
+        <span id="managePathsTotalCount" class="text-xs text-slate-500 font-medium">Tổng cộng: 0 tuyến</span>
+        <button onclick="closeModal('managePathsModal')" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition">
+          Đóng
+        </button>
       </div>
     </div>
   </div>
 
-  <div class="hidden">
-    <div id="panelContent-locations"></div><div id="panelContent-sos"></div>
-    <span id="panelLocationsBadge"></span><span id="panelSosBadge"></span>
-    <button id="panelTabBtn-both"></button><button id="panelTabBtn-locations"></button><button id="panelTabBtn-sos"></button>
-    <span id="savePathModalBranches"></span><span id="savePathModalCount"></span><span id="savePathModalDistance"></span>
-    <span id="statTeamFeedbackCount"></span><span id="statTeamLocationsCount"></span><span id="statTeamSosCount"></span><span id="statTeamStudentsCount"></span>
-    <span id="distFeedbackCount"></span>
+  <!-- Modal Xác Nhận (Confirm Dialog) -->
+  <div id="confirmModal" class="hidden fixed inset-0 z-50 items-center justify-center p-4">
+    <div class="modal-overlay absolute inset-0" onclick="closeModal('confirmModal')"></div>
+    <div class="modal-content relative bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-slate-100 p-6 z-10 animate-fade-in text-center space-y-4">
+      <div class="w-12 h-12 bg-red-50 text-red-600 rounded-2xl mx-auto flex items-center justify-center">
+        <i data-lucide="alert-circle" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <h4 id="confirmModalTitle" class="font-bold text-sm text-slate-900">Xác nhận thao tác</h4>
+        <p id="confirmModalMessage" class="text-xs text-slate-500 mt-1 leading-relaxed">Bạn có chắc chắn muốn thực hiện hành động này?</p>
+      </div>
+      <div class="flex items-center justify-center gap-2 pt-2">
+        <button onclick="closeModal('confirmModal')"
+          class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition">
+          Hủy bỏ
+        </button>
+        <button onclick="App.executeConfirm()"
+          class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition shadow-sm">
+          Đồng ý
+        </button>
+      </div>
+    </div>
   </div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="/js/api.js"></script>
-  <script src="/js/app.js"></script>
-  <script src="/js/dashboard.js"></script>
-  <script src="/js/users.js"></script>
-  <script src="/js/locations.js"></script>
-  <script src="/js/notifications.js"></script>
-  <script src="/js/feedback.js"></script>
-  <script src="/js/sos.js"></script>
+  <!-- JavaScript Modules -->
+  <script src="/env.js?v=2"></script>
+  <script src="/portal/js/api.js?v=2"></script>
+  <script src="/portal/js/dashboard.js?v=2"></script>
+  <script src="/portal/js/users.js?v=2"></script>
+  <script src="/portal/js/locations.js?v=2"></script>
+  <script src="/portal/js/notifications.js?v=2"></script>
+  <script src="/portal/js/feedback.js?v=2"></script>
+  <script src="/portal/js/sos.js?v=2"></script>
+  <script src="/portal/js/app.js?v=2"></script>
 </body>
 </html>

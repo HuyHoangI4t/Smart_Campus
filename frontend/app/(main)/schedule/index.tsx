@@ -61,7 +61,7 @@ export default function ScheduleScreen() {
   const [selectedDay, setSelectedDay] = useState(todayDayNum);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [scheduleList, setScheduleList] = useState<ScheduleItem[]>(FALLBACK_SCHEDULE);
+  const [scheduleList, setScheduleList] = useState<ScheduleItem[]>([]);
   const [studentInfo, setStudentInfo] = useState<{ mssv: string; name: string }>({ mssv: "", name: "" });
   const initialDefaultWeeks = useMemo(() => generateDefaultAvailableWeeks(), []);
   const initialCurrentWeek = initialDefaultWeeks.find((w) => w.isCurrent) || initialDefaultWeeks[1] || initialDefaultWeeks[0];
@@ -394,6 +394,9 @@ export default function ScheduleScreen() {
     } catch (error) {
       console.warn("Lỗi tải thời khóa biểu:", error);
       setIsOfflineData(true);
+      if (scheduleList.length === 0) {
+        setScheduleList(FALLBACK_SCHEDULE);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -515,9 +518,9 @@ export default function ScheduleScreen() {
       />
 
       {isLoggedIn === null || (loading && scheduleList.length === 0) ? (
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: bottomPadding }}>
-          <ScheduleSkeleton />
-        </ScrollView>
+        <View style={{ flex: 1, paddingBottom: bottomPadding }}>
+          <ScheduleSkeleton cardsOnly={false} />
+        </View>
       ) : !isLoggedIn ? (
         <View style={{ flex: 1, paddingBottom: bottomPadding }}>
           <LoginRequiredCard
@@ -577,7 +580,7 @@ export default function ScheduleScreen() {
           </View>
         )}
 
-        {loading && scheduleList.length === 0 ? (
+        {refreshing || (loading && scheduleList.length === 0) ? (
           <ScheduleSkeleton cardsOnly={true} />
         ) : filtered.length === 0 ? (
           <View style={{ paddingVertical: 50, alignItems: "center" }}>

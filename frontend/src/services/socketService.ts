@@ -34,7 +34,7 @@ export const initSocket = (): Socket => {
     reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
-    timeout: 10000,
+    timeout: 20000,
     autoConnect: true,
   });
 

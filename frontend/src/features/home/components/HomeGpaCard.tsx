@@ -36,12 +36,8 @@ export const HomeGpaCard = React.memo(function HomeGpaCard({
       style={({ pressed }) => [
         styles.card,
         {
-          backgroundColor: isDark
-            ? "rgba(30, 41, 59, 0.65)"
-            : "rgba(255, 255, 255, 0.68)",
-          borderColor: isDark
-            ? "rgba(255, 255, 255, 0.14)"
-            : "rgba(255, 255, 255, 0.85)",
+          backgroundColor: colors.cardBg,
+          borderColor: colors.cardBorder,
         },
         pressed && styles.cardPressed,
       ]}
@@ -207,6 +203,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
   },
   titleText: {
     fontSize: 15.5,

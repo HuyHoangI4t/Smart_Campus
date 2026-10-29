@@ -43,7 +43,7 @@ export default function GradesDetailScreen() {
   const [selectedSemester, setSelectedSemester] = useState("Tất cả");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [list, setList] = useState<DetailedGrade[]>(FALLBACK_DETAILED_GRADES);
+  const [list, setList] = useState<DetailedGrade[]>([]);
   const [backendSemesters, setBackendSemesters] = useState<string[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
@@ -94,7 +94,9 @@ export default function GradesDetailScreen() {
         }
       }
     } catch {
-      // Fallback
+      if (list.length === 0) {
+        setList(FALLBACK_DETAILED_GRADES);
+      }
     } finally {
       setLoading(false);
     }
@@ -102,6 +104,7 @@ export default function GradesDetailScreen() {
 
   useEffect(() => {
     fetchDetailedGrades();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onRefresh = async () => {
@@ -232,8 +235,8 @@ export default function GradesDetailScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: 110 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
-        {loading && list.length === 0 ? (
-          <GradesDetailSkeleton />
+        {refreshing || (loading && list.length === 0) ? (
+          <GradesDetailSkeleton showHeader={false} />
         ) : filtered.length === 0 ? (
           <View style={{ paddingVertical: 50, alignItems: "center" }}>
             <Feather name="inbox" size={48} color={colors.cardBorder} />

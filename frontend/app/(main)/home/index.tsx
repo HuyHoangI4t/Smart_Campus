@@ -63,13 +63,7 @@ export default function HomeScreen() {
     mssv: "",
   });
   const [nextClass, setNextClass] = useState<NextClassInfo | null>(null);
-  const [gpaSummary, setGpaSummary] = useState<GpaSummary>({
-    gpa4: "3.46",
-    gpa10: "8.18",
-    totalCredits: 13,
-    rank: "Giỏi",
-    rankColor: "#3B82F6",
-  });
+  const [gpaSummary, setGpaSummary] = useState<GpaSummary | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
@@ -593,17 +587,10 @@ export default function HomeScreen() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} translucent={Platform.OS === "android"} />
 
-      {/* ─── 1. HEADER NAVY BLUE ─── */}
-      <HomeHeader
-        student={student}
-        topPadding={topPadding}
-        onNavigate={onNavigate}
-      />
-
-      {/* ─── 2. CUỘN NỘI DUNG BÊN DƯỚI HEADER ─── */}
+      {/* ─── CUỘN NỘI DUNG TOÀN MÀN HÌNH (BAO GỒM HEADER) ─── */}
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: bottomPadding, paddingTop: 12 }}
+        contentContainerStyle={{ paddingBottom: bottomPadding }}
         showsVerticalScrollIndicator={false}
         onScroll={onTabBarScroll}
         scrollEventThrottle={16}
@@ -611,15 +598,26 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={colors.primary}
+            tintColor="#FFFFFF"
             colors={[colors.primary]}
+            progressViewOffset={topPadding}
           />
         }
       >
+        {/* ─── 1. HEADER NAVY BLUE (Nằm đầu ScrollView để cuộn mượt không che khuất card) ─── */}
+        <HomeHeader
+          student={student}
+          topPadding={topPadding}
+          onNavigate={onNavigate}
+        />
+
+        {/* ─── 2. NỘI DUNG TRANG CHỦ BÊN DƯỚI HEADER ─── */}
         {(isInitialLoading && latestNews.length === 0) || refreshing ? (
-          <HomeSkeleton isLoggedIn={isLoggedIn} />
+          <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
+            <HomeSkeleton isLoggedIn={isLoggedIn} />
+          </View>
         ) : (
-          <View style={{ paddingHorizontal: 16 }}>
+          <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
             {isOfflineData && (
               <View
                 style={{

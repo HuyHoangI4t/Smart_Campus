@@ -3,7 +3,8 @@ import { getApiBaseUrl, getCurrentIPv4 } from '../get_IPv4';
 
 export const API_BASE_URL = getApiBaseUrl();
 export const CURRENT_IPV4 = getCurrentIPv4();
-export const REQUEST_TIMEOUT_MS = 6000;
+// Tăng timeout lên 25s để chịu được cold-start (khởi động nguội) của Render free tier
+export const REQUEST_TIMEOUT_MS = 25000;
 
 let isDeviceOnline = true;
 export function getDeviceOnlineStatus() {

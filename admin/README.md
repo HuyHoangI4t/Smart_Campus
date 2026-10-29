@@ -16,7 +16,7 @@ Cổng thông tin Quản trị viên (Web Admin Portal) phục vụ công tác q
   - Modal thêm mới / chỉnh sửa tài khoản: Hỗ trợ xem trước ảnh đại diện và **tải ảnh trực tiếp từ máy tính (Base64)** hoặc nhập đường dẫn ảnh.
   - Tìm kiếm linh hoạt theo MSSV, Họ tên, Email, Lớp, Khoa.
 - **🗺️ Quản lý Bản đồ khuôn viên & Mạng lưới đường (Campus Map):**
-  - Quản lý tọa độ, mô tả, danh mục của **40 địa điểm** quan trọng trong trường (theo quy hoạch số nhà học thực tế, không dùng tên Tòa A, B, C).
+  - Quản lý tọa độ, mô tả, danh mục của **37 địa điểm** quan trọng trong trường.
   - **Trực tiếp vẽ và biên tập đường đi bộ nội bộ (Campus Paths)** trên nền bản đồ Leaflet.
   - Hỗ trợ nút khôi phục mạng lưới đường mặc định chuẩn xác của trường.
 - **📢 Phát thông báo toàn trường (Notifications):** Soạn thảo, đăng tải và phân loại thông báo đào tạo, học phí, sự kiện.
@@ -62,7 +62,7 @@ admin/
 │   │   ├── app.js                      # Điều phối giao diện, Socket.IO Realtime
 │   │   ├── dashboard.js                # Biểu đồ và số liệu thống kê
 │   │   ├── feedback.js                 # Xử lý phản hồi sinh viên
-│   │   ├── locations.js                # Quản lý 40 địa điểm và vẽ đường đi bộ
+│   │   ├── locations.js                # Quản lý 37 địa điểm và vẽ đường đi bộ
 │   │   ├── notifications.js            # Đăng và quản lý thông báo
 │   │   ├── sos.js                      # Theo dõi và tiếp nhận cảnh báo SOS
 │   │   └── users.js                    # Quản lý tài khoản và ảnh đại diện
