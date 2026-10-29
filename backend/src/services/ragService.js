@@ -201,6 +201,9 @@ async function getStudentSummaryFromMySQL(mssv) {
   }
 }
 
+// In-memory cache lưu câu trả lời cho các câu hỏi phổ biến (giảm 100% token cho sinh viên hỏi cùng câu)
+const queryCache = new Map();
+
 class RagService {
   /**
    * Truy xuất tài liệu tri thức liên quan thông qua Vector Similarity Search từ MySQL Database
@@ -498,6 +501,52 @@ class RagService {
    * Xử lý câu hỏi và trả về chuẩn JSON 100% bằng Gemini AI kết hợp Vector RAG Database
    */
   async answerQuestionUnified(userMessage, studentIdOrMssv = null, clientContext = null, history = []) {
+    const lq = (userMessage || "").toLowerCase().trim();
+
+    // =========================================================================
+    // TẦNG BẢO VỆ 1: FAST-PATH DETERMINISTIC (TIẾT KIỆM 100% TOKEN GEMINI)
+    // Các câu hỏi có đáp án cố định (chào hỏi, hotline, đổi mật khẩu, điểm F, điểm P, widget...)
+    // được xử lý ngay lập tức trong 0.001s mà KHÔNG TỐN BẤT KỲ TOKEN NÀO!
+    // =========================================================================
+    const isDeterministic =
+      lq === "chào" || lq === "chào bạn" || lq === "hello" || lq === "hi" ||
+      lq.includes("hotline") || lq.includes("số điện thoại") || lq.includes("sđt") ||
+      lq.includes("đổi mật khẩu") || lq.includes("cài đặt") || lq.includes("dark mode") ||
+      lq.includes("điểm f") || lq.includes("học lại") || lq.includes("điểm p") ||
+      lq.includes("thang điểm 4") || lq.includes("widget") || lq.includes("tiện ích màn hình");
+
+    if (isDeterministic) {
+      const fastReply = this.generateFallbackJSON(userMessage, [], null);
+      if (fastReply && fastReply.intent !== "CHITCHAT" || lq.length < 15) {
+        return {
+          ...fastReply,
+          engine: "Fast-Path Rule Engine (0 Token)",
+        };
+      }
+    }
+
+    // =========================================================================
+    // TẦNG BẢO VỆ 2: IN-MEMORY RESPONSE CACHE (CHỐNG TRÙNG LẶP CÂU HỎI PHỔ BIẾN)
+    // Khi 100 sinh viên hỏi cùng 1 câu (VD: "App có gì", "Xét học bổng thế nào?"),
+    // hệ thống chỉ gọi Gemini 1 lần duy nhất, 99 người còn lại lấy từ RAM Cache (0 Token).
+    // =========================================================================
+    const isPersonalQuery =
+      lq.includes("của mình") || lq.includes("của tôi") || lq.includes("tôi được") ||
+      lq.includes("hôm nay") || lq.includes("thời khóa biểu");
+
+    const cacheKey = lq;
+    if (!isPersonalQuery && queryCache.has(cacheKey)) {
+      const cached = queryCache.get(cacheKey);
+      if (Date.now() < cached.expiresAt) {
+        return {
+          ...cached.data,
+          engine: `${cached.data.engine || "Gemini"} (Cache RAM - 0 Token)`,
+        };
+      } else {
+        queryCache.delete(cacheKey);
+      }
+    }
+
     const currentTime = new Date().toLocaleString("vi-VN");
 
     // 1. Chạy song song: vừa truy xuất dữ liệu cá nhân từ MySQL, vừa chạy Vector Search trên MySQL
@@ -579,10 +628,20 @@ class RagService {
           if (rawText) {
             const parsed = JSON.parse(rawText.trim());
             if (parsed && parsed.reply) {
-              return {
+              const finalResult = {
                 ...parsed,
                 engine: `${modelName} (Smart RAG)`,
               };
+
+              // Lưu vào cache 20 phút cho các câu hỏi chung
+              if (!isPersonalQuery) {
+                queryCache.set(cacheKey, {
+                  data: finalResult,
+                  expiresAt: Date.now() + 20 * 60 * 1000,
+                });
+              }
+
+              return finalResult;
             }
           }
         } catch (geminiError) {

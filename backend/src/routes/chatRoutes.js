@@ -2,6 +2,9 @@ const express = require("express");
 const router = express.Router();
 const ragService = require("../services/ragService");
 
+// Rate limit in-memory: Chống spam và cào token (tối đa 20 câu / phút / người dùng)
+const rateLimitMap = new Map();
+
 /**
  * @swagger
  * /api/chat/ask:
@@ -27,6 +30,30 @@ router.post("/ask", async (req, res) => {
   try {
     const { message, history, studentContext } = req.body;
     let mssv = req.headers["x-mssv"] || studentContext?.mssv;
+
+    // Rate Limiting chống spam/cào token
+    const clientKey = mssv || req.ip || "guest";
+    const now = Date.now();
+    const rateData = rateLimitMap.get(clientKey) || { count: 0, resetTime: now + 60000 };
+
+    if (now > rateData.resetTime) {
+      rateData.count = 1;
+      rateData.resetTime = now + 60000;
+    } else {
+      rateData.count++;
+      if (rateData.count > 20) {
+        return res.status(429).json({
+          success: false,
+          data: {
+            intent: "RATE_LIMITED",
+            reply: "Bạn đang gửi câu hỏi quá nhanh. Vui lòng đợi khoảng 1 phút rồi tiếp tục nhé! ⏳",
+            action: { type: "NONE", target_id: null },
+            suggested_questions: ["Lịch học hôm nay", "Mở bản đồ trường"],
+          },
+        });
+      }
+    }
+    rateLimitMap.set(clientKey, rateData);
 
     if (!message || typeof message !== "string" || !message.trim()) {
       return res.status(400).json({
