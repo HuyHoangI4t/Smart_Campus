@@ -4,7 +4,13 @@
  * 1. Chế độ EXPO GO (Dev): 'node scripts/toggle_apk_mode.js dev'
  * 2. Chế độ BUILD APK:     'node scripts/toggle_apk_mode.js build'
  */
+// Khi muốn dùng Expo Go (Dev):
+// cd frontend
+// npm run mode:dev
 
+// Khi muốn chuẩn bị mã nguồn để Build file APK:
+// cd frontend
+// npm run mode:apk
 /* global __dirname */
 const fs = require('fs');
 const path = require('path');

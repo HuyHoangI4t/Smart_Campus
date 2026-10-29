@@ -26,8 +26,8 @@ import {
   CustomSchedulePayload,
 } from "../../../src/services/api";
 
-// [KHI BUILD APK]: Đã kích hoạt Widget Lịch Học
-import { saveScheduleForWidget } from "../../../src/services/widgetService";
+// [KHI BUILD APK]: Bỏ comment dòng dưới để kích hoạt Widget Lịch Học
+// import { saveScheduleForWidget } from "../../../src/services/widgetService";
 import {
   ScheduleItem,
   AvailableWeekItem,
@@ -269,6 +269,22 @@ export default function ScheduleScreen() {
           ? (targetD >= range.startDate && targetD <= range.endDate)
           : true;
 
+        // Cập nhật cả cache availableWeeks để khi lướt giữa các tuần lịch mới không bị mất
+        setAvailableWeeks((prevWeeks) =>
+          prevWeeks.map((w) => {
+            const wRange = parseWeekRangeDates(w.weekRange);
+            const inThisWeek =
+              targetD && wRange.startDate && wRange.endDate
+                ? targetD >= wRange.startDate && targetD <= wRange.endDate
+                : w.weekRange === formWeekRange;
+            if (inThisWeek) {
+              const currentSchedules = Array.isArray(w.schedules) ? w.schedules : [];
+              return { ...w, schedules: [...currentSchedules, newItem] };
+            }
+            return w;
+          })
+        );
+
         if (isInsideCurrentWeek) {
           const newList = [...scheduleList, newItem];
           setScheduleList(newList);
@@ -406,7 +422,7 @@ export default function ScheduleScreen() {
   const handleSelectWeek = (w: AvailableWeekItem) => {
     setSelectedWeekIndex(w.index);
     setWeekRangeText(w.weekRange);
-    if (w.schedules && Array.isArray(w.schedules)) {
+    if (w.schedules && Array.isArray(w.schedules) && w.schedules.length > 0) {
       setScheduleList(w.schedules);
       if (isSunday && w.isNext && selectedDay === 1) {
         const hasSundayClass = w.schedules.some((s) => s.dayNum === 1);
@@ -425,7 +441,8 @@ export default function ScheduleScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // [KHI BUILD APK]: Tự động nạp lịch học hôm nay vào Widget
+  // [KHI BUILD APK]: Bỏ comment khối bên dưới để tự động nạp lịch học hôm nay vào Widget
+  /*
   useEffect(() => {
     if (scheduleList && scheduleList.length > 0) {
       const todayNum = getTodayDayNum();
@@ -433,6 +450,7 @@ export default function ScheduleScreen() {
       saveScheduleForWidget(todayClasses).catch(() => {});
     }
   }, [scheduleList]);
+  */
 
   const onRefresh = async () => {
     setRefreshing(true);

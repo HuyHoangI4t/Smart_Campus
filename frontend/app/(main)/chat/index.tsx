@@ -7,7 +7,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
-  Linking
+  Linking,
+  Keyboard,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -45,6 +46,16 @@ export default function ChatBotScreen() {
 
   useEffect(() => {
     apiGetChatSuggestions().then(setSuggestions).catch(() => {});
+
+    const showSub = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      () => {
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 120);
+      }
+    );
+    return () => showSub.remove();
   }, []);
 
   const handleExecuteAction = useCallback(
@@ -202,7 +213,7 @@ export default function ChatBotScreen() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
         {hasMessages ? (

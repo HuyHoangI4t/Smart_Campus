@@ -166,12 +166,16 @@ export default function ProfileScreen() {
       );
       return;
     }
+    const cleanField = (val?: string) => {
+      if (!val || val.trim() === "Chưa cập nhật" || val.trim().toLowerCase() === "chưa cập nhật") return "";
+      return val.trim();
+    };
     setEditForm({
-      ho_ten: profile.ho_ten,
-      email: profile.email,
-      so_dien_thoai: profile.so_dien_thoai,
-      lop: profile.lop,
-      khoa: profile.khoa,
+      ho_ten: cleanField(profile.ho_ten),
+      email: cleanField(profile.email),
+      so_dien_thoai: cleanField(profile.so_dien_thoai),
+      lop: cleanField(profile.lop),
+      khoa: cleanField(profile.khoa),
       avatar: profile.avatar || "",
     });
     setEditModalVisible(true);
@@ -933,6 +937,8 @@ export default function ProfileScreen() {
               <TextInput
                 value={editForm.so_dien_thoai}
                 onChangeText={(t) => setEditForm((f) => ({ ...f, so_dien_thoai: t }))}
+                placeholder="Nhập số điện thoại (ví dụ: 0912345678)"
+                placeholderTextColor={colors.textMuted}
                 keyboardType="phone-pad"
                 style={{
                   height: 44,
@@ -951,6 +957,8 @@ export default function ProfileScreen() {
               <TextInput
                 value={editForm.lop}
                 onChangeText={(t) => setEditForm((f) => ({ ...f, lop: t }))}
+                placeholder="Ví dụ: Kỹ thuật phần mềm K23"
+                placeholderTextColor={colors.textMuted}
                 style={{
                   height: 44,
                   borderRadius: 12,
@@ -968,6 +976,8 @@ export default function ProfileScreen() {
               <TextInput
                 value={editForm.khoa}
                 onChangeText={(t) => setEditForm((f) => ({ ...f, khoa: t }))}
+                placeholder="Ví dụ: Công nghệ Thông tin"
+                placeholderTextColor={colors.textMuted}
                 style={{
                   height: 44,
                   borderRadius: 12,

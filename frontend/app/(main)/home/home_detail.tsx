@@ -735,6 +735,7 @@ export default function HomeDetailScreen() {
             shadowOpacity: isDark ? 0.3 : 0.03,
             shadowRadius: 4,
             elevation: 1,
+            overflow: "hidden",
           }}
         >
           <View
@@ -800,7 +801,7 @@ export default function HomeDetailScreen() {
               borderBottomColor: colors.cardBorder,
             }}
           >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1, marginRight: 8 }}>
               <Feather
                 name={isNews ? "file-text" : "clipboard"}
                 size={16}
@@ -820,9 +821,10 @@ export default function HomeDetailScreen() {
             </View>
 
             {loadingDetail ? (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <SkeletonBox width={120} height={14} borderRadius={4} />
-              </View>
+              <ActivityIndicator
+                size="small"
+                color={isNews ? (isDark ? "#60A5FA" : "#2563EB") : colors.primary}
+              />
             ) : null}
           </View>
 

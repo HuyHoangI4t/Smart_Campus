@@ -173,22 +173,31 @@ function parseWeekRangeDates(rangeText) {
 // Chuẩn hóa định dạng ngày về DD/MM/YYYY
 function normalizeDateVN(dateInput) {
   if (!dateInput) return '';
+  if (dateInput instanceof Date) {
+    if (isNaN(dateInput.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(dateInput.getDate())}/${pad(dateInput.getMonth() + 1)}/${dateInput.getFullYear()}`;
+  }
   const str = String(dateInput).trim();
-  const m1 = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  const m1 = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   if (m1) {
     return `${m1[1].padStart(2, '0')}/${m1[2].padStart(2, '0')}/${m1[3]}`;
   }
-  const m2 = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  const m2 = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
   if (m2) {
     return `${m2[3].padStart(2, '0')}/${m2[2].padStart(2, '0')}/${m2[1]}`;
   }
   return str;
 }
 
-// Chuyển chuỗi ngày DD/MM/YYYY hoặc YYYY-MM-DD sang Date object
+// Chuyển chuỗi ngày DD/MM/YYYY hoặc YYYY-MM-DD (hoặc Date object) sang Date object chuẩn
 function parseDateVN(dateInput) {
+  if (dateInput instanceof Date) {
+    if (isNaN(dateInput.getTime())) return null;
+    return new Date(dateInput.getFullYear(), dateInput.getMonth(), dateInput.getDate(), 12, 0, 0);
+  }
   const norm = normalizeDateVN(dateInput);
-  const m = norm.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  const m = norm.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (!m) return null;
   return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), 12, 0, 0);
 }

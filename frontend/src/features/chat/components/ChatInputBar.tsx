@@ -1,5 +1,5 @@
 import React, { memo } from "react";
-import { View, TextInput, TouchableOpacity, StyleSheet, Platform } from "react-native";
+import { View, TextInput, TouchableOpacity, StyleSheet, Platform, Keyboard } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
@@ -23,6 +23,22 @@ export const ChatInputBar = memo(function ChatInputBar({
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const canSend = value.trim().length > 0 && !disabled;
+  const [isKeyboardVisible, setKeyboardVisible] = React.useState(false);
+
+  React.useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      () => setKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+      () => setKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const handleSendPress = () => {
     if (!canSend) return;
@@ -35,7 +51,7 @@ export const ChatInputBar = memo(function ChatInputBar({
       style={[
         styles.inputContainer,
         {
-          paddingBottom: Math.max(insets.bottom, 12),
+          paddingBottom: isKeyboardVisible ? 6 : Math.max(insets.bottom, 12),
           backgroundColor: isDark ? "rgba(15, 23, 42, 0.88)" : "rgba(255, 255, 255, 0.90)",
           borderColor: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(255, 255, 255, 0.95)",
         },

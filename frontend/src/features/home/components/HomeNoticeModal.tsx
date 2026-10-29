@@ -139,7 +139,7 @@ export const HomeNoticeModal = React.memo(function HomeNoticeModal({
                     ? "Trạng thái: Đã xử lý an toàn"
                     : isSos
                     ? "Trạng thái: Đang tiếp nhận & hỗ trợ"
-                    : `Trạng thái: ${alert.status || "Đang xử lý"}`}
+                    : isFeedback ? `Trạng thái: ${alert.status || "Đang xử lý"}` : "Thông báo chính thức từ Nhà trường"}
                 </Text>
               </View>
               <Text style={[styles.statusBannerDesc, { color: colors.textSecondary }]}>
@@ -147,7 +147,9 @@ export const HomeNoticeModal = React.memo(function HomeNoticeModal({
                   ? "Sự việc đã được đội an ninh / ban quản lý kiểm tra và giải quyết hoàn tất."
                   : isSos
                   ? "Tín hiệu SOS đã được hệ thống truyền trực tiếp đến đội bảo vệ và y tế trường."
-                  : "Ý kiến phản hồi của bạn đã được ghi nhận và đang được bộ phận chuyên trách giải quyết."}
+                  : isFeedback
+                  ? "Ý kiến phản hồi của bạn đã được ghi nhận và đang được bộ phận chuyên trách giải quyết."
+                  : `Văn bản thông báo được phát hành chính thức bởi ${alert.sender || "Nhà trường"} tới toàn thể sinh viên.`}
               </Text>
             </View>
 
