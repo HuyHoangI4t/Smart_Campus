@@ -89,7 +89,7 @@ export default function ProfileScreen() {
     }
   }, [editModalVisible, avatarModalVisible, logoutModalVisible]);
 
-  const loadProfile = async () => {
+  const loadProfile = async (forceRefresh = false) => {
     try {
       const userStr = await AsyncStorage.getItem("@auth_user");
       let localUser: any = {};
@@ -108,12 +108,22 @@ export default function ProfileScreen() {
 
       const mssv = localUser.mssv || localUser.masv;
       if (mssv && mssv !== "guest") {
-        const res = await apiGetProfile(mssv);
+        const res = await apiGetProfile(mssv, forceRefresh);
         if (res && res.success && res.student) {
           const remote = res.student;
           const merged: UserProfile = {
             mssv: remote.mssv || mssv,
-            ho_ten: remote.ho_ten || remote.fullName || localUser.ho_ten || "Sinh viên",
+            ho_ten: (() => {
+            const validRemoteName = remote.ho_ten || remote.fullName;
+            const validLocalName = localUser.ho_ten || localUser.fullName;
+            if (validRemoteName && !validRemoteName.startsWith("Sinh viên ") && validRemoteName !== "Sinh viên") {
+              return validRemoteName;
+            }
+            if (validLocalName && !validLocalName.startsWith("Sinh viên ") && validLocalName !== "Sinh viên") {
+              return validLocalName;
+            }
+            return validRemoteName || validLocalName || "Sinh viên";
+          })(),
             email: remote.email || localUser.email || "",
             so_dien_thoai: remote.so_dien_thoai || remote.phone || localUser.so_dien_thoai || "",
             lop: remote.lop || localUser.lop || "K23",
@@ -137,7 +147,7 @@ export default function ProfileScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadProfile();
+    await loadProfile(true);
     setRefreshing(false);
   };
 

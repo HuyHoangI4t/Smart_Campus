@@ -42,7 +42,7 @@ export const ACCENT_PRESETS: Record<AccentColor, {
 }> = {
   navy: {
     name: 'navy',
-    label: 'Xanh Navy (Tây Nguyên)',
+    label: 'Xanh Navy',
     primary: '#0F2964',
     primaryLight: '#1E3E8F',
     accent: '#2563EB',
@@ -50,7 +50,7 @@ export const ACCENT_PRESETS: Record<AccentColor, {
   },
   emerald: {
     name: 'emerald',
-    label: 'Xanh Rừng (Đại Ngàn)',
+    label: 'Xanh Rừng Tây Nguyên',
     primary: '#065F46',
     primaryLight: '#047857',
     accent: '#059669',
@@ -58,7 +58,7 @@ export const ACCENT_PRESETS: Record<AccentColor, {
   },
   indigo: {
     name: 'indigo',
-    label: 'Tím Hiện Đại (Công Nghệ)',
+    label: 'Tím Hiện Đại',
     primary: '#3730A3',
     primaryLight: '#4338CA',
     accent: '#6366F1',
@@ -66,7 +66,7 @@ export const ACCENT_PRESETS: Record<AccentColor, {
   },
   crimson: {
     name: 'crimson',
-    label: 'Đất Đỏ Bazan (Tây Nguyên)',
+    label: 'Đất Đỏ Bazan',
     primary: '#78350F',
     primaryLight: '#92400E',
     accent: '#D97706',

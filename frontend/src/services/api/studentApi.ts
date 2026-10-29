@@ -10,13 +10,15 @@ import {
   deduplicateRequest,
 } from './client';
 
-export async function apiGetProfile(mssv?: string) {
+export async function apiGetProfile(mssv?: string, reload = false) {
   const targetMssv = mssv || 'self';
   const ttlKey = `profile_${targetMssv}`;
   const cacheKey = `@offline_profile_${targetMssv}`;
 
-  const cached = getTtlCache<any>(ttlKey);
-  if (cached) return cached;
+  if (!reload) {
+    const cached = getTtlCache<any>(ttlKey);
+    if (cached) return cached;
+  }
 
   return deduplicateRequest(ttlKey, async () => {
     try {

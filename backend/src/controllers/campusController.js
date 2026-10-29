@@ -259,11 +259,11 @@ exports.getDashboard = async (req, res) => {
     const userFeedback = (fbResult[0] && fbResult[0][0]) || null;
     const userSos = (sosResult[0] && sosResult[0][0]) || null;
 
-    let studentInfo = { mssv: mssv || '', ho_ten: 'Sinh viên' };
+    let studentInfo = { mssv: isRealStudent ? mssv : 'guest', ho_ten: isRealStudent ? ('Sinh viên ' + mssv) : 'Khách tham quan' };
     if (uRows.length > 0) {
       studentInfo = {
         mssv: uRows[0].mssv,
-        ho_ten: uRows[0].ho_ten || 'Sinh viên',
+        ho_ten: uRows[0].ho_ten || ('Sinh viên ' + uRows[0].mssv),
         email: uRows[0].email,
         lop: uRows[0].lop,
         khoa: uRows[0].khoa

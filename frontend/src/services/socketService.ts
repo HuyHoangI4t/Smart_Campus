@@ -84,6 +84,10 @@ export const initSocket = (): Socket => {
   return socketInstance;
 };
 
+export const isSocketConnected = (): boolean => {
+  return Boolean(socketInstance && socketInstance.connected);
+};
+
 /**
  * Đăng ký lắng nghe sự kiện từ Socket.IO
  * Trả về hàm hủy đăng ký (unsubscribe)

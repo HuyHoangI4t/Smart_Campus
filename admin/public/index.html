@@ -396,7 +396,7 @@
             </button>
 
             <!-- Swagger API Docs Button -->
-            <a href="http://localhost:5000/api-docs" target="_blank" title="Mở Swagger API Docs (http://localhost:5000/api-docs)"
+            <a href="http://localhost:5000/api-docs" target="_blank" title="Mở tài liệu API Swagger"
               class="hidden sm:flex p-2.5 text-slate-600 hover:text-brand-600 hover:bg-slate-100 rounded-xl border border-slate-200/60 transition shadow-sm">
               <i data-lucide="file-code-2" class="w-4 h-4 text-blue-600"></i>
             </a>
@@ -407,8 +407,8 @@
               <i data-lucide="columns-2" class="w-4 h-4"></i>
             </button>
 
-            <!-- Zoom Scale Toggle Button (Mặc định 80%) -->
-            <button onclick="App.cycleZoom()" id="btnZoomToggle" title="Tỷ lệ thu phóng (Nhấp để đổi 80% / 90% / 100%)"
+            <!-- Zoom Scale Toggle Button -->
+            <button onclick="App.cycleZoom()" id="btnZoomToggle" title="Tỷ lệ thu phóng"
               class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200/80 transition shadow-sm">
               <i data-lucide="zoom-in" class="w-3.5 h-3.5 text-brand-600"></i>
               <span id="zoomLabel" class="font-mono">80%</span>
@@ -1175,11 +1175,11 @@
                   <div>
                     <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Loại thông báo</label>
                     <select id="notifTypeSelect" class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm font-medium bg-white">
-                      <option value="general">Thông báo chung / Bảo trì (Thẻ Xanh Dương)</option>
-                      <option value="urgent">Cảnh báo khẩn / Đổi phòng học (Thẻ Vàng)</option>
-                      <option value="success">Phản hồi đã xử lý / Hoàn tất (Thẻ Xanh Lá)</option>
-                      <option value="academic">Học vụ & Đào tạo (Thẻ Xanh Dương)</option>
-                      <option value="event">Sự kiện & Hoạt động (Thẻ Xanh Dương)</option>
+                      <option value="general">Thông báo chung / Bảo trì</option>
+                      <option value="urgent">Cảnh báo khẩn / Đổi phòng học</option>
+                      <option value="success">Phản hồi đã xử lý / Hoàn tất</option>
+                      <option value="academic">Học vụ & Đào tạo</option>
+                      <option value="event">Sự kiện & Hoạt động</option>
                     </select>
                   </div>
                 </div>

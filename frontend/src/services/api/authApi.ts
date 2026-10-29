@@ -13,7 +13,7 @@ export async function apiLogin(mssv: string, mat_khau: string) {
       success: false,
       message: err.name === 'AbortError'
         ? 'Kết nối quá thời gian chờ (timeout).'
-        : `Không thể kết nối đến server (${API_BASE_URL}).`,
+        : 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại mạng.',
     };
   }
 }
@@ -58,7 +58,7 @@ export async function apiRegister(userData: {
     });
     return await handleResponse(response);
   } catch {
-    return { success: false, message: `Không thể kết nối đến server (${API_BASE_URL}).` };
+    return { success: false, message: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại mạng.' };
   }
 }
 
@@ -71,7 +71,7 @@ export async function apiForgotPassword(email: string) {
     });
     return await handleResponse(response);
   } catch {
-    return { success: false, message: `Không thể kết nối đến server (${API_BASE_URL}).` };
+    return { success: false, message: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại mạng.' };
   }
 }
 
@@ -84,7 +84,7 @@ export async function apiVerifyOtp(mssv: string, otpCode: string) {
     });
     return await handleResponse(response);
   } catch {
-    return { success: false, message: `Không thể kết nối đến server (${API_BASE_URL}).` };
+    return { success: false, message: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại mạng.' };
   }
 }
 
@@ -97,7 +97,7 @@ export async function apiVerifyRegisterOtp(mssv: string, otpCode: string) {
     });
     return await handleResponse(response);
   } catch {
-    return { success: false, message: `Không thể kết nối đến server (${API_BASE_URL}).` };
+    return { success: false, message: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại mạng.' };
   }
 }
 
@@ -110,7 +110,7 @@ export async function apiResetPassword(payload: { mssv: string; token?: string; 
     });
     return await handleResponse(response);
   } catch {
-    return { success: false, message: `Không thể kết nối đến server (${API_BASE_URL}).` };
+    return { success: false, message: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại mạng.' };
   }
 }
 
@@ -125,7 +125,7 @@ export async function apiChangePassword(currentPassword: string, newPassword: st
     });
     return await handleResponse(response);
   } catch {
-    return { success: false, message: `Không thể kết nối đến server (${API_BASE_URL}).` };
+    return { success: false, message: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại mạng.' };
   }
 }
 

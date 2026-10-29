@@ -109,7 +109,7 @@ export default function FeedbackScreen() {
         setPopupState({
           visible: true,
           type: "error",
-          title: "Gửi thất bại (Fail)",
+          title: "Gửi thất bại",
           message: res?.message || "Không thể gửi ý kiến lúc này. Vui lòng kiểm tra lại kết nối và thử lại sau.",
         });
       }
@@ -118,7 +118,7 @@ export default function FeedbackScreen() {
       setPopupState({
         visible: true,
         type: "error",
-        title: "Gửi thất bại (Fail)",
+        title: "Gửi thất bại",
         message: "Đã xảy ra sự cố khi kết nối đến máy chủ. Vui lòng thử lại sau.",
       });
     } finally {

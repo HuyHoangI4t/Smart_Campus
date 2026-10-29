@@ -70,7 +70,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = Rea
                   Chọn điểm định vị của bạn
                 </Text>
                 <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
-                  Dùng GPS điện thoại hoặc vị trí mẫu để test tính năng trong trường
+                  Sử dụng GPS thiết bị hoặc chọn nhanh các vị trí phổ biến trong trường
                 </Text>
               </View>
               <TouchableOpacity
@@ -135,13 +135,13 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = Rea
                     </View>
                   </View>
                   <Text style={{ fontSize: 11.5, color: isDark ? "#60A5FA" : "#3B82F6", marginTop: 2 }}>
-                    Bắt tọa độ thật từ chip GPS điện thoại (quét 1 lần, không nóng máy)
+                    Xác định tọa độ thực tế từ cảm biến vị trí của thiết bị
                   </Text>
                 </View>
                 <Feather name="chevron-right" size={20} color={isDark ? "#60A5FA" : "#3B82F6"} />
               </TouchableOpacity>
 
-              {/* Phân cách danh sách vị trí mẫu */}
+              {/* Phân cách danh sách vị trí */}
               <Text
                 style={{
                   fontSize: 12,
@@ -153,7 +153,7 @@ export const MapLocationPickerModal: React.FC<MapLocationPickerModalProps> = Rea
                   marginLeft: 2,
                 }}
               >
-                Vị trí mẫu tại trường ĐH Tây Nguyên (Dùng test nhanh)
+                Vị trí phổ biến tại Trường ĐH Tây Nguyên
               </Text>
 
               {TNU_SAMPLE_TEST_LOCATIONS.map((sample) => (

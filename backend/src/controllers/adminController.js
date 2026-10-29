@@ -679,7 +679,7 @@ exports.createLocation = async (req, res) => {
   const { name, category, building, floor, description, lat, lng, icon, color } = req.body;
 
   if (!name || lat === undefined || lat === null || lng === undefined || lng === null) {
-    return res.status(400).json({ success: false, message: 'Tên địa điểm và tọa độ (Vĩ độ lat, Kinh độ lng) là bắt buộc.' });
+    return res.status(400).json({ success: false, message: 'Tên địa điểm và tọa độ là bắt buộc.' });
   }
 
   const numLat = parseFloat(lat);
@@ -722,7 +722,7 @@ exports.updateLocation = async (req, res) => {
   const { name, category, building, floor, description, lat, lng, icon, color } = req.body;
 
   if (!name || lat === undefined || lat === null || lng === undefined || lng === null) {
-    return res.status(400).json({ success: false, message: 'Tên địa điểm và tọa độ (lat, lng) là bắt buộc.' });
+    return res.status(400).json({ success: false, message: 'Tên địa điểm và tọa độ là bắt buộc.' });
   }
 
   const numLat = parseFloat(lat);

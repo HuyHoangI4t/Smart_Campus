@@ -212,8 +212,8 @@ export default function AuthScreen() {
 
           const targetMssv = res.user?.mssv;
 
-          // Nạp toàn bộ dữ liệu lên app vào bộ nhớ đệm cache trước khi chuyển trang để khi người dùng vào app thì dữ liệu hiển thị ngay lập tức
-          await Promise.allSettled([
+          // Nạp dữ liệu nền song song và điều hướng ngay lập tức vào Trang chủ
+          Promise.allSettled([
             apiGetDashboard(),
             apiGetSchedule(targetMssv),
             apiGetNews(),
@@ -221,9 +221,8 @@ export default function AuthScreen() {
             apiGetGrades(targetMssv),
             apiGetNotifications(),
             apiGetMapLocations(),
-          ]);
+          ]).catch(() => {});
 
-          setLoadingButtonText('Đang mở ứng dụng...');
           router.replace('/(main)/home');
         } else {
           setError(res.message || 'Đăng nhập thất bại.');
@@ -415,7 +414,7 @@ export default function AuthScreen() {
 
                   <View style={{ height: 14 }} />
 
-                  <Text style={authStyles.label}>MÃ SỐ SINH VIÊN (MSSV)</Text>
+                  <Text style={authStyles.label}>MÃ SỐ SINH VIÊN</Text>
                   <View style={[authStyles.inputBox, { paddingHorizontal: 16 }]}>
                     <TextInput 
                       style={authStyles.textInput} 
@@ -579,20 +578,20 @@ export default function AuthScreen() {
 
                   <TouchableOpacity style={authStyles.guestButton} onPress={async () => {
                     setLoading(true);
-                    setLoadingButtonText('Đang đăng nhập như Khách...');
+                    setLoadingButtonText('Đang mở ứng dụng...');
                     await clearAuthAndCache();
                     await AsyncStorage.setItem('@auth_user', JSON.stringify({ mssv: 'guest', fullName: 'Khách' }));
                     notifyAuthChanged();
-                    await Promise.allSettled([
+                    Promise.allSettled([
                       apiGetDashboard(),
                       apiGetNews(),
                       apiGetNotifications(),
                       apiGetMapLocations(),
-                    ]);
+                    ]).catch(() => {});
                     router.replace('/(main)/home');
                   }} activeOpacity={0.8}>
                     <Text style={authStyles.guestBtnText}>
-                      Khách (giới hạn chức năng)
+                      Tiếp tục với tư cách Khách
                     </Text>
                   </TouchableOpacity>
 

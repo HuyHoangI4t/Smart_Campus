@@ -21,6 +21,7 @@ import {
   apiGetDashboard,
   apiGetNews,
   apiGetGrades,
+  apiGetProfile,
   readLocalCache,
   NewsOrAnnouncementItem,
   getNewsImageUrl,
@@ -49,6 +50,7 @@ import {
   onSosStatusChanged,
   onFeedbackStatusChanged,
   onNotificationsChanged,
+  isSocketConnected,
 } from "../../../src/services/socketService";
 
 export default function HomeScreen() {
@@ -188,7 +190,17 @@ export default function HomeScreen() {
     // 1. Dashboard & Thông báo/Cảnh báo
     if (dashRes && dashRes.success) {
       if (dashRes.student && isRealAccount) {
-        setStudent((prev) => ({ ...prev, ...dashRes.student }));
+        setStudent((prev) => {
+          const remoteName = dashRes.student.ho_ten || dashRes.student.fullName;
+          const isGenericRemote = !remoteName || remoteName === "Sinh viên" || remoteName === "Khách tham quan" || remoteName.startsWith("Sinh viên ");
+          const hasSpecificPrev = prev.ho_ten && prev.ho_ten !== "Đang tải..." && prev.ho_ten !== "Sinh viên" && !prev.ho_ten.startsWith("Sinh viên ");
+          return {
+            ...prev,
+            ...dashRes.student,
+            ho_ten: isGenericRemote ? (hasSpecificPrev ? prev.ho_ten : (remoteName || prev.ho_ten)) : remoteName,
+            mssv: dashRes.student.mssv && dashRes.student.mssv !== "Anonymous" && dashRes.student.mssv !== "guest" ? dashRes.student.mssv : prev.mssv,
+          };
+        });
       }
       let rawAlerts: NotificationAlertItem[] = [];
       if (Array.isArray(dashRes.notificationAlerts)) {
@@ -309,7 +321,7 @@ export default function HomeScreen() {
 
       // BƯỚC 1: Đọc tức thì từ Cache
       const [cachedDash, cachedSchedule, cachedNews, cachedGrades] = await Promise.all([
-        readLocalCache('@offline_dashboard'),
+        readLocalCache(`@offline_dashboard_${mssv || 'current'}`),
         readLocalCache(scheduleCacheKey),
         readLocalCache('@offline_news_all'),
         readLocalCache<any>(gradesCacheKey),
@@ -330,14 +342,35 @@ export default function HomeScreen() {
         setIsInitialLoading(false);
       }
 
-      // BƯỚC 2: Đồng bộ song song cả 4 API từ server
-      const [dashRes, scheduleRes, newsRes, gradesRes] = await Promise.all([
-        apiGetDashboard(),
+      // BƯỚC 2: Đồng bộ song song cả 5 API từ server (bao gồm Profile chính thức)
+      const [dashRes, scheduleRes, newsRes, gradesRes, profileRes] = await Promise.all([
+        apiGetDashboard(isRealAccount ? mssv : undefined, true),
         apiGetSchedule(isRealAccount ? mssv : undefined),
         apiGetNews(),
-        apiGetGrades(isRealAccount ? mssv : undefined),
+        apiGetGrades(isRealAccount ? mssv : undefined, true),
+        isRealAccount && mssv ? apiGetProfile(mssv, true) : Promise.resolve(null),
       ]);
       applyData(dashRes, scheduleRes, newsRes, isRealAccount);
+
+      // Ưu tiên nạp họ tên chính thức từ Profile hoặc Bảng điểm của trường:
+      const officialName =
+        profileRes?.student?.ho_ten && profileRes.student.ho_ten !== "Sinh viên" && !profileRes.student.ho_ten.startsWith("Sinh viên ")
+          ? profileRes.student.ho_ten
+          : gradesRes?.success && gradesRes.ho_ten && gradesRes.ho_ten !== "Sinh viên" && !gradesRes.ho_ten.startsWith("Sinh viên ")
+            ? gradesRes.ho_ten
+            : null;
+
+      if (officialName) {
+        setStudent((prev) => ({ ...prev, ho_ten: officialName, fullName: officialName }));
+        AsyncStorage.getItem("@auth_user").then((stored) => {
+          if (stored) {
+            try {
+              const u = JSON.parse(stored);
+              AsyncStorage.setItem("@auth_user", JSON.stringify({ ...u, ho_ten: officialName, fullName: officialName }));
+            } catch {}
+          }
+        });
+      }
       if (gradesRes?.success) {
         if (gradesRes.summary && gradesRes.summary.gpa4 !== undefined) {
           setGpaSummary({
@@ -446,7 +479,7 @@ export default function HomeScreen() {
               icon: isResolved ? "check" : "alert-triangle",
               title: isResolved
                 ? "Phản hồi CSVC đã được giải quyết"
-                : `Phản hồi: (${data.status || "Đang xử lý"})`,
+                : `Phản hồi: ${data.status || "Đang xử lý"}`,
             };
           }
           return alert;
@@ -462,7 +495,7 @@ export default function HomeScreen() {
             icon: isResolved ? "check" : "alert-triangle",
             title: isResolved
               ? "Phản hồi CSVC đã được giải quyết"
-              : `Phản hồi: (${data.status || "Đang xử lý"})`,
+              : `Phản hồi: ${data.status || "Đang xử lý"}`,
           };
         }
         return curr;
@@ -476,10 +509,12 @@ export default function HomeScreen() {
       loadData();
     });
 
-    // Polling dự phòng mỗi 15 giây nếu kết nối socket bị gián đoạn
+    // Polling dự phòng mỗi 60 giây khi kết nối socket bị ngắt
     const pollInterval = setInterval(() => {
-      loadData();
-    }, 15000);
+      if (!isSocketConnected()) {
+        loadData();
+      }
+    }, 60000);
 
     return () => {
       unsubSos();

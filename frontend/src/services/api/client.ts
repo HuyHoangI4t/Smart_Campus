@@ -71,7 +71,7 @@ export async function handleResponse(response: Response) {
   } catch {
     return {
       success: response.ok,
-      message: response.ok ? 'Thành công' : `Lỗi máy chủ (${response.status})`,
+      message: response.ok ? 'Thành công' : 'Lỗi kết nối máy chủ. Vui lòng thử lại sau.',
     };
   }
 }
@@ -84,6 +84,8 @@ export async function clearAuthAndCache() {
       '@student_profile',
       '@student_schedule',
       '@student_grades',
+      '@offline_dashboard',
+      '@offline_dashboard_current',
     ];
     await Promise.all(keys.map((k) => AsyncStorage.removeItem(k).catch(() => null)));
     inMemoryCache.clear();

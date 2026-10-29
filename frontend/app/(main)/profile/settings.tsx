@@ -101,7 +101,7 @@ export default function SettingsScreen() {
               paddingLeft: 4,
             }}
           >
-            Chế độ giao diện (Theme)
+            Chế độ giao diện
           </Text>
 
           <View
@@ -326,7 +326,7 @@ export default function SettingsScreen() {
                         color: isSelected ? preset.primary : colors.text,
                       }}
                     >
-                      {preset.label.split(' ')[0]} {preset.label.split(' ')[1]}
+                      {preset.label}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -458,7 +458,7 @@ export default function SettingsScreen() {
                 <View style={[s.row, { gap: 10 }]}>
                   <Feather name="activity" size={17} color={colors.primary} />
                   <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>
-                    Phản hồi rung xúc giác (Haptics)
+                    Phản hồi rung xúc giác
                   </Text>
                 </View>
                 <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 4, paddingLeft: 27 }}>
@@ -511,7 +511,7 @@ export default function SettingsScreen() {
                 <Feather name="database" size={17} color={colors.primary} />
                 <View>
                   <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>
-                    Bộ nhớ đệm tạm thời (Cache)
+                    Bộ nhớ đệm tạm thời
                   </Text>
                   <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
                     Dữ liệu tin tức và ngoại tuyến đã lưu

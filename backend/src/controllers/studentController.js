@@ -814,12 +814,42 @@ function parseWeekTable($, table) {
 exports.getProfile = async (req, res) => {
   const mssv = req.params.mssv || req.query.mssv || await getMssvFromReq(req);
   try {
-    const [rows] = await db.query(
+    let [rows] = await db.query(
       'SELECT id, mssv, ho_ten, email, so_dien_thoai, lop, khoa, avatar FROM users WHERE mssv = ?',
       [mssv]
     );
 
-    if (rows.length === 0) {
+    let u = rows.length > 0 ? rows[0] : null;
+
+    // Nếu chưa có họ tên thật (hoặc chỉ là 'Sinh viên ...') và là sinh viên hợp lệ -> tự động cào tên chính thức từ cổng trường (có timeout tránh chặn luồng)
+    if ((!u || !u.ho_ten || u.ho_ten.startsWith('Sinh viên') || u.ho_ten === 'Sinh viên') && mssv && !isGuestOrEmail(mssv)) {
+      try {
+        const syncPromise = studentSyncService.syncGradesForStudent(mssv);
+        const syncRes = await Promise.race([
+          syncPromise,
+          new Promise((resolve) => setTimeout(() => resolve(null), 1500))
+        ]);
+        if (syncRes && syncRes.studentName) {
+          if (u) {
+            u.ho_ten = syncRes.studentName;
+          } else {
+            await db.query(
+              'INSERT INTO users (mssv, ho_ten, email, password) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE ho_ten = ?',
+              [mssv, syncRes.studentName, `${mssv}@sv.ttn.edu.vn`, '123456', syncRes.studentName]
+            );
+            const [refetched] = await db.query(
+              'SELECT id, mssv, ho_ten, email, so_dien_thoai, lop, khoa, avatar FROM users WHERE mssv = ?',
+              [mssv]
+            );
+            if (refetched.length > 0) u = refetched[0];
+          }
+        }
+      } catch (err) {
+        console.warn('Lỗi auto-sync họ tên sinh viên trong getProfile:', err.message);
+      }
+    }
+
+    if (!u) {
       return res.json({
         success: true,
         student: {
@@ -836,7 +866,6 @@ exports.getProfile = async (req, res) => {
       });
     }
 
-    const u = rows[0];
     const name = u.ho_ten || ('Sinh viên ' + u.mssv);
     const phoneNum = u.so_dien_thoai || 'Chưa cập nhật';
     res.json({

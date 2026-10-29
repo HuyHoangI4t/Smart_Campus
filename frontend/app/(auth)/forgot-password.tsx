@@ -258,7 +258,7 @@ export default function ForgotPasswordScreen() {
                   </View>
                   <Text style={localStyles.cardTitle}>Xác thực tài khoản</Text>
                   <Text style={localStyles.cardDesc}>
-                    Nhập Mã số sinh viên (MSSV) hoặc Email trường cấp. Hệ thống sẽ gửi email chứa mã OTP 6 số (quá trình gửi qua Gmail có thể mất 1-3 giây).
+                    Nhập Mã số sinh viên hoặc Email trường cấp. Hệ thống sẽ gửi email chứa mã OTP 6 số để xác thực.
                   </Text>
                 </View>
 
@@ -301,7 +301,7 @@ export default function ForgotPasswordScreen() {
                   </View>
                   <Text style={localStyles.cardTitle}>Nhập mã OTP xác thực</Text>
                   <Text style={localStyles.cardDesc}>
-                    Mã xác thực 6 số đã được gửi tới email <Text style={{ fontWeight: 'bold', color: AppColors.primary }}>{emailSentTo}</Text>. Vui lòng kiểm tra hộp thư đến hoặc hộp thư rác (Spam).
+                    Mã xác thực 6 số đã được gửi tới email <Text style={{ fontWeight: 'bold', color: AppColors.primary }}>{emailSentTo}</Text>. Vui lòng kiểm tra hộp thư đến hoặc thư rác Spam.
                   </Text>
                 </View>
 

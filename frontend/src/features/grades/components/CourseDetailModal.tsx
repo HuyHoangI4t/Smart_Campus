@@ -63,7 +63,7 @@ export const CourseDetailModal: React.FC<CourseDetailModalProps> = React.memo(
           bg: isDark ? "rgba(245, 158, 11, 0.15)" : "#FFFBEB",
           border: isDark ? "rgba(245, 158, 11, 0.35)" : "#FDE68A",
           text: isDark ? "#FBBF24" : "#D97706",
-          label: "Đang học (Chưa có điểm)",
+          label: "Đang học",
           icon: "book-open" as const,
         };
       }
@@ -81,7 +81,7 @@ export const CourseDetailModal: React.FC<CourseDetailModalProps> = React.memo(
           bg: isDark ? "rgba(239, 68, 68, 0.15)" : "#FEF2F2",
           border: isDark ? "rgba(239, 68, 68, 0.35)" : "#FECACA",
           text: isDark ? "#F87171" : "#DC2626",
-          label: "Chưa đạt (Cần học lại)",
+          label: "Chưa đạt",
           icon: "alert-circle" as const,
         };
       }

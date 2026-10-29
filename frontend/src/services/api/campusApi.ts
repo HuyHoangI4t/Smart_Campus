@@ -175,33 +175,39 @@ export async function apiGetNotifications() {
   }
 }
 
-export async function apiGetDashboard() {
-  const cacheKey = '@offline_dashboard';
-  const ttlKey = 'campus_dashboard';
+export async function apiGetDashboard(mssv?: string, reload = false) {
+  const targetMssv = mssv || 'current';
+  const cacheKey = `@offline_dashboard_${targetMssv}`;
+  const ttlKey = `campus_dashboard_${targetMssv}`;
 
-  const memoryHit = getTtlCache<any>(ttlKey);
-  if (memoryHit) return memoryHit;
+  if (!reload) {
+    const memoryHit = getTtlCache<any>(ttlKey);
+    if (memoryHit) return memoryHit;
+  }
 
   return deduplicateRequest(ttlKey, async () => {
     try {
       const headers = await getAuthHeaders();
-      const response = await fetchWithTimeout(`${API_BASE_URL}/campus/dashboard`, { headers });
+      const actualMssv = mssv || (headers['X-MSSV'] !== 'guest' ? headers['X-MSSV'] : undefined);
+      const url = actualMssv ? `${API_BASE_URL}/campus/dashboard?mssv=${actualMssv}` : `${API_BASE_URL}/campus/dashboard`;
+      const response = await fetchWithTimeout(url, { headers });
       const result = await handleResponse(response);
       if (result && result.success) {
         const payload = { ...result, isOfflineCache: false };
         setTtlCache(ttlKey, payload, 30000); // 30s TTL
         await saveLocalCache(cacheKey, result);
+        await saveLocalCache('@offline_dashboard', result);
         // Automatically sync queued feedback & SOS when dashboard succeeds online
         syncPendingCampusReports().catch(() => {});
         return payload;
       }
-      const cached = await readLocalCache(cacheKey);
+      const cached = (await readLocalCache(cacheKey)) || (await readLocalCache('@offline_dashboard'));
       if (cached && cached.data) {
         return { ...cached.data, isOfflineCache: true, cachedAt: cached.savedAt };
       }
       return result;
     } catch {
-      const cached = await readLocalCache(cacheKey);
+      const cached = (await readLocalCache(cacheKey)) || (await readLocalCache('@offline_dashboard'));
       if (cached && cached.data) {
         return { ...cached.data, isOfflineCache: true, cachedAt: cached.savedAt };
       }
