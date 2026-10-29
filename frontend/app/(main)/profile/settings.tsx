@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,14 +8,14 @@ import {
   Alert,
   Modal,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { NavHeader } from '../../../src/components/NavHeader';
 import { useTheme, ACCENT_PRESETS, AccentColor } from '../../../src/context/ThemeContext';
-// [KHI BUILD APK]: Bỏ comment 2 dòng dưới để bật chức năng test Widget & Thông báo
-// import { triggerTestNotification } from '../../../src/services/notificationService';
-// import { syncAllWidgets } from '../../../src/services/widgetService';
+import { triggerTestNotification } from '../../../src/services/notificationService';
+import { syncAllWidgets } from '../../../src/services/widgetService';
 import { mainStyles as s } from '../../../src/constants/globalStyles';
 
 export default function SettingsScreen() {
@@ -36,19 +36,81 @@ export default function SettingsScreen() {
     compassEnabled,
     setCompassEnabled,
     clearAppCache,
+    getAppCacheSize,
     triggerHaptic,
   } = useTheme();
 
   const [clearingCache, setClearingCache] = useState(false);
+  const [cacheInfo, setCacheInfo] = useState<{ sizeFormatted: string; count: number }>({
+    sizeFormatted: 'Đang tính...',
+    count: 0,
+  });
   const [termsModalVisible, setTermsModalVisible] = useState(false);
   const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
+  const [testingNotification, setTestingNotification] = useState(false);
+  const [syncingWidgets, setSyncingWidgets] = useState(false);
+
+  // Nạp dung lượng bộ nhớ đệm
+  const refreshCacheSize = useCallback(async () => {
+    try {
+      const res = await getAppCacheSize();
+      setCacheInfo(res);
+    } catch {
+      setCacheInfo({ sizeFormatted: '0 KB', count: 0 });
+    }
+  }, [getAppCacheSize]);
+
+  useEffect(() => {
+    refreshCacheSize();
+  }, [refreshCacheSize]);
+
+  // Xử lý gửi thông báo thử nghiệm trực tiếp
+  const handleTestNotification = async (type: 'schedule' | 'grades' | 'campus' | 'sos') => {
+    if (!notificationsEnabled) {
+      triggerHaptic('warning');
+      Alert.alert(
+        'Thông báo đang tắt',
+        'Vui lòng bật công tắc "Nhắc nhở lịch học & tin tức" phía trên để nhận thông báo.',
+        [{ text: 'Đã hiểu' }]
+      );
+      return;
+    }
+    setTestingNotification(true);
+    triggerHaptic('light');
+    try {
+      await triggerTestNotification(type);
+      triggerHaptic('success');
+    } catch {
+      Alert.alert('Thông báo', 'Không thể gửi thông báo lúc này.');
+    } finally {
+      setTestingNotification(false);
+    }
+  };
+
+  // Xử lý đồng bộ Widget điện thoại
+  const handleSyncWidgets = async () => {
+    setSyncingWidgets(true);
+    triggerHaptic('medium');
+    try {
+      await syncAllWidgets();
+      triggerHaptic('success');
+      Alert.alert(
+        'Đồng bộ thành công',
+        'Dữ liệu Widget Lịch học, Điểm GPA và Nút SOS đã được làm mới đồng bộ với hệ thống.'
+      );
+    } catch {
+      Alert.alert('Thông báo', 'Đã yêu cầu đồng bộ Widget.');
+    } finally {
+      setSyncingWidgets(false);
+    }
+  };
 
   // Xử lý xóa bộ nhớ đệm an toàn
   const handleClearCache = () => {
     triggerHaptic('warning');
     Alert.alert(
       'Xóa bộ nhớ đệm',
-      'Thao tác này sẽ giải phóng dữ liệu bản tin, lịch học ngoại tuyến đã tải tạm thời. Tài khoản đăng nhập của bạn vẫn được giữ nguyên.',
+      'Thao tác này sẽ dọn dẹp các tệp bản đồ, tin tức và dữ liệu ngoại tuyến tạm thời để giải phóng bộ nhớ. Tài khoản đăng nhập của bạn vẫn được giữ nguyên an toàn.',
       [
         { text: 'Hủy', style: 'cancel' },
         {
@@ -58,10 +120,11 @@ export default function SettingsScreen() {
             setClearingCache(true);
             try {
               const removedCount = await clearAppCache();
+              await refreshCacheSize();
               triggerHaptic('success');
               Alert.alert(
                 'Thành công',
-                `Đã dọn dẹp ${removedCount > 0 ? removedCount : 'các'} tệp bộ nhớ đệm tạm thời. Ứng dụng sẽ tải dữ liệu mới nhất từ máy chủ.`
+                `Đã dọn dẹp ${removedCount > 0 ? `${removedCount} mục bộ nhớ đệm` : 'bộ nhớ đệm'}. Ứng dụng sẽ nạp dữ liệu mới nhất từ máy chủ.`
               );
             } catch {
               Alert.alert('Thông báo', 'Đã xóa bộ nhớ đệm thành công.');

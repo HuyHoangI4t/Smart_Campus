@@ -60,7 +60,7 @@ export default function MapScreen() {
   const webViewRef = useRef<WebView>(null);
   const isMapReadyRef = useRef<boolean>(false);
 
-  const { defaultSatelliteMap, colors } = useTheme();
+  const { defaultSatelliteMap, compassEnabled, colors } = useTheme();
 
   // Trạng thái đang kích hoạt chế độ chỉ đường đi bộ (Ẩn thanh nav & nút phụ trợ để tối đa màn hình)
   const [isRoutingActive, setIsRoutingActive] = useState<boolean>(false);
@@ -661,6 +661,12 @@ export default function MapScreen() {
   }, [setShowSuggestions]);
 
   const handleCompassPress = useCallback(() => {
+    if (!compassEnabled) {
+      if (bearing !== 0) {
+        resetBearing();
+      }
+      return;
+    }
     if (bearing !== 0 && !compassMode) {
       resetBearing();
     } else {
@@ -670,7 +676,7 @@ export default function MapScreen() {
         fetchRealGpsLocation(true, true);
       }
     }
-  }, [bearing, compassMode, resetBearing, toggleCompassMode, userLocation, fetchRealGpsLocation]);
+  }, [compassEnabled, bearing, compassMode, resetBearing, toggleCompassMode, userLocation, fetchRealGpsLocation]);
 
   const handleUserLocationPress = useCallback(() => {
     fetchRealGpsLocation(true, false);

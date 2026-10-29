@@ -32,3 +32,8 @@ app.listen(PORT, () => {
   console.log(`🔗 [API Backend] kết nối tới: ${API_URL}`);
   console.log('======================================================\n');
 });
+
+// Thêm route cho trang chủ để tránh lỗi Cannot GET /
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/public/index.html');
+});

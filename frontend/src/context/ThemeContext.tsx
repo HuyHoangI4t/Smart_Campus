@@ -154,6 +154,7 @@ export interface ThemeContextType {
   compassEnabled: boolean;
   setCompassEnabled: (enabled: boolean) => Promise<void>;
   clearAppCache: () => Promise<number>;
+  getAppCacheSize: () => Promise<{ sizeFormatted: string; count: number }>;
   triggerHaptic: (style?: 'light' | 'medium' | 'heavy' | 'success' | 'warning' | 'error') => void;
 }
 
@@ -357,7 +358,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         k.startsWith('@cache_') ||
         k.startsWith('@tnu_') ||
         k.startsWith('@temp_') ||
-        k.startsWith('@offline_')
+        k.startsWith('@offline_') ||
+        k.startsWith('@student_') ||
+        k.startsWith('@widget_')
       ));
 
       if (keysToRemove.length > 0) {
@@ -370,6 +373,53 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return 0;
     }
   }, [triggerHaptic]);
+
+  // Tính dung lượng bộ nhớ đệm thực tế
+  const getAppCacheSize = useCallback(async (): Promise<{ sizeFormatted: string; count: number }> => {
+    try {
+      const allKeys = await AsyncStorage.getAllKeys();
+      const protectedKeys = new Set([
+        '@auth_user',
+        '@auth_token',
+        STORAGE_KEYS.THEME_MODE,
+        STORAGE_KEYS.ACCENT_COLOR,
+        STORAGE_KEYS.HAPTICS,
+        STORAGE_KEYS.NOTIFICATIONS,
+        STORAGE_KEYS.MAP_SATELLITE,
+        STORAGE_KEYS.COMPASS,
+      ]);
+
+      const cacheKeys = allKeys.filter((k) => !protectedKeys.has(k) && (
+        k.startsWith('@cache_') ||
+        k.startsWith('@tnu_') ||
+        k.startsWith('@temp_') ||
+        k.startsWith('@offline_') ||
+        k.startsWith('@student_') ||
+        k.startsWith('@widget_')
+      ));
+
+      if (cacheKeys.length === 0) {
+        return { sizeFormatted: '0 KB', count: 0 };
+      }
+
+      const pairs = await AsyncStorage.multiGet(cacheKeys);
+      let totalBytes = 0;
+      pairs.forEach(([key, val]) => {
+        totalBytes += (key ? key.length : 0) + (val ? val.length : 0);
+      });
+
+      if (totalBytes < 1024) {
+        return { sizeFormatted: `${totalBytes} B`, count: cacheKeys.length };
+      } else if (totalBytes < 1024 * 1024) {
+        return { sizeFormatted: `${(totalBytes / 1024).toFixed(1)} KB`, count: cacheKeys.length };
+      } else {
+        return { sizeFormatted: `${(totalBytes / (1024 * 1024)).toFixed(2)} MB`, count: cacheKeys.length };
+      }
+    } catch (err) {
+      console.warn('[ThemeContext] Lỗi tính dung lượng cache:', err);
+      return { sizeFormatted: '0 KB', count: 0 };
+    }
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -389,6 +439,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       compassEnabled,
       setCompassEnabled,
       clearAppCache,
+      getAppCacheSize,
       triggerHaptic,
     }),
     [
@@ -408,6 +459,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       compassEnabled,
       setCompassEnabled,
       clearAppCache,
+      getAppCacheSize,
       triggerHaptic,
     ]
   );
@@ -436,6 +488,7 @@ export function useTheme(): ThemeContextType {
       compassEnabled: true,
       setCompassEnabled: async () => {},
       clearAppCache: async () => 0,
+      getAppCacheSize: async () => ({ sizeFormatted: '0 KB', count: 0 }),
       triggerHaptic: () => {},
     };
   }
