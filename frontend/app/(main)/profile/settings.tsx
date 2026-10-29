@@ -536,10 +536,149 @@ export default function SettingsScreen() {
               />
             </View>
 
-            {/* [KHI BUILD APK]: Bỏ comment khối bên dưới để hiện các nút test thông báo đẩy & đồng bộ Widget
+            {/* Công cụ kiểm tra thông báo nhanh */}
             <View style={{ height: 1, backgroundColor: colors.cardBorder }} />
-            ...
-            */}
+
+            <View>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text, marginBottom: 4 }}>
+                Kiểm tra thông báo nhanh
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 10 }}>
+                Bấm để phát thông báo mẫu kiểm tra âm thanh và rung
+              </Text>
+
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                <TouchableOpacity
+                  onPress={() => handleTestNotification('schedule')}
+                  disabled={testingNotification}
+                  activeOpacity={0.7}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    paddingVertical: 7,
+                    paddingHorizontal: 11,
+                    borderRadius: 12,
+                    backgroundColor: isDark ? 'rgba(37, 99, 235, 0.2)' : '#EFF6FF',
+                    borderWidth: 1,
+                    borderColor: isDark ? 'rgba(59, 130, 246, 0.4)' : '#BFDBFE',
+                  }}
+                >
+                  <Feather name="calendar" size={13} color={isDark ? '#60A5FA' : '#1D4ED8'} />
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#93C5FD' : '#1D4ED8' }}>
+                    Nhắc lịch học
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => handleTestNotification('grades')}
+                  disabled={testingNotification}
+                  activeOpacity={0.7}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    paddingVertical: 7,
+                    paddingHorizontal: 11,
+                    borderRadius: 12,
+                    backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#ECFDF5',
+                    borderWidth: 1,
+                    borderColor: isDark ? 'rgba(16, 185, 129, 0.4)' : '#A7F3D0',
+                  }}
+                >
+                  <Feather name="award" size={13} color={isDark ? '#34D399' : '#047857'} />
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#A7F3D0' : '#047857' }}>
+                    Báo điểm mới
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => handleTestNotification('sos')}
+                  disabled={testingNotification}
+                  activeOpacity={0.7}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    paddingVertical: 7,
+                    paddingHorizontal: 11,
+                    borderRadius: 12,
+                    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEF2F2',
+                    borderWidth: 1,
+                    borderColor: isDark ? 'rgba(239, 68, 68, 0.4)' : '#FECACA',
+                  }}
+                >
+                  <Feather name="alert-circle" size={13} color={isDark ? '#F87171' : '#B91C1C'} />
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#FCA5A5' : '#B91C1C' }}>
+                    Cảnh báo SOS
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => handleTestNotification('campus')}
+                  disabled={testingNotification}
+                  activeOpacity={0.7}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    paddingVertical: 7,
+                    paddingHorizontal: 11,
+                    borderRadius: 12,
+                    backgroundColor: isDark ? 'rgba(245, 158, 11, 0.2)' : '#FFFBEB',
+                    borderWidth: 1,
+                    borderColor: isDark ? 'rgba(245, 158, 11, 0.4)' : '#FDE68A',
+                  }}
+                >
+                  <Feather name="bell" size={13} color={isDark ? '#FBBF24' : '#B45309'} />
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#FDE68A' : '#B45309' }}>
+                    Tin tức trường
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Mục đồng bộ Widget màn hình chính Android */}
+            <View style={{ height: 1, backgroundColor: colors.cardBorder }} />
+
+            <View style={[s.row, s.between]}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <View style={[s.row, { gap: 10 }]}>
+                  <MaterialCommunityIcons name="widgets-outline" size={18} color={colors.primary} />
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>
+                    Tiện ích màn hình chính (Widget)
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 4, paddingLeft: 28 }}>
+                  Đồng bộ lại thẻ Lịch học, Điểm GPA và Nút SOS ngoài màn hình
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={handleSyncWidgets}
+                disabled={syncingWidgets}
+                activeOpacity={0.7}
+                style={{
+                  paddingVertical: 8,
+                  paddingHorizontal: 14,
+                  backgroundColor: isDark ? '#334155' : '#EEF2FF',
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: isDark ? '#475569' : '#C7D2FE',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                {syncingWidgets ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Feather name="refresh-cw" size={13} color={colors.primary} />
+                )}
+                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primary }}>
+                  {syncingWidgets ? 'Đang sync...' : 'Đồng bộ'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -577,7 +716,7 @@ export default function SettingsScreen() {
                     Bộ nhớ đệm tạm thời
                   </Text>
                   <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
-                    Dữ liệu tin tức và ngoại tuyến đã lưu
+                    Dữ liệu tin tức và ngoại tuyến ({cacheInfo.count} mục)
                   </Text>
                 </View>
               </View>
@@ -590,7 +729,7 @@ export default function SettingsScreen() {
                 }}
               >
                 <Text style={{ fontSize: 12, fontWeight: '800', color: colors.primary }}>
-                  ~2.4 MB
+                  {cacheInfo.sizeFormatted}
                 </Text>
               </View>
             </View>

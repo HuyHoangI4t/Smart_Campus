@@ -19,24 +19,25 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "",
-        "backgroundImage": "",
-        "monochromeImage": ""
+        "foregroundImage": "./assets/images/favicon.png"
       },
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION",
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "READ_MEDIA_IMAGES",
-        "POST_NOTIFICATIONS",
-        "SCHEDULE_EXACT_ALARM",
-        "VIBRATE",
-        "WAKE_LOCK",
-        "RECEIVE_BOOT_COMPLETED"
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.VIBRATE",
+        "android.permission.WAKE_LOCK",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO"
       ],
       "package": "com.smartcampus.tnu"
     },
@@ -126,7 +127,11 @@
     },
     "extra": {
       "apiUrl": "https://smart-campus-f012.onrender.com/api",
-      "backendUrl": "https://smart-campus-f012.onrender.com"
+      "backendUrl": "https://smart-campus-f012.onrender.com",
+      "router": {},
+      "eas": {
+        "projectId": "d61ac0a5-ce1b-4da4-97cb-1d9749312ba8"
+      }
     }
   }
 }

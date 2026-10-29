@@ -177,25 +177,25 @@ export default function ChatBotScreen() {
 
       <NavHeader
         title="TTN Smart Bot"
-        subtitle="Trợ lý AI"
+        subtitle="Trực tuyến • Trợ lý AI"
+        avatar={<ChatBotAvatar size={36} showOnlineDot={true} />}
         showBack={true}
         onBack={() => router.back()}
-        blur={true}
         rightElement={
           <TouchableOpacity
             onPress={handleResetChat}
             style={[
               styles.resetHeaderBtn,
               {
-                backgroundColor: isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.05)",
-                borderColor: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.08)",
+                backgroundColor: "rgba(255, 255, 255, 0.18)",
+                borderColor: "rgba(255, 255, 255, 0.28)",
               },
             ]}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityRole="button"
             accessibilityLabel="Làm mới cuộc trò chuyện"
           >
-            <Feather name="rotate-ccw" size={16} color={isDark ? "#FFFFFF" : colors.primary} />
+            <Feather name="rotate-ccw" size={18} color="#FFFFFF" />
           </TouchableOpacity>
         }
       />
@@ -271,8 +271,8 @@ export default function ChatBotScreen() {
                   style={[
                     styles.suggestionChip,
                     {
-                      backgroundColor: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(255, 255, 255, 0.85)",
-                      borderColor: isDark ? "rgba(255, 255, 255, 0.14)" : "rgba(19, 47, 115, 0.08)",
+                      backgroundColor: isDark ? "rgba(59, 130, 246, 0.12)" : "#EFF6FF",
+                      borderColor: isDark ? "rgba(96, 165, 250, 0.3)" : "#BFDBFE",
                     },
                   ]}
                   activeOpacity={0.72}
@@ -281,11 +281,11 @@ export default function ChatBotScreen() {
                 >
                   <Feather
                     name={(item.icon as keyof typeof Feather.glyphMap) || "help-circle"}
-                    size={12.5}
-                    color={colors.accent}
+                    size={13}
+                    color={isDark ? "#93C5FD" : "#2563EB"}
                     style={{ marginRight: 6 }}
                   />
-                  <Text style={[styles.suggestionText, { color: colors.text }]}>{item.text}</Text>
+                  <Text style={[styles.suggestionText, { color: isDark ? "#DBEAFE" : "#1D4ED8" }]}>{item.text}</Text>
                 </TouchableOpacity>
               )}
             />
@@ -328,13 +328,12 @@ const styles = StyleSheet.create({
     pointerEvents: "none",
   },
   resetHeaderBtn: {
-    padding: 8,
     borderRadius: 14,
-    borderWidth: 1.2,
+    borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
-    width: 38,
-    height: 38,
+    width: 40,
+    height: 40,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,

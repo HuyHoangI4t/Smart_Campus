@@ -140,13 +140,13 @@ export const messageStyles = StyleSheet.create({
   dynamicChip: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 7,
-    paddingHorizontal: 11,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 1.2,
   },
   dynamicChipText: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: "600",
     flex: 1,
   },

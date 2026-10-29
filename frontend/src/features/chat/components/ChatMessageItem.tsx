@@ -180,15 +180,20 @@ export const ChatMessageItem = memo(function ChatMessageItem({
                 style={[
                   styles.dynamicChip,
                   {
-                    backgroundColor: isDark ? "rgba(255, 255, 255, 0.07)" : "rgba(241, 245, 249, 0.85)",
-                    borderColor: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(19, 47, 115, 0.08)",
+                    backgroundColor: isDark ? "rgba(59, 130, 246, 0.15)" : "#EFF6FF",
+                    borderColor: isDark ? "rgba(96, 165, 250, 0.35)" : "#BFDBFE",
                   },
                 ]}
                 activeOpacity={0.7}
                 accessibilityRole="button"
               >
-                <Feather name="corner-down-right" size={11} color={colors.accent} style={{ marginRight: 6 }} />
-                <Text style={[styles.dynamicChipText, { color: colors.text }]}>{q}</Text>
+                <Feather
+                  name="corner-down-right"
+                  size={12}
+                  color={isDark ? "#93C5FD" : "#2563EB"}
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={[styles.dynamicChipText, { color: isDark ? "#DBEAFE" : "#1D4ED8" }]}>{q}</Text>
               </TouchableOpacity>
             ))}
           </View>

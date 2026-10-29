@@ -12,6 +12,7 @@ export interface NavHeaderProps {
   title: string;
   subtitle?: string;
   preTitle?: string;
+  avatar?: React.ReactNode;
   onBack?: () => void;
   showBack?: boolean;
   rightIcon?: keyof typeof Feather.glyphMap;
@@ -28,6 +29,7 @@ export function NavHeader({
   title,
   subtitle,
   preTitle,
+  avatar,
   onBack,
   showBack = false,
   rightIcon,
@@ -142,45 +144,50 @@ export function NavHeader({
           <View style={{ width: 4 }} />
         )}
 
-        {/* Cụm Tiêu đề & Phụ đề */}
+        {/* Cụm Tiêu đề & Phụ đề (kèm avatar/logo nếu có) */}
         <View style={styles.titleContainer}>
-          {preTitle ? (
-            <Text
-              style={[
-                styles.preTitleText,
-                {
-                  color: effectivePreTitleColor,
-                },
-              ]}
-              numberOfLines={1}
-            >
-              {preTitle}
-            </Text>
-          ) : null}
-          <Text
-            style={[
-              styles.titleText,
-              {
-                color: effectiveTitleColor,
-              },
-            ]}
-            numberOfLines={1}
-          >
-            {title}
-          </Text>
-          {subtitle ? (
-            <Text
-              style={[
-                styles.subtitleText,
-                {
-                  color: effectiveSubtitleColor,
-                },
-              ]}
-              numberOfLines={1}
-            >
-              {subtitle}
-            </Text>
-          ) : null}
+          <View style={styles.titleRow}>
+            {avatar ? <View style={styles.avatarWrapper}>{avatar}</View> : null}
+            <View style={{ flex: 1, justifyContent: 'center' }}>
+              {preTitle ? (
+                <Text
+                  style={[
+                    styles.preTitleText,
+                    {
+                      color: effectivePreTitleColor,
+                    },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {preTitle}
+                </Text>
+              ) : null}
+              <Text
+                style={[
+                  styles.titleText,
+                  {
+                    color: effectiveTitleColor,
+                  },
+                ]}
+                numberOfLines={1}
+              >
+                {title}
+              </Text>
+              {subtitle ? (
+                <Text
+                  style={[
+                    styles.subtitleText,
+                    {
+                      color: effectiveSubtitleColor,
+                    },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {subtitle}
+                </Text>
+              ) : null}
+            </View>
+          </View>
         </View>
 
         {/* Nút tác vụ bên phải */}
@@ -307,6 +314,15 @@ const styles = StyleSheet.create({
   titleContainer: {
     flex: 1,
     marginHorizontal: 4,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  avatarWrapper: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   preTitleText: {
     fontSize: 10.5,

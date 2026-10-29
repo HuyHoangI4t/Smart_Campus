@@ -12,8 +12,7 @@ export const NOTIFICATION_CHANNELS = {
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 let Notifications: any = null;
-// [KHI BUILD APK]: Bỏ comment khối try/catch bên dưới để nạp thư viện expo-notifications
-/*
+// [KHI BUILD APK]: Đã nạp thư viện expo-notifications
 try {
   Notifications = require("expo-notifications");
   if (Notifications && Notifications.setNotificationHandler) {
@@ -31,7 +30,6 @@ try {
 } catch (e) {
   console.warn("expo-notifications module not loaded:", e);
 }
-*/
 
 /**
  * Khởi tạo hệ thống thông báo đẩy (Android channels & Permissions)
