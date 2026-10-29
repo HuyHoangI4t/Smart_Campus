@@ -8,12 +8,16 @@
 
 - **Trang chủ Dashboard:** Thẻ tóm tắt GPA hệ 10 & 4, tín chỉ tích lũy, môn học kế tiếp, danh mục tiện ích nhanh và tin tức nhà trường.
 - **Bản đồ số & Dẫn đường thông minh (Leaflet WebView):**
-  - Định vị GPS và chỉ đường đi bộ nội bộ theo thuật toán **Dijkstra**.
+  - Định vị GPS và chỉ đường đi bộ nội bộ theo thuật toán **Dijkstra** trên 40 địa điểm chuẩn thực tế (Tòa nhà Điều hành, Thư viện Trung tâm, Nhà học số 2, 5, 6, 7, 8, 9, Bệnh viện trường, Viện CNSH&MT, Ký túc xá 1-4... Không dùng tên Tòa A, B, C).
   - **Mô phỏng trải nghiệm Google Maps:** Tự động phóng to và xoay bản đồ theo hướng đường khi bắt đầu di chuyển.
   - **Biểu tượng tam giác định hướng:** Hiển thị góc quay la bàn người dùng, tự động đưa vị trí về tâm màn hình.
   - **Tối ưu trải nghiệm:** Tự động ẩn thanh điều hướng dưới (Bottom Tabs) khi đang dẫn đường để mở rộng góc nhìn.
   - **Lọc rung lắc la bàn:** Giảm độ nhạy (chỉ quay khi lệch $\ge 8^\circ$) và khống chế tần suất cập nhật $\ge 450\text{ms}$ giúp tiết kiệm pin.
   - **Chế độ Khách (Guest Mode):** Cho phép người dùng trải nghiệm ngay mà không đòi hỏi quyền GPS, camera hay bộ nhớ.
+- **🤖 Trợ lý AI TTN Smart Bot (Vector RAG Database & Gemini):**
+  - Giao diện Glassmorphism hiện đại, Dark/Light mode, hiệu ứng xúc giác (Haptics) và avatar logo trường.
+  - Tự động sinh câu trả lời ngắn gọn, chuẩn xác dựa trên vector embeddings truy xuất trực tiếp từ MySQL.
+  - Phân tích điểm GPA cá nhân, tra cứu lịch học hôm nay hoặc tìm đường đến Nhà học số 9, Thư viện với các nút hành động (Action Buttons) và gợi ý bám sát ngữ cảnh.
 - **Thời khóa biểu thông minh (Schedule):**
   - Xem lịch học theo tuần và ngày, hiển thị phòng học, giảng viên, môn học.
   - Thêm / sửa lịch thực hành đột xuất hoặc học bù: Tự động tính thứ từ ngày chọn, ô chọn tiết dạng dropdown full-width.
@@ -100,7 +104,7 @@ Thư mục: `assets/Screenshots _Demo/`
 | **06** | **Thời khóa biểu tuần** | [`06_schedule_weekly.jpg`](assets/Screenshots%20_Demo/06_schedule_weekly.jpg) | Lịch học thông minh theo tuần, ngày, hiển thị phòng, tiết & GV |
 | **07** | **Chỉ dẫn phòng học** | [`07_schedule_room_directions.jpg`](assets/Screenshots%20_Demo/07_schedule_room_directions.jpg) | Hướng dẫn chi tiết từng chặng từ cổng trường tới phòng học |
 | **08** | **Thêm lịch học bù** | [`08_schedule_add_custom.jpg`](assets/Screenshots%20_Demo/08_schedule_add_custom.jpg) | Thêm lịch học bù, thực hành đột xuất tùy chỉnh |
-| **09** | **Bản đồ khuôn viên** | [`09_map_campus_overview.jpg`](assets/Screenshots%20_Demo/09_map_campus_overview.jpg) | Bản đồ số 37 địa điểm, tìm kiếm phòng học & chip phân loại |
+| **09** | **Bản đồ khuôn viên** | [`09_map_campus_overview.jpg`](assets/Screenshots%20_Demo/09_map_campus_overview.jpg) | Bản đồ số 40 địa điểm, tìm kiếm phòng học & chip phân loại |
 | **10** | **Dẫn đường Dijkstra** | [`10_map_routing_navigation.jpg`](assets/Screenshots%20_Demo/10_map_routing_navigation.jpg) | Tìm tuyến đường ngắn nhất, đổi cổng và thanh trạng thái sát đáy |
 | **11** | **Kết quả học tập** | [`11_grades_overview.jpg`](assets/Screenshots%20_Demo/11_grades_overview.jpg) | Tổng hợp GPA hệ 10 & 4, tín chỉ tích lũy & lọc học kỳ |
 | **12** | **Chi tiết bảng điểm** | [`12_grades_detail.jpg`](assets/Screenshots%20_Demo/12_grades_detail.jpg) | Điểm chi tiết thành phần: chuyên cần, giữa kỳ, thực hành, thi |

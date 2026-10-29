@@ -157,10 +157,10 @@ export default function GradesDetailScreen() {
         onBack={handleBackToGrades}
       />
 
-      {isLoggedIn === null || loading ? (
-        <View style={{ flex: 1, padding: 16 }}>
+      {isLoggedIn === null || (loading && list.length === 0) ? (
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 110 }}>
           <GradesDetailSkeleton />
-        </View>
+        </ScrollView>
       ) : !isLoggedIn ? (
         <View style={{ flex: 1 }}>
           <LoginRequiredCard
@@ -232,7 +232,7 @@ export default function GradesDetailScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: 110 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
-        {loading || refreshing ? (
+        {loading && list.length === 0 ? (
           <GradesDetailSkeleton />
         ) : filtered.length === 0 ? (
           <View style={{ paddingVertical: 50, alignItems: "center" }}>

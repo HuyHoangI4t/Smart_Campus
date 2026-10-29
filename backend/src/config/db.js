@@ -9,6 +9,7 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'smartcampus',
   port: Number(process.env.DB_PORT) || 3306,
+  charset: 'utf8mb4',
   waitForConnections: true,
   connectionLimit: 25,
   maxIdle: 10,
@@ -17,6 +18,9 @@ const pool = mysql.createPool({
   queueLimit: 0,
   enableKeepAlive: true,
   keepAliveInitialDelay: 10000,
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 // Kiểm tra kết nối & tự động tạo Database nếu chưa tồn tại

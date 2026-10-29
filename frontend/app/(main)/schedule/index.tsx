@@ -514,10 +514,10 @@ export default function ScheduleScreen() {
         }
       />
 
-      {isLoggedIn === null || loading ? (
-        <View style={{ flex: 1, padding: 16 }}>
+      {isLoggedIn === null || (loading && scheduleList.length === 0) ? (
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: bottomPadding }}>
           <ScheduleSkeleton />
-        </View>
+        </ScrollView>
       ) : !isLoggedIn ? (
         <View style={{ flex: 1, paddingBottom: bottomPadding }}>
           <LoginRequiredCard
@@ -577,7 +577,7 @@ export default function ScheduleScreen() {
           </View>
         )}
 
-        {loading || refreshing ? (
+        {loading && scheduleList.length === 0 ? (
           <ScheduleSkeleton cardsOnly={true} />
         ) : filtered.length === 0 ? (
           <View style={{ paddingVertical: 50, alignItems: "center" }}>

@@ -6,10 +6,11 @@ Máy chủ Backend API xây dựng trên nền tảng **Node.js** và **Express.
 
 ## 📌 1. Tính năng cốt lõi
 
-- **Quản lý dữ liệu tập trung (Database Orchestrator):** Tự động khởi tạo schema cho toàn bộ 13 bảng dữ liệu và nạp seeders (tài khoản Admin, 37 địa điểm khuôn viên, mạng lưới đường nội bộ) ngay khi server khởi động.
+- **Quản lý dữ liệu tập trung (Database Orchestrator):** Tự động khởi tạo schema cho toàn bộ 14 bảng dữ liệu và nạp seeders (tài khoản Admin, 40 địa điểm khuôn viên theo quy hoạch thực tế, mạng lưới đường nội bộ) ngay khi server khởi động.
 - **Xác thực & Phân quyền:** Đăng nhập, đăng ký, cấp mã OTP qua Gmail SMTP để khôi phục mật khẩu, mã hóa mật khẩu `bcryptjs`.
 - **Đồng bộ học tập:** Phân tích điểm học phần, tính toán GPA hệ 10 và hệ 4 chuẩn hóa, đồng bộ thời khóa biểu theo tuần từ cổng đào tạo.
-- **Bản đồ & Dẫn đường số:** Quản lý tọa độ 37 địa điểm trọng điểm và mạng lưới đường đi bộ nội bộ (Campus Paths), hỗ trợ thuật toán Dijkstra tìm đường đi ngắn nhất.
+- **Bản đồ & Dẫn đường số:** Quản lý tọa độ 40 địa điểm trọng điểm (Nhà học số 2, 5, 6, 7, 8, 9, Tòa nhà Điều hành, Thư viện Trung tâm, Bệnh viện trường, v.v. - không dùng tên Tòa A, B, C) và mạng lưới đường đi bộ nội bộ (Campus Paths), hỗ trợ thuật toán Dijkstra tìm đường đi ngắn nhất.
+- **🤖 Trợ lý AI Vector RAG (TTN Smart Bot):** Cơ sở dữ liệu Vector Database lưu trữ trực tiếp trong MySQL (`campus_knowledge`), tính toán Cosine Similarity qua vector embeddings `gemini-embedding-001` (3072 chiều) và tự sinh câu trả lời ngắn gọn, chuẩn xác với Google Gemini AI.
 - **Realtime Engine (Socket.IO):** Bắn sự kiện thời gian thực khi sinh viên gửi phản hồi hoặc phát tín hiệu SOS khẩn cấp đến ban quản trị.
 - **Tài liệu OpenAPI / Swagger UI:** Cung cấp giao diện tra cứu và thử nghiệm API trực tiếp.
 
@@ -87,14 +88,18 @@ SMTP_PASS=your_app_password
 - `PUT /api/student/profile`: Cập nhật thông tin liên hệ và ảnh đại diện
 
 ### 🗺️ 3. Nhóm Bản đồ & Tiện ích (`/api/campus/*` & `/api/general/*`)
-- `GET /api/campus/map` (hoặc `/api/map`): Danh sách 37 địa điểm và tọa độ GPS
+- `GET /api/campus/map` (hoặc `/api/map`): Danh sách 40 địa điểm và tọa độ GPS
 - `GET /api/campus/paths`: Mạng lưới các đoạn đường đi bộ nội bộ (Campus Walkways)
 - `POST /api/campus/route`: Tính toán tuyến đường đi bộ ngắn nhất giữa 2 điểm (Dijkstra)
 - `POST /api/campus/feedback`: Gửi ý kiến đóng góp cho nhà trường
 - `POST /api/campus/sos`: Phát tín hiệu khẩn cấp SOS kèm tọa độ
 - `GET /api/general/news`: Bảng tin tức, thông báo chính thức của nhà trường
 
-### 🛡️ 4. Nhóm Quản trị viên (`/api/admin/*` - Yêu cầu Bearer Token)
+### 🤖 4. Nhóm Trợ lý ảo RAG AI (`/api/chat/*`)
+- `POST /api/chat/ask`: Gửi câu hỏi đến TTN Smart Bot RAG AI (truy xuất Vector DB MySQL và tự sinh câu trả lời với Gemini)
+- `GET /api/chat/suggestions`: Lấy danh sách câu hỏi gợi ý thông minh bám sát ngữ cảnh
+
+### 🛡️ 5. Nhóm Quản trị viên (`/api/admin/*` - Yêu cầu Bearer Token)
 - `GET /api/admin/stats`: Thống kê tổng quan người dùng, phản hồi, cảnh báo SOS
 - `GET /api/admin/users`: Danh sách người dùng kèm Avatar
 - `POST /api/admin/users`: Tạo mới tài khoản sinh viên / cán bộ
@@ -104,5 +109,5 @@ SMTP_PASS=your_app_password
 - `PUT /api/admin/feedback/:id`: Duyệt và chuyển trạng thái phản hồi
 - `GET /api/admin/sos`: Danh sách cảnh báo SOS
 - `PUT /api/admin/sos/:id`: Tiếp nhận và xử lý tín hiệu SOS
-- `GET/POST/PUT/DELETE /api/admin/locations`: Quản lý 37 địa điểm bản đồ
+- `GET/POST/PUT/DELETE /api/admin/locations`: Quản lý 40 địa điểm bản đồ
 - `GET/POST/PUT/DELETE /api/admin/paths`: Quản lý và vẽ đường đi bộ nội bộ trường

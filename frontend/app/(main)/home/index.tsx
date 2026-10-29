@@ -44,6 +44,12 @@ import {
   HomeNewsSection,
   HomeNoticeModal,
 } from "../../../src/features/home";
+import {
+  initSocket,
+  onSosStatusChanged,
+  onFeedbackStatusChanged,
+  onNotificationsChanged,
+} from "../../../src/services/socketService";
 
 export default function HomeScreen() {
   const { colors, isDark } = useTheme();
@@ -293,13 +299,6 @@ export default function HomeScreen() {
           mssv: currentUser.mssv || "",
           ho_ten:
             currentUser.ho_ten ||
-            currentUser.fullName ||
-            currentUser.full_name ||
-            "Sinh viên",
-          fullName:
-            currentUser.fullName ||
-            currentUser.ho_ten ||
-            currentUser.full_name ||
             "Sinh viên",
           email: currentUser.email,
           lop: currentUser.lop,
@@ -376,6 +375,127 @@ export default function HomeScreen() {
     }
   };
 
+  // Lắng nghe sự kiện Realtime qua Socket.IO từ trường & Polling dự phòng
+  useEffect(() => {
+    initSocket();
+
+    const unsubSos = onSosStatusChanged((data) => {
+      console.log("⚡ [Realtime Home] Nhận sự kiện SOS cập nhật:", data);
+      const isResolved =
+        data.status === "Đã xử lý" ||
+        data.status === "Đã giải quyết" ||
+        data.status?.toLowerCase().includes("đã xử lý");
+
+      // Bỏ qua lọc xoá nếu sự cố đã được xử lý an toàn để sinh viên luôn nhận được cập nhật
+      if (isResolved) {
+        dismissedAlertIdsRef.current.delete(String(data.id));
+        dismissedAlertIdsRef.current.delete(`sos-${data.id}`);
+      }
+
+      setNotificationAlerts((prev) => {
+        const found = prev.some((a) => a.type === "sos" || String(a.id) === `sos-${data.id}`);
+        if (!found) {
+          loadData();
+          return prev;
+        }
+        return prev.map((alert) => {
+          if (alert.type === "sos" || String(alert.id) === `sos-${data.id}`) {
+            return {
+              ...alert,
+              status: data.status,
+              variant: isResolved ? "success" : "warning",
+              icon: isResolved ? "check" : "alert-triangle",
+              title: isResolved
+                ? "Tín hiệu SOS: Đã được xử lý an toàn"
+                : `Tín hiệu SOS: ${data.status || "Đang hỗ trợ"}`,
+            };
+          }
+          return alert;
+        });
+      });
+
+      setSelectedAlertForModal((curr) => {
+        if (curr && (curr.type === "sos" || String(curr.id) === `sos-${data.id}`)) {
+          return {
+            ...curr,
+            status: data.status,
+            variant: isResolved ? "success" : "warning",
+            icon: isResolved ? "check" : "alert-triangle",
+            title: isResolved
+              ? "Tín hiệu SOS: Đã được xử lý an toàn"
+              : `Tín hiệu SOS: ${data.status || "Đang hỗ trợ"}`,
+          };
+        }
+        return curr;
+      });
+
+      loadData();
+    });
+
+    const unsubFeedback = onFeedbackStatusChanged((data) => {
+      console.log("⚡ [Realtime Home] Nhận sự kiện Phản hồi cập nhật:", data);
+      const isResolved =
+        data.status === "Đã giải quyết" || data.status?.toLowerCase().includes("đã giải quyết");
+
+      if (isResolved) {
+        dismissedAlertIdsRef.current.delete(String(data.id));
+        dismissedAlertIdsRef.current.delete(`fb-${data.id}`);
+      }
+
+      setNotificationAlerts((prev) =>
+        prev.map((alert) => {
+          if (alert.type === "feedback" || String(alert.id) === `fb-${data.id}`) {
+            return {
+              ...alert,
+              status: data.status,
+              variant: isResolved ? "success" : "warning",
+              icon: isResolved ? "check" : "alert-triangle",
+              title: isResolved
+                ? "Phản hồi CSVC đã được giải quyết"
+                : `Phản hồi: (${data.status || "Đang xử lý"})`,
+            };
+          }
+          return alert;
+        })
+      );
+
+      setSelectedAlertForModal((curr) => {
+        if (curr && (curr.type === "feedback" || String(curr.id) === `fb-${data.id}`)) {
+          return {
+            ...curr,
+            status: data.status,
+            variant: isResolved ? "success" : "warning",
+            icon: isResolved ? "check" : "alert-triangle",
+            title: isResolved
+              ? "Phản hồi CSVC đã được giải quyết"
+              : `Phản hồi: (${data.status || "Đang xử lý"})`,
+          };
+        }
+        return curr;
+      });
+
+      loadData();
+    });
+
+    const unsubNotif = onNotificationsChanged(() => {
+      console.log("⚡ [Realtime Home] Có thông báo mới từ trường, đang cập nhật...");
+      loadData();
+    });
+
+    // Polling dự phòng mỗi 15 giây nếu kết nối socket bị gián đoạn
+    const pollInterval = setInterval(() => {
+      loadData();
+    }, 15000);
+
+    return () => {
+      unsubSos();
+      unsubFeedback();
+      unsubNotif();
+      clearInterval(pollInterval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       loadData();
@@ -412,7 +532,8 @@ export default function HomeScreen() {
       );
       return;
     }
-    if (screen === "home") router.push("/(main)/home");
+    if (screen === "chat") router.push("/(main)/chat" as any);
+    else if (screen === "home") router.push("/(main)/home");
     else if (screen === "all_articles" || screen === "home/all_articles") router.push("/(main)/home/all_articles");
     else router.push(`/(main)/${screen}` as any);
   };
@@ -577,6 +698,8 @@ export default function HomeScreen() {
         onNavigate={onNavigate}
         onDismiss={handleDismissAlert}
       />
+
     </View>
   );
 }
+

@@ -23,7 +23,11 @@ export function parseRoomDirections(roomRaw: string): RoomDirectionInfo {
     buildingCode = `Nhà ${bNum}`;
     building = `Nhà học số ${bNum}`;
     floor = `Tầng ${fNum}`;
-    roomDisplay = `Phòng ${rNum}${extra ? ` ${extra}` : ""}`;
+    if (bNum === "7" && fNum === "4" && (rNum === "25" || rNum === "20")) {
+      roomDisplay = "Phòng 7.4.25 (VP Bộ môn CNTT)";
+    } else {
+      roomDisplay = `Phòng ${rNum}${extra ? ` ${extra}` : ""}`;
+    }
     mapQuery = buildingCode;
   } else {
     // 2. Dạng 2 phần: X.Z (vd: 2.20 -> Nhà 2, Phòng 20; 2.21 (CLC) -> Nhà 2, Phòng 21 (CLC))

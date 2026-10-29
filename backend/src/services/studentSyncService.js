@@ -155,7 +155,7 @@ async function syncGradesForStudent(mssv, dk = '10') {
     let extractedName = extractFullNameFromHtml($);
     if (extractedName) {
       try {
-        await db.query('UPDATE users SET ho_ten = ?, full_name = ? WHERE mssv = ?', [extractedName, extractedName, mssv]);
+        await db.query('UPDATE users SET ho_ten = ? WHERE mssv = ?', [extractedName, mssv]);
       } catch (err) {}
     }
 

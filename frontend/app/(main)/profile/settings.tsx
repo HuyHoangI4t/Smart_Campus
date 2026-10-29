@@ -150,7 +150,7 @@ export default function SettingsScreen() {
                     color: themeMode === 'light' ? colors.primary : colors.text,
                   }}
                 >
-                  Giao diện sáng
+                  Sáng
                 </Text>
                 <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
                   Tươi sáng
@@ -205,7 +205,7 @@ export default function SettingsScreen() {
                     color: themeMode === 'dark' ? colors.accent : colors.text,
                   }}
                 >
-                  Giao diện tối
+                  Tối
                 </Text>
                 <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
                   Dịu mắt OLED

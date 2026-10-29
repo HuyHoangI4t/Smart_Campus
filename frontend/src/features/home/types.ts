@@ -38,6 +38,9 @@ export interface NotificationAlertItem {
   status: string;
   content: string;
   sender?: string;
+  location?: string;
+  incident_type?: string;
+  category?: string;
   actionScreen?: string;
 }
 

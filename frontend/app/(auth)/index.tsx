@@ -203,8 +203,8 @@ export default function AuthScreen() {
           if (res.user) {
             const userPayload = {
               ...res.user,
-              ho_ten: res.user.fullName || res.user.full_name || res.user.ho_ten || ('Sinh viên ' + res.user.mssv),
-              fullName: res.user.fullName || res.user.full_name || res.user.ho_ten || ('Sinh viên ' + res.user.mssv),
+              ho_ten: res.user.fullName ||  res.user.ho_ten || ('Sinh viên ' + res.user.mssv),
+              fullName: res.user.fullName || res.user.ho_ten || ('Sinh viên ' + res.user.mssv),
             };
             await AsyncStorage.setItem('@auth_user', JSON.stringify(userPayload));
             notifyAuthChanged();

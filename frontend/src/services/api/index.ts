@@ -4,4 +4,4 @@ export * from './studentApi';
 export * from './scheduleApi';
 export * from './campusApi';
 export * from './newsApi';
-
+export * from './chatApi';

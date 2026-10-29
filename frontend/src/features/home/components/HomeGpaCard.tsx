@@ -11,10 +11,9 @@ export interface HomeGpaCardProps {
 }
 
 /**
- * Thẻ Tổng kết GPA (HomeGpaCard) - Ngôn ngữ thiết kế Hybrid Android 16 & iOS HIG
- * Kết hợp cấu trúc Grouped Inset Card, nền Tonal Surface Container,
- * xếp loại dạng viên con nhộng (Pill capsule) và viền hairline siêu mỏng.
- * Phản hồi giao diện Sáng / Tối linh hoạt chuẩn OLED/Slate.
+ * Thẻ Kết quả học tập (HomeGpaCard) - Thiết kế Kính mờ (Frosted Glass) hoàn toàn
+ * - Không có bất kỳ ô trắng hay hộp lồng nào bên trong
+ * - Nền kính mờ bán trong suốt đồng bộ với toàn bộ ứng dụng
  */
 export const HomeGpaCard = React.memo(function HomeGpaCard({
   gpaSummary,
@@ -37,8 +36,12 @@ export const HomeGpaCard = React.memo(function HomeGpaCard({
       style={({ pressed }) => [
         styles.card,
         {
-          backgroundColor: colors.cardBg,
-          borderColor: colors.cardBorder,
+          backgroundColor: isDark
+            ? "rgba(30, 41, 59, 0.65)"
+            : "rgba(255, 255, 255, 0.68)",
+          borderColor: isDark
+            ? "rgba(255, 255, 255, 0.14)"
+            : "rgba(255, 255, 255, 0.85)",
         },
         pressed && styles.cardPressed,
       ]}
@@ -48,12 +51,25 @@ export const HomeGpaCard = React.memo(function HomeGpaCard({
       {/* ── HEADER: BIỂU TƯỢNG + TIÊU ĐỀ + PILL XẾP LOẠI + CHEVRON ── */}
       <View style={styles.headerRow}>
         <View style={styles.titleGroup}>
-          <View style={[styles.iconBox, { backgroundColor: isDark ? "rgba(91, 97, 244, 0.2)" : `${colors.accent}14` }]}>
+          <View
+            style={[
+              styles.iconBox,
+              {
+                backgroundColor: isDark
+                  ? "rgba(91, 97, 244, 0.2)"
+                  : `${colors.accent}14`,
+              },
+            ]}
+          >
             <Feather name="award" size={17} color={colors.accent} />
           </View>
           <View>
-            <Text style={[styles.titleText, { color: colors.text }]}>Kết quả học tập</Text>
-            <Text style={[styles.subtitleText, { color: colors.textSecondary }]}>Tích lũy toàn khóa đào tạo</Text>
+            <Text style={[styles.titleText, { color: colors.text }]}>
+              Kết quả học tập
+            </Text>
+            <Text style={[styles.subtitleText, { color: colors.textSecondary }]}>
+              Tích lũy toàn khóa đào tạo
+            </Text>
           </View>
         </View>
 
@@ -62,8 +78,8 @@ export const HomeGpaCard = React.memo(function HomeGpaCard({
             style={[
               styles.rankPill,
               {
-                backgroundColor: isDark ? `${rankColor}26` : `${rankColor}1A`, // tonal tint
-                borderColor: isDark ? `${rankColor}66` : `${rankColor}40`,     // border
+                backgroundColor: isDark ? `${rankColor}26` : `${rankColor}1A`,
+                borderColor: isDark ? `${rankColor}66` : `${rankColor}40`,
               },
             ]}
           >
@@ -76,50 +92,81 @@ export const HomeGpaCard = React.memo(function HomeGpaCard({
         </View>
       </View>
 
-      {/* ── BẢNG THỐNG KÊ TONAL SURFACE (TONAL CONTAINER) ── */}
+      {/* ── BẢNG ĐIỂM HOÀN TOÀN TRONG SUỐT (KHÔNG HỘP TRẮNG, KHÔNG KHUNG LỒNG) ── */}
       <View
         style={[
-          styles.tonalContainer,
+          styles.statsRow,
           {
-            backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
-            borderColor: colors.border,
+            borderTopColor: isDark
+              ? "rgba(255, 255, 255, 0.08)"
+              : "rgba(0, 0, 0, 0.05)",
           },
         ]}
       >
         {/* GPA Hệ 4 */}
         <View style={styles.statCol}>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>GPA HỆ 4</Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+            GPA HỆ 4
+          </Text>
           <View style={styles.scoreRow}>
             <Text style={[styles.scoreValue, { color: colors.info }]}>
               {gpaSummary.gpa4}
             </Text>
-            <Text style={[styles.scoreScale, { color: colors.textSubtle }]}>/4.0</Text>
+            <Text style={[styles.scoreScale, { color: colors.textSubtle }]}>
+              /4.0
+            </Text>
           </View>
         </View>
 
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <View
+          style={[
+            styles.statDivider,
+            {
+              backgroundColor: isDark
+                ? "rgba(255, 255, 255, 0.1)"
+                : "rgba(0, 0, 0, 0.06)",
+            },
+          ]}
+        />
 
         {/* GPA Hệ 10 */}
         <View style={styles.statCol}>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>GPA HỆ 10</Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+            GPA HỆ 10
+          </Text>
           <View style={styles.scoreRow}>
             <Text style={[styles.scoreValue, { color: colors.accent }]}>
               {gpaSummary.gpa10}
             </Text>
-            <Text style={[styles.scoreScale, { color: colors.textSubtle }]}>/10</Text>
+            <Text style={[styles.scoreScale, { color: colors.textSubtle }]}>
+              /10
+            </Text>
           </View>
         </View>
 
-        <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        <View
+          style={[
+            styles.statDivider,
+            {
+              backgroundColor: isDark
+                ? "rgba(255, 255, 255, 0.1)"
+                : "rgba(0, 0, 0, 0.06)",
+            },
+          ]}
+        />
 
         {/* Tín chỉ tích lũy */}
         <View style={styles.statCol}>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>TÍN CHỈ</Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+            TÍN CHỈ
+          </Text>
           <View style={styles.scoreRow}>
             <Text style={[styles.scoreValue, { color: colors.success }]}>
               {gpaSummary.totalCredits}
             </Text>
-            <Text style={[styles.scoreScale, { color: colors.textSubtle }]}>TC</Text>
+            <Text style={[styles.scoreScale, { color: colors.textSubtle }]}>
+              TC
+            </Text>
           </View>
         </View>
       </View>
@@ -129,19 +176,19 @@ export const HomeGpaCard = React.memo(function HomeGpaCard({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 22, // Squircle bo góc lớn
+    borderRadius: 22,
     padding: 16,
-    marginBottom: 16, // Hệ số 8pt
-    borderWidth: 1, // Viền Hairline siêu mỏng
+    marginBottom: 16,
+    borderWidth: 1.2,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
-    shadowRadius: 10,
+    shadowRadius: 14,
     elevation: 2,
   },
   cardPressed: {
     opacity: 0.94,
-    transform: [{ scale: 0.975 }], // Co giãn lò xo mượt mà
+    transform: [{ scale: 0.98 }],
   },
   headerRow: {
     flexDirection: "row",
@@ -157,7 +204,7 @@ const styles = StyleSheet.create({
   iconBox: {
     width: 38,
     height: 38,
-    borderRadius: 14, // Squircle nhỏ
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -182,7 +229,7 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 999, // Pill capsule
+    borderRadius: 999,
     borderWidth: 1,
   },
   rankDot: {
@@ -195,14 +242,12 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 0.2,
   },
-  tonalContainer: {
+  statsRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderWidth: 0.8,
+    paddingTop: 14,
+    borderTopWidth: 1,
   },
   statCol: {
     alignItems: "center",
@@ -228,8 +273,8 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
   },
-  divider: {
+  statDivider: {
     width: 1,
-    height: 26,
+    height: 28,
   },
 });

@@ -4,6 +4,7 @@ import { AppColors } from './appColors';
 export * from '../styles/theme';
 export * from '../styles/common.styles';
 export * from '../styles/screen.styles';
+export * from './glassStyles';
 
 export const authStyles = StyleSheet.create({
   container: {
@@ -211,6 +212,10 @@ export const mainStyles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center" },
   between: { justifyContent: "space-between" },
   card: { backgroundColor: AppColors.cardBg, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: AppColors.border, elevation: 2, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 4 },
+  glassCard: { backgroundColor: 'rgba(255, 255, 255, 0.72)', borderRadius: 22, padding: 16, borderWidth: 1.2, borderColor: 'rgba(255, 255, 255, 0.82)', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 18, elevation: 3 },
+  glassCardElevated: { backgroundColor: 'rgba(255, 255, 255, 0.85)', borderRadius: 22, padding: 18, borderWidth: 1.5, borderColor: 'rgba(255, 255, 255, 0.88)', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 22, elevation: 5 },
+  glassPill: { flexDirection: 'row', alignItems: 'center', paddingVertical: 5, paddingHorizontal: 12, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.7)', backgroundColor: 'rgba(255, 255, 255, 0.5)' },
+  glassIconBtn: { width: 38, height: 38, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.4)', backgroundColor: 'rgba(255, 255, 255, 0.2)' },
   iconBtn: { width: 36, height: 36, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   label: { fontSize: 11, fontWeight: "700", color: AppColors.textMuted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 },
   inputRow: { flexDirection: "row", alignItems: "center", backgroundColor: AppColors.muted, borderWidth: 1, borderColor: AppColors.border, borderRadius: 12 },

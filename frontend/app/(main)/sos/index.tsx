@@ -8,6 +8,7 @@ import { useTheme } from "../../../src/context/ThemeContext";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
 import { apiSubmitSos, apiGetSosConfig } from "../../../src/services/api";
+import { initSocket, onSosStatusChanged } from "../../../src/services/socketService";
 
 const DEFAULT_HOTLINES = [
   { label: "Bảo vệ & An ninh cơ sở", phone: "0329106783", icon: "shield" as const },
@@ -57,7 +58,23 @@ export default function SosScreen() {
     };
     fetchConfig();
 
+    initSocket();
+    const unsub = onSosStatusChanged((data) => {
+      const isResolved =
+        data.status === "Đã xử lý" ||
+        data.status === "Đã giải quyết" ||
+        data.status?.toLowerCase().includes("đã xử lý");
+      if (isResolved) {
+        Alert.alert(
+          "Cứu hộ an toàn",
+          "Tín hiệu SOS của bạn đã được Đội Bảo vệ & Trực ban an ninh trường xử lý an toàn.",
+          [{ text: "Đã hiểu" }]
+        );
+      }
+    });
+
     return () => {
+      unsub();
       if (locationSubRef.current) {
         locationSubRef.current.remove();
         locationSubRef.current = null;

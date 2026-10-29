@@ -426,6 +426,14 @@ exports.createNotification = async (req, res) => {
       created_at: new Date()
     };
 
+    // Bắn sự kiện Realtime qua Socket.IO tới App & Admin
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('notification_created', newNotif);
+      io.emit('notifications_changed');
+      io.emit('stats_update');
+    }
+
     res.status(201).json({
       success: true,
       message: 'Phát thông báo thành công.',
@@ -462,16 +470,25 @@ exports.updateNotification = async (req, res) => {
       );
     }
 
+    const updatedNotif = {
+      id: Number(id),
+      title: title.trim(),
+      content: content.trim(),
+      type: notifType,
+      sender: notifSender
+    };
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('notification_updated', updatedNotif);
+      io.emit('notifications_changed');
+      io.emit('stats_update');
+    }
+
     res.json({
       success: true,
       message: 'Cập nhật thông báo thành công.',
-      notification: {
-        id: Number(id),
-        title: title.trim(),
-        content: content.trim(),
-        type: notifType,
-        sender: notifSender
-      }
+      notification: updatedNotif
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi cập nhật thông báo: ' + error.message });
@@ -483,6 +500,12 @@ exports.deleteNotification = async (req, res) => {
 
   try {
     await db.query('DELETE FROM notifications WHERE id = ?', [id]);
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('notification_deleted', { id: Number(id) });
+      io.emit('notifications_changed');
+      io.emit('stats_update');
+    }
     res.json({ success: true, message: 'Đã xóa thông báo thành công.' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi xóa thông báo: ' + error.message });
@@ -513,15 +536,22 @@ exports.updateFeedbackStatus = async (req, res) => {
 
   try {
     await db.query('UPDATE feedback SET status = ? WHERE id = ?', [newStatus, id]);
+    const [fbRows] = await db.query('SELECT * FROM feedback WHERE id = ?', [id]);
+    const updatedFb = fbRows[0] || null;
 
-    // Bắn sự kiện Realtime qua Socket.IO
+    // Bắn sự kiện Realtime qua Socket.IO tới App & Admin
     const io = req.app.get('io');
     if (io) {
-      io.emit('feedback_status_changed', { id: Number(id), status: newStatus });
+      io.emit('feedback_status_changed', {
+        id: Number(id),
+        status: newStatus,
+        feedback: updatedFb,
+        mssv: updatedFb ? updatedFb.mssv : null
+      });
       io.emit('stats_update');
     }
 
-    res.json({ success: true, message: `Đã cập nhật trạng thái phản hồi: ${newStatus}`, status: newStatus });
+    res.json({ success: true, message: `Đã cập nhật trạng thái phản hồi: ${newStatus}`, status: newStatus, feedback: updatedFb });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi cập nhật trạng thái phản hồi: ' + error.message });
   }
@@ -530,10 +560,13 @@ exports.updateFeedbackStatus = async (req, res) => {
 exports.deleteFeedback = async (req, res) => {
   const { id } = req.params;
   try {
+    const [rows] = await db.query('SELECT mssv FROM feedback WHERE id = ?', [id]);
+    const mssv = rows[0]?.mssv;
     await db.query('DELETE FROM feedback WHERE id = ?', [id]);
 
     const io = req.app.get('io');
     if (io) {
+      io.emit('feedback_deleted', { id: Number(id), mssv });
       io.emit('stats_update');
     }
 
@@ -567,15 +600,22 @@ exports.updateSosStatus = async (req, res) => {
 
   try {
     await db.query('UPDATE sos_alerts SET status = ? WHERE id = ?', [newStatus, id]);
+    const [alertRows] = await db.query('SELECT * FROM sos_alerts WHERE id = ?', [id]);
+    const updatedAlert = alertRows[0] || null;
 
-    // Bắn sự kiện Realtime qua Socket.IO
+    // Bắn sự kiện Realtime qua Socket.IO tới App & Admin
     const io = req.app.get('io');
     if (io) {
-      io.emit('sos_status_changed', { id: Number(id), status: newStatus });
+      io.emit('sos_status_changed', {
+        id: Number(id),
+        status: newStatus,
+        alert: updatedAlert,
+        mssv: updatedAlert ? updatedAlert.mssv : null
+      });
       io.emit('stats_update');
     }
 
-    res.json({ success: true, message: `Đã cập nhật trạng thái cảnh báo SOS: ${newStatus}`, status: newStatus });
+    res.json({ success: true, message: `Đã cập nhật trạng thái cảnh báo SOS: ${newStatus}`, status: newStatus, alert: updatedAlert });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi cập nhật trạng thái SOS: ' + error.message });
   }
@@ -584,7 +624,16 @@ exports.updateSosStatus = async (req, res) => {
 exports.deleteSosAlert = async (req, res) => {
   const { id } = req.params;
   try {
+    const [rows] = await db.query('SELECT mssv FROM sos_alerts WHERE id = ?', [id]);
+    const mssv = rows[0]?.mssv;
     await db.query('DELETE FROM sos_alerts WHERE id = ?', [id]);
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('sos_deleted', { id: Number(id), mssv });
+      io.emit('stats_update');
+    }
+
     res.json({ success: true, message: 'Đã xóa cảnh báo SOS.' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi xóa cảnh báo SOS: ' + error.message });

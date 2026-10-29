@@ -14,13 +14,19 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
-// Helper quản lý modal
+// Helper quản lý modal với hiệu ứng 2026 Glass Entrance
 function openModal(modalId) {
   const el = document.getElementById(modalId);
   if (el) {
     el.classList.remove('hidden');
     el.classList.add('flex');
     document.body.classList.add('overflow-hidden');
+    const dialog = el.querySelector('.bg-white, .glass-panel, [class*="rounded-3xl"], [class*="rounded-2xl"]');
+    if (dialog) {
+      dialog.classList.remove('modal-enter');
+      void dialog.offsetWidth;
+      dialog.classList.add('modal-enter');
+    }
   }
 }
 
@@ -73,10 +79,11 @@ const App = {
   currentTab: 'dashboard',
   confirmCallback: null,
   sidebarMode: 'vertical', // 'vertical' hoặc 'detached'
-  currentZoom: '80%',
+  currentZoom: '100%',
   socket: null,
 
   init() {
+    this.initTheme();
     this.startClock();
     this.initZoom();
     this.initSidebarMode();
@@ -241,7 +248,7 @@ const App = {
 
   // Khởi tạo mức thu nhỏ giao diện (Mặc định 80% theo yêu cầu)
   initZoom() {
-    const saved = localStorage.getItem('admin_ui_zoom') || '80%';
+    const saved = localStorage.getItem('admin_ui_zoom') || '100%';
     this.setZoom(saved, false);
   },
 
@@ -288,6 +295,35 @@ const App = {
     update();
     setInterval(update, 1000);
   },
+
+  // Khởi tạo Chế độ Giao diện Kính mờ (Light Crystal Glass vs Dark Obsidian Glass)
+  initTheme() {
+    const saved = localStorage.getItem('admin_theme') || 'light';
+    this.setTheme(saved, false);
+  },
+
+  setTheme(theme, notify = true) {
+    this.currentTheme = theme;
+    localStorage.setItem('admin_theme', theme);
+    const html = document.documentElement;
+    const btn = document.getElementById('btnThemeToggle');
+    if (theme === 'dark') {
+      html.classList.add('dark');
+      if (btn) btn.innerHTML = '<i data-lucide="sun" class="w-4 h-4 text-amber-400"></i>';
+    } else {
+      html.classList.remove('dark');
+      if (btn) btn.innerHTML = '<i data-lucide="moon" class="w-4 h-4 text-indigo-500"></i>';
+    }
+    if (window.lucide) window.lucide.createIcons();
+    if (notify) {
+      this.showToast(`Chế độ giao diện: ${theme === 'dark' ? 'Tối (Obsidian Glass)' : 'Sáng (Crystal Glass)'}`, 'info');
+    }
+  },
+
+  toggleTheme() {
+    this.setTheme(this.currentTheme === 'dark' ? 'light' : 'dark', true);
+  },
+
 
   // Khởi tạo chế độ hiển thị Sidebar (Dọc vs Nổi)
   initSidebarMode() {
@@ -354,6 +390,7 @@ const App = {
   showAuthView() {
     const loginView = document.getElementById('loginView');
     const mainView = document.getElementById('mainView');
+    const mainLayout = document.getElementById('mainLayout');
 
     if (loginView) {
       loginView.classList.remove('hidden');
@@ -364,12 +401,16 @@ const App = {
       mainView.classList.add('hidden');
       mainView.style.display = 'none';
     }
+    if (mainLayout) {
+      mainLayout.classList.add('hidden');
+    }
     if (window.lucide) window.lucide.createIcons();
   },
 
   showMainView(user) {
     const loginView = document.getElementById('loginView');
     const mainView = document.getElementById('mainView');
+    const mainLayout = document.getElementById('mainLayout');
 
     if (loginView) {
       loginView.classList.add('hidden');
@@ -380,8 +421,12 @@ const App = {
       mainView.classList.remove('hidden');
       mainView.style.display = 'block';
     }
+    if (mainLayout) {
+      mainLayout.classList.remove('hidden');
+      mainLayout.style.display = 'flex';
+    }
 
-    const displayName = user.ho_ten || user.fullName || user.email || 'Quản trị viên';
+    const displayName = user.ho_ten || user.email || 'Quản trị viên';
     const displayEmail = user.email || 'admin@ttn.edu.vn';
     const avatarUrl = user.avatar || 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTffzZtOfmsnGMh1O97etZoJGLvIZTQLuEwcT7BwgtIRQ&s=10';
 
@@ -436,8 +481,8 @@ const App = {
           if (headerAvatarEl) headerAvatarEl.src = p.avatar;
           if (sidebarAvatarEl) sidebarAvatarEl.src = p.avatar;
         }
-        if (p.ho_ten || p.fullName) {
-          const name = p.ho_ten || p.fullName;
+        if (p.ho_ten) {
+          const name = p.ho_ten;
           if (sNameEl) sNameEl.textContent = name;
           if (nameEl) nameEl.textContent = name;
         }
@@ -568,6 +613,10 @@ const App = {
     if (window.lucide) window.lucide.createIcons();
   },
 
+  switchView(viewId) {
+    this.switchTab(viewId);
+  },
+
   switchTab(tabId) {
     const prevTab = this.currentTab;
     this.currentTab = tabId;
@@ -578,30 +627,43 @@ const App = {
       DashboardModule.stopRealtime();
     }
 
-    // Vì SOS đã gộp chung với Bản đồ & Địa điểm thành 1 trang xếp cạnh nhau:
-    const effectiveSectionId = (tabId === 'sos') ? 'locations' : tabId;
-
     // Cập nhật giao diện nút tab trên sidebar
     const tabs = ['dashboard', 'users', 'locations', 'notifications', 'feedback', 'sos'];
     tabs.forEach(t => {
       const btn = document.getElementById(`navbtn-${t}`);
-      const content = document.getElementById(`tab-${t}`);
+      const menuLinks = document.querySelectorAll(`.menu-link[data-view="${t}"]`);
+      const contentTab = document.getElementById(`tab-${t}`);
+      const contentView = document.getElementById(`view-${t}`);
       
+      const isActive = (t === tabId);
+
       if (btn) {
-        if (t === tabId) {
-          btn.classList.add('active');
+        if (isActive) btn.classList.add('active');
+        else btn.classList.remove('active');
+      }
+
+      menuLinks.forEach(link => {
+        if (isActive) link.classList.add('active');
+        else link.classList.remove('active');
+      });
+
+      if (contentTab) {
+        if (isActive) {
+          contentTab.classList.remove('hidden');
+          contentTab.classList.add('animate-fade-in');
         } else {
-          btn.classList.remove('active');
+          contentTab.classList.add('hidden');
+          contentTab.classList.remove('animate-fade-in');
         }
       }
 
-      if (content) {
-        if (t === effectiveSectionId) {
-          content.classList.remove('hidden');
-          content.classList.add('animate-fade-in');
+      if (contentView) {
+        if (isActive) {
+          contentView.classList.remove('hidden');
+          contentView.classList.add('animate-fade-in');
         } else {
-          content.classList.add('hidden');
-          content.classList.remove('animate-fade-in');
+          contentView.classList.add('hidden');
+          contentView.classList.remove('animate-fade-in');
         }
       }
     });

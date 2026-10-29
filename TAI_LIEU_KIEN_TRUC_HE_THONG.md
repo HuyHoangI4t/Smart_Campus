@@ -303,7 +303,7 @@ sequenceDiagram
     end
 ```
 
-* **Xử lý Chế độ Khách (Guest Mode):** Khi chọn chế độ khách, ứng dụng không yêu cầu cấp quyền vị trí gắt gao ngay từ đầu, cho phép người dùng tự do xem bản đồ 37 địa điểm và tin tức trường học, giúp giảm tỷ lệ thoát ứng dụng (Bounce rate) khi mở app lần đầu.
+* **Xử lý Chế độ Khách (Guest Mode):** Khi chọn chế độ khách, ứng dụng không yêu cầu cấp quyền vị trí gắt gao ngay từ đầu, cho phép người dùng tự do xem bản đồ 40 địa điểm và tin tức trường học, giúp giảm tỷ lệ thoát ứng dụng (Bounce rate) khi mở app lần đầu.
 * **Cơ chế Duy trì Phiên:** Mọi request tiếp theo từ Mobile Client tự động được đính kèm header `Authorization: Bearer <token>` thông qua Axios Interceptor trong [`frontend/src/services/api/client.ts`](file:///e:/LTDDDNT/frontend/src/services/api/client.ts). Middleware [`backend/src/middlewares/authMiddleware.js`](file:///e:/LTDDDNT/backend/src/middlewares/authMiddleware.js) thực hiện xác minh chữ ký số và giải mã gán vào `req.user`.
 
 ---
@@ -750,14 +750,14 @@ Lưu trữ thông tin người dùng hệ thống gồm sinh viên, cán bộ gi
 ---
 
 ### 5.2. Bảng `map_locations` (Địa điểm Khuôn viên Trường)
-Lưu trữ danh mục 37 địa điểm trọng yếu trong trường:
+Lưu trữ danh mục 40 địa điểm trọng yếu trong trường (theo số nhà học thực tế của ĐH Tây Nguyên, không dùng tên Tòa A, B, C):
 
 | Tên Cột | Kiểu Dữ Liệu | Thuộc Tính | Ý Nghĩa Kỹ Thuật |
 | :--- | :--- | :--- | :--- |
 | `id` | `INT` | `PK, AUTO_INCREMENT` | Định danh địa điểm |
-| `name` | `VARCHAR(255)` | `NOT NULL` | Tên địa điểm (Nhà Điều Hành, Giảng Đường A1,...) |
+| `name` | `VARCHAR(255)` | `NOT NULL` | Tên địa điểm (Tòa nhà Điều hành, Nhà học số 9, Nhà học số 8,...) |
 | `category` | `VARCHAR(100)` | `DEFAULT NULL` | Nhóm danh mục (`academic`, `service`, `parking`,...) |
-| `building` | `VARCHAR(100)` | `DEFAULT NULL` | Mã tòa nhà liên kết (`A1`, `B2`, `TT`,...) |
+| `building` | `VARCHAR(100)` | `DEFAULT NULL` | Mã công trình liên kết (`Nhà học số 9`, `Tòa Hiệu Bộ`, `KTX 1`,...) |
 | `floor` | `VARCHAR(100)` | `DEFAULT NULL` | Số tầng của công trình |
 | `lat` | `DECIMAL(10, 8)` | `DEFAULT NULL` | Vĩ độ trắc địa GPS (Độ chính xác $\approx 1.1\text{mm}$) |
 | `lng` | `DECIMAL(11, 8)` | `DEFAULT NULL` | Kinh độ trắc địa GPS |
@@ -917,7 +917,7 @@ frontend/
 │   │   ├── schedule/                     # Thanh tuần (WeekBar), Thẻ lịch học, Modal chỉ đường
 │   │   └── map/                          # Module Bản đồ, Dijkstra, LRU Cache, WebView HTML
 │   │       ├── campusPaths.ts            # Mạng lưới đỉnh & cạnh đồ thị
-│   │       ├── constants.ts              # Danh sách 37 địa điểm khuôn viên TTN
+│   │       ├── constants.ts              # Danh sách 40 địa điểm khuôn viên TTN
 │   │       ├── leafletHtml.ts            # Mã nguồn HTML/JS Leaflet đóng gói độc lập
 │   │       ├── utils.ts                  # Dijkstra Solver & Haversine Distance
 │   │       └── services/                 # Bộ nhớ đệm bản đồ (mapCache & pathCache)
@@ -991,7 +991,7 @@ admin/public/
     ├── api.js                         # Bộ điều khiển mạng tập trung & Interceptor
     ├── app.js                         # Bộ định tuyến tab & Khởi tạo phiên
     ├── dashboard.js                   # Thống kê số lượng sinh viên, sự cố, phản hồi
-    ├── locations.js                   # Công cụ vẽ đường & Quản lý 37 địa điểm
+    ├── locations.js                   # Công cụ vẽ đường & Quản lý 40 địa điểm
     ├── sos.js                         # Trung tâm Giám sát Cứu hộ SOS Realtime
     ├── feedback.js                    # Quản lý & Trả lời phản ánh sinh viên
     ├── notifications.js               # Phát thông báo toàn trường
@@ -1085,7 +1085,7 @@ Backend Server áp dụng các biện pháp phòng vệ theo chuẩn an ninh ứ
 Để sẵn sàng cho các đợt cao điểm sinh viên tra cứu lịch thi hoặc điểm số:
 1. **MySQL Connection Pool:** Cấu hình nhóm kết nối gồm 10 kết nối thường trực (`connectionLimit: 10`), tự động tái sử dụng kết nối (Reuse Connection) và tự phục hồi khi kết nối bị đứt (Auto-reconnect).
 2. **Stateless API Architecture:** Do server không lưu session ở bộ nhớ mà dựa vào JWT, hệ thống có thể dễ dàng đặt phía sau một bộ cân bằng tải (như Nginx Reverse Proxy) để phân phối tải sang nhiều tiến trình Node.js qua PM2 Cluster Mode.
-3. **Giảm tải qua Caching tại Máy khách:** 90% các yêu cầu dữ liệu tĩnh (Bản đồ 37 địa điểm, danh sách tuyến đường) được phục vụ ngay từ bộ nhớ `AsyncStorage` của điện thoại, giúp giảm tới 80% áp lực request lên máy chủ.
+3. **Giảm tải qua Caching tại Máy khách:** 90% các yêu cầu dữ liệu tĩnh (Bản đồ 40 địa điểm, danh sách tuyến đường) được phục vụ ngay từ bộ nhớ `AsyncStorage` của điện thoại, giúp giảm tới 80% áp lực request lên máy chủ.
 
 ---
 
@@ -1120,7 +1120,7 @@ Hệ thống **Smart Campus Đại học Tây Nguyên** thể hiện sự cân b
 
 1. **Dẫn đường Nội bộ Đa tầng 3D (Indoor Multi-floor Routing):**
    * Mở rộng cấu trúc đồ thị từ không gian phẳng 2D thành đồ thị không gian 3 chiều ($X, Y, Z$).
-   * Bổ sung thuộc tính tầng (`floor`) và các cạnh liên kết thẳng đứng (cầu thang bộ, thang máy) trong bảng `campus_paths`, cho phép sinh viên tìm đường từ cổng trường lên thẳng phòng thực hành tại Tầng 3 Giảng đường A1.
+   * Bổ sung thuộc tính tầng (`floor`) và các cạnh liên kết thẳng đứng (cầu thang bộ, thang máy) trong bảng `campus_paths`, cho phép sinh viên tìm đường từ cổng trường lên thẳng phòng thực hành tại Tầng 3 Nhà học số 9.
 2. **Hạ tầng Thông báo Đẩy Tập trung (Push Notification Gateway via FCM / APNs):**
    * Tích hợp Firebase Cloud Messaging (FCM) để gửi thông báo nhắc lịch học tự động trước giờ vào lớp 15 phút, ngay cả khi sinh viên đã tắt ứng dụng.
 3. **Trợ lý Ảo Học tập AI (Campus AI Assistant):**

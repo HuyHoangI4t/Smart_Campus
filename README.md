@@ -14,7 +14,7 @@
 
 > **Smart Campus** là giải pháp hệ sinh thái ứng dụng toàn diện hỗ trợ sinh viên trường **Đại học Tây Nguyên**:
 > - 📱 **Ứng dụng di động (Mobile App):** Tra cứu điểm số, thời khóa biểu thông minh, bản đồ khuôn viên với dẫn đường nội bộ (thuật toán Dijkstra), la bàn định hướng và các tiện ích sinh viên.
-> - 💻 **Cổng quản trị (Admin Portal):** Quản lý tài khoản sinh viên, duyệt phản hồi, cảnh báo SOS thời gian thực qua Socket.IO, chỉnh sửa 37 địa điểm và vẽ mạng lưới đường nội bộ trực tiếp trên bản đồ số.
+> - 💻 **Cổng quản trị (Admin Portal):** Quản lý tài khoản sinh viên, duyệt phản hồi, cảnh báo SOS thời gian thực qua Socket.IO, chỉnh sửa 40 địa điểm và vẽ mạng lưới đường nội bộ trực tiếp trên bản đồ số.
 > - ⚡ **Khởi động 1 chạm:** Kèm sẵn script `start_all.bat` khởi chạy đồng thời Backend, Admin Portal và Mobile App.
 > - 🚀 **Tối ưu hóa quy mô lớn:** Hệ thống Cache TTL + Rate Limiter bảo vệ cổng trường khi có 1,000–10,000 sinh viên đồng thời.
 
@@ -49,7 +49,7 @@
 | *Lịch học theo tuần, xem phòng, tiết & GV* | *Lộ trình di chuyển chi tiết từ cổng tới phòng* | *Tùy chỉnh lịch học bù, thực hành đột xuất* |
 
 #### 🗺️ 4. Bản đồ số & Dẫn đường nội bộ (Campus Map & Navigation)
-| 🗺️ Tổng quan khuôn viên 37 địa điểm | 🧭 Dẫn đường Dijkstra & Đổi cổng vào |
+| 🗺️ Tổng quan khuôn viên 40 địa điểm | 🧭 Dẫn đường Dijkstra & Đổi cổng vào |
 | :---: | :---: |
 | <img src="frontend/assets/Screenshots%20_Demo/09_map_campus_overview.jpg" width="240" alt="Bản đồ khuôn viên" /> | <img src="frontend/assets/Screenshots%20_Demo/10_map_routing_navigation.jpg" width="240" alt="Dẫn đường Dijkstra" /> |
 | *Tìm kiếm tòa nhà, chip lọc loại & thẻ chi tiết* | *Đường đi bộ Dijkstra, đổi cổng & thanh trạng thái đáy* |
@@ -86,7 +86,13 @@
   - **Biểu tượng vị trí hình tam giác:** Tích hợp la bàn hiển thị hướng nhìn thực tế của người dùng và đưa vị trí về tâm màn hình.
   - **Lọc rung lắc cảm biến:** Thuật toán làm mịn góc quay (ngưỡng lệch ≥ 8° và giới hạn tối thiểu 450ms) giúp tiết kiệm pin và chống giật.
   - **Tự động ẩn thanh điều hướng (Bottom Tabs):** Tối ưu hóa toàn bộ diện tích màn hình khi đang trong chế độ dẫn đường.
-  - **37 Địa điểm trọng điểm:** Tòa nhà điều hành, Thư viện, Giảng đường A1-A6, B1-B3, Ký túc xá, Sân vận động, Căn tin...
+   số 2, Nhà học số 5 (Khoa Y Dược), Nhà học số 6, Nhà học số 7 (Khoa Kinh tế), Nhà học số 8 (Khoa Sư phạm), Nhà học số 9 (Khoa CNTT & KHTN-CN), Giảng đường 400 chỗ & 200 chỗ, Bệnh viện trường, Viện CNSH & Môi trường, Hệ thống Ký túc xá 1-4 & KTX Lào-Campuchia, Nhà thi đấu, Sân vận động, Căn tin - Đảo sinh viên... (Khuôn viên trường chuẩn hóa theo số nhà học, không có các tên Tòa A, B, C).
+- **🤖 Trợ lý AI thông minh (TTN Smart Bot - Vector RAG AI):**
+  - **Cơ sở dữ liệu Vector Database:** Bảng `campus_knowledge` trong MySQL được chuyển đổi thành vector embeddings 3072 chiều qua `gemini-embedding-001`.
+  - **Cosine Similarity Search:** Truy xuất ngữ cảnh tri thức quy chế, học bổng, vị trí nhà học tức thì theo độ tương đồng ngữ nghĩa.
+  - **AI Tự sinh câu trả lời (Dynamic Generation):** Tích hợp Google Gemini AI tự động tổng hợp câu trả lời ngắn gọn, chuẩn xác, không dùng câu trả lời mẫu rập khuôn.
+  - **Cá nhân hóa theo dữ liệu thực:** Trích xuất kết quả học tập (GPA hệ 4 & hệ 10), thời khóa biểu hôm nay trực tiếp từ MySQL `student_grades` & `student_schedules`.
+  - **Hành động điều hướng (Action Dispatcher):** Tự động đề xuất nút mở bản đồ dẫn đường (Nhà học số 9, Thư viện...), mở thời khóa biểu hoặc gọi hotline bảo vệ/y tế.
 - **📅 Thời khóa biểu thông minh (Schedule):**
   - Xem lịch học theo tuần và ngày, hiển thị phòng học, tiết học, giảng viên.
   - Thêm / chỉnh sửa lịch học bù, thực hành đột xuất: Giao diện thẻ **Ngày học** tự động đồng bộ thứ trong tuần, ô **Tiết học** full-width với danh sách chọn nhanh mượt mà.
@@ -106,7 +112,7 @@
   - Modal thêm/sửa tài khoản tích hợp **xem trước và tải ảnh đại diện** trực quan.
   - Tìm kiếm đa năng theo MSSV, Họ tên, Email, Lớp, Khoa.
 - **🗺️ Quản lý bản đồ & đường nội bộ:**
-  - Thêm, sửa, xóa 37 địa điểm khuôn viên trường.
+  - Thêm, sửa, xóa 40 địa điểm khuôn viên trường.
   - Trực tiếp vẽ, chỉnh sửa và khôi phục mạng lưới đường đi bộ nội bộ (Campus Paths) trên bản đồ Leaflet.
 - **⚡ Kết nối Realtime (Socket.IO):** Cập nhật ngay lập tức các phản hồi và tín hiệu SOS của sinh viên mà không cần tải lại trang.
 
@@ -218,7 +224,7 @@ cd backend
 npm install
 npm run dev
 ```
-> 💡 **Tự động hóa:** File `src/server.js` sẽ tự động kết nối MySQL, tạo toàn bộ 13 bảng dữ liệu và chèn sẵn tài khoản admin, 37 địa điểm và đường nội bộ mà bạn không cần import file SQL thủ công.
+> 💡 **Tự động hóa:** File `src/server.js` sẽ tự động kết nối MySQL, tạo toàn bộ 14 bảng dữ liệu và chèn sẵn tài khoản admin, 40 địa điểm và đường nội bộ mà bạn không cần import file SQL thủ công.
 - **API Health:** `http://localhost:5000/api/health`
 - **Swagger Docs:** `http://localhost:5000/api-docs`
 
@@ -256,7 +262,7 @@ LTDDDNT/
 │   │   │   ├── app.js                  # Điều phối chung, Realtime Socket.IO
 │   │   │   ├── dashboard.js            # Thống kê & biểu đồ hoạt động
 │   │   │   ├── feedback.js             # Quản lý & duyệt phản hồi
-│   │   │   ├── locations.js            # Quản lý 37 địa điểm khuôn viên
+│   │   │   ├── locations.js            # Quản lý 40 địa điểm khuôn viên
 │   │   │   ├── notifications.js        # Phát thông báo toàn trường
 │   │   │   ├── sos.js                  # Xử lý cảnh báo khẩn cấp SOS
 │   │   │   └── users.js                # Quản lý sinh viên/admin, ảnh đại diện
@@ -278,8 +284,8 @@ LTDDDNT/
 │   │   │   ├── newsController.js       # Tin tức trường học
 │   │   │   └── studentController.js    # Điểm & TKB (TTL cache + fallback)
 │   │   ├── database/                   # Quản lý schema CSDL tập trung
-│   │   │   ├── tables.js               # Định nghĩa DDL toàn bộ 13 bảng
-│   │   │   ├── seedData.js             # 37 địa điểm, tài khoản mẫu, đường nội bộ
+│   │   │   ├── tables.js               # Định nghĩa DDL toàn bộ 14 bảng
+│   │   │   ├── seedData.js             # 40 địa điểm, tài khoản mẫu, đường nội bộ
 │   │   │   ├── seeders.js              # Hàm nạp dữ liệu mặc định
 │   │   │   └── index.js                # Điều phối khởi tạo CSDL
 │   │   ├── middlewares/                # Middleware xác thực JWT & quyền Admin
@@ -358,7 +364,7 @@ EMAIL_PASS=your_app_password
 | `POST` | `/api/schedule/custom` | Thêm lịch học thủ công |
 | `PUT` | `/api/schedule/custom/:id` | Sửa lịch học thủ công |
 | `DELETE` | `/api/schedule/custom/:id` | Xóa lịch học thủ công |
-| `GET` | `/api/map/locations` | Danh sách 37 địa điểm |
+| `GET` | `/api/map/locations` | Danh sách 40 địa điểm |
 | `GET` | `/api/map/paths` | Mạng lưới đường nội bộ |
 | `GET` | `/api/news` | Tin tức từ cổng trường |
 | `GET` | `/api/notifications` | Thông báo từ trường |

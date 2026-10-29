@@ -455,7 +455,7 @@ router.delete('/locations/:id', adminController.deleteLocation);
  * @swagger
  * /api/admin/locations/reset:
  *   post:
- *     summary: Khôi phục danh sách 37 địa điểm tòa nhà chuẩn mặc định của Đại học Tây Nguyên
+ *     summary: Khôi phục danh sách 40 địa điểm tòa nhà chuẩn mặc định của Đại học Tây Nguyên
  *     tags: [Admin]
  *     security:
  *       - BearerAuth: []

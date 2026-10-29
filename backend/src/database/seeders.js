@@ -4,7 +4,7 @@
  * ============================================================================
  * Tập trung toàn bộ logic cập nhật, nạp dữ liệu ban đầu và bảo trì database:
  * 1. seedAdminUser: Tạo tài khoản Quản trị viên (admin/admin123)
- * 2. seedMapLocations: Cập nhật & nạp 37 địa điểm Đại học Tây Nguyên
+ * 2. seedMapLocations: Cập nhật & nạp 40 địa điểm Đại học Tây Nguyên
  * 3. seedCampusPaths: Nạp các tuyến đường đi bộ nội bộ
  * 4. runAllSeeders: Thực thi tuần tự toàn bộ seeders
  */
@@ -46,7 +46,7 @@ async function seedAdminUser(conn) {
 }
 
 /**
- * 2. Seed & Cập nhật 37 địa điểm bản đồ khuôn viên trường Đại học Tây Nguyên
+ * 2. Seed & Cập nhật 40 địa điểm bản đồ khuôn viên trường Đại học Tây Nguyên
  * @param {import('mysql2/promise').Connection|import('mysql2/promise').Pool} conn
  * @param {{ force?: boolean }} options
  */
@@ -164,14 +164,14 @@ async function seedSampleFeedback(conn) {
     const toDateKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
     const sampleFeedbacks = [
-      { dayOffset: 0, title: 'Điều hòa phòng B302 bị lỗi quạt gió', content: 'Phòng học B302 quạt gió kêu to và không mát vào tiết 3-4', status: 'Đã giải quyết', mssv: '21103001' },
-      { dayOffset: 0, title: 'Đèn bàn học thư viện tầng 2 không sáng', content: 'Khu tự học dãy A có 2 đèn bàn học bị hỏng', status: 'Đã giải quyết', mssv: '21103022' },
+      { dayOffset: 0, title: 'Điều hòa phòng 9.2.04 bị lỗi quạt gió', content: 'Phòng học Nhà 9 quạt gió kêu to và không mát vào tiết 3-4', status: 'Đã giải quyết', mssv: '21103001' },
+      { dayOffset: 0, title: 'Đèn bàn học thư viện tầng 2 không sáng', content: 'Khu tự học Thư viện có 2 đèn bàn học bị hỏng', status: 'Đã giải quyết', mssv: '21103022' },
       { dayOffset: 1, title: 'Đề xuất mở rộng giờ mở cửa thư viện', content: 'Kính mong nhà trường mở cửa thư viện tới 21h vào đợt thi', status: 'Đang xử lý', mssv: '21103015' },
-      { dayOffset: 1, title: 'Bổ sung thêm ổ cắm điện khu tự học dãy C', content: 'Khu tự học dãy C hiện có khá ít ổ cắm cho laptop làm đồ án', status: 'Đã giải quyết', mssv: '22103042' },
-      { dayOffset: 2, title: 'Mạng Wifi Giảng đường A2 chập chờn', content: 'Wifi sinh viên kết nối được nhưng tải tài liệu rất chậm', status: 'Đang xử lý', mssv: '21103088' },
-      { dayOffset: 3, title: 'Cần sửa vòi nước tầng 3 khu B', content: 'Vòi nước bồn rửa tay bị rò rỉ nước liên tục', status: 'Đã giải quyết', mssv: '23103011' },
+      { dayOffset: 1, title: 'Bổ sung thêm ổ cắm điện Nhà học số 7', content: 'Khu tự học Nhà 7 hiện có khá ít ổ cắm cho laptop làm đồ án', status: 'Đã giải quyết', mssv: '22103042' },
+      { dayOffset: 2, title: 'Mạng Wifi Nhà học số 2 chập chờn', content: 'Wifi sinh viên kết nối được nhưng tải tài liệu rất chậm', status: 'Đang xử lý', mssv: '21103088' },
+      { dayOffset: 3, title: 'Cần sửa vòi nước tầng 3 Nhà học số 8', content: 'Vòi nước bồn rửa tay bị rò rỉ nước liên tục', status: 'Đã giải quyết', mssv: '23103011' },
       { dayOffset: 3, title: 'Thắc mắc về lịch thi kết thúc học phần', content: 'Xin thông báo chi tiết ca thi và phòng thi bổ sung', status: 'Đã tiếp nhận', mssv: '22103067' },
-      { dayOffset: 4, title: 'Đèn chiếu sáng hành lang khu E bị hỏng', content: 'Hành lang tầng 2 khu E buổi tối rất tối, nguy hiểm cho sinh viên', status: 'Đã giải quyết', mssv: '21103099' },
+      { dayOffset: 4, title: 'Đèn chiếu sáng hành lang Nhà học số 5 bị hỏng', content: 'Hành lang tầng 2 Nhà 5 buổi tối rất tối, nguy hiểm cho sinh viên', status: 'Đã giải quyết', mssv: '21103099' },
       { dayOffset: 4, title: 'Đăng ký vé xe tháng cho sinh viên K24', content: 'Thủ tục đăng ký vé giữ xe tháng tại nhà xe trung tâm', status: 'Đã tiếp nhận', mssv: '24103005' },
       { dayOffset: 5, title: 'Góp ý về bãi giữ xe cổng số 2', content: 'Giờ tan học cao điểm bãi xe bị ùn ứ, đề xuất mở thêm làn ra', status: 'Đã tiếp nhận', mssv: '22103112' }
     ];
@@ -278,14 +278,14 @@ async function seedSampleSosAlerts(conn, options = {}) {
 
     const sampleSos = [
       { dayOffset: 0, mssv: '21103001', location: 'Nhà thi đấu TDTT', message: 'Trượt chân ngã trật khớp cổ chân khi đá bóng, cần hỗ trợ y tế', incident_type: 'Y tế / Tai nạn', status: 'Đã xử lý' },
-      { dayOffset: 0, mssv: '21103015', location: 'Toà nhà C - Tầng 3', message: 'Kẹt cửa thang máy toà C tầng 3, có 4 sinh viên bên trong', incident_type: 'Sự cố hạ tầng', status: 'Đã xử lý' },
-      { dayOffset: 1, mssv: '22103042', location: 'Thư viện trung tâm - Tầng 2', message: 'Sinh viên bị hạ đường huyết ngất xỉu tại bàn học', incident_type: 'Y tế / Cấp cứu', status: 'Đã xử lý' },
-      { dayOffset: 2, mssv: '21103088', location: 'Khu tự học Nhà B', message: 'Phát hiện khói và mùi khét bốc lên từ ổ cắm điện máy chiếu', incident_type: 'Cháy nổ / An toàn', status: 'Đã xử lý' },
+      { dayOffset: 0, mssv: '21103015', location: 'Tòa nhà Điều hành - Tầng 3', message: 'Kẹt cửa thang máy tòa Hiệu bộ tầng 3, có 4 sinh viên bên trong', incident_type: 'Sự cố hạ tầng', status: 'Đã xử lý' },
+      { dayOffset: 1, mssv: '22103042', location: 'Thư viện Trung tâm - Tầng 2', message: 'Sinh viên bị hạ đường huyết ngất xỉu tại bàn học', incident_type: 'Y tế / Cấp cứu', status: 'Đã xử lý' },
+      { dayOffset: 2, mssv: '21103088', location: 'Nhà học số 7 - Khu tự học', message: 'Phát hiện khói và mùi khét bốc lên từ ổ cắm điện máy chiếu', incident_type: 'Cháy nổ / An toàn', status: 'Đã xử lý' },
       { dayOffset: 2, mssv: '23103011', location: 'Khuôn viên hồ nước', message: 'Để quên ba lô có laptop và giấy tờ trên ghế đá, cần check camera', incident_type: 'An ninh trật tự', status: 'Đang xử lý' },
       { dayOffset: 2, mssv: '21103001', location: 'Nhà xe sinh viên cổng 2', message: 'Bị rơi chìa khóa xe máy xuống cống thoát nước', incident_type: 'Khẩn cấp khác', status: 'Đã xử lý' },
-      { dayOffset: 3, mssv: '22103042', location: 'Giảng đường A1 - Phòng 204', message: 'Đèn trần bị chập nổ tia lửa điện nguy hiểm', incident_type: 'Sự cố hạ tầng', status: 'Đã xử lý' },
+      { dayOffset: 3, mssv: '22103042', location: 'Nhà học số 9 - Phòng 204', message: 'Đèn trần bị chập nổ tia lửa điện nguy hiểm', incident_type: 'Sự cố hạ tầng', status: 'Đã xử lý' },
       { dayOffset: 4, mssv: '21103015', location: 'Sân bóng rổ ngoài trời', message: 'Xô xát to tiếng giữa nhóm sinh viên, cần bảo vệ can thiệp', incident_type: 'An ninh trật tự', status: 'Đã xử lý' },
-      { dayOffset: 4, mssv: '21103088', location: 'Ký túc xá B4 - Phòng 302', message: 'Bị kẹt khóa cửa phòng không ra ngoài được để đi thi', incident_type: 'Khẩn cấp khác', status: 'Đang xử lý' },
+      { dayOffset: 4, mssv: '21103088', location: 'Ký túc xá số 4 - Phòng 302', message: 'Bị kẹt khóa cửa phòng không ra ngoài được để đi thi', incident_type: 'Khẩn cấp khác', status: 'Đang xử lý' },
       { dayOffset: 5, mssv: '23103011', location: 'Căn tin trung tâm', message: 'Dị ứng thực phẩm nổi mề đay khó thở, cần chuyển trạm y tế', incident_type: 'Y tế / Cấp cứu', status: 'Đã xử lý' }
     ];
 

@@ -250,8 +250,8 @@ exports.getDashboard = async (req, res) => {
     const [uResult, notifResult, fbResult, sosResult] = await Promise.all([
       isRealStudent ? db.query('SELECT mssv, ho_ten, email, lop, khoa FROM users WHERE mssv = ? LIMIT 1', [mssv]) : Promise.resolve([[]]),
       db.query('SELECT id, title, content, type, sender, date, created_at FROM notifications ORDER BY id DESC LIMIT 10'),
-      isRealStudent ? db.query('SELECT id, title, content, status, created_at FROM feedback WHERE mssv = ? ORDER BY id DESC LIMIT 1', [mssv]) : Promise.resolve([[]]),
-      isRealStudent ? db.query('SELECT id, location, message, status, created_at FROM sos_alerts WHERE mssv = ? ORDER BY id DESC LIMIT 1', [mssv]) : Promise.resolve([[]]),
+      isRealStudent ? db.query('SELECT id, title, content, category, status, created_at FROM feedback WHERE mssv = ? ORDER BY id DESC LIMIT 1', [mssv]) : Promise.resolve([[]]),
+      isRealStudent ? db.query('SELECT id, location, message, incident_type, status, created_at FROM sos_alerts WHERE mssv = ? ORDER BY id DESC LIMIT 1', [mssv]) : Promise.resolve([[]]),
     ]);
 
     const uRows = uResult[0] || [];
@@ -303,6 +303,8 @@ exports.getDashboard = async (req, res) => {
         date: formatDateStr(userFeedback.created_at),
         status: userFeedback.status || 'Đang xử lý',
         content: userFeedback.content || 'Nội dung phản hồi của bạn đã được ghi nhận.',
+        category: userFeedback.category,
+        sender: 'Ban Quản lý CSVC',
         actionScreen: 'feedback'
       });
     }
@@ -320,8 +322,11 @@ exports.getDashboard = async (req, res) => {
           : `Tín hiệu SOS: ${userSos.status || 'Đang hỗ trợ'}`,
         subtitle: formatDateStr(userSos.created_at),
         date: formatDateStr(userSos.created_at),
-        status: userSos.status || 'Đang hỗ trợ',
+        status: userSos.status || 'Chờ xử lý',
         content: userSos.message || 'Tín hiệu SOS khẩn cấp tại vị trí của bạn.',
+        location: userSos.location || 'Khuôn viên trường',
+        incident_type: userSos.incident_type || 'Khẩn cấp',
+        sender: 'Đội An ninh & Bảo vệ trường',
         actionScreen: 'sos'
       });
     }

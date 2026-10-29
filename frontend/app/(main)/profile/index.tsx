@@ -49,11 +49,8 @@ const PRESET_AVATARS = [
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { colors, isDark, themeMode } = useTheme();
-  const { onScroll: onTabBarScroll, bottomPadding } = useTabBarScrollHandler({
-    visiblePadding: 130,
-    hiddenPadding: 130,
-  });
+  const { colors, isDark } = useTheme();
+  const { onScroll: onTabBarScroll, bottomPadding } = useTabBarScrollHandler();
   const [profile, setProfile] = useState<UserProfile>({
     mssv: "",
     ho_ten: "Đang tải...",
@@ -100,7 +97,7 @@ export default function ProfileScreen() {
         localUser = JSON.parse(userStr);
         setProfile({
           mssv: localUser.mssv || "",
-          ho_ten: localUser.ho_ten || localUser.fullName || localUser.full_name || "Sinh viên",
+          ho_ten: localUser.ho_ten || "Sinh viên",
           email: localUser.email || "",
           so_dien_thoai: localUser.so_dien_thoai || localUser.phone || "",
           lop: localUser.lop || "K23",
@@ -418,11 +415,11 @@ export default function ProfileScreen() {
             <TouchableOpacity onPress={() => router.push("/(main)/profile/settings")}>
               <Feather name="settings" size={19} color="#FFFFFF" />
             </TouchableOpacity>
-            {!isGuest && (
+            {/* {!isGuest && (
               <TouchableOpacity onPress={openEditModal}>
                 <Feather name="edit-2" size={18} color="#FFFFFF" />
               </TouchableOpacity>
-            )}
+            )} */}
           </View>
         }
       />
@@ -661,7 +658,7 @@ export default function ProfileScreen() {
           </>
         )}
 
-        {/* Cài đặt & Tiện ích */}
+        {/* Cài đặt & Tiện ích
         <Text style={{ fontSize: 15, fontWeight: "800", color: colors.text, marginBottom: 12 }}>
           Cài đặt & Tiện ích
         </Text>
@@ -710,7 +707,7 @@ export default function ProfileScreen() {
               <Feather name="chevron-right" size={18} color={colors.textMuted} />
             </View>
           </TouchableOpacity>
-        </View>
+        </View> */}
 
         {/* Thiết lập & Bảo mật (Chỉ sinh viên) */}
         {!isGuest && (

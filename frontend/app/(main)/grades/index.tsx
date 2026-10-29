@@ -14,6 +14,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTabBarScrollHandler } from "../../../src/components/MainTabs";
 import { GradesSkeleton } from "../../../src/components/Skeleton";
 import { LoginRequiredCard } from "../../../src/components/LoginRequiredCard";
+import { CourseDetailModal } from "../../../src/features/grades/components/CourseDetailModal";
 
 interface CourseGrade {
   code: string;
@@ -22,6 +23,14 @@ interface CourseGrade {
   grade10: number;
   gradeLetter: string;
   semester: string;
+  dbp?: number | null;
+  thi1?: number | null;
+  thi2?: number | null;
+  d1?: number | null;
+  d2?: number | null;
+  namHoc?: string;
+  ky?: string;
+  hocPhi?: string;
 }
 
 const FALLBACK_GRADES: CourseGrade[] = [
@@ -43,6 +52,7 @@ export default function GradesScreen() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [isOfflineData, setIsOfflineData] = useState(false);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<CourseGrade | null>(null);
 
   const fetchGrades = async () => {
     try {
@@ -72,8 +82,16 @@ export default function GradesScreen() {
           name: item.ten_hp || item.name || "Học phần",
           credits: Number(item.so_tin_chi || item.credits || 3),
           grade10: item.diem_hp !== null && item.diem_hp !== undefined && !isNaN(Number(item.diem_hp)) ? Number(item.diem_hp) : (item.grade10 ? Number(item.grade10) : 0),
-          gradeLetter: item.diem_chu || (item.diem_hp >= 8.5 ? "A" : item.diem_hp >= 7.0 ? "B" : "C"),
-          semester: item.hoc_ky || "HK1 (2026)",
+          gradeLetter: item.diem_chu || (item.diem_hp >= 8.5 ? "A" : item.diem_hp >= 7.0 ? "B" : item.diem_hp >= 5.5 ? "C" : item.diem_hp >= 4.0 ? "D" : "F"),
+          semester: item.hoc_ky || (item.ky ? `HK${item.ky} (${item.nam_hoc || "2026"})` : "HK1 (2026)"),
+          dbp: item.diem_dbp !== null && item.diem_dbp !== undefined && !isNaN(Number(item.diem_dbp)) ? Number(item.diem_dbp) : null,
+          thi1: item.diem_thi1 !== null && item.diem_thi1 !== undefined && !isNaN(Number(item.diem_thi1)) ? Number(item.diem_thi1) : null,
+          thi2: item.diem_thi2 !== null && item.diem_thi2 !== undefined && !isNaN(Number(item.diem_thi2)) ? Number(item.diem_thi2) : null,
+          d1: item.diem_1 !== null && item.diem_1 !== undefined && !isNaN(Number(item.diem_1)) ? Number(item.diem_1) : null,
+          d2: item.diem_2 !== null && item.diem_2 !== undefined && !isNaN(Number(item.diem_2)) ? Number(item.diem_2) : null,
+          namHoc: item.nam_hoc || "",
+          ky: item.ky || "",
+          hocPhi: item.hoc_phi || "",
         }));
         setGrades(parsed);
         setLoading(false);
@@ -98,8 +116,16 @@ export default function GradesScreen() {
               name: item.ten_hp || item.name || "Học phần",
               credits: Number(item.so_tin_chi || item.credits || 3),
               grade10: item.diem_hp !== null && item.diem_hp !== undefined && !isNaN(Number(item.diem_hp)) ? Number(item.diem_hp) : (item.grade10 ? Number(item.grade10) : 0),
-              gradeLetter: item.diem_chu || (item.diem_hp >= 8.5 ? "A" : item.diem_hp >= 7.0 ? "B" : "C"),
-              semester: item.hoc_ky || "HK1 (2026)",
+              gradeLetter: item.diem_chu || (item.diem_hp >= 8.5 ? "A" : item.diem_hp >= 7.0 ? "B" : item.diem_hp >= 5.5 ? "C" : item.diem_hp >= 4.0 ? "D" : "F"),
+              semester: item.hoc_ky || (item.ky ? `HK${item.ky} (${item.nam_hoc || "2026"})` : "HK1 (2026)"),
+              dbp: item.diem_dbp !== null && item.diem_dbp !== undefined && !isNaN(Number(item.diem_dbp)) ? Number(item.diem_dbp) : null,
+              thi1: item.diem_thi1 !== null && item.diem_thi1 !== undefined && !isNaN(Number(item.diem_thi1)) ? Number(item.diem_thi1) : null,
+              thi2: item.diem_thi2 !== null && item.diem_thi2 !== undefined && !isNaN(Number(item.diem_thi2)) ? Number(item.diem_thi2) : null,
+              d1: item.diem_1 !== null && item.diem_1 !== undefined && !isNaN(Number(item.diem_1)) ? Number(item.diem_1) : null,
+              d2: item.diem_2 !== null && item.diem_2 !== undefined && !isNaN(Number(item.diem_2)) ? Number(item.diem_2) : null,
+              namHoc: item.nam_hoc || "",
+              ky: item.ky || "",
+              hocPhi: item.hoc_phi || "",
             }));
             setGrades(parsed);
           } else if (isRealAccount) {
@@ -259,10 +285,10 @@ export default function GradesScreen() {
         }
       />
 
-      {isLoggedIn === null || loading ? (
-        <View style={{ flex: 1, padding: 16 }}>
+      {isLoggedIn === null || (loading && grades.length === 0) ? (
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: bottomPadding }}>
           <GradesSkeleton />
-        </View>
+        </ScrollView>
       ) : !isLoggedIn ? (
         <View style={{ flex: 1, paddingBottom: bottomPadding }}>
           <LoginRequiredCard
@@ -450,8 +476,8 @@ export default function GradesScreen() {
           <Text style={{ fontSize: 12, color: colors.textMuted }}>Kéo xuống để cập nhật</Text>
         </View>
 
-        {loading || refreshing ? (
-          <GradesSkeleton />
+        {loading && grades.length === 0 ? (
+          <GradesSkeleton cardsOnly={true} />
         ) : displayedGrades.length === 0 ? (
           <View
             style={{
@@ -515,18 +541,27 @@ export default function GradesScreen() {
             {displayedGrades.map((item, idx) => {
               const badge = getBadgeColor(item.gradeLetter);
               return (
-                <View
+                <Pressable
                   key={`${item.name}-${idx}`}
-                  style={{
-                    padding: 16,
-                    borderRadius: 16,
-                    backgroundColor: colors.cardBg,
-                    borderWidth: 1,
-                    borderColor: colors.cardBorder,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                    setSelectedCourse(item);
                   }}
+                  style={({ pressed }) => [
+                    {
+                      padding: 16,
+                      borderRadius: 16,
+                      backgroundColor: colors.cardBg,
+                      borderWidth: 1,
+                      borderColor: colors.cardBorder,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    },
+                    pressed && { opacity: 0.82, transform: [{ scale: 0.985 }] },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Xem chi tiết học phần ${item.name}`}
                 >
                   <View style={{ flex: 1, paddingRight: 12 }}>
                     <View style={[s.row, { gap: 6, marginBottom: 4 }]}>
@@ -568,13 +603,19 @@ export default function GradesScreen() {
                         : `${item.grade10.toFixed(1)} / 10`}
                     </Text>
                   </View>
-                </View>
+                </Pressable>
               );
             })}
           </View>
         )}
       </ScrollView>
       )}
+
+      {/* Modal chi tiết từng học phần khi bấm vào */}
+      <CourseDetailModal
+        course={selectedCourse}
+        onClose={() => setSelectedCourse(null)}
+      />
     </View>
   );
 }

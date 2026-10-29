@@ -44,7 +44,7 @@ router.post('/sos', campusController.submitSos);
  * @swagger
  * /api/campus/map:
  *   get:
- *     summary: Lấy danh sách 37 địa điểm và tòa nhà khuôn viên Đại học Tây Nguyên
+ *     summary: Lấy danh sách 40 địa điểm và tòa nhà khuôn viên Đại học Tây Nguyên
  *     tags: [Campus]
  *     responses:
  *       200:

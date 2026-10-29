@@ -261,7 +261,7 @@ exports.login = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Tài khoản hoặc mật khẩu không đúng.' });
     }
 
-    const name = user.ho_ten || user.full_name || ('Sinh viên ' + user.mssv);
+    const name = user.ho_ten || ('Sinh viên ' + user.mssv);
     res.json({
       success: true,
       message: 'Đăng nhập thành công',

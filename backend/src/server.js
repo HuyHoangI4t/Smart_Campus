@@ -12,6 +12,7 @@ const campusRoutes = require('./routes/campusRoutes');
 const generalRoutes = require('./routes/generalRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const newsRoutes = require('./routes/newsRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 const cronService = require('./services/cronService');
 const path = require('path');
 const os = require('os');
@@ -194,6 +195,7 @@ app.use('/api/campus', campusRoutes);
 app.use('/api/general', generalRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/news', newsRoutes);
+app.use('/api/chat', chatRoutes);
 
 app.use('/api', generalRoutes);
 app.use('/api', studentRoutes);
@@ -235,6 +237,10 @@ async function startServer() {
     
     // Khởi động tiến trình đồng bộ dữ liệu tự động 3 lần/ngày
     cronService.startCronJobs();
+
+    // Khởi tạo Vector Store RAG từ cơ sở dữ liệu MySQL (chuyển đổi tri thức thành Vector Embeddings)
+    const vectorDbService = require('./services/vectorDbService');
+    vectorDbService.initializeVectorStore().catch((e) => console.warn('⚠️ [Vector RAG Startup]:', e.message));
   });
 
   const gracefulShutdown = async (signal) => {

@@ -58,7 +58,7 @@ export function HomeSkeleton({ isLoggedIn = true }: { isLoggedIn?: boolean; show
             <SkeletonBox width={70} height={24} borderRadius={12} />
           </View>
 
-          <View style={[styles.tonalContainer, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: colors.border }]}>
+          <View style={[styles.statsRow, { borderTopColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)" }]}>
             <View style={styles.statCol}>
               <SkeletonBox width={50} height={10} borderRadius={3} style={{ marginBottom: 6 }} />
               <SkeletonBox width={55} height={24} borderRadius={4} />
@@ -167,14 +167,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 20,
   },
-  tonalContainer: {
+  statsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 10,
-    borderWidth: 1,
+    paddingTop: 14,
+    borderTopWidth: 1,
     marginTop: 14,
   },
   statCol: {
