@@ -1,12 +1,16 @@
 /**
  * test_chat_keyboard_layout.js
- * Kiểm tra cấu hình bàn phím của ChatBotScreen trên Android
+ * Kiểm tra cấu hình bàn phím của ChatBotScreen trên Android và iOS
  * 
  * Đảm bảo:
- * 1. app.json có softwareKeyboardLayoutMode là "resize" để Android tự đẩy layout lên tự nhiên.
- * 2. KeyboardAvoidingView trên Android dùng behavior={undefined} để tránh xung đột double-height
- *    khiến thanh nhập liệu bị co giật hoặc thụt xuống dưới khi đóng bàn phím.
- * 3. ChatInputBar tự động điều chỉnh paddingBottom theo sự kiện bàn phím.
+ * 1. app.json có softwareKeyboardLayoutMode là "resize" cho Android.
+ * 2. KeyboardAvoidingView dùng behavior="padding" để đảm bảo thanh chat không bao giờ
+ *    bị bàn phím ảo che lấp trên cả Android và iOS.
+ * 3. FlatList có keyboardShouldPersistTaps="handled" và keyboardDismissMode="on-drag"
+ *    để khi cuộn hoặc bấm gợi ý bàn phím đóng mở mượt mà.
+ * 4. ChatInputBar lưu trữ cachedBottomInset để ngăn chặn thanh nhập liệu bị thụt sát đáy
+ *    (mất padding safe area) sau khi đóng bàn phím trên MIUI/HyperOS/Android.
+ * 5. ChatInputBar có TextInput onFocus và onBlur đồng bộ cùng keyboard listeners.
  */
 
 const assert = require('assert');
@@ -45,25 +49,51 @@ function main() {
     );
   })) passed++;
 
-  // 2. Kiểm tra chat/index.tsx không bị xung đột double-resize trên Android
+  // 2. Kiểm tra chat/index.tsx dùng behavior="padding" chống che khuất bàn phím
   total++;
-  if (runTest('chat/index.tsx không gán behavior="height" trên Android', () => {
+  if (runTest('chat/index.tsx dùng behavior="padding" nâng view trên bàn phím', () => {
     const chatPath = path.join(__dirname, '../../frontend/app/(main)/chat/index.tsx');
     const content = fs.readFileSync(chatPath, 'utf8');
     assert(
-      content.includes('behavior={Platform.OS === "ios" ? "padding" : undefined}'),
-      'KeyboardAvoidingView trên Android phải để behavior là undefined khi AndroidManifest đã bật adjustResize'
+      content.includes('behavior="padding"'),
+      'KeyboardAvoidingView phải dùng behavior="padding" để không bị che khuất thanh chat'
     );
   })) passed++;
 
-  // 3. Kiểm tra ChatInputBar có listener bàn phím mượt mà
+  // 3. Kiểm tra chat/index.tsx có dismiss on-drag và handled taps
   total++;
-  if (runTest('ChatInputBar có keyboard listener co giãn padding', () => {
+  if (runTest('chat/index.tsx FlatList có keyboardShouldPersistTaps và dismiss on-drag', () => {
+    const chatPath = path.join(__dirname, '../../frontend/app/(main)/chat/index.tsx');
+    const content = fs.readFileSync(chatPath, 'utf8');
+    assert(
+      content.includes('keyboardShouldPersistTaps="handled"') &&
+      content.includes('keyboardDismissMode="on-drag"'),
+      'FlatList phải có keyboardShouldPersistTaps="handled" và keyboardDismissMode="on-drag"'
+    );
+  })) passed++;
+
+  // 4. Kiểm tra ChatInputBar có lưu cachedBottomInset chống tụt thanh nhập liệu
+  total++;
+  if (runTest('ChatInputBar có cachedBottomInset bảo toàn safe area khi tắt bàn phím', () => {
     const inputPath = path.join(__dirname, '../../frontend/src/features/chat/components/ChatInputBar.tsx');
     const content = fs.readFileSync(inputPath, 'utf8');
     assert(
-      content.includes('keyboardDidShow') && content.includes('keyboardDidHide'),
-      'ChatInputBar phải theo dõi keyboardDidShow và keyboardDidHide để set paddingBottom'
+      content.includes('cachedBottomInset') && content.includes('effectiveBottomInset'),
+      'ChatInputBar phải có cachedBottomInset để bảo lưu insets.bottom sau khi ẩn bàn phím'
+    );
+  })) passed++;
+
+  // 5. Kiểm tra ChatInputBar có đầy đủ keyboard listeners và focus/blur handlers
+  total++;
+  if (runTest('ChatInputBar có keyboard listeners và onFocus/onBlur an toàn', () => {
+    const inputPath = path.join(__dirname, '../../frontend/src/features/chat/components/ChatInputBar.tsx');
+    const content = fs.readFileSync(inputPath, 'utf8');
+    assert(
+      content.includes('keyboardDidShow') &&
+      content.includes('keyboardDidHide') &&
+      content.includes('onFocus') &&
+      content.includes('onBlur'),
+      'ChatInputBar phải kết hợp cả keyboard listener và onFocus/onBlur để tránh kẹt trạng thái'
     );
   })) passed++;
 

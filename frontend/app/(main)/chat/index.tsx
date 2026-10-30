@@ -213,7 +213,7 @@ export default function ChatBotScreen() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior="padding"
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
         {hasMessages ? (
@@ -254,6 +254,9 @@ export default function ChatBotScreen() {
               ) : null
             }
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            onScrollBeginDrag={Keyboard.dismiss}
           />
         ) : (
           <FlatList
@@ -262,6 +265,9 @@ export default function ChatBotScreen() {
             renderItem={() => <ChatWelcomeView onSelectPrompt={handleSendMessage} />}
             contentContainerStyle={styles.welcomeScrollContent}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            onScrollBeginDrag={Keyboard.dismiss}
           />
         )}
 

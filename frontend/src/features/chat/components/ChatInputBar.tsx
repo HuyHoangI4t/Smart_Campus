@@ -25,15 +25,21 @@ export const ChatInputBar = memo(function ChatInputBar({
   const canSend = value.trim().length > 0 && !disabled;
   const [isKeyboardVisible, setKeyboardVisible] = React.useState(false);
 
+  // Giữ lại bottom inset lớn nhất của thanh điều hướng (Android gesture pill / nav bar)
+  // để tránh việc insets.bottom bị reset về 0 sau khi đóng bàn phím trên Android MIUI/HyperOS
+  const cachedBottomInset = React.useRef(insets.bottom);
+  if (insets.bottom > cachedBottomInset.current) {
+    cachedBottomInset.current = insets.bottom;
+  }
+  const effectiveBottomInset = Math.max(cachedBottomInset.current, insets.bottom, 14);
+
   React.useEffect(() => {
-    const showSub = Keyboard.addListener(
-      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
-      () => setKeyboardVisible(true)
-    );
-    const hideSub = Keyboard.addListener(
-      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
-      () => setKeyboardVisible(false)
-    );
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+
     return () => {
       showSub.remove();
       hideSub.remove();
@@ -51,7 +57,7 @@ export const ChatInputBar = memo(function ChatInputBar({
       style={[
         styles.inputContainer,
         {
-          paddingBottom: isKeyboardVisible ? 6 : Math.max(insets.bottom, 12),
+          paddingBottom: isKeyboardVisible ? 8 : effectiveBottomInset,
           backgroundColor: isDark ? "rgba(15, 23, 42, 0.88)" : "rgba(255, 255, 255, 0.90)",
           borderColor: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(255, 255, 255, 0.95)",
         },
@@ -76,6 +82,8 @@ export const ChatInputBar = memo(function ChatInputBar({
             placeholderTextColor={colors.textSubtle}
             value={value}
             onChangeText={onChangeText}
+            onFocus={() => setKeyboardVisible(true)}
+            onBlur={() => setKeyboardVisible(false)}
             style={[styles.textInput, { color: colors.text }]}
             multiline
             maxLength={500}
@@ -172,4 +180,3 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
 });
-
