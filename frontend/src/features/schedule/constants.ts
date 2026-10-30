@@ -1,13 +1,6 @@
 import { ScheduleItem } from "./types";
 
-export const FALLBACK_SCHEDULE: ScheduleItem[] = [
-  { id: '1', course: "Lập trình thiết bị di động", code: "Thứ 2", room: "9.2.04", time: "Tiết 1-4 (07:00 – 10:40)", day: "Thứ 2", dayNum: 2, lecturer: "TS. Hoàng Minh" },
-  { id: '2', course: "Lịch sử Đảng Cộng sản VN", code: "Thứ 3", room: "2.21 (CLC)", time: "Tiết 1-4 (07:00 – 10:40)", day: "Thứ 3", dayNum: 3, lecturer: "ThS. Đoàn Văn Kỳ" },
-  { id: '3', course: "Cấu trúc dữ liệu & Giải thuật", code: "Thứ 4", room: "9.3.01", time: "Tiết 7-10 (13:50 – 17:30)", day: "Thứ 4", dayNum: 4, lecturer: "ThS. Lê Thị B" },
-  { id: '4', course: "Hệ cơ sở dữ liệu", code: "Thứ 5", room: "7.3.18", time: "Tiết 1-4 (07:00 – 10:40)", day: "Thứ 5", dayNum: 5, lecturer: "TS. Nguyễn C" },
-  { id: '5', course: "Mạng máy tính", code: "Thứ 6", room: "9.1.02", time: "Tiết 7-10 (13:50 – 17:30)", day: "Thứ 6", dayNum: 6, lecturer: "ThS. Phạm D" },
-  { id: '6', course: "Ngoại ngữ chuyên ngành", code: "Thứ 7", room: "2.20", time: "Tiết 1-4 (07:00 – 10:40)", day: "Thứ 7", dayNum: 7, lecturer: "Khoa Ngoại ngữ" },
-];
+export const FALLBACK_SCHEDULE: ScheduleItem[] = [];
 
 export const DAYS = [
   { label: "Thứ 2", num: 2 },

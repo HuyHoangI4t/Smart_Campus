@@ -1,16 +1,16 @@
 /**
  * Test: Logic Fallback thời khóa biểu động (Dynamic Fallback Schedule)
- * Đảm bảo hệ thống không hardcode ngày cũ (như 19/10/2026) mà luôn sinh tuần động theo ngày hiện tại,
- * và hiển thị đầy đủ môn học cho cả Tuần này và Tuần sau.
+ * Đảm bảo hệ thống KHÔNG đẩy dữ liệu mẫu khi người dùng không có lịch,
+ * luôn sinh tuần động theo ngày hiện tại, và hiển thị "Không có lịch học" thay vì lịch giả.
  */
 
 const assert = require('assert');
 const path = require('path');
 const scheduleService = require(path.resolve(__dirname, '../../backend/src/services/scheduleService'));
 
-console.log('\n=============================================');
-console.log('🧪 TEST SUITE 4: DỮ LIỆU DỰ PHÒNG THỜI KHÓA BIỂU ĐỘNG');
-console.log('=============================================');
+console.log('\n======================================================');
+console.log('🧪 TEST SUITE 4: DỮ LIỆU THỜI KHÓA BIỂU KHÔNG DÙNG MẪU');
+console.log('======================================================');
 
 let passedCount = 0;
 let totalCount = 0;
@@ -27,7 +27,7 @@ function runTest(name, fn) {
   }
 }
 
-// Mô phỏng logic fallback controller
+// Mô phỏng logic fallback controller mới (không chứa dữ liệu mẫu)
 function generateFallbackSchedule(now = new Date(), requestedWeekIndex = 0, customItems = []) {
   const distToMon = (now.getDay() + 6) % 7;
   const monThisWeek = new Date(now);
@@ -46,23 +46,9 @@ function generateFallbackSchedule(now = new Date(), requestedWeekIndex = 0, cust
   const week0Range = fmtRange(monThisWeek, sunThisWeek);
   const week1Range = fmtRange(monNextWeek, sunNextWeek);
 
-  const week0Rows = [
-    ["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"],
-    ["Thứ 2", "Lập trình thiết bị di động", "1-4", "9.2.04", "TS. Hoàng Minh"],
-    ["Thứ 3", "LS Đảng CS VN", "1-4", "2.21 (CLC)", "Đoàn Văn Kỳ"],
-    ["Thứ 4", "Cấu trúc dữ liệu & Giải thuật", "7-10", "9.3.01", "ThS. Lê Thị B"],
-    ["Thứ 5", "Hệ cơ sở dữ liệu", "1-4", "7.3.18", "TS. Nguyễn C"],
-    ["Thứ 6", "Mạng máy tính", "7-10", "9.1.02", "ThS. Phạm D"],
-  ];
-
-  const week1Rows = [
-    ["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"],
-    ["Thứ 2", "Lập trình thiết bị di động (TH)", "7-10", "Phòng máy 9.1", "TS. Hoàng Minh"],
-    ["Thứ 3", "Tâm lý học đại cương", "1-4", "2.4", "Lê Tô Đỗ Quyên"],
-    ["Thứ 4", "Hệ cơ sở dữ liệu (TH)", "1-4", "Phòng máy 7.2", "TS. Nguyễn C"],
-    ["Thứ 5", "Mạng máy tính (TH)", "7-10", "Phòng máy 9.3", "ThS. Phạm D"],
-    ["Thứ 6", "Ngoại ngữ chuyên ngành", "1-4", "2.20", "Khoa Ngoại ngữ"],
-  ];
+  // Không chèn môn học giả mạo vào bảng
+  const week0Rows = [["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"]];
+  const week1Rows = [["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"]];
 
   const processedWeek0 = scheduleService.processSchedulePayload([{ tableIndex: 1, rows: week0Rows }], week0Range, customItems, { isCurrentWeek: true });
   const processedWeek1 = scheduleService.processSchedulePayload([{ tableIndex: 1, rows: week1Rows }], week1Range, customItems, { isCurrentWeek: false });
@@ -89,8 +75,12 @@ function generateFallbackSchedule(now = new Date(), requestedWeekIndex = 0, cust
   const selectedWeekIdx = requestedWeekIndex === 1 ? 1 : 0;
   const targetProcessed = selectedWeekIdx === 1 ? processedWeek1 : processedWeek0;
 
+  const hasSchedules = Boolean(targetProcessed.schedules && targetProcessed.schedules.length > 0);
+
   return {
     success: true,
+    hasSchedules,
+    message: hasSchedules ? "Thành công" : "Không có lịch học",
     selectedWeekIndex: selectedWeekIdx,
     currentWeekIndex: 0,
     nextWeekIndex: 1,
@@ -100,42 +90,56 @@ function generateFallbackSchedule(now = new Date(), requestedWeekIndex = 0, cust
   };
 }
 
-// 1. Kiểm tra tuần mặc định (Tuần này) với ngày hiện tại (29/10/2026)
-runTest('Fallback sinh đúng Tuần này chứa ngày 29/10/2026', () => {
+// 1. Kiểm tra khi người dùng KHÔNG CÓ LỊCH: schedules phải là [] và message là "Không có lịch học"
+runTest('Khi user không có lịch: schedules rỗng [] và message là "Không có lịch học"', () => {
   const fixedNow = new Date(2026, 9, 29);
-  const data = generateFallbackSchedule(fixedNow, 0);
+  const data = generateFallbackSchedule(fixedNow, 0, []);
 
   assert.strictEqual(data.weekRange, 'Từ ngày 26/10/2026 đến ngày 01/11/2026');
   assert.strictEqual(data.availableWeeks[0].label, 'Tuần này');
   assert.strictEqual(data.availableWeeks[0].isCurrent, true);
-  assert(data.schedules.length >= 5, 'Phải có ít nhất 5 môn học trong tuần này');
-
-  // Kiểm tra Thứ 5 (29/10) có môn
-  const thu5 = data.schedules.find(s => s.dayNum === 5);
-  assert(thu5, 'Thứ 5 phải có môn học');
-  assert.strictEqual(thu5.course, 'Hệ cơ sở dữ liệu');
-  assert.strictEqual(thu5.date, '29/10/2026');
+  
+  // TUYỆT ĐỐI KHÔNG CÓ MÔN HỌC MẪU
+  assert.strictEqual(data.schedules.length, 0, 'Schedules phải rỗng [], không được chứa môn mẫu');
+  assert.strictEqual(data.hasSchedules, false);
+  assert.strictEqual(data.message, 'Không có lịch học');
 });
 
-// 2. Kiểm tra chọn Tuần sau (weekIndex = 1)
-runTest('Fallback chuyển sang Tuần sau (weekIndex = 1)', () => {
+// 2. Kiểm tra chuyển sang Tuần sau (weekIndex = 1) khi không có lịch
+runTest('Tuần sau khi không có lịch: schedules rỗng [] và không có môn mẫu', () => {
   const fixedNow = new Date(2026, 9, 29);
-  const data = generateFallbackSchedule(fixedNow, 1);
+  const data = generateFallbackSchedule(fixedNow, 1, []);
 
   assert.strictEqual(data.selectedWeekIndex, 1);
   assert.strictEqual(data.weekRange, 'Từ ngày 02/11/2026 đến ngày 08/11/2026');
   assert.strictEqual(data.availableWeeks[1].label, 'Tuần sau');
-  assert.strictEqual(data.availableWeeks[1].isNext, true);
-  assert(data.schedules.length >= 5, 'Tuần sau cũng phải có đầy đủ môn học thay vì rỗng []');
+  assert.strictEqual(data.schedules.length, 0, 'Tuần sau cũng phải rỗng [], không chứa môn mẫu');
+  assert.strictEqual(data.hasSchedules, false);
+});
 
-  const thu5Next = data.schedules.find(s => s.dayNum === 5);
-  assert(thu5Next, 'Thứ 5 tuần sau phải có môn');
-  assert.strictEqual(thu5Next.course, 'Mạng máy tính (TH)');
-  assert.strictEqual(thu5Next.date, '05/11/2026');
+// 3. Kiểm tra khi user tự thêm 1 lịch tùy chỉnh: CHỈ hiện lịch tùy chỉnh đó, KHÔNG chèn môn mẫu
+runTest('Khi có lịch tùy chỉnh: chỉ trả về đúng môn tùy chỉnh, không chèn môn mẫu', () => {
+  const fixedNow = new Date(2026, 9, 29);
+  const customItems = [{
+    id: 999,
+    ten_hp: 'Ôn tập Đồ án cuối kỳ',
+    thu: 'Thứ 5',
+    tiet: 'Tiết 1-4',
+    phong: 'Thư viện',
+    ngay_hoc: '29/10/2026',
+    is_custom: 1,
+    week_range: 'Từ ngày 26/10/2026 đến ngày 01/11/2026'
+  }];
+
+  const data = generateFallbackSchedule(fixedNow, 0, customItems);
+  assert.strictEqual(data.schedules.length, 1, 'Chỉ được có đúng 1 môn do người dùng thêm');
+  assert.strictEqual(data.schedules[0].course, 'Ôn tập Đồ án cuối kỳ');
+  assert.strictEqual(data.schedules[0].room, 'Thư viện');
+  assert.strictEqual(data.hasSchedules, true);
+  assert.strictEqual(data.message, 'Thành công');
 });
 
 console.log(`\nKết quả Test Suite 4: ${passedCount}/${totalCount} kiểm tra thành công.`);
 if (passedCount !== totalCount) {
   process.exit(1);
 }
-

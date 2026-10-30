@@ -65,33 +65,39 @@ export function getWeekRangeFromDate(d: Date): string {
  * để sinh viên có thể chuyển tuần duyệt lịch hoặc thêm lịch học tùy biến.
  */
 export function generateDefaultAvailableWeeks(baseRangeText?: string): AvailableWeekItem[] {
-  let anchorMonday: Date;
+  const now = new Date();
+  const jsDay = now.getDay();
+  const distToMon = (jsDay + 6) % 7;
+  const currentMonday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - distToMon);
+
+  let anchorMonday = currentMonday;
   const parsed = parseWeekRangeDates(baseRangeText || "");
   if (parsed.startDate) {
     anchorMonday = parsed.startDate;
-  } else {
-    const now = new Date();
-    const jsDay = now.getDay();
-    const distToMon = (jsDay + 6) % 7;
-    anchorMonday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - distToMon);
   }
 
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
   const offsets = [-1, 0, 1, 2, 3, 4];
   return offsets.map((off, idx) => {
     const mon = new Date(anchorMonday.getFullYear(), anchorMonday.getMonth(), anchorMonday.getDate() + off * 7);
     const sun = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6);
     const weekRange = `Từ ngày ${formatDateVN(mon)} đến ngày ${formatDateVN(sun)}`;
+
+    const isCurrent = today >= mon && today <= sun;
+    const isNext = today < mon && mon.getTime() - today.getTime() <= 7 * 86400000;
+    const isPrev = today > sun && today.getTime() - sun.getTime() <= 7 * 86400000;
+
     let label = `Tuần ${idx + 1}`;
-    if (off === -1) label = "Tuần trước";
-    else if (off === 0) label = "Tuần này";
-    else if (off === 1) label = "Tuần sau";
+    if (isCurrent) label = "Tuần này";
+    else if (isNext) label = "Tuần sau";
+    else if (isPrev) label = "Tuần trước";
 
     return {
       index: idx,
       weekRange,
       label,
-      isCurrent: off === 0,
-      isNext: off === 1,
+      isCurrent,
+      isNext,
       schedules: [],
     };
   });

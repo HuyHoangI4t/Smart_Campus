@@ -39,12 +39,11 @@ export const ScheduleWeekBar = React.memo(function ScheduleWeekBar({
   const scrollRef = useRef<ScrollView>(null);
 
   // Danh sách các tuần thực tế (luôn đảm bảo có ít nhất Tuần trước, Tuần này, Tuần sau)
-  const effectiveWeeks = useMemo<AvailableWeekItem[]>(() => {
+    const effectiveWeeks = useMemo<AvailableWeekItem[]>(() => {
+    let weeks: AvailableWeekItem[] = [];
     if (!availableWeeks || availableWeeks.length === 0) {
-      return generateDefaultAvailableWeeks();
-    }
-
-    if (availableWeeks.length === 1) {
+      weeks = generateDefaultAvailableWeeks();
+    } else if (availableWeeks.length === 1) {
       const single = availableWeeks[0];
       const parsed = parseWeekRangeDates(single.weekRange);
       if (parsed.startDate && parsed.endDate) {
@@ -61,35 +60,53 @@ export const ScheduleWeekBar = React.memo(function ScheduleWeekBar({
         const nextSun = new Date(e.getFullYear(), e.getMonth(), e.getDate() + 7);
         const nextRange = `Từ ngày ${formatDateVN(nextMon)} đến ngày ${formatDateVN(nextSun)}`;
 
-        return [
-          {
-            index: 0,
-            weekRange: prevRange,
-            label: "Tuần trước",
-            isCurrent: false,
-            isNext: false,
-            schedules: [],
-          },
-          {
-            ...single,
-            index: 1,
-            label: "Tuần này",
-            isCurrent: true,
-            isNext: false,
-          },
-          {
-            index: 2,
-            weekRange: nextRange,
-            label: "Tuần sau",
-            isCurrent: false,
-            isNext: true,
-            schedules: [],
-          },
+        weeks = [
+          { index: 0, weekRange: prevRange, label: "Tuần trước", isCurrent: false, isNext: false, schedules: [] },
+          { ...single, index: 1, schedules: single.schedules || [] },
+          { index: 2, weekRange: nextRange, label: "Tuần sau", isCurrent: false, isNext: false, schedules: [] },
         ];
+      } else {
+        weeks = availableWeeks;
       }
+    } else {
+      weeks = availableWeeks;
     }
 
-    return availableWeeks;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
+
+    return weeks.map((w, idx) => {
+      const { startDate, endDate } = parseWeekRangeDates(w.weekRange);
+      let label = w.label || `Tuần ${idx + 1}`;
+      let isCurrent = Boolean(w.isCurrent);
+      let isNext = Boolean(w.isNext);
+
+      if (startDate && endDate) {
+        const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 0, 0, 0);
+        const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59);
+
+        if (today >= start && today <= end) {
+          label = "Tuần này";
+          isCurrent = true;
+          isNext = false;
+        } else if (today < start && start.getTime() - today.getTime() <= 7 * 86400000) {
+          label = "Tuần sau";
+          isCurrent = false;
+          isNext = true;
+        } else if (today > end && today.getTime() - end.getTime() <= 7 * 86400000) {
+          label = "Tuần trước";
+          isCurrent = false;
+          isNext = false;
+        }
+      }
+
+      return {
+        ...w,
+        label,
+        isCurrent,
+        isNext,
+      };
+    });
   }, [availableWeeks]);
 
   const currentIndexInEffective = useMemo(() => {

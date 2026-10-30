@@ -33,13 +33,7 @@ interface CourseGrade {
   hocPhi?: string;
 }
 
-const FALLBACK_GRADES: CourseGrade[] = [
-  { code: "NT118", name: "Lập trình thiết bị di động", credits: 3, grade10: 8.5, gradeLetter: "A", semester: "HK1 (2025-2026)" },
-  { code: "CS301", name: "Cấu trúc dữ liệu & Giải thuật", credits: 4, grade10: 8.0, gradeLetter: "B", semester: "HK1 (2025-2026)" },
-  { code: "IT202", name: "Hệ cơ sở dữ liệu", credits: 3, grade10: 7.5, gradeLetter: "B", semester: "HK1 (2025-2026)" },
-  { code: "NT101", name: "Mạng máy tính nâng cao", credits: 3, grade10: 8.8, gradeLetter: "A", semester: "HK1 (2025-2026)" },
-  { code: "ENG201", name: "Tiếng Anh chuyên ngành", credits: 2, grade10: 7.0, gradeLetter: "C", semester: "HK1 (2025-2026)" },
-];
+const FALLBACK_GRADES: CourseGrade[] = [];
 
 export default function GradesScreen() {
   const router = useRouter();
@@ -137,7 +131,7 @@ export default function GradesScreen() {
       // Keep fallbacks
       setIsOfflineData(true);
       if (grades.length === 0) {
-        setGrades(FALLBACK_GRADES);
+        setGrades([]);
       }
     } finally {
       setLoading(false);

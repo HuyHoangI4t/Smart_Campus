@@ -275,7 +275,8 @@ export default function HomeScreen() {
       } else if (Array.isArray(newsRes.latestAnnouncements) && newsRes.latestAnnouncements.length > 0) {
         rawAnnouncements = newsRes.latestAnnouncements;
       }
-      setLatestAnnouncements(sortByNewestDate(deduplicateArticles(rawAnnouncements)).slice(0, 3));
+      const cleanAnn = rawAnnouncements.filter((i: any) => !i.isFallback && !i.badge?.toLowerCase().includes("mẫu") && !i.title?.includes("[Dữ liệu mẫu]"));
+      setLatestAnnouncements(sortByNewestDate(deduplicateArticles(cleanAnn)).slice(0, 3));
 
       let rawNews: NewsOrAnnouncementItem[] = [];
       if (Array.isArray(newsRes.news) && newsRes.news.length > 0) {
@@ -285,7 +286,8 @@ export default function HomeScreen() {
       } else if (Array.isArray(newsRes.latestNews) && newsRes.latestNews.length > 0) {
         rawNews = newsRes.latestNews;
       }
-      setLatestNews(sortByNewestDate(deduplicateArticles(rawNews)).slice(0, 3));
+      const cleanNews = rawNews.filter((i: any) => !i.isFallback && !i.badge?.toLowerCase().includes("mẫu") && !i.title?.includes("[Dữ liệu mẫu]"));
+      setLatestNews(sortByNewestDate(deduplicateArticles(cleanNews)).slice(0, 3));
     }
 
     const offline = Boolean(scheduleRes?.isOfflineCache || newsRes?.isOfflineCache || dashRes?.isOfflineCache);

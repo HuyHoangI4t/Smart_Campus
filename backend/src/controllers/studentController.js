@@ -348,23 +348,8 @@ exports.getSchedule = async (req, res) => {
     const week0Range = fmtRange(monThisWeek, sunThisWeek);
     const week1Range = fmtRange(monNextWeek, sunNextWeek);
 
-    const week0Rows = [
-      ["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"],
-      ["Thứ 2", "Lập trình thiết bị di động", "1-4", "9.2.04", "TS. Hoàng Minh"],
-      ["Thứ 3", "LS Đảng CS VN", "1-4", "2.21 (CLC)", "Đoàn Văn Kỳ"],
-      ["Thứ 4", "Cấu trúc dữ liệu & Giải thuật", "7-10", "9.3.01", "ThS. Lê Thị B"],
-      ["Thứ 5", "Hệ cơ sở dữ liệu", "1-4", "7.3.18", "TS. Nguyễn C"],
-      ["Thứ 6", "Mạng máy tính", "7-10", "9.1.02", "ThS. Phạm D"],
-    ];
-
-    const week1Rows = [
-      ["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"],
-      ["Thứ 2", "Lập trình thiết bị di động (TH)", "7-10", "Phòng máy 9.1", "TS. Hoàng Minh"],
-      ["Thứ 3", "Tâm lý học đại cương", "1-4", "2.4", "Lê Tô Đỗ Quyên"],
-      ["Thứ 4", "Hệ cơ sở dữ liệu (TH)", "1-4", "Phòng máy 7.2", "TS. Nguyễn C"],
-      ["Thứ 5", "Mạng máy tính (TH)", "7-10", "Phòng máy 9.3", "ThS. Phạm D"],
-      ["Thứ 6", "Ngoại ngữ chuyên ngành", "1-4", "2.20", "Khoa Ngoại ngữ"],
-    ];
+    const week0Rows = [["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"]];
+    const week1Rows = [["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"]];
 
     const processedWeek0 = scheduleService.processSchedulePayload([{ tableIndex: 1, rows: week0Rows }], week0Range, customItems, { isCurrentWeek: true });
     const processedWeek1 = scheduleService.processSchedulePayload([{ tableIndex: 1, rows: week1Rows }], week1Range, customItems, { isCurrentWeek: false });
@@ -413,8 +398,10 @@ exports.getSchedule = async (req, res) => {
       nextWeekIndex: 1,
       weekRange: availableWeeks[selectedWeekIdx].weekRange,
       availableWeeks,
-      ...targetProcessed
-    });
+      hasSchedules: Boolean(targetProcessed.schedules && targetProcessed.schedules.length > 0),
+    message: (targetProcessed.schedules && targetProcessed.schedules.length > 0) ? "Thành công" : "Không có lịch học",
+    ...targetProcessed
+  });
   }
 
   const forceRefresh = req.query.reload === 'true' || req.query.refresh === 'true' || req.body?.reload === true;
@@ -555,23 +542,8 @@ exports.getSchedule = async (req, res) => {
   const week0Range = fmtRange(monThisWeek, sunThisWeek);
   const week1Range = fmtRange(monNextWeek, sunNextWeek);
 
-  const week0Rows = [
-    ["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"],
-    ["Thứ 2", "Lập trình thiết bị di động", "1-4", "9.2.04", "TS. Hoàng Minh"],
-    ["Thứ 3", "LS Đảng CS VN", "1-4", "2.21 (CLC)", "Đoàn Văn Kỳ"],
-    ["Thứ 4", "Cấu trúc dữ liệu & Giải thuật", "7-10", "9.3.01", "ThS. Lê Thị B"],
-    ["Thứ 5", "Hệ cơ sở dữ liệu", "1-4", "7.3.18", "TS. Nguyễn C"],
-    ["Thứ 6", "Mạng máy tính", "7-10", "9.1.02", "ThS. Phạm D"],
-  ];
-
-  const week1Rows = [
-    ["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"],
-    ["Thứ 2", "Lập trình thiết bị di động (TH)", "7-10", "Phòng máy 9.1", "TS. Hoàng Minh"],
-    ["Thứ 3", "Tâm lý học đại cương", "1-4", "2.4", "Lê Tô Đỗ Quyên"],
-    ["Thứ 4", "Hệ cơ sở dữ liệu (TH)", "1-4", "Phòng máy 7.2", "TS. Nguyễn C"],
-    ["Thứ 5", "Mạng máy tính (TH)", "7-10", "Phòng máy 9.3", "ThS. Phạm D"],
-    ["Thứ 6", "Ngoại ngữ chuyên ngành", "1-4", "2.20", "Khoa Ngoại ngữ"],
-  ];
+  const week0Rows = [["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"]];
+    const week1Rows = [["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"]];
 
   const processedWeek0 = scheduleService.processSchedulePayload([{ tableIndex: 1, rows: week0Rows }], week0Range, fallbackCustom, { isCurrentWeek: true });
   const processedWeek1 = scheduleService.processSchedulePayload([{ tableIndex: 1, rows: week1Rows }], week1Range, fallbackCustom, { isCurrentWeek: false });
@@ -614,6 +586,8 @@ exports.getSchedule = async (req, res) => {
     nextWeekIndex: 1,
     weekRange: fallbackAvailableWeeks[selectedWeekIdx].weekRange,
     availableWeeks: fallbackAvailableWeeks,
+    hasSchedules: Boolean(targetProcessed.schedules && targetProcessed.schedules.length > 0),
+    message: (targetProcessed.schedules && targetProcessed.schedules.length > 0) ? "Thành công" : "Không có lịch học",
     ...targetProcessed
   });
 };
@@ -642,7 +616,7 @@ function pushRow(headers, colIdx, buoi, currentLesson, parsedRows) {
 // Bóc tách ngày bắt đầu và kết thúc từ chuỗi khoảng tuần
 function parseWeekRangeDates(rangeText) {
   if (!rangeText) return { startDate: null, endDate: null };
-  const match = rangeText.match(/Từ ngày\s+(\d{2})\/(\d{2})\/(\d{4})\s+đến ngày\s+(\d{2})\/(\d{2})\/(\d{4})/i);
+  const match = rangeText.match(/Từ ngày\s+(\d{1,2})\/(\d{1,2})\/(\d{4})\s+đến ngày\s+(\d{1,2})\/(\d{1,2})\/(\d{4})/i);
   if (!match) return { startDate: null, endDate: null };
   const [_, sD, sM, sY, eD, eM, eY] = match;
   const startDate = new Date(Number(sY), Number(sM) - 1, Number(sD), 0, 0, 0);
@@ -788,6 +762,8 @@ function formatDbSchedulesResponse(dbSchedules, customItems, req, res, mssv, isD
     nextWeekIndex: nextWeekIdx,
     weekRange: targetWeekData.weekRange,
     availableWeeks: processedWeeks,
+    hasSchedules: Boolean(targetProcessed.schedules && targetProcessed.schedules.length > 0),
+    message: (targetProcessed.schedules && targetProcessed.schedules.length > 0) ? "Thành công" : "Không có lịch học",
     ...targetProcessed
   });
 }

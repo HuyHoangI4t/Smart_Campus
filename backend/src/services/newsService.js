@@ -423,98 +423,9 @@ async function getItemsFromDb(type, limit) {
 }
 
 // ─── 5. MẪU DỰ PHÒNG CUỐI CÙNG ──────────────────────────────────────────────
-const FALLBACK_ANNOUNCEMENTS = [
-  {
-    id: 'sample-ann-1',
-    type: 'announcement',
-    isFallback: true,
-    source: 'Hệ thống ngoại tuyến',
-    sourceName: 'Dữ liệu mẫu dự phòng',
-    badge: 'Dữ liệu mẫu',
-    badgeColor: '#D97706',
-    title: '[Dữ liệu mẫu] Thông báo nộp học phí học kỳ mới',
-    summary: '[LƯU Ý: Đây là bài viết mẫu dự phòng khi thiết bị mất kết nối hoặc máy chủ TTN không phản hồi]. Hướng dẫn chi thủ tục nộp học phí qua cổng ngân hàng hoặc ví điện tử đối với sinh viên toàn trường.',
-    date: '02/10/2026',
-    link: 'https://www.ttn.edu.vn/index.php/mthongbao/thongbaosv',
-    sender: 'Phòng Kế hoạch - Tài chính'
-  },
-  {
-    id: 'sample-ann-2',
-    type: 'announcement',
-    isFallback: true,
-    source: 'Hệ thống ngoại tuyến',
-    sourceName: 'Dữ liệu mẫu dự phòng',
-    badge: 'Dữ liệu mẫu',
-    badgeColor: '#D97706',
-    title: '[Dữ liệu mẫu] Rà soát bổ sung hồ sơ miễn giảm học phí cho SV chính sách',
-    summary: '[LƯU Ý: Đây là bài viết mẫu dự phòng khi thiết bị mất kết nối hoặc máy chủ TTN không phản hồi]. Sinh viên thuộc diện chính sách nộp hồ sơ theo quy định tại Phòng Công tác Sinh viên.',
-    date: '28/09/2026',
-    link: 'https://www.ttn.edu.vn/index.php/mthongbao/thongbaosv',
-    sender: 'Phòng Công tác Sinh viên'
-  },
-  {
-    id: 'sample-ann-3',
-    type: 'announcement',
-    isFallback: true,
-    source: 'Hệ thống ngoại tuyến',
-    sourceName: 'Dữ liệu mẫu dự phòng',
-    badge: 'Dữ liệu mẫu',
-    badgeColor: '#D97706',
-    title: '[Dữ liệu mẫu] Kích hoạt và cấp tài khoản số trường ĐH Tây Nguyên',
-    summary: '[LƯU Ý: Đây là bài viết mẫu dự phòng khi thiết bị mất kết nối hoặc máy chủ TTN không phản hồi]. Hướng dẫn tân sinh viên đăng nhập hệ thống cổng thông tin đào tạo và email sinh viên.',
-    date: '25/09/2026',
-    link: 'https://www.ttn.edu.vn/index.php/mthongbao/thongbaosv',
-    sender: 'Trung tâm CNTT'
-  }
-];
+const FALLBACK_ANNOUNCEMENTS = [];
 
-const FALLBACK_NEWS = [
-  {
-    id: 'sample-news-1',
-    type: 'news',
-    isFallback: true,
-    source: 'Hệ thống ngoại tuyến',
-    sourceName: 'Dữ liệu mẫu dự phòng',
-    badge: 'Dữ liệu mẫu',
-    badgeColor: '#D97706',
-    title: '[Dữ liệu mẫu] Tập huấn Đổi mới sáng tạo và chuyển đổi số sinh viên',
-    summary: '[LƯU Ý: Đây là bài viết mẫu dự phòng khi thiết bị mất kết nối hoặc máy chủ TTN không phản hồi]. Chương trình bồi dưỡng kỹ năng ứng dụng công nghệ và tư duy khởi nghiệp cho sinh viên.',
-    date: '01/10/2026',
-    imageUrl: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=600&auto=format&fit=crop&q=80',
-    link: 'https://www.ttn.edu.vn/index.php/mthongbao/tintuc',
-    sender: 'Ban Biên tập TTN'
-  },
-  {
-    id: 'sample-news-2',
-    type: 'news',
-    isFallback: true,
-    source: 'Hệ thống ngoại tuyến',
-    sourceName: 'Dữ liệu mẫu dự phòng',
-    badge: 'Dữ liệu mẫu',
-    badgeColor: '#D97706',
-    title: '[Dữ liệu mẫu] Hội thảo nâng cao chất lượng đào tạo và nghiên cứu khoa học',
-    summary: '[LƯU Ý: Đây là bài viết mẫu dự phòng khi thiết bị mất kết nối hoặc máy chủ TTN không phản hồi]. Tổng kết các giải pháp nâng cao hiệu quả giảng dạy và thực hành trong năm học mới.',
-    date: '01/10/2026',
-    imageUrl: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=600&auto=format&fit=crop&q=80',
-    link: 'https://www.ttn.edu.vn/index.php/mthongbao/tintuc',
-    sender: 'Ban Biên tập TTN'
-  },
-  {
-    id: 'sample-news-3',
-    type: 'news',
-    isFallback: true,
-    source: 'Hệ thống ngoại tuyến',
-    sourceName: 'Dữ liệu mẫu dự phòng',
-    badge: 'Dữ liệu mẫu',
-    badgeColor: '#D97706',
-    title: '[Dữ liệu mẫu] Đảng ủy Trường ĐH Tây Nguyên triển khai ứng dụng công nghệ số',
-    summary: '[LƯU Ý: Đây là bài viết mẫu dự phòng khi thiết bị mất kết nối hoặc máy chủ TTN không phản hồi]. Đẩy mạnh chuyển đổi số trong công tác điều hành và quản lý giáo dục.',
-    date: '30/09/2026',
-    imageUrl: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=600&auto=format&fit=crop&q=80',
-    link: 'https://www.ttn.edu.vn/index.php/mthongbao/tintuc',
-    sender: 'Ban Biên tập TTN'
-  }
-];
+const FALLBACK_NEWS = [];
 
 // ─── 6. HÀM CHÍNH: LẤY DỮ LIỆU SIÊU TỐC (DB & IN-MEMORY CACHE TRƯỚC TIÊN) ──────
 let announcementsMemCache = null;
@@ -559,7 +470,7 @@ async function getAnnouncementsWithFallback(forceRefresh = false) {
     return sorted;
   }
 
-  return sortByNewestDate(FALLBACK_ANNOUNCEMENTS);
+  return [];
 }
 
 async function getNewsWithFallback(forceRefresh = false) {
@@ -598,7 +509,7 @@ async function getNewsWithFallback(forceRefresh = false) {
     return sorted;
   }
 
-  return sortByNewestDate(FALLBACK_NEWS);
+  return [];
 }
 
 // ─── 7. CÀO TOÀN VĂN VÀ DANH SÁCH ẢNH GỐC TỪ TRANG BÀI VIẾT TTN ──────────────

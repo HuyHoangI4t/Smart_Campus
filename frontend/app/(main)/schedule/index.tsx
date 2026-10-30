@@ -35,7 +35,7 @@ import {
   CustomScheduleType,
   DAYS,
   PERIOD_OPTIONS,
-  FALLBACK_SCHEDULE,
+  //FALLBACK_SCHEDULE,
   getTodayDayNum,
   parseWeekRangeDates,
   formatDateVN,
@@ -65,7 +65,7 @@ export default function ScheduleScreen() {
   const [studentInfo, setStudentInfo] = useState<{ mssv: string; name: string }>({ mssv: "", name: "" });
   const initialDefaultWeeks = useMemo(() => generateDefaultAvailableWeeks(), []);
   const initialCurrentWeek = initialDefaultWeeks.find((w) => w.isCurrent) || initialDefaultWeeks[1] || initialDefaultWeeks[0];
-  const [weekRangeText, setWeekRangeText] = useState(initialCurrentWeek?.weekRange || "Từ ngày 19/10/2026 đến ngày 25/10/2026");
+  const [weekRangeText, setWeekRangeText] = useState(initialCurrentWeek?.weekRange || getWeekRangeFromDate(new Date()));
   const [availableWeeks, setAvailableWeeks] = useState<AvailableWeekItem[]>(initialDefaultWeeks);
   const [selectedWeekIndex, setSelectedWeekIndex] = useState<number>(initialCurrentWeek?.index ?? 1);
   const [currentWeekIndex, setCurrentWeekIndex] = useState<number>(initialCurrentWeek?.index ?? 1);
@@ -410,9 +410,7 @@ export default function ScheduleScreen() {
     } catch (error) {
       console.warn("Lỗi tải thời khóa biểu:", error);
       setIsOfflineData(true);
-      if (scheduleList.length === 0) {
-        setScheduleList(FALLBACK_SCHEDULE);
-      }
+      setScheduleList([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -601,8 +599,12 @@ export default function ScheduleScreen() {
         ) : filtered.length === 0 ? (
           <View style={{ paddingVertical: 50, alignItems: "center" }}>
             <Feather name="calendar" size={48} color={colors.cardBorder} />
-            <Text style={{ marginTop: 12, fontSize: 15, fontWeight: "700", color: colors.text }}>Không có tiết học</Text>
-            <Text style={{ marginTop: 4, fontSize: 13, color: colors.textMuted }}>Bạn được nghỉ trong ngày này!</Text>
+            <Text style={{ marginTop: 12, fontSize: 15, fontWeight: "700", color: colors.text }}>
+              {scheduleList.length === 0 ? "Không có lịch học" : "Không có tiết học"}
+            </Text>
+            <Text style={{ marginTop: 4, fontSize: 13, color: colors.textMuted }}>
+              {scheduleList.length === 0 ? "Bạn không có lịch học trong tuần này!" : "Bạn được nghỉ trong ngày này!"}
+            </Text>
             <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});

@@ -28,13 +28,7 @@ interface DetailedGrade {
   badge?: { bg: string; text: string; border: string; label?: string };
 }
 
-const FALLBACK_DETAILED_GRADES: DetailedGrade[] = [
-  { code: "", name: "An toàn thông tin", credits: 2.0, namHoc: "2026", ky: "1", dbp: null, thi1: null, thi2: null, d1: null, d2: null, total: null, letter: "X", semester: "HK1 (2026)", hocPhi: "Nợ:1238000" },
-  { code: "", name: "Cơ sở vật lý cho Tin học", credits: 2.0, namHoc: "2025", ky: "2", dbp: 9.1, thi1: 5.5, thi2: null, d1: 6.9, d2: null, total: 6.9, letter: "C", semester: "HK2 (2025)", hocPhi: "Nộp:1100000" },
-  { code: "", name: "Trí tuệ nhân tạo", credits: 2.0, namHoc: "2025", ky: "2", dbp: 9.0, thi1: 9.0, thi2: null, d1: 9.0, d2: null, total: 9.0, letter: "A", semester: "HK2 (2025)", hocPhi: "Nộp:1100000" },
-  { code: "", name: "Các quy trình phát triển phần mềm hiện đại", credits: 2.0, namHoc: "2025", ky: "2", dbp: 8.0, thi1: 8.0, thi2: null, d1: 8.0, d2: null, total: 8.0, letter: "B", semester: "HK2 (2025)", hocPhi: "Nộp:1100000" },
-  { code: "", name: "Nhập môn Hệ điều hành", credits: 2.0, namHoc: "2025", ky: "2", dbp: 9.5, thi1: 8.0, thi2: null, d1: 8.5, d2: null, total: 8.5, letter: "A", semester: "HK2 (2025)", hocPhi: "Nộp:1100000" },
-];
+const FALLBACK_DETAILED_GRADES: DetailedGrade[] = [];
 
 export default function GradesDetailScreen() {
   const router = useRouter();
@@ -95,7 +89,7 @@ export default function GradesDetailScreen() {
       }
     } catch {
       if (list.length === 0) {
-        setList(FALLBACK_DETAILED_GRADES);
+        setList([]);
       }
     } finally {
       setLoading(false);

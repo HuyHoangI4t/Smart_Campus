@@ -14,10 +14,10 @@ export interface ScheduleWidgetData {
 }
 
 export function ScheduleWidget({ data }: { data?: ScheduleWidgetData | null }) {
-  const hasClasses = data?.hasClasses !== false && Boolean(data?.subjectName || data?.courseName);
-  const subjectName = data?.subjectName || data?.courseName || "Lập trình thiết bị di động";
-  const room = data?.room || "Phòng B2.302";
-  const periodText = data?.periodText || "Tiết 1 - 3 (07:00 - 09:25)";
+  const hasClasses = Boolean(data?.hasClasses && (data?.subjectName || data?.courseName));
+  const subjectName = data?.subjectName || data?.courseName || "";
+  const room = data?.room || "";
+  const periodText = data?.periodText || "";
   const lecturer = data?.lecturer ? ` • GV: ${data.lecturer}` : "";
   const dateStr = data?.dateStr || "HÔM NAY";
   const remainingText = data?.remainingCount && data.remainingCount > 0 ? `+${data.remainingCount} môn khác` : "";

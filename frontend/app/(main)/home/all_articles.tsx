@@ -176,7 +176,8 @@ export default function AllArticlesScreen() {
           const nw = Array.isArray(res.news) ? res.news : [];
           combined = [...ann, ...nw];
         }
-        setArticles(sortByNewestDate(deduplicateArticles(combined)));
+        const cleanCombined = combined.filter((i: any) => !i.isFallback && !i.badge?.toLowerCase().includes("mẫu") && !i.title?.includes("[Dữ liệu mẫu]"));
+        setArticles(sortByNewestDate(deduplicateArticles(cleanCombined)));
       }
     } catch (err) {
       console.warn("Lỗi tải toàn bộ tin tức:", err);
