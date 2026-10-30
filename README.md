@@ -22,58 +22,10 @@
 
 ---
 
-## 📸 1. Ảnh minh họa & Giao diện ứng dụng (Screenshots Demo)
-
-<p align="center">
-  <img src="frontend/assets/images/images.jpg" alt="Khuôn viên trường Đại học Tây Nguyên" width="720" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.18);">
-  <br>
-  <em>Khuôn viên trường Đại học Tây Nguyên (Tay Nguyen University - 567 Lê Duẩn, TP. Buôn Ma Thuột)</em>
-</p>
-
-### 📱 Giao diện ứng dụng di động Smart Campus
-
-#### 🔐 1. Xác thực & Đăng ký tài khoản (Authentication & OTP)
-| 🔐 Đăng nhập hệ thống | 📝 Đăng ký tài khoản | 📩 Xác thực OTP Email (60s) |
-| :---: | :---: | :---: |
-| <img src="frontend/assets/Screenshots%20_Demo/01_auth_login.jpg" width="230" alt="Đăng nhập" /> | <img src="frontend/assets/Screenshots%20_Demo/02_auth_register.jpg" width="230" alt="Đăng ký" /> | <img src="frontend/assets/Screenshots%20_Demo/03_auth_otp_verify.jpg" width="230" alt="Xác thực OTP Email" /> |
-| *Đăng nhập MSSV/Email hoặc Chế độ Khách* | *Đăng ký tài khoản sinh viên mới* | *Nhập OTP 6 số xác minh qua email sinh viên* |
-
-#### 🏠 2. Trang chủ & Tin tức nhà trường (Home Dashboard & News)
-| 🏠 Trang chủ (Dashboard) | 📢 Thông báo & Tin tức hoạt động |
-| :---: | :---: |
-| <img src="frontend/assets/Screenshots%20_Demo/04_home_dashboard.jpg" width="230" alt="Trang chủ Dashboard" /> | <img src="frontend/assets/Screenshots%20_Demo/05_home_announcements_news.jpg" width="230" alt="Thông báo & Tin tức" /> |
-| *Tiết học kế tiếp, GPA, lối tắt tiện ích nhanh* | *Thông báo sinh viên & tin tức chính thức* |
-
-#### 📅 3. Thời khóa biểu thông minh (Smart Schedule)
-| 📅 Lịch học theo tuần & ngày | 🧭 Hướng dẫn tới phòng học | ➕ Thêm lịch học bù / cá nhân |
-| :---: | :---: | :---: |
-| <img src="frontend/assets/Screenshots%20_Demo/06_schedule_weekly.jpg" width="230" alt="Lịch học theo tuần" /> | <img src="frontend/assets/Screenshots%20_Demo/07_schedule_room_directions.jpg" width="230" alt="Chỉ dẫn phòng học" /> | <img src="frontend/assets/Screenshots%20_Demo/08_schedule_add_custom.jpg" width="230" alt="Thêm lịch học cá nhân" /> |
-| *Xem lịch theo tuần, tiết, phòng & giảng viên* | *Chỉ dẫn di chuyển từ cổng tới phòng học* | *Thêm lịch học bù, thực hành đột xuất* |
-
-#### 🗺️ 4. Bản đồ số & Dẫn đường nội bộ (Campus Map & Navigation)
-| 🗺️ Bản đồ 40 địa điểm chuẩn hóa | 🧭 Dẫn đường Dijkstra & Đổi cổng |
-| :---: | :---: |
-| <img src="frontend/assets/Screenshots%20_Demo/09_map_campus_overview.jpg" width="230" alt="Bản đồ khuôn viên" /> | <img src="frontend/assets/Screenshots%20_Demo/10_map_routing_navigation.jpg" width="230" alt="Dẫn đường Dijkstra" /> |
-| *Tìm kiếm tòa nhà, chip lọc & thẻ thông tin* | *Đường đi bộ ngắn nhất, xoay theo góc di chuyển* |
-
-#### 📊 5. Kết quả học tập & Bảng điểm (Grades & GPA)
-| 📊 Bảng điểm tổng quan & GPA | 📑 Chi tiết điểm thành phần |
-| :---: | :---: |
-| <img src="frontend/assets/Screenshots%20_Demo/11_grades_overview.jpg" width="230" alt="Kết quả học tập" /> | <img src="frontend/assets/Screenshots%20_Demo/12_grades_detail.jpg" width="230" alt="Chi tiết bảng điểm" /> |
-| *GPA hệ 10 & 4, tín chỉ tích lũy, xếp loại* | *Điểm chuyên cần, giữa kỳ, thực hành, thi* |
-
-#### 👤 6. Hồ sơ sinh viên & Bảo mật tài khoản (Profile & Security)
-| 👤 Hồ sơ sinh viên | ⚙️ Cài đặt & Đăng xuất | ✏️ Cập nhật hồ sơ & Avatar |
-| :---: | :---: | :---: |
-| <img src="frontend/assets/Screenshots%20_Demo/13_profile_overview.jpg" width="230" alt="Hồ sơ sinh viên" /> | <img src="frontend/assets/Screenshots%20_Demo/14_profile_security.jpg" width="230" alt="Cài đặt & Bảo mật" /> | <img src="frontend/assets/Screenshots%20_Demo/15_profile_edit.jpg" width="230" alt="Cập nhật hồ sơ" /> |
-| *Thông tin sinh viên, khoa, lớp, email & SĐT* | *Cài đặt ứng dụng & đăng xuất thiết bị* | *Chỉnh sửa thông tin liên hệ & đổi ảnh đại diện* |
-
----
-
-## ✨ 2. Tính năng nổi bật của Hệ thống (Key Features)
+## ✨ 1. Tính năng nổi bật của Hệ thống (Key Features)
 
 ### 📱 1. Ứng dụng Di động (Mobile App)
-- **🛡️ Chính sách Không Dữ liệu Giả (Zero Mock Data Policy):** Toàn bộ dữ liệu hiển thị (Lịch học, Điểm số, Thông báo, Tin tức, Widgets) là dữ liệu thật. Khi sinh viên chưa có lịch hoặc chưa có điểm, giao diện hiển thị trạng thái trống trang nhã, không chèn các môn học mẫu giả lập.
+- **🛡️ Chính sách Không Dữ liệu Giả (Zero Mock Data Policy):** Toàn bộ dữ liệu hiển thị (Lịch học, Điểm số, Thông báo, Tin tức, Widgets) là dữ liệu thật. Khi sinh viên chưa có lịch hoặc chưa có điểm, giao diện hiển thị trạng thái trống trang nhã, không chèn bất kỳ môn học mẫu nào gây hiểu lầm.
 - **🚀 Màn hình Khởi động Thương hiệu TTN (Deep Sapphire Splash):**
   - Gradient màu xanh Sapphire nhận diện Đại học Tây Nguyên kết hợp huy hiệu sắc nét.
   - Hiệu ứng nhịp thở Pulse, thanh tiến trình động và nạp dữ liệu nền song song (`Promise.allSettled`).
@@ -87,7 +39,7 @@
   - **40 địa điểm chuẩn hóa:** Nhà học số 2, Nhà học số 5 (Khoa Y Dược), Nhà học số 6, Nhà học số 7 (Khoa Kinh tế), Nhà học số 8 (Khoa Sư phạm), Nhà học số 9 (Khoa CNTT & KHTN-CN), Tòa nhà Điều hành, Thư viện Trung tâm, Bệnh viện trường, Viện CNSH & Môi trường, Ký túc xá 1–4, Sân vận động, Căn tin Đảo sinh viên... (Không dùng ký hiệu Tòa A, B, C không có thực).
   - **Dẫn đường như Google Maps:** Tìm đường đi bộ ngắn nhất bằng thuật toán Dijkstra; tự động zoom cận cảnh và xoay bản đồ theo hướng di chuyển thực tế.
   - **La bàn & Định hướng:** Biểu tượng tam giác xoay mượt mà, lọc rung lắc cảm biến ($\ge 8^\circ$, throttle 450ms) giúp tiết kiệm pin.
-  - **Chế độ Khách (Guest Mode):** Cho phép xem bản đồ và tra cứu thông tin trường ngay lập tức mà không bắt buộc đăng nhập hay cấp quyền thiết bị.
+  - **Chế độ Khách (Guest Mode):** Cho phép xem bản đồ và tra cứu thông tin trường ngay mà không bắt buộc đăng nhập hay cấp quyền thiết bị.
 - **📌 Android Home Screen Widgets:**
   - `ScheduleWidget`: Hiển thị tiết học, phòng học, giảng viên của môn học hôm nay ngay trên màn hình chính Android.
   - `GradesWidget`: Hiển thị GPA hệ 10, GPA hệ 4, tổng tín chỉ tích lũy và xếp loại học lực.
@@ -107,7 +59,7 @@
 
 ---
 
-## 🚀 3. Kiến trúc Tối ưu hóa Quy mô lớn (Scalability Architecture)
+## 🚀 2. Kiến trúc Tối ưu hóa Quy mô lớn (Scalability Architecture)
 
 Hệ thống được thiết kế để phục vụ **1,000 – 10,000 sinh viên** mà **không làm quá tải** cổng tra cứu đào tạo của trường:
 
@@ -144,7 +96,7 @@ Yêu cầu tra cứu Điểm / Lịch học từ Sinh viên
 
 ---
 
-## 🛠️ 4. Công nghệ Sử dụng (Tech Stack)
+## 🛠️ 3. Công nghệ Sử dụng (Tech Stack)
 
 | Phân hệ | Công nghệ & Thư viện chủ đạo |
 |:---|:---|
@@ -157,7 +109,7 @@ Yêu cầu tra cứu Điểm / Lịch học từ Sinh viên
 
 ---
 
-## 🧪 5. Hệ thống Kiểm thử Tự động (Automated Test Suites)
+## 🧪 4. Hệ thống Kiểm thử Tự động (Automated Test Suites)
 
 Dự án tích hợp bộ kiểm thử hồi quy toàn diện với **10 test suites (26 bài test)** đảm bảo tính ổn định tuyệt đối trước mỗi lần triển khai:
 
@@ -193,7 +145,7 @@ node tests/run_all.js
 
 ---
 
-## 🚀 6. Hướng dẫn Cài đặt & Khởi chạy (Quick Start)
+## 🚀 5. Hướng dẫn Cài đặt & Khởi chạy (Quick Start)
 
 ### Yêu cầu tiên quyết:
 - **Node.js** phiên bản `>= 18.x`
@@ -251,7 +203,7 @@ npx expo start
 
 ---
 
-## 📦 7. Chuyển đổi Chế độ Phát triển & Build APK
+## 📦 6. Chuyển đổi Chế độ Phát triển & Build APK
 
 Dự án cung cấp bộ công cụ chuyển đổi trạng thái bằng 1 câu lệnh duy nhất:
 
@@ -267,7 +219,7 @@ npm run mode:apk
 
 ---
 
-## 📁 8. Cấu trúc Thư mục Toàn dự án (Project Structure)
+## 📁 7. Cấu trúc Thư mục Toàn dự án (Project Structure)
 
 ```text
 LTDDDNT/
@@ -319,7 +271,7 @@ LTDDDNT/
 
 ---
 
-## 🔌 9. Bảng API Endpoints Chính (REST API)
+## 🔌 8. Bảng API Endpoints Chính (REST API)
 
 | Phương thức | Endpoint | Mô tả |
 |:---:|:---|:---|
@@ -342,7 +294,7 @@ LTDDDNT/
 
 ---
 
-## 👥 10. Tác giả & Thành viên Thực hiện (Authors)
+## 👥 9. Tác giả & Thành viên Thực hiện (Authors)
 
 Dự án được nghiên cứu và phát triển phục vụ học phần **Lập trình ứng dụng đa nền tảng (LTUDDNT)** - Khoa Khoa học Tự nhiên và Công nghệ, Trường **Đại học Tây Nguyên**:
 
@@ -355,7 +307,7 @@ Dự án được nghiên cứu và phát triển phục vụ học phần **L�
 
 ---
 
-## 📄 11. Giấy phép (License)
+## 📄 10. Giấy phép (License)
 
 Dự án được phân phối dưới giấy phép mã nguồn mở **MIT License**.
 

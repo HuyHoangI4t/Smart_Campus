@@ -126,29 +126,3 @@ frontend/
 ├── eas.json                            # Cấu hình EAS Build APK đám mây
 └── package.json
 ```
-
----
-
-## 📸 5. Danh mục Ảnh chụp Giao diện Thực tế (Screenshots Demo)
-
-Thư mục lưu trữ: `assets/Screenshots _Demo/`
-
-| STT | Màn hình | Tên file ảnh | Chức năng chính |
-| :---: | :--- | :--- | :--- |
-| **01** | **Đăng nhập & Khách** | [`01_auth_login.jpg`](assets/Screenshots%20_Demo/01_auth_login.jpg) | Nhập MSSV/Email, Mật khẩu hoặc đăng nhập nhanh Chế độ Khách |
-| **02** | **Đăng ký tài khoản** | [`02_auth_register.jpg`](assets/Screenshots%20_Demo/02_auth_register.jpg) | Đăng ký tài khoản sinh viên với MSSV, Họ tên và Mật khẩu |
-| **03** | **Xác thực OTP Email** | [`03_auth_otp_verify.jpg`](assets/Screenshots%20_Demo/03_auth_otp_verify.jpg) | Nhập 6 số OTP (hỗ trợ Paste nhanh), nút gửi lại mã sau 60s |
-| **04** | **Trang chủ Dashboard** | [`04_home_dashboard.jpg`](assets/Screenshots%20_Demo/04_home_dashboard.jpg) | Thẻ môn học kế tiếp, GPA tích lũy, các tác vụ nhanh & cảnh báo |
-| **05** | **Thông báo & Tin tức** | [`05_home_announcements_news.jpg`](assets/Screenshots%20_Demo/05_home_announcements_news.jpg) | Danh sách thông báo sinh viên & tin tức hoạt động nhà trường |
-| **06** | **Thời khóa biểu tuần** | [`06_schedule_weekly.jpg`](assets/Screenshots%20_Demo/06_schedule_weekly.jpg) | Lịch học thông minh theo tuần, ngày, hiển thị phòng, tiết & GV |
-| **07** | **Chỉ dẫn phòng học** | [`07_schedule_room_directions.jpg`](assets/Screenshots%20_Demo/07_schedule_room_directions.jpg) | Hướng dẫn chi tiết từng chặng từ cổng trường tới phòng học |
-| **08** | **Thêm lịch học bù** | [`08_schedule_add_custom.jpg`](assets/Screenshots%20_Demo/08_schedule_add_custom.jpg) | Thêm lịch học bù, thực hành đột xuất tùy chỉnh |
-| **09** | **Bản đồ khuôn viên** | [`09_map_campus_overview.jpg`](assets/Screenshots%20_Demo/09_map_campus_overview.jpg) | Bản đồ số 40 địa điểm, tìm kiếm phòng học & chip phân loại |
-| **10** | **Dẫn đường Dijkstra** | [`10_map_routing_navigation.jpg`](assets/Screenshots%20_Demo/10_map_routing_navigation.jpg) | Tìm tuyến đường ngắn nhất, đổi cổng và tự động xoay bản đồ |
-| **11** | **Kết quả học tập** | [`11_grades_overview.jpg`](assets/Screenshots%20_Demo/11_grades_overview.jpg) | Tổng hợp GPA hệ 10 & 4, tín chỉ tích lũy & xếp loại học lực |
-| **12** | **Chi tiết bảng điểm** | [`12_grades_detail.jpg`](assets/Screenshots%20_Demo/12_grades_detail.jpg) | Điểm chi tiết thành phần: chuyên cần, giữa kỳ, thực hành, thi |
-| **13** | **Hồ sơ sinh viên** | [`13_profile_overview.jpg`](assets/Screenshots%20_Demo/13_profile_overview.jpg) | Thông tin cá nhân, khoa đào tạo, lớp, email & số điện thoại |
-| **14** | **Cài đặt & Bảo mật** | [`14_profile_security.jpg`](assets/Screenshots%20_Demo/14_profile_security.jpg) | Mục bảo mật tài khoản và nút đăng xuất khỏi thiết bị |
-| **15** | **Cập nhật hồ sơ** | [`15_profile_edit.jpg`](assets/Screenshots%20_Demo/15_profile_edit.jpg) | Chỉnh sửa thông tin liên hệ và đổi ảnh đại diện sinh viên |
-| **16** | **Đổi mật khẩu** | [`16_profile_change_password.jpg`](assets/Screenshots%20_Demo/16_profile_change_password.jpg) | Cập nhật mật khẩu tài khoản sinh viên an toàn |
-| **17** | **Xác nhận đăng xuất** | [`17_profile_logout_confirm.jpg`](assets/Screenshots%20_Demo/17_profile_logout_confirm.jpg) | Hộp thoại xác nhận đăng xuất an toàn khỏi ứng dụng |
