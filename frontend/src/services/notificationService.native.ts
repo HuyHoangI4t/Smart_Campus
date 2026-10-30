@@ -12,23 +12,25 @@ export const NOTIFICATION_CHANNELS = {
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 let Notifications: any = null;
-// [KHI BUILD APK]: Đã nạp thư viện expo-notifications
-try {
-  Notifications = require("expo-notifications");
-  if (Notifications && Notifications.setNotificationHandler) {
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldShowBanner: true,
-        shouldShowList: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-        priority: Notifications.AndroidNotificationPriority?.MAX,
-      }),
-    });
+if (!isExpoGo) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    Notifications = require("expo-notifications");
+    if (Notifications && Notifications.setNotificationHandler) {
+      Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowAlert: true,
+          shouldShowBanner: true,
+          shouldShowList: true,
+          shouldPlaySound: true,
+          shouldSetBadge: true,
+          priority: Notifications.AndroidNotificationPriority?.MAX,
+        }),
+      });
+    }
+  } catch (e) {
+    console.warn("expo-notifications module not loaded:", e);
   }
-} catch (e) {
-  console.warn("expo-notifications module not loaded:", e);
 }
 
 

@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { View, Text, ScrollView, Pressable, RefreshControl } from "react-native";
-// [KHI BUILD APK]: Đã kích hoạt Widget & Thông báo điểm
 import { saveGradesForWidget } from "../../../src/services/widgetService";
-import { triggerTestNotification } from "../../../src/services/notificationService";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -214,7 +212,7 @@ export default function GradesScreen() {
     };
   }, [displayedGrades]);
 
-  // [KHI BUILD APK]: Tự động nạp điểm số vào Widget Android
+  // Tự động nạp điểm số vào Widget Android khi có dữ liệu điểm
   useEffect(() => {
     if (isLoggedIn && (Number(totalCredits) > 0 || Number(gpa4) > 0)) {
       saveGradesForWidget(

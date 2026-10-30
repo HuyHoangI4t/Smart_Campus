@@ -1,3 +1,4 @@
+"use no memo";
 import React from "react";
 import { FlexWidget, TextWidget } from "react-native-android-widget";
 

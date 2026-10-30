@@ -2,9 +2,7 @@ import React, { useEffect } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
-// [KHI BUILD APK]: Đã bật Thông báo đẩy & Widget Android
-import * as Notifications from 'expo-notifications';
-import { initNotifications } from '../src/services/notificationService';
+import { initNotifications, addNotificationResponseListener } from '../src/services/notificationService';
 import { syncAllWidgets } from '../src/services/widgetService';
 import '../src/widgets/registerWidgets';
 
@@ -13,7 +11,6 @@ function RootStack() {
   const router = useRouter();
 
   useEffect(() => {
-    // [KHI BUILD APK]: Đã kích hoạt Thông báo đẩy & Widget
     // 1. Khởi tạo Notification channels & xin quyền thông báo
     initNotifications().catch((err) => console.warn('Lỗi init notifications:', err));
 
@@ -21,37 +18,23 @@ function RootStack() {
     syncAllWidgets().catch((err) => console.warn('Lỗi sync widgets:', err));
 
     // 3. Lắng nghe sự kiện người dùng bấm vào thanh thông báo đẩy an toàn
-    let responseSubscription: any = null;
-    try {
-      if (Notifications && typeof Notifications.addNotificationResponseReceivedListener === 'function') {
-        responseSubscription = Notifications.addNotificationResponseReceivedListener((response: any) => {
-          try {
-            const data = response?.notification?.request?.content?.data;
-            if (data && data.screen) {
-              switch (data.screen) {
-                case 'grades':
-                  router.push('/(main)/grades');
-                  break;
-                case 'schedule':
-                  router.push('/(main)/schedule');
-                  break;
-                case 'sos':
-                  router.push('/(main)/sos');
-                  break;
-                case 'home':
-                default:
-                  router.push('/(main)/home');
-                  break;
-              }
-            }
-          } catch (err) {
-            console.warn('Lỗi xử lý navigation từ thông báo:', err);
-          }
-        });
+    const responseSubscription = addNotificationResponseListener((screen: string) => {
+      switch (screen) {
+        case 'grades':
+          router.push('/(main)/grades');
+          break;
+        case 'schedule':
+          router.push('/(main)/schedule');
+          break;
+        case 'sos':
+          router.push('/(main)/sos');
+          break;
+        case 'home':
+        default:
+          router.push('/(main)/home');
+          break;
       }
-    } catch (subErr) {
-      console.warn('Lỗi đăng ký addNotificationResponseReceivedListener:', subErr);
-    }
+    });
 
     return () => {
       if (responseSubscription && typeof responseSubscription.remove === 'function') {
