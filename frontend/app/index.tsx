@@ -83,10 +83,10 @@ export default function Index() {
           AsyncStorage.getItem('@auth_user'),
         ]);
 
-        // Đảm bảo màn hình hiển thị tối thiểu 700ms tạo cảm giác mượt mà, không bị chớp giật
+        // Đảm bảo màn hình hiển thị tối thiểu 1500ms tạo cảm giác mượt mà, không bị chớp giật
         const elapsed = Date.now() - startTime;
-        if (elapsed < 700) {
-          await new Promise((r) => setTimeout(r, 700 - elapsed));
+        if (elapsed < 1500) {
+          await new Promise((r) => setTimeout(r, 1500 - elapsed));
         }
 
         if (!isMounted) return;
@@ -113,6 +113,7 @@ export default function Index() {
       clearTimeout(timer1);
       clearTimeout(timer2);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   return (

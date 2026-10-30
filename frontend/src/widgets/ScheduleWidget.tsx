@@ -138,7 +138,7 @@ export function ScheduleWidget({ data }: { data?: ScheduleWidgetData | null }) {
           }}
         >
           <TextWidget
-            text="Hôm nay bạn không có lịch học 🎉"
+            text="Hôm nay bạn không có lịch học"
             style={{
               color: "#F1F5F9",
               fontSize: 13,
@@ -146,7 +146,7 @@ export function ScheduleWidget({ data }: { data?: ScheduleWidgetData | null }) {
             }}
           />
           <TextWidget
-            text="Tận hưởng thời gian nghỉ ngơi hoặc ôn tập nhé!"
+            text="Nghỉ ngơi hoặc ôn tập nhé!"
             style={{
               color: "#94A3B8",
               fontSize: 10,

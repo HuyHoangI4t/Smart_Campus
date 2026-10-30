@@ -116,7 +116,7 @@ export const HomeNextClassCard = React.memo(function HomeNextClassCard({
             <Text style={[styles.lecturerText, isDark && { color: colors.textSecondary }]} numberOfLines={1}>
               {nextClass
                 ? (nextClass.lecturer || "Chưa cập nhật GV")
-                : "Tận hưởng ngày nghỉ hoặc ôn bài nhé!"}
+                : "Nghỉ hoặc ôn bài nhé!"}
             </Text>
           </View>
 
