@@ -12,8 +12,7 @@ export const NOTIFICATION_CHANNELS = {
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 let Notifications: any = null;
-// [KHI BUILD APK]: Bỏ comment khối try/catch bên dưới để nạp thư viện expo-notifications
-/*
+// [KHI BUILD APK]: Đã nạp thư viện expo-notifications
 try {
   Notifications = require("expo-notifications");
   if (Notifications && Notifications.setNotificationHandler) {
@@ -31,9 +30,108 @@ try {
 } catch (e) {
   console.warn("expo-notifications module not loaded:", e);
 }
-*/
 
 
+
+/**
+ * Khởi tạo hệ thống thông báo đẩy (Android channels & Permissions)
+ */
+export async function initNotifications(): Promise<boolean> {
+  if (!Notifications) return false;
+  try {
+    if (Platform.OS === "android" && Notifications.setNotificationChannelAsync) {
+      // 1. Kênh nhắc lịch học
+      await Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNELS.SCHEDULE, {
+        name: "Nhắc nhở Lịch học & Thi",
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: "#1D4ED8",
+        sound: "default",
+        enableVibrate: true,
+        showBadge: true,
+      });
+
+      // 2. Kênh thông báo nhà trường
+      await Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNELS.CAMPUS, {
+        name: "Thông báo Trường & Đào tạo",
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 200, 200, 200],
+        lightColor: "#F59E0B",
+        sound: "default",
+        enableVibrate: true,
+        showBadge: true,
+      });
+
+      // 3. Kênh cảnh báo SOS khẩn cấp
+      await Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNELS.SOS, {
+        name: "Cứu hộ SOS Khẩn cấp",
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 500, 200, 500, 200, 500],
+        lightColor: "#DC2626",
+        sound: "default",
+        enableVibrate: true,
+        showBadge: true,
+      });
+
+      // 4. Kênh cập nhật điểm số
+      await Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNELS.GRADES, {
+        name: "Cập nhật Điểm số & Tín chỉ",
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: "#10B981",
+        sound: "default",
+        enableVibrate: true,
+        showBadge: true,
+      });
+    }
+
+    // Xin quyền thông báo (bắt buộc cho Android 13+)
+    if (Notifications.getPermissionsAsync && Notifications.requestPermissionsAsync) {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== "granted") {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+
+      const granted = finalStatus === "granted";
+      await AsyncStorage.setItem("@notification_permission", granted ? "granted" : "denied");
+      return granted;
+    }
+    return true;
+  } catch (error) {
+    console.warn("Lỗi khởi tạo Notification Service:", error);
+    return false;
+  }
+}
+
+/**
+ * Gửi thông báo tức thì (Dùng cho thông báo mới, test hoặc cảnh báo)
+ */
+export async function sendInstantNotification(
+  title: string,
+  body: string,
+  data: Record<string, any> = {},
+  channelId: string = NOTIFICATION_CHANNELS.CAMPUS
+) {
+  if (!Notifications || !Notifications.scheduleNotificationAsync) {
+    return;
+  }
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        data,
+        sound: true,
+        badge: 1,
+      },
+      trigger: Platform.OS === "android" ? { channelId } : null,
+    });
+  } catch (error) {
+    console.warn("Lỗi gửi thông báo tức thì:", error);
+  }
+}
 
 /**
  * Tính khoảng cách (mét) giữa 2 tọa độ GPS bằng công thức Haversine
