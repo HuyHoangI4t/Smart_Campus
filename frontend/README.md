@@ -1,116 +1,154 @@
 # 📱 Smart Campus Mobile Application (Frontend)
 
-Ứng dụng di động sinh viên **Smart Campus** dành cho trường **Đại học Tây Nguyên**, xây dựng bằng **React Native (v0.81.5)**, **Expo SDK 54** và **TypeScript (v5.9)** với cấu trúc định tuyến **Expo Router v6**.
+<p align="center">
+  <img src="https://img.shields.io/badge/React_Native-0.81.5-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React Native" />
+  <img src="https://img.shields.io/badge/Expo-SDK_54-000020?style=for-the-badge&logo=expo&logoColor=white" alt="Expo" />
+  <img src="https://img.shields.io/badge/TypeScript-5.9-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Expo_Router-v6-000020?style=for-the-badge&logo=expo&logoColor=white" alt="Expo Router" />
+  <img src="https://img.shields.io/badge/Android_Widgets-Supported-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Widgets" />
+</p>
+
+Ứng dụng di động sinh viên **Smart Campus** dành cho trường **Đại học Tây Nguyên (TNU)**, được xây dựng trên nền tảng **React Native (v0.81.5)**, **Expo SDK 54**, **TypeScript (v5.9)** với kiến trúc điều hướng dạng tập tin **Expo Router v6**.
 
 ---
 
 ## ✨ 1. Tính năng nổi bật
 
-- **Trang chủ Dashboard:** Thẻ tóm tắt GPA hệ 10 & 4, tín chỉ tích lũy, môn học kế tiếp, danh mục tiện ích nhanh và tin tức nhà trường.
-- **Bản đồ số & Dẫn đường thông minh (Leaflet WebView):**
-  - Định vị GPS và chỉ đường đi bộ nội bộ theo thuật toán **Dijkstra** trên 40 địa điểm chuẩn thực tế (Tòa nhà Điều hành, Thư viện Trung tâm, Nhà học số 2, 5, 6, 7, 8, 9, Bệnh viện trường, Viện CNSH&MT, Ký túc xá 1-4... Không dùng tên Tòa A, B, C).
-  - **Mô phỏng trải nghiệm Google Maps:** Tự động phóng to và xoay bản đồ theo hướng đường khi bắt đầu di chuyển.
-  - **Biểu tượng tam giác định hướng:** Hiển thị góc quay la bàn người dùng, tự động đưa vị trí về tâm màn hình.
-  - **Tối ưu trải nghiệm:** Tự động ẩn thanh điều hướng dưới (Bottom Tabs) khi đang dẫn đường để mở rộng góc nhìn.
-  - **Lọc rung lắc la bàn:** Giảm độ nhạy (chỉ quay khi lệch $\ge 8^\circ$) và khống chế tần suất cập nhật $\ge 450\text{ms}$ giúp tiết kiệm pin.
-  - **Chế độ Khách (Guest Mode):** Cho phép người dùng trải nghiệm ngay mà không đòi hỏi quyền GPS, camera hay bộ nhớ.
-- **🤖 Trợ lý AI TTN Smart Bot (Vector RAG Database & Gemini):**
-  - Giao diện Glassmorphism hiện đại, Dark/Light mode, hiệu ứng xúc giác (Haptics) và avatar logo trường.
-  - Tự động sinh câu trả lời ngắn gọn, chuẩn xác dựa trên vector embeddings truy xuất trực tiếp từ MySQL.
-  - Phân tích điểm GPA cá nhân, tra cứu lịch học hôm nay hoặc tìm đường đến Nhà học số 9, Thư viện với các nút hành động (Action Buttons) và gợi ý bám sát ngữ cảnh.
-- **Thời khóa biểu thông minh (Schedule):**
-  - Xem lịch học theo tuần và ngày, hiển thị phòng học, giảng viên, môn học.
-  - Thêm / sửa lịch thực hành đột xuất hoặc học bù: Tự động tính thứ từ ngày chọn, ô chọn tiết dạng dropdown full-width.
-- **Kết quả học tập (Grades):** Tra cứu điểm chuyên cần, giữa kỳ, thi, điểm chữ và GPA tích lũy.
-- **Hồ sơ cá nhân:** Cập nhật thông tin, thay đổi ảnh đại diện (camera, thư viện ảnh hoặc link ảnh), đổi mật khẩu.
-- **Tiện ích trường học:** Gửi phản hồi nhà trường, nút báo động khẩn cấp SOS một chạm.
+### 🛡️ Chính sách Không Dữ liệu Giả (Zero Mock Data)
+- **100% Dữ liệu thực tế:** Toàn bộ lịch học, bảng điểm, thông báo, tin tức và widget đều lấy từ dữ liệu thực tế của sinh viên.
+- **Không dùng dữ liệu mẫu (Fallback Mock):** Khi sinh viên chưa có môn học hoặc chưa có điểm trong học kỳ, ứng dụng hiển thị trạng thái trống thân thiện, không chèn bất kỳ môn học mẫu nào gây hiểu lầm.
+
+### 🚀 Màn hình Khởi động Thương hiệu TNU (Splash / Loading Screen)
+- Thiết kế chuẩn nhận diện thương hiệu Đại học Tây Nguyên với dải màu **Deep Sapphire Blue** sang trọng và huy hiệu trường sắc nét.
+- Hiệu ứng nhịp thở phát sáng (Pulse Glow), thanh phần trăm tiến trình mượt mà cùng các dòng trạng thái nạp dữ liệu thay đổi linh hoạt.
+- Tự động nạp dữ liệu nền song song (`Promise.allSettled`) khi mở ứng dụng giúp các màn hình bên trong hiển thị tức thì.
+
+### 🤖 Trợ lý AI TTN Smart Bot (Vector RAG AI & Gemini)
+- **Giao diện Glassmorphism Hiện đại:** Thiết kế kính mờ cao cấp, hỗ trợ chế độ Tối/Sáng (Dark/Light mode) và rung phản hồi xúc giác (Haptics).
+- **Gợi ý Câu hỏi Trong suốt Không nền (No BG):** Toàn bộ danh mục câu hỏi Bento, thanh trượt ngang câu hỏi nhanh và gợi ý sau tin nhắn của Bot đều được thiết kế dạng trong suốt (`backgroundColor: "transparent"`), viền kính thanh thoát, hòa quyện tự nhiên với hiệu ứng ánh sáng AI.
+- **Xử lý Bàn phím Android Hoàn hảo:** Nâng hạ chính xác theo bàn phím bằng `Animated.Value` + `Keyboard.addListener`, triệt tiêu hoàn toàn lỗi che khuất thanh chat và lỗi thụt dải trắng 44px trên Android Edge-to-Edge / Xiaomi MIUI / HyperOS.
+- **Tự sinh câu trả lời:** Kết hợp Vector RAG (tìm kiếm độ tương đồng Cosine trong MySQL) và Google Gemini AI để trả lời chính xác quy chế, học bổng, vị trí nhà học, kèm dữ liệu điểm số và lịch học cá nhân của chính người dùng.
+
+### 🗺️ Bản đồ Số & Dẫn đường Thông minh (Leaflet Dijkstra)
+- **40 địa điểm chuẩn hóa:** Quản lý tọa độ chính xác của Nhà học số 2, Nhà học số 5 (Khoa Y Dược), Nhà học số 6, 7 (Khoa Kinh tế), Nhà học số 8 (Khoa Sư phạm), Nhà học số 9 (Khoa CNTT & KHTN-CN), Tòa nhà Điều hành, Thư viện, Ký túc xá 1–4, Bệnh viện trường...
+- **Trải nghiệm như Google Maps:** Tự động phóng to và xoay bản đồ theo hướng di chuyển thực tế của người dùng.
+- **La bàn định hướng:** Biểu tượng tam giác chỉ hướng nhìn thực tế, thuật toán lọc rung lắc cảm biến ($\ge 8^\circ$, throttle 450ms) giúp tiết kiệm pin.
+- **Chế độ Khách (Guest Mode):** Cho phép xem bản đồ và tra cứu thông tin trường ngay mà không đòi hỏi quyền GPS, camera hay bộ nhớ.
+
+### 📌 Tiện ích Màn hình chính Android (Home Screen Widgets)
+Hỗ trợ 3 Android App Widgets (`react-native-android-widget`):
+1. **`ScheduleWidget` (Lịch học hôm nay):** Hiển thị tên môn học, thời gian, tiết học, phòng học và giảng viên ngay trên màn hình chính điện thoại.
+2. **`GradesWidget` (Điểm số & GPA):** Hiển thị GPA hệ 10, GPA hệ 4, tổng tín chỉ tích lũy và xếp loại học lực.
+3. **`SosWidget` (Cứu nạn khẩn cấp):** Báo động SOS 1 chạm gửi tọa độ GPS về phòng an ninh trường.
+
+### 🔔 Thông báo Đẩy Thời gian Thực (Push Notifications)
+- Tích hợp `expo-notifications` với các kênh thông báo chuyên biệt: Báo điểm mới, Cảnh báo học vụ, Nhắc lịch học ngày mai.
+- Tự động so sánh dữ liệu điểm số mới vs cũ để đẩy thông báo ngay khi giảng viên vừa cập nhật điểm.
+
+### 📅 Thời khóa biểu & Điểm số
+- Tự động xác định tuần học thực tế dựa trên ngày tháng năm hiện tại.
+- Thêm / sửa lịch thực hành đột xuất hoặc học bù: Tự động tính thứ từ ngày chọn, ô chọn tiết dạng dropdown full-width tiện lợi.
 
 ---
 
 ## 🚀 2. Cài đặt & Khởi chạy
 
-### Bước 1: Cài đặt thư viện
+### Bước 1: Cài đặt dependencies
 ```bash
 npm install
 ```
 
-### Bước 2: Khởi chạy với Expo Metro Bundler
+### Bước 2: Chuyển đổi chế độ phù hợp
+```bash
+# Nếu chạy thử nghiệm trên Expo Go:
+npm run mode:dev
+
+# Nếu đóng gói APK bằng EAS Build / Prebuild:
+npm run mode:apk
+```
+
+### Bước 3: Khởi chạy Metro Bundler
 ```bash
 npx expo start
 ```
 
-### Bước 3: Trải nghiệm ứng dụng
-- **Điện thoại thật (Android / iOS):** Cài ứng dụng **Expo Go** từ Google Play hoặc App Store, sau đó quét mã QR hiển thị trên màn hình terminal.
-- **Máy ảo Android Studio:** Nhấn phím `a` trên bàn phím.
-- **Trình duyệt Web:** Nhấn phím `w` trên bàn phím.
+### Bước 4: Trải nghiệm ứng dụng
+- **Điện thoại thật (Android / iOS):** Mở ứng dụng **Expo Go**, quét mã QR trên màn hình terminal.
+- **Máy ảo Android Studio:** Nhấn phím `a` trên bàn phím terminal.
+- **Trình duyệt Web:** Nhấn phím `w` trên bàn phím terminal.
 
 ---
 
-## 🛠️ 3. Cấu hình kết nối API
+## 🛠️ 3. Cấu hình Kết nối API & Mạng LAN
 
-File cấu hình kết nối nằm tại [src/services/get_IPv4.ts](src/services/get_IPv4.ts) và [src/services/api.ts](src/services/api.ts):
-- **Trên Web:** Tự động kết nối `http://localhost:5000/api`.
-- **Trên Thiết bị thật (Expo Go):** Tự động phát hiện địa chỉ IP LAN của máy tính chạy Expo Bundler.
-- Đảm bảo điện thoại và máy tính kết nối **chung một mạng Wi-Fi** và tường lửa Windows cho phép mở cổng `5000`.
+Cấu hình IP tự động nằm tại [`src/services/get_IPv4.ts`](src/services/get_IPv4.ts) và [`src/services/api.ts`](src/services/api.ts):
+- **Trình duyệt Web:** Kết nối `http://localhost:5000/api`.
+- **Thiết bị thật (Expo Go):** Tự động nhận diện địa chỉ IPv4 LAN của máy tính đang chạy Expo Bundler.
+- **Lưu ý:** Đảm bảo điện thoại và máy tính kết nối **chung một mạng Wi-Fi** và mở cổng `5000` trên tường lửa máy tính.
 
 ---
 
-## 📁 4. Cấu trúc thư mục Frontend
+## 📁 4. Cấu trúc Thư mục Frontend
 
 ```text
 frontend/
-├── app/                                # Expo Router (File-based routing)
+├── app/                                # Expo Router (File-based Routing)
+│   ├── index.tsx                       # Màn hình Splash nhận diện Deep Sapphire
+│   ├── _layout.tsx                     # Root Layout (SafeArea, Theme, Push Notifications)
 │   ├── (auth)/                         # Nhóm màn hình Xác thực
 │   │   ├── index.tsx                   # Đăng nhập (hỗ trợ Chế độ Khách)
-│   │   └── forgot-password.tsx         # Quên mật khẩu & OTP Email
-│   ├── (main)/                         # Nhóm màn hình chính (Bottom Tabs)
-│   │   ├── _layout.tsx                 # Cấu hình Bottom Tabs Navigation
-│   │   ├── home/                       # Trang chủ sinh viên
-│   │   ├── map/                        # Bản đồ số & Dẫn đường khuôn viên
-│   │   ├── schedule/                   # Thời khóa biểu & thêm lịch thực hành
-│   │   ├── grades/                     # Bảng điểm & GPA
-│   │   ├── profile/                    # Hồ sơ cá nhân & đổi mật khẩu
-│   │   ├── feedback/                   # Gửi phản hồi
-│   │   └── sos/                        # Báo động khẩn cấp SOS
-│   └── _layout.tsx                     # Root Layout toàn ứng dụng
+│   │   ├── register.tsx                # Đăng ký tài khoản sinh viên mới
+│   │   ├── forgot-password.tsx         # Quên mật khẩu & xác nhận OTP
+│   │   └── otp_verification.tsx        # Màn hình nhập OTP 6 số
+│   └── (main)/                         # Nhóm màn hình chính (Bottom Tabs)
+│       ├── _layout.tsx                 # Cấu hình Bottom Tabs Navigation
+│       ├── home/                       # Trang chủ sinh viên & tin tức
+│       ├── map/                        # Bản đồ số Leaflet & Dẫn đường Dijkstra
+│       ├── schedule/                   # Thời khóa biểu tuần & thêm lịch học
+│       ├── grades/                     # Kết quả học tập & bảng điểm chi tiết
+│       ├── profile/                    # Hồ sơ cá nhân, đổi mật khẩu & cài đặt
+│       ├── chat/                       # Trợ lý AI TTN Smart Bot RAG
+│       ├── feedback/                   # Gửi ý kiến phản hồi
+│       └── sos/                        # Báo động khẩn cấp SOS
 ├── src/
-│   ├── components/                     # MainTabs, NavHeader, AuthHeader
-│   ├── constants/                      # appColors.ts, globalStyles.ts
-│   ├── features/map/                   # Module Bản đồ số Leaflet
-│   │   ├── hooks/useMapGps.ts          # Xử lý GPS, la bàn hướng nhìn
-│   │   ├── leafletHtml.ts              # Template HTML render bản đồ
-│   │   └── utils.ts                    # Tiện ích Dijkstra & tính khoảng cách
-│   └── services/
-│       ├── api.ts                      # Client gọi REST API
-│       ├── get_IPv4.ts                 # Nhận diện IP tự động
-│       └── permissionService.ts        # Quản lý quyền hệ thống & chế độ Khách
-├── app.json                            # Cấu hình ứng dụng Expo & Permissions
+│   ├── components/                     # NavHeader, MainTabs, GlassView, BottomNav
+│   ├── constants/                      # appColors.ts, glassStyles.ts
+│   ├── context/                        # ThemeContext (Dark / Light mode)
+│   ├── features/                       # Các module tính năng chuyên sâu
+│   │   ├── chat/                       # Smart Bot avatar, typing dots, bubble, welcome
+│   │   ├── map/                        # Leaflet template, GPS hook, Dijkstra routing
+│   │   └── schedule/                   # Bóc tách TKB, tính tuần động, lịch tự tạo
+│   ├── services/                       # API clients, thông báo đẩy, widget service
+│   └── widgets/                        # ScheduleWidget, GradesWidget, SosWidget
+├── scripts/
+│   └── toggle_apk_mode.js              # Script 1 lệnh chuyển đổi Dev / APK mode
+├── app.json                            # Cấu hình ứng dụng Expo, permissions & adaptive icon
+├── eas.json                            # Cấu hình EAS Build APK đám mây
 └── package.json
 ```
 
 ---
 
-## 📸 5. Ảnh chụp giao diện thực tế (Screenshots Demo)
+## 📸 5. Danh mục Ảnh chụp Giao diện Thực tế (Screenshots Demo)
 
-Thư mục: `assets/Screenshots _Demo/`
+Thư mục lưu trữ: `assets/Screenshots _Demo/`
 
 | STT | Màn hình | Tên file ảnh | Chức năng chính |
 | :---: | :--- | :--- | :--- |
-| **01** | **Đăng nhập & Khách** | [`01_auth_login.jpg`](assets/Screenshots%20_Demo/01_auth_login.jpg) | Nhập MSSV/Email, Mật khẩu hoặc đăng nhập nhanh chế độ Khách |
+| **01** | **Đăng nhập & Khách** | [`01_auth_login.jpg`](assets/Screenshots%20_Demo/01_auth_login.jpg) | Nhập MSSV/Email, Mật khẩu hoặc đăng nhập nhanh Chế độ Khách |
 | **02** | **Đăng ký tài khoản** | [`02_auth_register.jpg`](assets/Screenshots%20_Demo/02_auth_register.jpg) | Đăng ký tài khoản sinh viên với MSSV, Họ tên và Mật khẩu |
-| **03** | **Xác thực OTP Email** | [`03_auth_otp_verify.jpg`](assets/Screenshots%20_Demo/03_auth_otp_verify.jpg) | Nhập 6 số OTP (hỗ trợ Paste nhanh), nút gửi lại mã sau 60s đếm ngược |
-| **04** | **Trang chủ Dashboard** | [`04_home_dashboard.jpg`](assets/Screenshots%20_Demo/04_home_dashboard.jpg) | Thẻ lớp học kế tiếp, GPA tích lũy, các tác vụ nhanh & cảnh báo |
+| **03** | **Xác thực OTP Email** | [`03_auth_otp_verify.jpg`](assets/Screenshots%20_Demo/03_auth_otp_verify.jpg) | Nhập 6 số OTP (hỗ trợ Paste nhanh), nút gửi lại mã sau 60s |
+| **04** | **Trang chủ Dashboard** | [`04_home_dashboard.jpg`](assets/Screenshots%20_Demo/04_home_dashboard.jpg) | Thẻ môn học kế tiếp, GPA tích lũy, các tác vụ nhanh & cảnh báo |
 | **05** | **Thông báo & Tin tức** | [`05_home_announcements_news.jpg`](assets/Screenshots%20_Demo/05_home_announcements_news.jpg) | Danh sách thông báo sinh viên & tin tức hoạt động nhà trường |
 | **06** | **Thời khóa biểu tuần** | [`06_schedule_weekly.jpg`](assets/Screenshots%20_Demo/06_schedule_weekly.jpg) | Lịch học thông minh theo tuần, ngày, hiển thị phòng, tiết & GV |
 | **07** | **Chỉ dẫn phòng học** | [`07_schedule_room_directions.jpg`](assets/Screenshots%20_Demo/07_schedule_room_directions.jpg) | Hướng dẫn chi tiết từng chặng từ cổng trường tới phòng học |
 | **08** | **Thêm lịch học bù** | [`08_schedule_add_custom.jpg`](assets/Screenshots%20_Demo/08_schedule_add_custom.jpg) | Thêm lịch học bù, thực hành đột xuất tùy chỉnh |
 | **09** | **Bản đồ khuôn viên** | [`09_map_campus_overview.jpg`](assets/Screenshots%20_Demo/09_map_campus_overview.jpg) | Bản đồ số 40 địa điểm, tìm kiếm phòng học & chip phân loại |
-| **10** | **Dẫn đường Dijkstra** | [`10_map_routing_navigation.jpg`](assets/Screenshots%20_Demo/10_map_routing_navigation.jpg) | Tìm tuyến đường ngắn nhất, đổi cổng và thanh trạng thái sát đáy |
-| **11** | **Kết quả học tập** | [`11_grades_overview.jpg`](assets/Screenshots%20_Demo/11_grades_overview.jpg) | Tổng hợp GPA hệ 10 & 4, tín chỉ tích lũy & lọc học kỳ |
+| **10** | **Dẫn đường Dijkstra** | [`10_map_routing_navigation.jpg`](assets/Screenshots%20_Demo/10_map_routing_navigation.jpg) | Tìm tuyến đường ngắn nhất, đổi cổng và tự động xoay bản đồ |
+| **11** | **Kết quả học tập** | [`11_grades_overview.jpg`](assets/Screenshots%20_Demo/11_grades_overview.jpg) | Tổng hợp GPA hệ 10 & 4, tín chỉ tích lũy & xếp loại học lực |
 | **12** | **Chi tiết bảng điểm** | [`12_grades_detail.jpg`](assets/Screenshots%20_Demo/12_grades_detail.jpg) | Điểm chi tiết thành phần: chuyên cần, giữa kỳ, thực hành, thi |
 | **13** | **Hồ sơ sinh viên** | [`13_profile_overview.jpg`](assets/Screenshots%20_Demo/13_profile_overview.jpg) | Thông tin cá nhân, khoa đào tạo, lớp, email & số điện thoại |
 | **14** | **Cài đặt & Bảo mật** | [`14_profile_security.jpg`](assets/Screenshots%20_Demo/14_profile_security.jpg) | Mục bảo mật tài khoản và nút đăng xuất khỏi thiết bị |
 | **15** | **Cập nhật hồ sơ** | [`15_profile_edit.jpg`](assets/Screenshots%20_Demo/15_profile_edit.jpg) | Chỉnh sửa thông tin liên hệ và đổi ảnh đại diện sinh viên |
-| **16** | **Đổi mật khẩu** | [`16_profile_change_password.jpg`](assets/Screenshots%20_Demo/16_profile_change_password.jpg) | Cập nhật mật khẩu tài khoản sinh viên |
+| **16** | **Đổi mật khẩu** | [`16_profile_change_password.jpg`](assets/Screenshots%20_Demo/16_profile_change_password.jpg) | Cập nhật mật khẩu tài khoản sinh viên an toàn |
 | **17** | **Xác nhận đăng xuất** | [`17_profile_logout_confirm.jpg`](assets/Screenshots%20_Demo/17_profile_logout_confirm.jpg) | Hộp thoại xác nhận đăng xuất an toàn khỏi ứng dụng |
-
