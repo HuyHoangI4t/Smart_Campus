@@ -264,3 +264,15 @@ async function startServer() {
 
 startServer();
 
+// --- Cron Job giữ kết nối database không bị tắt nguồn ---
+const INTERVAL_TIME = 10 * 60 * 1000; // 10 phút gửi 1 lần (tính bằng mili-giây)
+
+setInterval(async () => {
+  try {
+    // Thực hiện một câu lệnh truy vấn cực kỳ nhẹ nhàng (không tốn tài nguyên)
+    await sequelize.query('SELECT 1;'); // Hoặc câu lệnh query phù hợp với thư viện kết nối DB của bạn (như mysql2/pg)
+    console.log('🔄 [Keep-Alive] Đã gửi tín hiệu ping giữ kết nối database thành công.');
+  } catch (error) {
+    console.error('⚠️ [Keep-Alive] Lỗi khi ping database:', error.message);
+  }
+}, INTERVAL_TIME);

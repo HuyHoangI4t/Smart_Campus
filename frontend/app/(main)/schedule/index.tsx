@@ -26,8 +26,8 @@ import {
   CustomSchedulePayload,
 } from "../../../src/services/api";
 
-// [KHI BUILD APK]: Bỏ comment dòng dưới để kích hoạt Widget Lịch Học
-// import { saveScheduleForWidget } from "../../../src/services/widgetService";
+// [KHI BUILD APK]: Đã kích hoạt Widget Lịch Học
+import { saveScheduleForWidget } from "../../../src/services/widgetService";
 import {
   ScheduleItem,
   AvailableWeekItem,
@@ -439,8 +439,7 @@ export default function ScheduleScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // [KHI BUILD APK]: Bỏ comment khối bên dưới để tự động nạp lịch học hôm nay vào Widget
-  /*
+  // [KHI BUILD APK]: Tự động nạp lịch học hôm nay vào Widget
   useEffect(() => {
     if (scheduleList && scheduleList.length > 0) {
       const todayNum = getTodayDayNum();
@@ -448,7 +447,6 @@ export default function ScheduleScreen() {
       saveScheduleForWidget(todayClasses).catch(() => {});
     }
   }, [scheduleList]);
-  */
 
   const onRefresh = async () => {
     setRefreshing(true);

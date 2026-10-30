@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { View, Text, ScrollView, Pressable, RefreshControl } from "react-native";
-// [KHI BUILD APK]: Bỏ comment 2 dòng dưới để bật Widget & Thông báo điểm
-// import { saveGradesForWidget } from "../../../src/services/widgetService";
-// import { triggerTestNotification } from "../../../src/services/notificationService";
+// [KHI BUILD APK]: Đã kích hoạt Widget & Thông báo điểm
+import { saveGradesForWidget } from "../../../src/services/widgetService";
+import { triggerTestNotification } from "../../../src/services/notificationService";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -214,8 +214,7 @@ export default function GradesScreen() {
     };
   }, [displayedGrades]);
 
-  // [KHI BUILD APK]: Bỏ comment khối bên dưới để tự động nạp điểm số vào Widget Android
-  /*
+  // [KHI BUILD APK]: Tự động nạp điểm số vào Widget Android
   useEffect(() => {
     if (isLoggedIn && (Number(totalCredits) > 0 || Number(gpa4) > 0)) {
       saveGradesForWidget(
@@ -230,7 +229,6 @@ export default function GradesScreen() {
       ).catch(() => {});
     }
   }, [gpa4, gpa10, totalCredits, academicRank, studentInfo, isLoggedIn]);
-  */
 
   const getBadgeColor = (letter: string) => {
     const uc = (letter || "").toUpperCase().trim();
