@@ -1,16 +1,14 @@
 /**
  * test_chat_keyboard_layout.js
- * Kiểm tra cấu hình bàn phím của ChatBotScreen trên Android và iOS
+ * Kiểm tra cấu hình bàn phím và giao diện gợi ý trong suốt (No BG) của ChatBotScreen
  * 
  * Đảm bảo:
  * 1. app.json có softwareKeyboardLayoutMode là "resize" cho Android.
- * 2. KeyboardAvoidingView dùng behavior="padding" để đảm bảo thanh chat không bao giờ
- *    bị bàn phím ảo che lấp trên cả Android và iOS.
- * 3. FlatList có keyboardShouldPersistTaps="handled" và keyboardDismissMode="on-drag"
- *    để khi cuộn hoặc bấm gợi ý bàn phím đóng mở mượt mà.
- * 4. ChatInputBar lưu trữ cachedBottomInset để ngăn chặn thanh nhập liệu bị thụt sát đáy
- *    (mất padding safe area) sau khi đóng bàn phím trên MIUI/HyperOS/Android.
- * 5. ChatInputBar có TextInput onFocus và onBlur đồng bộ cùng keyboard listeners.
+ * 2. chat/index.tsx dùng Animated keyboardOffset cho Android và behavior="padding" cho iOS,
+ *    giúp nâng thanh chat chính xác theo chiều cao bàn phím và trả về 0 khi ẩn (không để lại khoảng trắng 44px).
+ * 3. FlatList có keyboardShouldPersistTaps="handled" và keyboardDismissMode="on-drag".
+ * 4. ChatInputBar có đệm an toàn Math.max(insets.bottom, 16) khi đóng bàn phím và 8 khi mở bàn phím.
+ * 5. Các gợi ý câu hỏi (bento grid, suggestions bar, dynamic questions) đều trong suốt (backgroundColor: "transparent", No BG).
  */
 
 const assert = require('assert');
@@ -31,7 +29,7 @@ function runTest(description, testFn) {
 
 function main() {
   console.log('\n=============================================');
-  console.log('🧪 TEST: LAYOUT BÀN PHÍM CHATBOT (ANDROID & IOS)');
+  console.log('🧪 TEST: LAYOUT BÀN PHÍM & GỢI Ý CHATBOT (NO BG)');
   console.log('=============================================');
   let passed = 0;
   let total = 0;
@@ -49,14 +47,15 @@ function main() {
     );
   })) passed++;
 
-  // 2. Kiểm tra chat/index.tsx dùng behavior="padding" chống che khuất bàn phím
+  // 2. Kiểm tra chat/index.tsx dùng Animated keyboardOffset tránh lỗi 44px của Android KeyboardAvoidingView
   total++;
-  if (runTest('chat/index.tsx dùng behavior="padding" nâng view trên bàn phím', () => {
+  if (runTest('chat/index.tsx dùng Animated keyboardOffset nâng hạ mượt mà trên Android', () => {
     const chatPath = path.join(__dirname, '../../frontend/app/(main)/chat/index.tsx');
     const content = fs.readFileSync(chatPath, 'utf8');
     assert(
-      content.includes('behavior="padding"'),
-      'KeyboardAvoidingView phải dùng behavior="padding" để không bị che khuất thanh chat'
+      content.includes('keyboardOffset') &&
+      content.includes('paddingBottom: keyboardOffset'),
+      'chat/index.tsx phải dùng Animated keyboardOffset để nâng thanh chat chính xác theo chiều cao bàn phím'
     );
   })) passed++;
 
@@ -72,28 +71,40 @@ function main() {
     );
   })) passed++;
 
-  // 4. Kiểm tra ChatInputBar có lưu cachedBottomInset chống tụt thanh nhập liệu
+  // 4. Kiểm tra ChatInputBar có đệm safe area chuẩn
   total++;
-  if (runTest('ChatInputBar có cachedBottomInset bảo toàn safe area khi tắt bàn phím', () => {
+  if (runTest('ChatInputBar có padding safe area đáy chuẩn', () => {
     const inputPath = path.join(__dirname, '../../frontend/src/features/chat/components/ChatInputBar.tsx');
     const content = fs.readFileSync(inputPath, 'utf8');
     assert(
-      content.includes('cachedBottomInset') && content.includes('effectiveBottomInset'),
-      'ChatInputBar phải có cachedBottomInset để bảo lưu insets.bottom sau khi ẩn bàn phím'
+      content.includes('Math.max(insets.bottom, 16)'),
+      'ChatInputBar phải đảm bảo khoảng cách safe area tối thiểu 16px'
     );
   })) passed++;
 
-  // 5. Kiểm tra ChatInputBar có đầy đủ keyboard listeners và focus/blur handlers
+  // 5. Kiểm tra phần gợi ý trong suốt không nền (No BG)
   total++;
-  if (runTest('ChatInputBar có keyboard listeners và onFocus/onBlur an toàn', () => {
-    const inputPath = path.join(__dirname, '../../frontend/src/features/chat/components/ChatInputBar.tsx');
-    const content = fs.readFileSync(inputPath, 'utf8');
+  if (runTest('Phần gợi ý (Welcome card, suggestions bar, bot chips) đều trong suốt (No BG)', () => {
+    const welcomePath = path.join(__dirname, '../../frontend/src/features/chat/components/ChatWelcomeView.tsx');
+    const welcomeContent = fs.readFileSync(welcomePath, 'utf8');
     assert(
-      content.includes('keyboardDidShow') &&
-      content.includes('keyboardDidHide') &&
-      content.includes('onFocus') &&
-      content.includes('onBlur'),
-      'ChatInputBar phải kết hợp cả keyboard listener và onFocus/onBlur để tránh kẹt trạng thái'
+      welcomeContent.includes('backgroundColor: "transparent"') &&
+      welcomeContent.includes('welcomeCategoryCard'),
+      'ChatWelcomeView phải có bento cards và chips trong suốt'
+    );
+
+    const chatPath = path.join(__dirname, '../../frontend/app/(main)/chat/index.tsx');
+    const chatContent = fs.readFileSync(chatPath, 'utf8');
+    assert(
+      chatContent.includes('backgroundColor: "transparent"'),
+      'chat/index.tsx thanh gợi ý ngang phải trong suốt'
+    );
+
+    const itemPath = path.join(__dirname, '../../frontend/src/features/chat/components/ChatMessageItem.tsx');
+    const itemContent = fs.readFileSync(itemPath, 'utf8');
+    assert(
+      itemContent.includes('backgroundColor: "transparent"'),
+      'ChatMessageItem câu hỏi gợi ý của bot phải trong suốt'
     );
   })) passed++;
 

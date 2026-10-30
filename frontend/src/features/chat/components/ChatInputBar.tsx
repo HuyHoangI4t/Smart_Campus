@@ -57,7 +57,7 @@ export const ChatInputBar = memo(function ChatInputBar({
       style={[
         styles.inputContainer,
         {
-          paddingBottom: isKeyboardVisible ? 8 : effectiveBottomInset,
+          paddingBottom: isKeyboardVisible ? 8 : Math.max(insets.bottom, 16),
           backgroundColor: isDark ? "rgba(15, 23, 42, 0.88)" : "rgba(255, 255, 255, 0.90)",
           borderColor: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(255, 255, 255, 0.95)",
         },

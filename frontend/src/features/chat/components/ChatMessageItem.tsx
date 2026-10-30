@@ -180,8 +180,8 @@ export const ChatMessageItem = memo(function ChatMessageItem({
                 style={[
                   styles.dynamicChip,
                   {
-                    backgroundColor: isDark ? "rgba(59, 130, 246, 0.15)" : "#EFF6FF",
-                    borderColor: isDark ? "rgba(96, 165, 250, 0.35)" : "#BFDBFE",
+                    backgroundColor: "transparent",
+                    borderColor: isDark ? "rgba(96, 165, 250, 0.35)" : "rgba(37, 99, 235, 0.25)",
                   },
                 ]}
                 activeOpacity={0.7}

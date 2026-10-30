@@ -73,20 +73,17 @@ export const ChatWelcomeView = memo(function ChatWelcomeView({ onSelectPrompt }:
         </GlassView>
       </View>
 
-      {/* Bento Grid danh mục câu hỏi */}
+      {/* Bento Grid danh mục câu hỏi - Trong suốt không nền (No BG) */}
       <View style={styles.bentoGrid}>
         {WELCOME_CATEGORIES.map((cat, catIdx) => (
-          <GlassView
+          <View
             key={catIdx}
             style={[
               styles.welcomeCategoryCard,
               {
-                backgroundColor: isDark ? "rgba(30, 41, 59, 0.70)" : "rgba(255, 255, 255, 0.82)",
-                borderColor: isDark ? "rgba(255, 255, 255, 0.14)" : "rgba(255, 255, 255, 0.95)",
+                borderColor: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(37, 99, 235, 0.18)",
               },
             ]}
-            borderRadius={22}
-            borderWidth={1.2}
           >
             <View style={styles.categoryHeader}>
               <LinearGradient
@@ -109,8 +106,7 @@ export const ChatWelcomeView = memo(function ChatWelcomeView({ onSelectPrompt }:
                   style={[
                     styles.categoryChip,
                     {
-                      backgroundColor: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(241, 245, 249, 0.85)",
-                      borderColor: isDark ? "rgba(255, 255, 255, 0.10)" : "rgba(19, 47, 115, 0.08)",
+                      borderColor: isDark ? "rgba(255, 255, 255, 0.10)" : "rgba(19, 47, 115, 0.12)",
                     },
                   ]}
                   activeOpacity={0.7}
@@ -124,7 +120,7 @@ export const ChatWelcomeView = memo(function ChatWelcomeView({ onSelectPrompt }:
                 </TouchableOpacity>
               ))}
             </View>
-          </GlassView>
+          </View>
         ))}
       </View>
     </View>
@@ -160,20 +156,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   welcomeSubtitle: {
-    fontSize: 13.5,
-    fontWeight: "600",
+    fontSize: 13,
+    fontWeight: "500",
     textAlign: "center",
-    lineHeight: 20,
   },
   welcomeBadge: {
+    marginTop: 4,
     paddingHorizontal: 14,
     paddingVertical: 6,
-    marginTop: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
   },
   statusDotRow: {
     flexDirection: "row",
@@ -184,30 +174,27 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: "rgba(16, 185, 129, 0.25)",
+    backgroundColor: "rgba(16, 185, 129, 0.2)",
     alignItems: "center",
     justifyContent: "center",
   },
   onlineDot: {
-    width: 6.5,
-    height: 6.5,
-    borderRadius: 3.25,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
   },
   welcomeBadgeText: {
     fontSize: 11.5,
     fontWeight: "700",
-    letterSpacing: 0.1,
   },
   bentoGrid: {
     gap: 12,
   },
   welcomeCategoryCard: {
     padding: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 2,
+    borderRadius: 22,
+    borderWidth: 1.2,
+    backgroundColor: "transparent",
   },
   categoryHeader: {
     flexDirection: "row",
@@ -237,6 +224,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 12,
     borderWidth: 1,
+    backgroundColor: "transparent",
   },
   categoryChipText: {
     fontSize: 13,

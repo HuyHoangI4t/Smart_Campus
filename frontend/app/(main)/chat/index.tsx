@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
+  Animated,
   View,
   Text,
   TouchableOpacity,
@@ -43,20 +44,45 @@ export default function ChatBotScreen() {
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<ChatSuggestion[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const keyboardOffset = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     apiGetChatSuggestions().then(setSuggestions).catch(() => {});
 
-    const showSub = Keyboard.addListener(
-      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
-      () => {
+    if (Platform.OS === "android") {
+      const showSub = Keyboard.addListener("keyboardDidShow", (e) => {
+        const height = e?.endCoordinates?.height || 0;
+        Animated.timing(keyboardOffset, {
+          toValue: height,
+          duration: 120,
+          useNativeDriver: false,
+        }).start();
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 80);
+      });
+
+      const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+        Animated.timing(keyboardOffset, {
+          toValue: 0,
+          duration: 100,
+          useNativeDriver: false,
+        }).start();
+      });
+
+      return () => {
+        showSub.remove();
+        hideSub.remove();
+      };
+    } else {
+      const showSub = Keyboard.addListener("keyboardWillShow", () => {
         setTimeout(() => {
           flatListRef.current?.scrollToEnd({ animated: true });
         }, 120);
-      }
-    );
-    return () => showSub.remove();
-  }, []);
+      });
+      return () => showSub.remove();
+    }
+  }, [keyboardOffset]);
 
   const handleExecuteAction = useCallback(
     (action?: ChatAction) => {
@@ -213,9 +239,10 @@ export default function ChatBotScreen() {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior="padding"
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
+        <Animated.View style={{ flex: 1, paddingBottom: keyboardOffset }}>
         {hasMessages ? (
           <FlatList
             ref={flatListRef}
@@ -288,8 +315,8 @@ export default function ChatBotScreen() {
                   style={[
                     styles.suggestionChip,
                     {
-                      backgroundColor: isDark ? "rgba(59, 130, 246, 0.12)" : "#EFF6FF",
-                      borderColor: isDark ? "rgba(96, 165, 250, 0.3)" : "#BFDBFE",
+                      backgroundColor: "transparent",
+                      borderColor: isDark ? "rgba(96, 165, 250, 0.35)" : "rgba(37, 99, 235, 0.28)",
                     },
                   ]}
                   activeOpacity={0.72}
@@ -315,6 +342,7 @@ export default function ChatBotScreen() {
           onSend={() => handleSendMessage()}
           disabled={loading}
         />
+        </Animated.View>
       </KeyboardAvoidingView>
     </View>
   );
