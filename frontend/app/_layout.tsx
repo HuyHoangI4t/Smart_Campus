@@ -23,7 +23,7 @@ function RootStack() {
     initSocket();
     const sosUnsub = onNewSos(async (alertData) => {
       try {
-        console.log('🚨 [RootLayout] Nhận được tín hiệu SOS realtime:', alertData);
+        
         if (isSelfSentSos(alertData)) {
           return;
         }

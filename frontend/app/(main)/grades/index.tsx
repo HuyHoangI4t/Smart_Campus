@@ -94,6 +94,7 @@ export default function GradesScreen() {
         setGrades(parsed);
         setLoading(false);
       }
+    }
 
       const res = await apiGetGrades(isRealAccount ? mssv : undefined);
       if (res && res.isOfflineCache) {
@@ -134,7 +135,7 @@ export default function GradesScreen() {
           }
         }
       }
-    } catch {
+    } catch (error) {
       // Keep fallbacks
       setIsOfflineData(true);
       if (grades.length === 0) {

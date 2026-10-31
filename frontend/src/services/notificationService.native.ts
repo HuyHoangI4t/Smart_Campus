@@ -1,4 +1,4 @@
-import { Platform, Alert, Linking } from "react-native";
+import { Platform, Alert, Linking, AppState } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import { showSosAlertModal } from "../components/SosAlertModal";
@@ -10,28 +10,24 @@ export const NOTIFICATION_CHANNELS = {
   GRADES: "grades_updates",
 };
 
-const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
-
 let Notifications: any = null;
-if (!isExpoGo) {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    Notifications = require("expo-notifications");
-    if (Notifications && Notifications.setNotificationHandler) {
-      Notifications.setNotificationHandler({
-        handleNotification: async () => ({
-          shouldShowAlert: true,
-          shouldShowBanner: true,
-          shouldShowList: true,
-          shouldPlaySound: true,
-          shouldSetBadge: true,
-          priority: Notifications.AndroidNotificationPriority?.MAX,
-        }),
-      });
-    }
-  } catch (e) {
-    console.warn("expo-notifications module not loaded:", e);
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  Notifications = require("expo-notifications");
+  if (Notifications && Notifications.setNotificationHandler) {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+        priority: Notifications.AndroidNotificationPriority?.MAX,
+      }),
+    });
   }
+} catch (e) {
+  console.warn("expo-notifications module not loaded:", e);
 }
 
 
@@ -126,8 +122,11 @@ export async function sendInstantNotification(
         title,
         body,
         data,
-        sound: true,
+        sound: "default",
         badge: 1,
+        priority: Notifications.AndroidNotificationPriority?.MAX || "max",
+        vibrate: [0, 500, 200, 500, 200, 500],
+        color: "#DC2626",
       },
       trigger: Platform.OS === "android" ? { channelId } : null,
     });
@@ -201,6 +200,8 @@ export async function handleIncomingSosAlert(alert: {
       const alertTitle = "🚨 CẢNH BÁO CỨU HỘ SOS KHẨN CẤP";
       const alertBody = `Có sinh viên (${alert.ho_ten || alert.mssv || "Sinh viên"}) đang phát tín hiệu SOS tại ${alert.location || "khuôn viên trường"}${distanceText}.`;
 
+      const isAppActive = AppState.currentState === "active";
+
       // 1. Rung cảnh báo khẩn cấp bằng Haptics
       try {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -208,7 +209,8 @@ export async function handleIncomingSosAlert(alert: {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
       } catch {}
 
-      // 2. Bắn thông báo đẩy lên thanh Notification Bar
+      // 2. Luôn đẩy thông báo cấp cao của hệ điều hành (Notification Bar & Heads-up Banner)
+      // Đảm bảo khi người dùng ở ngoài app (Home screen, Background, Khóa máy) vẫn nhận được ngay
       await sendInstantNotification(
         alertTitle,
         alertBody,
@@ -216,20 +218,22 @@ export async function handleIncomingSosAlert(alert: {
         NOTIFICATION_CHANNELS.SOS
       );
 
-      // 3. Hiển thị Popup cảnh báo SOS Modal đồng bộ giao diện ứng dụng
-      showSosAlertModal({
-        id: alert.id,
-        mssv: alert.mssv,
-        ho_ten: alert.ho_ten,
-        so_dien_thoai: (alert as any).so_dien_thoai,
-        lop: (alert as any).lop,
-        location: alert.location,
-        latitude: alert.latitude ? Number(alert.latitude) : undefined,
-        longitude: alert.longitude ? Number(alert.longitude) : undefined,
-        message: alert.message,
-        incidentType: alert.incidentType,
-        distance,
-      });
+      // 3. Nếu người dùng đang mở app (active / foreground), hiển thị thêm Popup Modal khẩn cấp
+      if (isAppActive) {
+        showSosAlertModal({
+          id: alert.id,
+          mssv: alert.mssv,
+          ho_ten: alert.ho_ten,
+          so_dien_thoai: (alert as any).so_dien_thoai,
+          lop: (alert as any).lop,
+          location: alert.location,
+          latitude: alert.latitude ? Number(alert.latitude) : undefined,
+          longitude: alert.longitude ? Number(alert.longitude) : undefined,
+          message: alert.message,
+          incidentType: alert.incidentType,
+          distance,
+        });
+      }
 
       return true;
     }

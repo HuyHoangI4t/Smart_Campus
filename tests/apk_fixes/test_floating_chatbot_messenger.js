@@ -110,3 +110,4 @@ passCount++;
 
 console.log(`\nKết quả: ${passCount}/${passCount} kiểm tra thành công.\n`);
 process.exit(0);
+

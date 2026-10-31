@@ -155,5 +155,40 @@ runTest('notificationService.native.ts kết nối showSosAlertModal để hiể
   );
 });
 
+// 6. Kiểm tra đẩy thông báo hệ thống của APK khi người dùng ở ngoài app (Background / Home screen)
+runTest('Khi người dùng ở ngoài app (AppState background): Luôn đẩy thông báo APK khẩn cấp', () => {
+  const notifPath = path.join(__dirname, '../../frontend/src/services/notificationService.native.ts');
+  const notifContent = fs.readFileSync(notifPath, 'utf8');
+
+  // Đảm bảo import và kiểm tra AppState
+  assert(
+    notifContent.includes('AppState') && notifContent.includes('AppState.currentState === "active"'),
+    'notificationService.native.ts phải kiểm tra AppState để phân biệt trong và ngoài app'
+  );
+
+  // Đảm bảo sendInstantNotification có độ ưu tiên cao nhất (Heads-up banner)
+  assert(
+    notifContent.includes('AndroidNotificationPriority?.MAX') || notifContent.includes('"max"'),
+    'sendInstantNotification phải có priority MAX để nổi banner trên màn hình khi ở ngoài app'
+  );
+
+  // Kênh SOS có importance MAX
+  assert(
+    notifContent.includes('AndroidImportance.MAX'),
+    'Kênh NOTIFICATION_CHANNELS.SOS phải cấu hình importance MAX'
+  );
+});
+
+// 7. Kiểm tra ẩn các dòng console.log ồn ào trong socketService.ts
+runTest('socketService.ts đã ẩn toàn bộ log console ồn ào', () => {
+  const socketPath = path.join(__dirname, '../../frontend/src/services/socketService.ts');
+  const content = fs.readFileSync(socketPath, 'utf8');
+  assert(
+    !content.includes('[SocketService] Đang kết nối') &&
+    !content.includes('[SocketService] Nhận sự kiện real-time'),
+    'socketService.ts không được chứa console.log debug ồn ào'
+  );
+});
+
 console.log(`\nKết quả: ${passedCount}/${totalCount} kiểm tra thành công.`);
 if (passedCount !== totalCount) process.exit(1);

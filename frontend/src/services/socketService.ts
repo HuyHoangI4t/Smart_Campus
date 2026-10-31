@@ -26,7 +26,6 @@ export const initSocket = (): Socket => {
   }
 
   const serverUrl = getSocketServerUrl();
-  console.log(`🔌 [SocketService] Đang kết nối tới Socket.IO Server: ${serverUrl}`);
 
   socketInstance = io(serverUrl, {
     transports: ['websocket', 'polling'],
@@ -39,15 +38,12 @@ export const initSocket = (): Socket => {
   });
 
   socketInstance.on('connect', () => {
-    console.log(`⚡ [SocketService] Đã kết nối Socket.IO thành công! Socket ID: ${socketInstance?.id}`);
   });
 
   socketInstance.on('disconnect', (reason) => {
-    console.log(`⚠️ [SocketService] Socket.IO ngắt kết nối: ${reason}`);
   });
 
   socketInstance.on('connect_error', (error) => {
-    console.warn(`❌ [SocketService] Lỗi kết nối Socket.IO:`, error.message);
   });
 
   // Đăng ký bộ lắng nghe sự kiện trung tâm và điều phối tới listenersMap
@@ -67,7 +63,6 @@ export const initSocket = (): Socket => {
 
   events.forEach((eventName) => {
     socketInstance?.on(eventName, (data) => {
-      console.log(`🔔 [SocketService] Nhận sự kiện real-time: [${eventName}]`, data);
       const callbacks = listenersMap.get(eventName);
       if (callbacks) {
         callbacks.forEach((cb) => {
