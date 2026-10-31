@@ -155,3 +155,22 @@ export const disconnectSocket = () => {
   }
   listenersMap.clear();
 };
+
+// Định danh phiên làm việc độc nhất của thiết bị để tránh tự báo động chính mình
+export const DEVICE_CLIENT_ID = 'client_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+
+// Bộ nhớ RAM lưu trữ các ID SOS do chính thiết bị này gửi đi
+const selfSentSosIds = new Set<string | number>();
+
+export function markSosAsSelfSent(sosId: string | number) {
+  if (sosId !== undefined && sosId !== null) {
+    selfSentSosIds.add(String(sosId));
+  }
+}
+
+export function isSelfSentSos(alertData: any): boolean {
+  if (!alertData) return false;
+  if (alertData.id && selfSentSosIds.has(String(alertData.id))) return true;
+  if (alertData.client_id && alertData.client_id === DEVICE_CLIENT_ID) return true;
+  return false;
+}

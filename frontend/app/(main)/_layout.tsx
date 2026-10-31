@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CustomBottomNav } from '../../src/components/MainTabs';
 import { useTheme } from '../../src/context/ThemeContext';
 import { FloatingChatBot } from '../../src/features/chat';
-import { initSocket, onNewSos } from '../../src/services/socketService';
+import { initSocket, onNewSos, isSelfSentSos } from '../../src/services/socketService';
 import { handleIncomingSosAlert } from '../../src/services/notificationService';
 import {
   apiGetDashboard,
@@ -32,8 +32,8 @@ export default function MainLayout() {
             myMssv = u.mssv || u.masv || '';
           } catch {}
         }
-        // Không cảnh báo chính bản thân người gửi tín hiệu
-        if (myMssv && alertData?.mssv && String(myMssv) === String(alertData.mssv)) {
+        // Không cảnh báo chính bản thân thiết bị gửi tín hiệu
+        if (isSelfSentSos(alertData)) {
           return;
         }
         await handleIncomingSosAlert(alertData);

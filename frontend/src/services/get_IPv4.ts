@@ -6,7 +6,7 @@ export const PUBLIC_BACKEND_URL = 'https://smart-campus-f012.onrender.com';
 export const PRODUCTION_API_URL = `${PUBLIC_BACKEND_URL}/api`;
 
 const PORT = '5000';
-const LOCAL_IPV4_FALLBACK = '192.168.1.11';
+const LOCAL_IPV4_FALLBACK = '192.168.1.17';
 
 export const getApiBaseUrl = (): string => {
   // 1. Khi build APK / Standalone Production (không phải môi trường dev Expo) -> Dùng Cloud Render URL

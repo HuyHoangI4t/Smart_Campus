@@ -2,7 +2,8 @@ import React, { useEffect } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
-import { initNotifications, addNotificationResponseListener } from '../src/services/notificationService';
+import { initNotifications, addNotificationResponseListener, handleIncomingSosAlert } from '../src/services/notificationService';
+import { initSocket, onNewSos, isSelfSentSos } from '../src/services/socketService';
 import { syncAllWidgets } from '../src/services/widgetService';
 import '../src/widgets/registerWidgets';
 
@@ -16,6 +17,20 @@ function RootStack() {
 
     // 2. Đồng bộ các Widget màn hình chính khi khởi động app
     syncAllWidgets().catch((err) => console.warn('Lỗi sync widgets:', err));
+
+    // 2.5 Lắng nghe tín hiệu SOS khẩn cấp realtime toàn cầu (Root Level)
+    initSocket();
+    const sosUnsub = onNewSos(async (alertData) => {
+      try {
+        console.log('🚨 [RootLayout] Nhận được tín hiệu SOS realtime:', alertData);
+        if (isSelfSentSos(alertData)) {
+          return;
+        }
+        await handleIncomingSosAlert(alertData);
+      } catch (err) {
+        console.warn('Lỗi xử lý SOS realtime tại Root:', err);
+      }
+    });
 
     // 3. Lắng nghe sự kiện người dùng bấm vào thanh thông báo đẩy an toàn
     const responseSubscription = addNotificationResponseListener((screen: string) => {
@@ -37,6 +52,11 @@ function RootStack() {
     });
 
     return () => {
+      if (sosUnsub && typeof sosUnsub === 'function') {
+        try {
+          sosUnsub();
+        } catch {}
+      }
       if (responseSubscription && typeof responseSubscription.remove === 'function') {
         try {
           responseSubscription.remove();

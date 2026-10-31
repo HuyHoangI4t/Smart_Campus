@@ -126,6 +126,7 @@ export async function apiSubmitSos(payload: {
   latitude?: number;
   longitude?: number;
   incidentType?: string;
+  client_id?: string;
 }) {
   try {
     const headers = await getAuthHeaders();

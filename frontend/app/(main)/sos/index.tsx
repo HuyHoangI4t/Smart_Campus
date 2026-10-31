@@ -9,7 +9,7 @@ import { useTheme } from "../../../src/context/ThemeContext";
 import { mainStyles as s } from "../../../src/constants/globalStyles";
 import { NavHeader } from "../../../src/components/NavHeader";
 import { apiSubmitSos, apiGetSosConfig } from "../../../src/services/api";
-import { initSocket, onSosStatusChanged } from "../../../src/services/socketService";
+import { initSocket, onSosStatusChanged, DEVICE_CLIENT_ID, markSosAsSelfSent } from "../../../src/services/socketService";
 
 const DEFAULT_HOTLINES = [
   { label: "Bảo vệ & An ninh cơ sở", phone: "0329106783", icon: "shield" as const },
@@ -203,7 +203,12 @@ export default function SosScreen() {
         description: notes.trim() || incidentType,
         latitude: currentCoords?.latitude,
         longitude: currentCoords?.longitude,
+        client_id: DEVICE_CLIENT_ID,
       });
+
+      if (res?.alert?.id) {
+        markSosAsSelfSent(res.alert.id);
+      }
 
       if (res && res.success) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});

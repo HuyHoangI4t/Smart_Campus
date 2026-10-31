@@ -81,7 +81,7 @@ exports.submitFeedback = async (req, res) => {
 
 // Submit SOS
 exports.submitSos = async (req, res) => {
-  const { location, message, description, incidentType, latitude, longitude, lat, lng } = req.body;
+  const { location, message, description, incidentType, latitude, longitude, lat, lng, client_id, device_id } = req.body;
   const mssv = getMssvFromReq(req);
   const sosLocation = (location && typeof location === 'string') ? location.trim().slice(0, 255) : 'Không rõ vị trí trong khuôn viên trường';
   const rawMsg = (description || message || 'Yêu cầu hỗ trợ khẩn cấp').toString().trim().slice(0, 1000);
@@ -105,6 +105,7 @@ exports.submitSos = async (req, res) => {
 
     const newAlertData = {
       id: result.insertId,
+      client_id: client_id || device_id || null,
       mssv,
       ho_ten: user ? user.ho_ten : 'Sinh viên',
       so_dien_thoai: user ? user.so_dien_thoai : null,

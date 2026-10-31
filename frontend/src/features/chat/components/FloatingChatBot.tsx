@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   Animated,
   PanResponder,
+  Image,
   useWindowDimensions,
   StyleSheet,
 } from 'react-native';
@@ -16,8 +17,9 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../../context/ThemeContext';
 
 const ORB_SIZE = 58;
-const DOCKED_PEEK = 26; // Độ nhô ra khỏi mép khi thu gọn (như tai thỏ)
-const SIDE_MARGIN = 10; // Khoảng cách tới lề màn hình khi nổi tự do
+const DOCKED_TAB_WIDTH = 36; // Chiều rộng tab mép khi thu gọn (nằm hoàn toàn trong màn hình)
+const DOCKED_TAB_HEIGHT = 50; // Chiều cao tab mép
+const FREE_MARGIN = 12; // Khoảng cách tới mép màn hình khi nổi tự do
 
 export function FloatingChatBot() {
   const router = useRouter();
@@ -28,6 +30,7 @@ export function FloatingChatBot() {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 
   // 1. Kiểm tra màn hình ẩn (Map, Settings, Chat)
+  // Nếu ở màn hình ẩn thì return null ngay để không bị bóng ma trong suốt
   const isHiddenRoute = useMemo(() => {
     const path = (pathname || '').toLowerCase();
     const segs = (segments || []).map((s) => (typeof s === 'string' ? s.toLowerCase() : ''));
@@ -37,17 +40,6 @@ export function FloatingChatBot() {
     if (path.includes('/chat') || path === 'chat' || segs.includes('chat')) return true;
     return false;
   }, [pathname, segments]);
-
-  // Hiệu ứng ẩn/hiện nhẹ nhàng khi chuyển trang
-  const routeVisibilityAnim = useRef(new Animated.Value(isHiddenRoute ? 0 : 1)).current;
-  useEffect(() => {
-    Animated.spring(routeVisibilityAnim, {
-      toValue: isHiddenRoute ? 0 : 1,
-      friction: 8,
-      tension: 60,
-      useNativeDriver: false,
-    }).start();
-  }, [isHiddenRoute, routeVisibilityAnim]);
 
   // Trạng thái thu gọn mép
   const [isDocked, setIsDocked] = useState(false);
@@ -76,16 +68,16 @@ export function FloatingChatBot() {
     return () => pulseLoop.stop();
   }, [pulseAnim]);
 
-  // Scale vật lý: Phóng to khi nhấc kéo, nảy lò xo khi va vào mép
+  // Hiệu ứng scale nhún lò xo
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  // Giới hạn an toàn di chuyển theo trục Y
-  const minY = insets.top + 40;
+  // Giới hạn vùng an toàn theo chiều dọc
+  const minY = insets.top + 35;
   const maxY = screenHeight - insets.bottom - 110;
   const initialY = Math.max(minY, Math.min(maxY, screenHeight - insets.bottom - 170));
-  const initialX = screenWidth - ORB_SIZE - SIDE_MARGIN;
+  const initialX = screenWidth - ORB_SIZE - FREE_MARGIN;
 
-  // Tọa độ vị trí của quả bóng
+  // Tọa độ vị trí: Dùng pan.getLayout() để Android cập nhật trực tiếp left & top của native View
   const pan = useRef(new Animated.ValueXY({ x: initialX, y: initialY })).current;
   const currentPos = useRef({ x: initialX, y: initialY });
   const dragStartPos = useRef({ x: initialX, y: initialY });
@@ -102,7 +94,7 @@ export function FloatingChatBot() {
     dockSideRef.current = dockSide;
   }, [dockSide]);
 
-  // Lắng nghe thay đổi tọa độ
+  // Lắng nghe cập nhật tọa độ
   useEffect(() => {
     const listenerId = pan.addListener((value) => {
       currentPos.current = value;
@@ -112,14 +104,14 @@ export function FloatingChatBot() {
     };
   }, [pan]);
 
-  // Đảm bảo bóng không bị lọt khỏi màn hình khi kích thước thay đổi
+  // Kiểm tra an toàn màn hình khi xoay hướng
   useEffect(() => {
     const safeY = Math.max(minY, Math.min(maxY, currentPos.current.y));
     const safeX = isDockedRef.current
-      ? (dockSideRef.current === 'right' ? screenWidth - DOCKED_PEEK : -(ORB_SIZE - DOCKED_PEEK))
-      : (dockSideRef.current === 'right' ? screenWidth - ORB_SIZE - SIDE_MARGIN : SIDE_MARGIN);
+      ? (dockSideRef.current === 'right' ? screenWidth - DOCKED_TAB_WIDTH : 0)
+      : (dockSideRef.current === 'right' ? screenWidth - ORB_SIZE - FREE_MARGIN : FREE_MARGIN);
 
-    if (currentPos.current.x > screenWidth || currentPos.current.x < -(ORB_SIZE - DOCKED_PEEK)) {
+    if (currentPos.current.x > screenWidth || currentPos.current.x < 0) {
       pan.setValue({ x: safeX, y: safeY });
     }
   }, [screenWidth, screenHeight, minY, maxY, pan]);
@@ -131,7 +123,7 @@ export function FloatingChatBot() {
     router.push('/(main)/chat' as any);
   };
 
-  // 1. HIỆU ỨNG ẨN / THU GỌN VÀO MÉP MÀN HÌNH (Edge Docking)
+  // 1. HIỆU ỨNG ẨN / THU GỌN VÀO MÉP MÀN HÌNH (Dock to Edge)
   const handleDockToEdge = (sideArg?: 'left' | 'right', targetYArg?: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setShowTooltip(false);
@@ -145,39 +137,37 @@ export function FloatingChatBot() {
     setIsDocked(true);
     isDockedRef.current = true;
 
-    // Vị trí nép mép (chỉ nhô ra DOCKED_PEEK px)
-    const targetX = isRight ? screenWidth - DOCKED_PEEK : -(ORB_SIZE - DOCKED_PEEK);
+    // Tọa độ tab mép: Nằm gọn gàng sát mép tường màn hình (không để icon bị lọt ra ngoài)
+    const targetX = isRight ? screenWidth - DOCKED_TAB_WIDTH : 0;
     const targetY = targetYArg !== undefined ? targetYArg : currentPos.current.y;
     const safeY = Math.max(minY, Math.min(maxY, targetY));
 
-    // Hiệu ứng lướt và nảy nhẹ vào mép
     Animated.parallel([
       Animated.spring(pan, {
         toValue: { x: targetX, y: safeY },
-        friction: 6,
-        tension: 80,
+        bounciness: 6,
+        speed: 15,
         useNativeDriver: false,
       }),
       Animated.spring(scaleAnim, {
-        toValue: 0.94,
-        friction: 5,
+        toValue: 0.96,
+        friction: 6,
         tension: 80,
         useNativeDriver: false,
       }),
     ]).start();
   };
 
-  // 2. HIỆU ỨNG BUNG BẬT RA KHỎI MÉP (Spring Pop Out)
+  // 2. HIỆU ỨNG BUNG MỞ RA KHỎI MÉP (Undock Spring Pop)
   const handleUndockFromEdge = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     const isRight = dockSideRef.current === 'right';
-    const targetX = isRight ? screenWidth - ORB_SIZE - SIDE_MARGIN : SIDE_MARGIN;
+    const targetX = isRight ? screenWidth - ORB_SIZE - FREE_MARGIN : FREE_MARGIN;
     const safeY = Math.max(minY, Math.min(maxY, currentPos.current.y));
 
     setIsDocked(false);
     isDockedRef.current = false;
 
-    // Bung nảy lò xo như Messenger
     Animated.parallel([
       Animated.spring(pan, {
         toValue: { x: targetX, y: safeY },
@@ -208,11 +198,9 @@ export function FloatingChatBot() {
     });
   };
 
-  // 3. CƠ CHẾ KÉO THẢ CHUẨN MESSENGER CHAT HEAD
-  // Quả bóng bắt ngay cử chỉ khi chạm ngón tay vào, phân biệt 100% chính xác giữa Tap và Drag
+  // 3. CƠ CHẾ KÉO THẢ NATIVE MESSENGER (Không giật, chạm là bám tay)
   const panResponder = useRef(
     PanResponder.create({
-      // BẮT NGAY LẬP TỨC khi ngón tay vừa chạm vào quả bóng (không có độ trễ)
       onStartShouldSetPanResponder: () => true,
       onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponder: () => true,
@@ -228,7 +216,7 @@ export function FloatingChatBot() {
           dragStartPos.current = { x: val.x, y: val.y };
         });
 
-        // Hiệu ứng nhấc bóng: scale to lên 1.12 bám chặt đầu ngón tay như Messenger
+        // Nhấc bóng to lên 1.12 bám tay ngay
         Animated.spring(scaleAnim, {
           toValue: 1.12,
           friction: 5,
@@ -240,9 +228,9 @@ export function FloatingChatBot() {
       },
 
       onPanResponderMove: (_, gesture) => {
-        // Cập nhật vị trí realtime theo ngón tay 1:1 mượt mà 60-120fps
-        const minX = isDockedRef.current ? -(ORB_SIZE - DOCKED_PEEK) : 0;
-        const maxX = isDockedRef.current ? screenWidth - DOCKED_PEEK : screenWidth - ORB_SIZE;
+        const currentItemWidth = isDockedRef.current ? DOCKED_TAB_WIDTH : ORB_SIZE;
+        const minX = 0;
+        const maxX = screenWidth - currentItemWidth;
 
         const currentX = Math.max(minX, Math.min(maxX, dragStartPos.current.x + gesture.dx));
         const currentY = Math.max(minY, Math.min(maxY, dragStartPos.current.y + gesture.dy));
@@ -254,10 +242,10 @@ export function FloatingChatBot() {
         const moveDist = Math.hypot(gesture.dx, gesture.dy);
         const touchDuration = Date.now() - touchStartTime.current;
 
-        // ─── TRƯỜNG HỢP 1: CHẠM NHẸ / TAP (Không kéo hoặc kéo < 7px và nhấc tay trong 300ms) ───
-        if (moveDist < 7 && touchDuration < 300) {
+        // ─── TRƯỜNG HỢP 1: BẤM NHẸ (TAP) ───
+        if (moveDist < 8 && touchDuration < 320) {
           Animated.spring(scaleAnim, {
-            toValue: isDockedRef.current ? 0.94 : 1,
+            toValue: isDockedRef.current ? 0.96 : 1,
             friction: 5,
             tension: 90,
             useNativeDriver: false,
@@ -280,24 +268,23 @@ export function FloatingChatBot() {
         const finalY = currentPos.current.y;
         const safeY = Math.max(minY, Math.min(maxY, finalY));
 
-        // Phán đoán mép hít vào dựa trên vận tốc vẩy tay (fling velocity) hoặc nửa màn hình
         let isRight = finalX + ORB_SIZE / 2 >= screenWidth / 2;
-        if (gesture.vx > 0.4) isRight = true;
-        if (gesture.vx < -0.4) isRight = false;
+        if (gesture.vx > 0.35) isRight = true;
+        if (gesture.vx < -0.35) isRight = false;
 
         const side = isRight ? 'right' : 'left';
         setDockSide(side);
         dockSideRef.current = side;
 
-        // Nếu vuốt cực nhanh ra mép hoặc thả sát mép (cách mép < 15px) -> Hít vào mép thu gọn (Dock)
-        const flingToEdge = (isRight && gesture.vx > 0.9) || (!isRight && gesture.vx < -0.9);
-        const nearEdge = (isRight && finalX > screenWidth - ORB_SIZE - 15) || (!isRight && finalX < 15);
+        // Vuốt cực mạnh hoặc thả sát mép (< 16px) -> Thu gọn vào mép
+        const flingToEdge = (isRight && gesture.vx > 0.95) || (!isRight && gesture.vx < -0.95);
+        const nearEdge = (isRight && finalX > screenWidth - ORB_SIZE - 16) || (!isRight && finalX < 16);
 
         if (flingToEdge || nearEdge) {
           handleDockToEdge(side, safeY);
         } else {
-          // Bay vút vào lề nổi tự do kèm HIỆU ỨNG LÒ XO NẢY TƯNG TƯNG (Spring Bounciness Messenger)
-          const snapX = isRight ? screenWidth - ORB_SIZE - SIDE_MARGIN : SIDE_MARGIN;
+          // Bay vút vào lề nổi tự do kèm độ nảy lò xo (Messenger Spring Bounce)
+          const snapX = isRight ? screenWidth - ORB_SIZE - FREE_MARGIN : FREE_MARGIN;
           setIsDocked(false);
           isDockedRef.current = false;
 
@@ -324,13 +311,13 @@ export function FloatingChatBot() {
 
       onPanResponderTerminate: () => {
         Animated.spring(scaleAnim, {
-          toValue: isDockedRef.current ? 0.94 : 1,
+          toValue: isDockedRef.current ? 0.96 : 1,
           friction: 6,
           useNativeDriver: false,
         }).start();
 
         const isRight = currentPos.current.x + ORB_SIZE / 2 >= screenWidth / 2;
-        const snapX = isRight ? screenWidth - ORB_SIZE - SIDE_MARGIN : SIDE_MARGIN;
+        const snapX = isRight ? screenWidth - ORB_SIZE - FREE_MARGIN : FREE_MARGIN;
         Animated.spring(pan, {
           toValue: { x: snapX, y: Math.max(minY, Math.min(maxY, currentPos.current.y)) },
           bounciness: 10,
@@ -343,118 +330,120 @@ export function FloatingChatBot() {
     })
   ).current;
 
+  // Nếu là route ẩn thì không render
+  if (isHiddenRoute) {
+    return null;
+  }
+
   const isRight = dockSide === 'right';
 
-  const routeScale = routeVisibilityAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.5, 1],
-  });
-
-  const routeOpacity = routeVisibilityAnim.interpolate({
-    inputRange: [0, 0.4, 1],
-    outputRange: [0, 0.3, 1],
-  });
-
   return (
+    // DÙNG pan.getLayout() ĐỂ CẬP NHẬT TRỰC TIẾP TỌA ĐỘ NATIVE VIEW TRÊN ANDROID
     <Animated.View
       style={[
-        styles.wrapper,
+        isDocked
+          ? [styles.dockedWrapper, isRight ? styles.dockedWrapperRight : styles.dockedWrapperLeft]
+          : styles.freeWrapper,
+        pan.getLayout(),
         {
-          opacity: routeOpacity,
-          transform: [{ scale: routeScale }],
+          transform: [{ scale: scaleAnim }],
         },
       ]}
-      pointerEvents={isHiddenRoute ? 'none' : 'box-none'}
+      pointerEvents="box-none"
     >
-      <Animated.View
-        style={[
-          styles.floatingContainer,
-          {
-            transform: [
-              { translateX: pan.x },
-              { translateY: pan.y },
-              { scale: scaleAnim },
-            ],
-          },
-        ]}
-      >
-        {/* ─── TOOLTIP GỢI Ý KHI VỪA BUNG RA ─── */}
-        {showTooltip && !isDocked && (
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={handleOpenChat}
-            style={[
-              styles.tooltipBubble,
-              isRight ? styles.tooltipBubbleRight : styles.tooltipBubbleLeft,
-              { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' },
-            ]}
-          >
-            <Feather name="message-square" size={13} color="#2563EB" style={{ marginRight: 6 }} />
-            <Text
-              numberOfLines={1}
-              style={[styles.tooltipText, { color: isDark ? '#F1F5F9' : '#1E293B' }]}
-            >
-              Nhấn để chat với TTN AI
-            </Text>
-            <Feather
-              name={isRight ? 'arrow-right' : 'arrow-left'}
-              size={12}
-              color="#2563EB"
-              style={{ marginLeft: 6 }}
-            />
-          </TouchableOpacity>
-        )}
-
-        {/* ─── NÚT THU GỌN / ẨN VÀO MÉP (Nằm độc lập, bấm là thu gọn ngay tức thì) ─── */}
-        {!isDocked && (
-          <TouchableOpacity
-            activeOpacity={0.75}
-            onPress={() => handleDockToEdge()}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            style={[
-              styles.dockButton,
-              isRight ? styles.dockButtonRight : styles.dockButtonLeft,
-              { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Thu gọn bóng chat vào mép màn hình"
-          >
-            <Feather
-              name={isRight ? 'chevron-right' : 'chevron-left'}
-              size={13}
-              color={isDark ? '#94A3B8' : '#475569'}
-            />
-          </TouchableOpacity>
-        )}
-
-        {/* ─── QUẢ BÓNG CHAT CHÍNH (Nhận PanResponder trực tiếp - Kéo cực mượt như Messenger) ─── */}
-        <View
-          {...panResponder.panHandlers}
+      {/* ─── TOOLTIP GỢI Ý KHI VỪA BUNG RA ─── */}
+      {showTooltip && !isDocked && (
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={handleOpenChat}
           style={[
-            styles.orbHitArea,
-            isDocked && (isRight ? styles.dockedHitAreaRight : styles.dockedHitAreaLeft),
+            styles.tooltipBubble,
+            isRight ? styles.tooltipBubbleRight : styles.tooltipBubbleLeft,
+            { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' },
           ]}
         >
-          {/* Vỏ Gradient của quả bóng / Tab mép */}
+          <Feather name="message-square" size={13} color="#2563EB" style={{ marginRight: 6 }} />
+          <Text
+            numberOfLines={1}
+            style={[styles.tooltipText, { color: isDark ? '#F1F5F9' : '#1E293B' }]}
+          >
+            Nhấn để chat với TTN AI
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {/* ─── NÚT THU GỌN / ẨN VÀO MÉP (Chỉ hiện khi mở tự do) ─── */}
+      {!isDocked && (
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={() => handleDockToEdge()}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          style={[
+            styles.dockButton,
+            isRight ? styles.dockButtonRight : styles.dockButtonLeft,
+            { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Thu gọn bóng chat vào mép màn hình"
+        >
+          <Feather
+            name={isRight ? 'chevron-right' : 'chevron-left'}
+            size={13}
+            color={isDark ? '#94A3B8' : '#475569'}
+          />
+        </TouchableOpacity>
+      )}
+
+      {/* ─── THÂN BÓNG CHAT CHÍNH (XỬ LÝ RIÊNG BIỆT: KHI DOCKED VÀ KHI TỰ DO) ─── */}
+      <View {...panResponder.panHandlers}>
+        {isDocked ? (
+          /* ═══ 1. TRẠNG THÁI THU GỌN VÀO MÉP (TAB MÉP) ═══ */
+          /* Nằm gọn 100% trong màn hình, ICON LUÔN HIỂN THỊ RÕ RÀNG */
           <LinearGradient
-            colors={isDark ? ['#4338CA', '#2563EB', '#0284C7'] : ['#4F46E5', '#3B82F6', '#06B6D4']}
+            colors={isDark ? ['#312E81', '#1D4ED8'] : ['#4338CA', '#2563EB']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={[
-              styles.orb,
-              isDocked && (isRight ? styles.orbDockedRight : styles.orbDockedLeft),
+              styles.dockedTab,
+              isRight ? styles.dockedTabRight : styles.dockedTabLeft,
             ]}
           >
-            {/* Biểu tượng AI Sparkles */}
-            <Ionicons
-              name="sparkles"
-              size={isDocked ? 20 : 27}
+            {/* Logo trường nhỏ xinh xắn trên tab mép */}
+            <Image
+              source={require('../../../../assets/images/favicon.png')}
+              style={styles.dockedLogo}
+              resizeMode="contain"
+            />
+            {/* Mũi tên chỉ thị hướng bung ra */}
+            <Feather
+              name={isRight ? 'chevron-left' : 'chevron-right'}
+              size={12}
               color="#FFFFFF"
+              style={{ marginTop: 2 }}
             />
           </LinearGradient>
+        ) : (
+          /* ═══ 2. TRẠNG THÁI MỞ TỰ DO (QUẢ BÓNG TRÒN) ═══ */
+          /* Hiển thị đầy đủ Logo trường TTN, viền bóng kính & chấm online */
+          <View style={styles.orb}>
+            <LinearGradient
+              colors={isDark ? ['#4338CA', '#2563EB', '#0284C7'] : ['#4F46E5', '#3B82F6', '#06B6D4']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.gradientOrb}
+            >
+              {/* Logo chính thức Đại học Tây Nguyên */}
+              <Image
+                source={require('../../../../assets/images/favicon.png')}
+                style={styles.freeLogo}
+                resizeMode="cover"
+              />
 
-          {/* Chấm tròn báo trạng thái AI Online (Ẩn khi đang thu gọn) */}
-          {!isDocked && (
+              {/* Lớp phủ sáng nhẹ tạo hiệu ứng bóng kính */}
+              <View style={styles.glassRim} />
+            </LinearGradient>
+
+            {/* Chấm tròn báo trạng thái AI Online */}
             <Animated.View
               style={[
                 styles.pulseDot,
@@ -463,52 +452,88 @@ export function FloatingChatBot() {
                 },
               ]}
             />
-          )}
-
-          {/* Mũi tên chỉ dẫn bung ra khi đang nép ở mép */}
-          {isDocked && (
-            <View style={[styles.dockedIndicator, isRight ? { left: 4 } : { right: 4 }]}>
-              <Feather
-                name={isRight ? 'chevron-left' : 'chevron-right'}
-                size={13}
-                color="#FFFFFF"
-              />
-            </View>
-          )}
-        </View>
-      </Animated.View>
+          </View>
+        )}
+      </View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
+  // Container khi ở chế độ mở tự do
+  freeWrapper: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    zIndex: 9999,
-    elevation: 9999,
-  },
-  floatingContainer: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // Vùng cảm ứng của quả bóng (Kích thước đầy đủ để ngón tay chạm phát dính ngay)
-  orbHitArea: {
     width: ORB_SIZE,
     height: ORB_SIZE,
+    zIndex: 99999,
+    elevation: 99999,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dockedHitAreaRight: {
-    alignItems: 'flex-start',
+  // Container khi ở chế độ thu gọn mép
+  dockedWrapper: {
+    position: 'absolute',
+    width: DOCKED_TAB_WIDTH,
+    height: DOCKED_TAB_HEIGHT,
+    zIndex: 99999,
+    elevation: 99999,
+    justifyContent: 'center',
   },
-  dockedHitAreaLeft: {
+  dockedWrapperRight: {
     alignItems: 'flex-end',
   },
-  // Quả bóng gradient chính
+  dockedWrapperLeft: {
+    alignItems: 'flex-start',
+  },
+  // Tab mép khi thu gọn (Docked Tab): Bo cong ôm sát mép tường, ICON NẰM Ở CHÍNH GIỮA
+  dockedTab: {
+    width: DOCKED_TAB_WIDTH,
+    height: DOCKED_TAB_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#1D4ED8',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 8,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.85)',
+  },
+  dockedTabRight: {
+    borderTopLeftRadius: 18,
+    borderBottomLeftRadius: 18,
+    borderTopRightRadius: 0,
+    borderBottomRightRadius: 0,
+    borderRightWidth: 0,
+    paddingRight: 2,
+  },
+  dockedTabLeft: {
+    borderTopRightRadius: 18,
+    borderBottomRightRadius: 18,
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
+    borderLeftWidth: 0,
+    paddingLeft: 2,
+  },
+  dockedLogo: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+  },
+  // Quả bóng chính khi mở tự do
   orb: {
+    width: ORB_SIZE,
+    height: ORB_SIZE,
+    borderRadius: ORB_SIZE / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#1D4ED8',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  gradientOrb: {
     width: ORB_SIZE,
     height: ORB_SIZE,
     borderRadius: ORB_SIZE / 2,
@@ -516,29 +541,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
     position: 'relative',
-    shadowColor: '#1D4ED8',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.38,
-    shadowRadius: 10,
-    elevation: 10,
     borderWidth: 2.5,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
+    borderColor: '#FFFFFF',
+    backgroundColor: '#2563EB',
   },
-  // Nẹp mép phải
-  orbDockedRight: {
-    borderTopRightRadius: 4,
-    borderBottomRightRadius: 4,
-    borderTopLeftRadius: ORB_SIZE / 2,
-    borderBottomLeftRadius: ORB_SIZE / 2,
-    borderRightWidth: 0,
+  freeLogo: {
+    width: ORB_SIZE - 4,
+    height: ORB_SIZE - 4,
+    borderRadius: (ORB_SIZE - 4) / 2,
   },
-  // Nẹp mép trái
-  orbDockedLeft: {
-    borderTopLeftRadius: 4,
-    borderBottomLeftRadius: 4,
-    borderTopRightRadius: ORB_SIZE / 2,
-    borderBottomRightRadius: ORB_SIZE / 2,
-    borderLeftWidth: 0,
+  glassRim: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: ORB_SIZE / 2,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   // Chấm đèn xanh online
   pulseDot: {
@@ -554,11 +570,11 @@ const styles = StyleSheet.create({
     zIndex: 30,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.25,
     shadowRadius: 2,
     elevation: 3,
   },
-  // Nút bấm ẩn/thu gọn hình capsule độc lập ở mép quả bóng
+  // Nút bấm ẩn/thu gọn hình tròn nhỏ ở góc quả bóng
   dockButton: {
     position: 'absolute',
     top: -6,
@@ -582,26 +598,16 @@ const styles = StyleSheet.create({
   dockButtonLeft: {
     left: -4,
   },
-  // Mũi tên chỉ thị trên tab mép khi thu gọn
-  dockedIndicator: {
-    position: 'absolute',
-    top: (ORB_SIZE - 18) / 2,
-    backgroundColor: 'rgba(0, 0, 0, 0.25)',
-    borderRadius: 9,
-    padding: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   // Tooltip gợi ý
   tooltipBubble: {
     position: 'absolute',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 13,
-    paddingVertical: 7,
-    borderRadius: 18,
-    minWidth: 175,
-    maxWidth: 240,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    minWidth: 160,
+    maxWidth: 220,
     zIndex: 100,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -613,11 +619,11 @@ const styles = StyleSheet.create({
   },
   tooltipBubbleRight: {
     right: ORB_SIZE + 10,
-    top: (ORB_SIZE - 36) / 2,
+    top: (ORB_SIZE - 32) / 2,
   },
   tooltipBubbleLeft: {
     left: ORB_SIZE + 10,
-    top: (ORB_SIZE - 36) / 2,
+    top: (ORB_SIZE - 32) / 2,
   },
   tooltipText: {
     fontSize: 12,

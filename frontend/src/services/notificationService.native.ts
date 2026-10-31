@@ -192,9 +192,8 @@ export async function handleIncomingSosAlert(alert: {
       );
     }
 
-    // Nếu cả 2 máy có GPS và khoảng cách > 300m (ở xa hẳn ngoài trường) thì không làm phiền
-    // Nếu <= 300m (gần nhau / cùng toà nhà, tính cả sai số trôi GPS trong phòng) HOẶC chưa có GPS: ĐỀU PHÁT CẢNH BÁO
-    const isNearby = distance === null || distance <= 300;
+    // Tín hiệu SOS là mức độ khẩn cấp cao nhất: Luôn cảnh báo tới sinh viên trong khuôn viên
+    const isNearby = true;
 
     if (isNearby) {
       const distanceText = distance !== null ? ` (cách bạn ~${Math.round(distance)}m)` : "";
