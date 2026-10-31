@@ -99,6 +99,35 @@ runTest('Khi danh sách điểm không đổi', () => {
   assert.strictEqual(res.type, 'no_change');
 });
 
+// 4. Kiểm tra thông báo điểm luôn in môn học và điểm số thay đổi, TUYỆT ĐỐI KHÔNG IN GPA
+runTest('Thông báo điểm in môn học và điểm số thay đổi thay vì GPA', () => {
+  const currentListWithChange = [
+    { ma_hp: 'TIN01', ten_hp: 'Tin học đại cương', diem_tk: 8.5, diem_chu: 'A' },
+    { ma_hp: 'TOAN01', ten_hp: 'Giải tích 1', diem_tk: 7.5, diem_chu: 'B' }
+  ];
+  const res = detectGradeUpdates(currentListWithChange, mockOldList);
+  assert(res.body.includes('Tin học đại cương'), 'Phải chứa tên môn học');
+  assert(res.body.includes('8.5'), 'Phải chứa điểm mới');
+  assert(!res.body.includes('GPA hệ 4'), 'Tuyệt đối không in GPA');
+  assert(!res.body.includes('GPA hệ 10'), 'Tuyệt đối không in GPA');
+});
+
+// 5. Kiểm tra mã nguồn notificationService.native.ts đã loại bỏ hoàn toàn thông báo GPA tích lũy
+runTest('notificationService.native.ts không in GPA tích lũy', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const notifPath = path.join(__dirname, '../../frontend/src/services/notificationService.native.ts');
+  const content = fs.readFileSync(notifPath, 'utf8');
+  assert(
+    !content.includes('Điểm GPA Tích lũy') && !content.includes('GPA hệ 4:'),
+    'notificationService.native.ts không được chứa thông báo GPA Tích lũy'
+  );
+  assert(
+    content.includes('Cập nhật Điểm:') || content.includes('Điểm học phần:'),
+    'notificationService.native.ts phải in môn học và điểm số cụ thể'
+  );
+});
+
 console.log(`\nKết quả: ${passedCount}/${totalCount} kiểm tra thành công.`);
 if (passedCount !== totalCount) process.exit(1);
 

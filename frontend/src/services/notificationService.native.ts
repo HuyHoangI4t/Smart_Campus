@@ -288,56 +288,94 @@ export async function triggerTestNotification(type: "schedule" | "grades" | "cam
     }
 
     case "grades": {
-      // 2. SO SÁNH VỚI DỮ LIỆU ĐIỂM CŨ ĐỂ TÌM MÔN MỚI CẬP NHẬT
-      let notifTitle = "🎉 Cập nhật Điểm số";
-      let notifBody = "Bảng điểm học kỳ mới nhất đã được đồng bộ với nhà trường.";
+      // 2. SO SÁNH VỚI DỮ LIỆU ĐIỂM CŨ ĐỂ TÌM MÔN MỚI CẬP NHẬT / THAY ĐỔI ĐIỂM (KHÔNG IN GPA)
+      let notifTitle = "🎉 Điểm học phần: Lập trình thiết bị di động";
+      let notifBody = "Điểm học phần 'Lập trình thiết bị di động' đã có: 8.5 (Điểm A). Chúc mừng bạn!";
 
       try {
-        const rawGrades = await AsyncStorage.getItem("@grades_cache_data");
+        // Tìm cache điểm từ các key offline thực tế của app
+        let rawGrades = await AsyncStorage.getItem("@grades_cache_data");
+        if (!rawGrades) {
+          const userStr = await AsyncStorage.getItem("@auth_user");
+          let mssv = "current";
+          if (userStr) {
+            try {
+              const u = JSON.parse(userStr);
+              mssv = u.mssv || u.masv || "current";
+            } catch {}
+          }
+          rawGrades = (await AsyncStorage.getItem(`@offline_grades_${mssv}`)) ||
+                      (await AsyncStorage.getItem("@offline_grades_current"));
+        }
+
         const rawOldGrades = await AsyncStorage.getItem("@last_known_grades");
 
+        let currentList: any[] = [];
         if (rawGrades) {
           const parsed = JSON.parse(rawGrades);
-          const currentList: any[] = parsed.grades || parsed.courses || (Array.isArray(parsed) ? parsed : []);
-          const oldList: any[] = rawOldGrades ? JSON.parse(rawOldGrades) : [];
-
-          // Tìm xem có môn nào mới nhập điểm hoặc điểm khác với dữ liệu cũ
-          let newOrChangedCourse = null;
-          if (oldList.length > 0) {
-            newOrChangedCourse = currentList.find((cur) => {
-              const curId = cur.ma_hoc_phan || cur.ten_hoc_phan || cur.id;
-              const curScore = cur.diem_tong_ket ?? cur.diem_tk ?? cur.diem_chu;
-              const old = oldList.find((o) => (o.ma_hoc_phan || o.ten_hoc_phan || o.id) === curId);
-              if (!old) return true; // Môn hoàn toàn mới
-              const oldScore = old.diem_tong_ket ?? old.diem_tk ?? old.diem_chu;
-              return curScore !== oldScore; // Điểm vừa mới nhập / thay đổi
-            });
+          const rawList = parsed.data?.grades || parsed.grades || parsed.courses || (Array.isArray(parsed) ? parsed : (Array.isArray(parsed.data) ? parsed.data : []));
+          if (Array.isArray(rawList)) {
+            currentList = rawList;
           }
+        }
 
-          if (newOrChangedCourse) {
-            const courseName = newOrChangedCourse.ten_hoc_phan || newOrChangedCourse.ten_hp || newOrChangedCourse.course || "Học phần";
-            const score = newOrChangedCourse.diem_tong_ket ?? newOrChangedCourse.diem_tk ?? newOrChangedCourse.diem_chu ?? "Đã có điểm";
-            notifTitle = "🎉 Cập nhật Điểm số mới";
-            notifBody = `Điểm học phần '${courseName}' đã có: ${score}. Chúc mừng bạn!`;
-          } else if (currentList.length > 0) {
-            // Lấy môn có điểm thật gần nhất của sinh viên
-            const valid = currentList.find((g) => g.diem_tong_ket || g.diem_tk || g.diem_chu) || currentList[0];
-            const courseName = valid.ten_hoc_phan || valid.ten_hp || valid.course || "Học phần";
-            const score = valid.diem_tong_ket ?? valid.diem_tk ?? "Đã cập nhật";
-            const letter = valid.diem_chu ? ` (Điểm ${valid.diem_chu})` : "";
-            notifTitle = `🎉 Điểm học phần: ${courseName}`;
-            notifBody = `Điểm tổng kết: ${score}${letter}. Chúc mừng bạn đã hoàn thành môn học!`;
+        const oldList: any[] = rawOldGrades ? JSON.parse(rawOldGrades) : [];
+
+        // Tìm môn có điểm mới nhập hoặc điểm vừa thay đổi
+        let changedCourse: any = null;
+        let oldScoreVal: any = null;
+
+        if (currentList.length > 0 && oldList.length > 0) {
+          for (const cur of currentList) {
+            const curId = cur.ma_hoc_phan || cur.ma_hp || cur.ten_hoc_phan || cur.ten_hp;
+            const curScore = cur.diem_tong_ket ?? cur.diem_tk ?? cur.diem_chu;
+            const old = oldList.find((o) => (o.ma_hoc_phan || o.ma_hp || o.ten_hoc_phan || o.ten_hp) === curId);
+
+            if (!old) {
+              // Môn học mới hoàn toàn
+              changedCourse = cur;
+              break;
+            }
+
+            const oldScore = old.diem_tong_ket ?? old.diem_tk ?? old.diem_chu;
+            if (curScore !== oldScore) {
+              // Điểm vừa thay đổi
+              changedCourse = cur;
+              oldScoreVal = oldScore;
+              break;
+            }
           }
+        }
 
-          // Cập nhật lại danh sách điểm đã biết để so sánh cho lần sau
-          await AsyncStorage.setItem("@last_known_grades", JSON.stringify(currentList));
+        if (changedCourse) {
+          const courseName = changedCourse.ten_hoc_phan || changedCourse.ten_hp || changedCourse.course || "Học phần";
+          const newScore = changedCourse.diem_tong_ket ?? changedCourse.diem_tk ?? changedCourse.diem_chu ?? "Đã có điểm";
+          const letter = changedCourse.diem_chu ? ` (Điểm ${changedCourse.diem_chu})` : "";
+          const changeDetail = oldScoreVal !== null && oldScoreVal !== undefined ? ` (cũ: ${oldScoreVal} ➔ mới: ${newScore})` : `: ${newScore}${letter}`;
+
+          notifTitle = `🎉 Cập nhật Điểm: ${courseName}`;
+          notifBody = `Môn '${courseName}' vừa có điểm mới${changeDetail}. Chúc mừng bạn!`;
+        } else if (currentList.length > 0) {
+          // Lấy môn học có điểm thật cụ thể gần nhất (KHÔNG IN GPA)
+          const valid = currentList.find((g) => g.diem_tong_ket !== undefined && g.diem_tong_ket !== null) ||
+                        currentList.find((g) => g.diem_tk !== undefined && g.diem_tk !== null) ||
+                        currentList[0];
+          const courseName = valid.ten_hoc_phan || valid.ten_hp || valid.course || "Lập trình thiết bị di động";
+          const score = valid.diem_tong_ket ?? valid.diem_tk ?? valid.diem_chu ?? "8.5";
+          const letter = valid.diem_chu ? ` (Điểm ${valid.diem_chu})` : "";
+
+          notifTitle = `🎉 Điểm học phần: ${courseName}`;
+          notifBody = `Điểm học phần '${courseName}' đã có: ${score}${letter}. Chúc mừng bạn đã hoàn thành môn học!`;
         } else {
-          const rawWidget = await AsyncStorage.getItem("@widget_grades_data");
-          if (rawWidget) {
-            const w = JSON.parse(rawWidget);
-            notifTitle = "🎉 Điểm GPA Tích lũy";
-            notifBody = `GPA hệ 4: ${w.gpa4 || "3.5"} • Hệ 10: ${w.gpa10 || "8.0"} • Xếp loại: ${w.rank || "Khá"}`;
-          }
+          // Fallback: Luôn in thông tin môn học cụ thể và điểm số, KHÔNG IN GPA
+          notifTitle = "🎉 Điểm học phần: Lập trình thiết bị di động";
+          notifBody = "Điểm học phần 'Lập trình thiết bị di động' đã có: 8.5 (Điểm A). Chúc mừng bạn!";
+        }
+
+        // Lưu lại danh sách điểm để so sánh cho lần cập nhật sau
+        if (currentList.length > 0) {
+          await AsyncStorage.setItem("@last_known_grades", JSON.stringify(currentList));
+          await AsyncStorage.setItem("@grades_cache_data", JSON.stringify(currentList));
         }
       } catch (err) {
         console.warn("Lỗi đọc điểm thật cho thông báo:", err);
