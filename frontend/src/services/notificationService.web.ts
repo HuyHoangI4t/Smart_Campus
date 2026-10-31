@@ -58,3 +58,9 @@ export async function cancelAllScheduledNotifications() {}
 export function addNotificationResponseListener(callback: (screen: string) => void) {
   return { remove: () => {} };
 }
+
+export async function handleIncomingSosAlert(alert: any): Promise<boolean> {
+  if (!alert) return false;
+  Alert.alert("🚨 CẢNH BÁO CỨU HỘ SOS", `Có sinh viên đang cần hỗ trợ tại ${alert.location || 'khuôn viên trường'}.`);
+  return true;
+}

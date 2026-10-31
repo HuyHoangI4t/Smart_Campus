@@ -46,6 +46,8 @@ const SosModule = {
       return;
     }
 
+    if (container._leaflet_id && !this.map) container._leaflet_id = null;
+
     // Tọa độ trung tâm ĐH Tây Nguyên
     this.map = L.map('sosCampusMap', {
       center: [12.6509, 108.0241],
@@ -300,9 +302,8 @@ const SosModule = {
 
   focusAlertOnMap(alertId) {
     const id = Number(alertId);
-    if (window.LocationsModule) {
+    if (window.LocationsModule && typeof LocationsModule.focusSosOnMap === 'function') {
       LocationsModule.focusSosOnMap(id);
-      return;
     }
 
     // Đảm bảo tab SOS đang mở

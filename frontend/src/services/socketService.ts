@@ -109,6 +109,13 @@ export const subscribeSocketEvent = (eventName: string, callback: (data: any) =>
 };
 
 /**
+ * Lắng nghe có tín hiệu SOS khẩn cấp mới từ sinh viên khác
+ */
+export const onNewSos = (callback: (data: any) => void) => {
+  return subscribeSocketEvent('new_sos', callback);
+};
+
+/**
  * Lắng nghe cập nhật trạng thái SOS từ bảo vệ / ban quản trị
  */
 export const onSosStatusChanged = (callback: (data: { id: number; status: string; alert?: any; mssv?: string }) => void) => {

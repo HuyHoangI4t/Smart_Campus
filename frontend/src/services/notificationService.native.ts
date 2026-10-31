@@ -1,4 +1,4 @@
-import { Platform, Alert } from "react-native";
+import { Platform, Alert, Linking } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants, { ExecutionEnvironment } from "expo-constants";
 
@@ -153,7 +153,7 @@ export function calculateDistanceMeters(lat1: number, lon1: number, lat2: number
 }
 
 /**
- * Xử lý cảnh báo SOS từ người khác: CHỈ gửi thông báo khi bán kính <= 50m
+ * Xử lý cảnh báo SOS từ người khác: Tự động rung chuông, đẩy thông báo và hiện cảnh báo khẩn cấp
  */
 export async function handleIncomingSosAlert(alert: {
   id?: number | string;
@@ -162,9 +162,10 @@ export async function handleIncomingSosAlert(alert: {
   location?: string;
   message?: string;
   mssv?: string;
+  ho_ten?: string;
   incidentType?: string;
 }): Promise<boolean> {
-  if (!alert || !alert.latitude || !alert.longitude) return false;
+  if (!alert) return false;
   try {
     const rawGps = await AsyncStorage.getItem("@last_known_gps");
     let userCoords: { latitude: number; longitude: number } | null = rawGps ? JSON.parse(rawGps) : null;
@@ -176,27 +177,60 @@ export async function handleIncomingSosAlert(alert: {
         const loc = await Location.getLastKnownPositionAsync({});
         if (loc?.coords) {
           userCoords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+          AsyncStorage.setItem("@last_known_gps", JSON.stringify(userCoords)).catch(() => {});
         }
       } catch {}
     }
 
-    if (!userCoords?.latitude || !userCoords?.longitude) return false;
+    let distance: number | null = null;
+    if (userCoords?.latitude && userCoords?.longitude && alert.latitude && alert.longitude) {
+      distance = calculateDistanceMeters(
+        userCoords.latitude,
+        userCoords.longitude,
+        Number(alert.latitude),
+        Number(alert.longitude)
+      );
+    }
 
-    const distance = calculateDistanceMeters(
-      userCoords.latitude,
-      userCoords.longitude,
-      Number(alert.latitude),
-      Number(alert.longitude)
-    );
+    // Nếu cả 2 máy có GPS và khoảng cách > 300m (ở xa hẳn ngoài trường) thì không làm phiền
+    // Nếu <= 300m (gần nhau / cùng toà nhà, tính cả sai số trôi GPS trong phòng) HOẶC chưa có GPS: ĐỀU PHÁT CẢNH BÁO
+    const isNearby = distance === null || distance <= 300;
 
-    // CHỈ thông báo khi xung quanh bán kính 50m có user khác phát tín hiệu SOS
-    if (distance <= 50) {
+    if (isNearby) {
+      const distanceText = distance !== null ? ` (cách bạn ~${Math.round(distance)}m)` : "";
+      const alertTitle = "🚨 CẢNH BÁO CỨU HỘ SOS KHẨN CẤP";
+      const alertBody = `Có sinh viên (${alert.ho_ten || alert.mssv || "Sinh viên"}) đang phát tín hiệu SOS tại ${alert.location || "khuôn viên trường"}${distanceText}.`;
+
+      // 1. Rung cảnh báo khẩn cấp bằng Haptics
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const Haptics = require("expo-haptics");
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      } catch {}
+
+      // 2. Bắn thông báo đẩy lên thanh Notification Bar
       await sendInstantNotification(
-        "🚨 CẢNH BÁO CỨU HỘ SOS GẦN BẠN",
-        `Có sinh viên cần hỗ trợ cách bạn khoảng ${Math.round(distance)}m tại ${alert.location || "khuôn viên trường"}. Hãy kiểm tra hoặc báo bảo vệ ngay!`,
+        alertTitle,
+        alertBody,
         { screen: "sos", alertId: alert.id },
         NOTIFICATION_CHANNELS.SOS
       );
+
+      // 3. Hiển thị Popup cảnh báo trực tiếp trên màn hình
+      Alert.alert(
+        alertTitle,
+        `${alertBody}\n\nNội dung sự cố: ${alert.message || alert.incidentType || "Yêu cầu cứu trợ"}\n\n⚠️ Hãy kiểm tra hỗ trợ xung quanh hoặc liên hệ ngay Đội Bảo vệ (0329106783)!`,
+        [
+          { text: "Đã hiểu", style: "cancel" },
+          {
+            text: "Gọi Bảo vệ",
+            onPress: () => {
+              Linking.openURL("tel:0329106783").catch(() => {});
+            },
+          },
+        ]
+      );
+
       return true;
     }
     return false;

@@ -12,6 +12,8 @@ interface ChatInputBarProps {
   onChangeText: (text: string) => void;
   onSend: () => void;
   disabled?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
 export const ChatInputBar = memo(function ChatInputBar({
@@ -19,6 +21,8 @@ export const ChatInputBar = memo(function ChatInputBar({
   onChangeText,
   onSend,
   disabled = false,
+  onFocus,
+  onBlur,
 }: ChatInputBarProps) {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -64,6 +68,7 @@ export const ChatInputBar = memo(function ChatInputBar({
       ]}
       borderRadius={0}
       borderWidth={0}
+      elevation={0}
       intensity={Platform.OS === "ios" ? 85 : 95}
     >
       <View style={styles.inputRow}>
@@ -82,8 +87,14 @@ export const ChatInputBar = memo(function ChatInputBar({
             placeholderTextColor={colors.textSubtle}
             value={value}
             onChangeText={onChangeText}
-            onFocus={() => setKeyboardVisible(true)}
-            onBlur={() => setKeyboardVisible(false)}
+            onFocus={() => {
+              setKeyboardVisible(true);
+              onFocus?.();
+            }}
+            onBlur={() => {
+              setKeyboardVisible(false);
+              onBlur?.();
+            }}
             style={[styles.textInput, { color: colors.text }]}
             multiline
             maxLength={500}

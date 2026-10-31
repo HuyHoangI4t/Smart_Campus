@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Linking, ActivityIndicator, Modal, BackHandler } from "react-native";
 import { Feather } from "@expo/vector-icons";
@@ -104,6 +105,7 @@ export default function SosScreen() {
                 latitude: lastLoc.coords.latitude,
                 longitude: lastLoc.coords.longitude,
               });
+              AsyncStorage.setItem("@last_known_gps", JSON.stringify({ latitude: lastLoc.coords.latitude, longitude: lastLoc.coords.longitude })).catch(() => {});
             }
           } catch {}
 
@@ -122,6 +124,7 @@ export default function SosScreen() {
                 latitude: loc.coords.latitude,
                 longitude: loc.coords.longitude,
               });
+              AsyncStorage.setItem("@last_known_gps", JSON.stringify({ latitude: loc.coords.latitude, longitude: loc.coords.longitude })).catch(() => {});
             }
           );
 

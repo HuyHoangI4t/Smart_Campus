@@ -267,6 +267,9 @@ const App = {
     if (window.LocationsModule && window.LocationsModule.map) {
       setTimeout(() => window.LocationsModule.map.invalidateSize(), 150);
     }
+    if (window.SosModule && window.SosModule.map) {
+      setTimeout(() => window.SosModule.map.invalidateSize(), 150);
+    }
   },
 
   cycleZoom() {
@@ -613,7 +616,10 @@ const App = {
       this.switchMapSubTab('locations');
       LocationsModule.init();
       SosModule.init();
-      setTimeout(() => { if (LocationsModule.map) LocationsModule.map.invalidateSize(); }, 200);
+      setTimeout(() => {
+        if (LocationsModule.map) LocationsModule.map.invalidateSize();
+        if (SosModule.map) SosModule.map.invalidateSize();
+      }, 250);
     }
     if (tabId === 'sos') {
       this.switchMapSubTab('sos');

@@ -5,6 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CustomBottomNav } from '../../src/components/MainTabs';
 import { useTheme } from '../../src/context/ThemeContext';
 import { FloatingChatBot } from '../../src/features/chat';
+import { initSocket, onNewSos } from '../../src/services/socketService';
+import { handleIncomingSosAlert } from '../../src/services/notificationService';
 import {
   apiGetDashboard,
   apiGetSchedule,
@@ -16,6 +18,32 @@ import {
 
 export default function MainLayout() {
   const { colors } = useTheme();
+
+  // Lắng nghe tín hiệu SOS khẩn cấp từ các sinh viên khác qua Socket.IO Realtime
+  useEffect(() => {
+    initSocket();
+    const unsub = onNewSos(async (alertData) => {
+      try {
+        const userStr = await AsyncStorage.getItem('@auth_user');
+        let myMssv = '';
+        if (userStr) {
+          try {
+            const u = JSON.parse(userStr);
+            myMssv = u.mssv || u.masv || '';
+          } catch {}
+        }
+        // Không cảnh báo chính bản thân người gửi tín hiệu
+        if (myMssv && alertData?.mssv && String(myMssv) === String(alertData.mssv)) {
+          return;
+        }
+        await handleIncomingSosAlert(alertData);
+      } catch (err) {
+        console.warn('Lỗi xử lý SOS realtime:', err);
+      }
+    });
+
+    return () => unsub();
+  }, []);
 
   // Nạp dữ liệu ngầm sau khi màn hình đầu tiên đã mount mượt mà
   useEffect(() => {

@@ -45,6 +45,33 @@ export default function ChatBotScreen() {
   const [suggestions, setSuggestions] = useState<ChatSuggestion[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const keyboardOffset = useRef(new Animated.Value(0)).current;
+  const lastKeyboardHeight = useRef(290);
+  const isKeyboardShowing = useRef(false);
+
+  const handleInputFocus = useCallback(() => {
+    if (Platform.OS === "android") {
+      isKeyboardShowing.current = true;
+      Animated.timing(keyboardOffset, {
+        toValue: lastKeyboardHeight.current,
+        duration: 180,
+        useNativeDriver: false,
+      }).start();
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [keyboardOffset]);
+
+  const handleInputBlur = useCallback(() => {
+    if (Platform.OS === "android") {
+      isKeyboardShowing.current = false;
+      Animated.timing(keyboardOffset, {
+        toValue: 0,
+        duration: 120,
+        useNativeDriver: false,
+      }).start();
+    }
+  }, [keyboardOffset]);
 
   useEffect(() => {
     apiGetChatSuggestions().then(setSuggestions).catch(() => {});
@@ -52,17 +79,22 @@ export default function ChatBotScreen() {
     if (Platform.OS === "android") {
       const showSub = Keyboard.addListener("keyboardDidShow", (e) => {
         const height = e?.endCoordinates?.height || 0;
+        if (height > 0) {
+          lastKeyboardHeight.current = height;
+        }
+        isKeyboardShowing.current = true;
         Animated.timing(keyboardOffset, {
-          toValue: height,
-          duration: 120,
+          toValue: height || lastKeyboardHeight.current,
+          duration: 100,
           useNativeDriver: false,
         }).start();
         setTimeout(() => {
           flatListRef.current?.scrollToEnd({ animated: true });
-        }, 80);
+        }, 60);
       });
 
       const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+        isKeyboardShowing.current = false;
         Animated.timing(keyboardOffset, {
           toValue: 0,
           duration: 100,
@@ -298,7 +330,7 @@ export default function ChatBotScreen() {
           />
         )}
 
-        {!hasMessages && suggestions.length > 0 && (
+        {hasMessages && suggestions.length > 0 && (
           <View style={styles.suggestionRow}>
             <FlatList
               horizontal
@@ -341,6 +373,8 @@ export default function ChatBotScreen() {
           onChangeText={setInputMessage}
           onSend={() => handleSendMessage()}
           disabled={loading}
+          onFocus={handleInputFocus}
+          onBlur={handleInputBlur}
         />
         </Animated.View>
       </KeyboardAvoidingView>
@@ -391,7 +425,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   welcomeScrollContent: {
-    paddingBottom: 16,
+    paddingBottom: 40,
   },
   thinkingRow: {
     flexDirection: "row",
@@ -427,11 +461,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8.5,
     borderRadius: GlassTokens.radii.pill,
     borderWidth: 1.2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    elevation: 0,
   },
   suggestionText: {
     fontSize: 12,
