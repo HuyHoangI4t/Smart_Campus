@@ -583,15 +583,16 @@ const App = {
 
     // Vì SOS đã gộp chung với Bản đồ & Địa điểm thành 1 trang xếp cạnh nhau:
     const effectiveSectionId = (tabId === 'sos') ? 'locations' : tabId;
+    const activeNavKey = (tabId === 'sos') ? 'locations' : tabId;
 
-    // Cập nhật giao diện nút tab trên sidebar
-    const tabs = ['dashboard', 'users', 'locations', 'notifications', 'feedback', 'sos'];
+    // Cập nhật giao diện nút tab trên sidebar (đã lược bớt 1 tab trùng lặp)
+    const tabs = ['dashboard', 'users', 'locations', 'notifications', 'feedback'];
     tabs.forEach(t => {
       const btn = document.getElementById(`navbtn-${t}`);
       const content = document.getElementById(`tab-${t}`);
       
       if (btn) {
-        if (t === tabId) {
+        if (t === activeNavKey) {
           btn.classList.add('active');
         } else {
           btn.classList.remove('active');
@@ -626,16 +627,12 @@ const App = {
       LocationsModule.init();
       SosModule.init();
       setTimeout(() => {
-        if (LocationsModule.map) {
-          LocationsModule.map.invalidateSize();
-          // Tự động focus vào sự cố SOS đầu tiên nếu có
-          if (LocationsModule.sosMarkers && LocationsModule.sosMarkers.size > 0) {
-            const firstMarker = LocationsModule.sosMarkers.values().next().value;
-            if (firstMarker) {
-              LocationsModule.map.flyTo(firstMarker.getLatLng(), 18, { animate: true, duration: 0.8 });
-              setTimeout(() => firstMarker.openPopup(), 900);
-            }
-          }
+        if (LocationsModule.map) LocationsModule.map.invalidateSize();
+        if (SosModule.map) {
+          SosModule.map.invalidateSize();
+          // Cuộn mượt và hiển thị bản đồ SOS bên phải
+          const sosCard = document.getElementById('sosCampusMapCard');
+          if (sosCard) sosCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
       }, 250);
     }

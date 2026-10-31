@@ -45,6 +45,7 @@ export default function GradesScreen() {
   const [isOfflineData, setIsOfflineData] = useState(false);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<CourseGrade | null>(null);
+  const [semesterStats, setSemesterStats] = useState<Record<string, any>>({});
 
   const fetchGrades = async () => {
     try {
@@ -68,8 +69,13 @@ export default function GradesScreen() {
 
       const cacheKey = `@offline_grades_${mssv}`;
       const cached = await readLocalCache<any>(cacheKey);
-      if (cached && cached.data && Array.isArray(cached.data.data) && cached.data.data.length > 0) {
-        const parsed: CourseGrade[] = cached.data.data.map((item: any) => ({
+      if (cached && cached.data) {
+        if (cached.data.semesterStats) {
+          setSemesterStats(cached.data.semesterStats);
+        }
+        const cachedRawData = Array.isArray(cached.data.data) ? cached.data.data : (Array.isArray(cached.data) ? cached.data : []);
+        if (cachedRawData.length > 0) {
+          const parsed: CourseGrade[] = cachedRawData.map((item: any) => ({
           code: item.code || "",
           name: item.ten_hp || item.name || "Học phần",
           credits: Number(item.so_tin_chi || item.credits || 3),
@@ -98,6 +104,9 @@ export default function GradesScreen() {
       }
 
       if (res && res.success) {
+        if (res.semesterStats) {
+          setSemesterStats(res.semesterStats);
+        }
         if (res.ho_ten && (!name || name === "Sinh viên")) {
           setStudentInfo((prev) => ({ ...prev, name: res.ho_ten }));
         }
@@ -184,10 +193,20 @@ export default function GradesScreen() {
     [grades, selectedSemester]
   );
 
-  // Chỉ tính toán GPA và xếp loại khi danh sách môn học hoặc học kỳ thay đổi, giải phóng CPU khi cuộn trang
+  // Sử dụng thống kê chuẩn đồng bộ từ Backend hoặc tính toán dự phòng
   const { gpa10, gpa4, totalCredits, academicRank } = useMemo(() => {
+    if (semesterStats && semesterStats[selectedSemester]) {
+      const stat = semesterStats[selectedSemester];
+      return {
+        gpa10: String(stat.gpa10 ?? "0.00"),
+        gpa4: String(stat.gpa4 ?? "0.00"),
+        totalCredits: Number(stat.accumulatedCredits ?? stat.totalCredits ?? 0),
+        academicRank: stat.academicRank || getAcademicRank(Number(stat.gpa4 || 0)),
+      };
+    }
+
     const gradedCourses = displayedGrades.filter(
-      (g) => g.gradeLetter !== "X" && g.gradeLetter !== "P" && g.grade10 > 0
+      (g) => g.gradeLetter !== "X" && g.gradeLetter !== "P" && (g.grade10 > 0 || g.gradeLetter === "F" || ["A", "B", "C", "D"].includes(g.gradeLetter))
     );
     const totalGradedCredits = gradedCourses.reduce((acc, curr) => acc + curr.credits, 0);
 
@@ -210,7 +229,7 @@ export default function GradesScreen() {
       totalCredits: totCreds,
       academicRank: rank,
     };
-  }, [displayedGrades]);
+  }, [displayedGrades, selectedSemester, semesterStats]);
 
   // Tự động nạp điểm số vào Widget Android khi có dữ liệu điểm
   useEffect(() => {

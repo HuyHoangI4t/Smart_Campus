@@ -329,14 +329,24 @@ export default function HomeScreen() {
         readLocalCache<any>(gradesCacheKey),
       ]);
       if (cachedGrades?.data) {
-        const rawGrades = Array.isArray(cachedGrades.data.data)
-          ? cachedGrades.data.data
-          : Array.isArray(cachedGrades.data)
-          ? cachedGrades.data
-          : [];
-        const parsedSummary = parseGpaSummary(rawGrades);
-        if (parsedSummary) {
-          setGpaSummary(parsedSummary);
+        if (cachedGrades.data.summary && cachedGrades.data.summary.gpa4 !== undefined) {
+          setGpaSummary({
+            gpa4: String(cachedGrades.data.summary.gpa4 || "0.00"),
+            gpa10: String(cachedGrades.data.summary.gpa10 || "0.00"),
+            totalCredits: Number(cachedGrades.data.summary.accumulatedCredits ?? cachedGrades.data.summary.totalCredits ?? 0),
+            rank: cachedGrades.data.summary.academicRank?.label || "Chưa có",
+            rankColor: cachedGrades.data.summary.academicRank?.color || "#6B7280",
+          });
+        } else {
+          const rawGrades = Array.isArray(cachedGrades.data.data)
+            ? cachedGrades.data.data
+            : Array.isArray(cachedGrades.data)
+            ? cachedGrades.data
+            : [];
+          const parsedSummary = parseGpaSummary(rawGrades);
+          if (parsedSummary) {
+            setGpaSummary(parsedSummary);
+          }
         }
       }
       if (cachedDash?.data || cachedSchedule?.data || cachedNews?.data) {

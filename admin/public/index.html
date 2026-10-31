@@ -296,9 +296,10 @@
               </button>
 
               <button id="navbtn-locations" onclick="App.switchTab('locations')" class="nav-link-btn">
-                <i data-lucide="map-pin" class="w-4 h-4 shrink-0 text-emerald-500"></i>
-                <span class="flex-1">Bản Đồ & Địa Điểm</span>
-                <span id="totalLocationsCount" class="nav-badge-count px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-bold">37</span>
+                <i data-lucide="map" class="w-4 h-4 shrink-0 text-emerald-500"></i>
+                <span class="flex-1">Bản Đồ & Trực Ban SOS</span>
+                <span id="totalLocationsCount" class="nav-badge-count px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-bold">40</span>
+                <span id="navBadgeSos" class="hidden px-1.5 py-0.5 bg-red-600 text-white rounded-full text-[10px] font-bold animate-pulse">0</span>
               </button>
 
               <button id="navbtn-notifications" onclick="App.switchTab('notifications')" class="nav-link-btn">
@@ -315,12 +316,6 @@
               <button id="navbtn-feedback" onclick="App.switchTab('feedback')" class="nav-link-btn">
                 <i data-lucide="message-square" class="w-4 h-4 shrink-0 text-cyan-500"></i>
                 <span class="flex-1">Ý Kiến & Phản Ánh</span>
-              </button>
-
-              <button id="navbtn-sos" onclick="App.switchTab('sos')" class="nav-link-btn">
-                <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0 text-red-500"></i>
-                <span class="flex-1">Trực Ban Cứu Hộ SOS</span>
-                <span id="navBadgeSos" class="hidden px-2 py-0.5 bg-red-600 text-white rounded-full text-[10px] font-bold animate-pulse">0</span>
               </button>
             </div>
           </div>
@@ -886,13 +881,6 @@
                         Vệ tinh
                       </button>
                     </div>
-
-                    <!-- Toggle SOS Markers -->
-                    <button id="btnToggleSosLayer" onclick="LocationsModule.toggleSosLayer()" title="Hiển thị hoặc ẩn các điểm cảnh báo SOS trên bản đồ này"
-                      class="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-2xs">
-                      <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
-                      <span>SOS (<span id="mapSosActiveCount">0</span>)</span>
-                    </button>
 
                     <!-- Reset Map View Center -->
                     <button onclick="LocationsModule.resetMapView()" title="Đưa khung nhìn về toàn khuôn viên"

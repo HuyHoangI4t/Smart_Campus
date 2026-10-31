@@ -138,6 +138,12 @@ function calculateStats(items) {
     // 2. Môn trượt ('F')
     if (letter === 'F' || (score10 !== null && score10 < 4.0 && letter !== 'P')) {
       failedCourses++;
+      // Theo quy chế đào tạo tín chỉ: Môn F không được tính vào tín chỉ tích lũy,
+      // nhưng PHẢI tính vào GPA (thang 4 = 0.0, thang 10 = điểm thi) cho đến khi học lại đạt điểm mới
+      const point4 = 0.0;
+      gradedCredits += credits;
+      weightedPoints10 += (score10 !== null ? score10 : 0) * credits;
+      weightedPoints4 += point4 * credits;
       continue;
     }
 
@@ -146,7 +152,7 @@ function calculateStats(items) {
     passedCourses++;
 
     // 4. Môn tính GPA (môn điều kiện 'P' như GDTC, GDQP thì không tính GPA)
-    if (letter !== 'P' && score10 !== null && score10 >= 4.0) {
+    if (letter !== 'P' && score10 !== null) {
       const point4 = convertTo4Scale(score10, letter) || 0;
       gradedCredits += credits;
       weightedPoints10 += score10 * credits;

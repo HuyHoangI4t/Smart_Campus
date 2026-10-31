@@ -792,40 +792,13 @@ const LocationsModule = {
    * Nạp toàn bộ các cảnh báo SOS chưa xử lý và vẽ lên bản đồ
    */
   async loadActiveSosAlerts() {
-    if (!this.map || !window.L || typeof AdminAPI === 'undefined') return;
-    try {
-      const res = await AdminAPI.getSosAlerts();
-      if (!res || !res.success) return;
-      const alerts = res.alerts || [];
-
-      // Cập nhật số lượng SOS chưa xử lý lên badge
-      const unresolved = alerts.filter(a => a.status !== 'Đã xử lý' && a.status !== 'Đã giải quyết');
-      const badge = document.getElementById('mapSosActiveCount');
-      if (badge) badge.textContent = unresolved.length;
-
-      const panelSosBadge = document.getElementById('panelSosBadge');
-      if (panelSosBadge) {
-        panelSosBadge.textContent = unresolved.length;
-        if (unresolved.length > 0) {
-          panelSosBadge.classList.remove('hidden');
-        } else {
-          panelSosBadge.classList.add('hidden');
-        }
+    // Bản đồ Địa Điểm Khuôn Viên chỉ quản lý địa điểm & đường đi khuôn viên.
+    // Toàn bộ tín hiệu SOS được hiển thị độc quyền bên Bản Đồ Trực Ban Cứu Hộ SOS 24/7 (sos.js).
+    if (this.sosMarkers && this.sosMarkers.size > 0 && this.map) {
+      for (const marker of this.sosMarkers.values()) {
+        if (this.map.hasLayer(marker)) this.map.removeLayer(marker);
       }
-
-      const allIds = new Set(alerts.map(a => Number(a.id)));
-      for (const [id, marker] of this.sosMarkers.entries()) {
-        if (!allIds.has(id)) {
-          this.map.removeLayer(marker);
-          this.sosMarkers.delete(id);
-        }
-      }
-
-      alerts.forEach(alert => {
-        this.addSosAlert(alert, false);
-      });
-    } catch (e) {
-      console.error('Lỗi khi nạp cảnh báo SOS lên bản đồ:', e);
+      this.sosMarkers.clear();
     }
   },
 
@@ -860,6 +833,11 @@ const LocationsModule = {
    * Thêm 1 marker SOS lên bản đồ khuôn viên
    */
   addSosAlert(alert, shouldFocus = false) {
+    // Không vẽ marker SOS lên Bản đồ khuôn viên nữa theo yêu cầu:
+    // Tín hiệu SOS được hiển thị độc quyền bên Bản Đồ Trực Ban Cứu Hộ SOS 24/7 (sos.js).
+    return;
+  },
+  _unused_addSosAlert(alert, shouldFocus = false) {
     if (!this.map || !window.L || !alert) return;
     const id = Number(alert.id);
 

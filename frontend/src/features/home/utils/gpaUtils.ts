@@ -33,7 +33,7 @@ export const parseGpaSummary = (gradeItems: any[]): GpaSummary | null => {
       item.diem_hp !== null && item.diem_hp !== undefined && !isNaN(Number(item.diem_hp))
         ? Number(item.diem_hp)
         : (item.grade10 ? Number(item.grade10) : 0);
-    return letter !== "X" && letter !== "P" && score10 > 0;
+    return letter !== "X" && letter !== "P" && (score10 > 0 || letter === "F" || ["A", "B", "C", "D"].includes(letter));
   });
 
   const accumulated = gradeItems.filter((item: any) => {
