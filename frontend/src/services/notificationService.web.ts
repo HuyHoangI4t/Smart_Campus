@@ -1,4 +1,5 @@
 import { Alert } from 'react-native';
+import { showSosAlertModal } from '../components/SosAlertModal';
 
 export const NOTIFICATION_CHANNELS = {
   SCHEDULE: "schedule_reminders",
@@ -61,6 +62,6 @@ export function addNotificationResponseListener(callback: (screen: string) => vo
 
 export async function handleIncomingSosAlert(alert: any): Promise<boolean> {
   if (!alert) return false;
-  Alert.alert("🚨 CẢNH BÁO CỨU HỘ SOS", `Có sinh viên đang cần hỗ trợ tại ${alert.location || 'khuôn viên trường'}.`);
+  showSosAlertModal(alert);
   return true;
 }

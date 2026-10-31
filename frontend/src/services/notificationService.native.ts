@@ -1,6 +1,7 @@
 import { Platform, Alert, Linking } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants, { ExecutionEnvironment } from "expo-constants";
+import { showSosAlertModal } from "../components/SosAlertModal";
 
 export const NOTIFICATION_CHANNELS = {
   SCHEDULE: "schedule_reminders",
@@ -215,20 +216,20 @@ export async function handleIncomingSosAlert(alert: {
         NOTIFICATION_CHANNELS.SOS
       );
 
-      // 3. Hiển thị Popup cảnh báo trực tiếp trên màn hình
-      Alert.alert(
-        alertTitle,
-        `${alertBody}\n\nNội dung sự cố: ${alert.message || alert.incidentType || "Yêu cầu cứu trợ"}\n\n⚠️ Hãy kiểm tra hỗ trợ xung quanh hoặc liên hệ ngay Đội Bảo vệ (0329106783)!`,
-        [
-          { text: "Đã hiểu", style: "cancel" },
-          {
-            text: "Gọi Bảo vệ",
-            onPress: () => {
-              Linking.openURL("tel:0329106783").catch(() => {});
-            },
-          },
-        ]
-      );
+      // 3. Hiển thị Popup cảnh báo SOS Modal đồng bộ giao diện ứng dụng
+      showSosAlertModal({
+        id: alert.id,
+        mssv: alert.mssv,
+        ho_ten: alert.ho_ten,
+        so_dien_thoai: (alert as any).so_dien_thoai,
+        lop: (alert as any).lop,
+        location: alert.location,
+        latitude: alert.latitude ? Number(alert.latitude) : undefined,
+        longitude: alert.longitude ? Number(alert.longitude) : undefined,
+        message: alert.message,
+        incidentType: alert.incidentType,
+        distance,
+      });
 
       return true;
     }

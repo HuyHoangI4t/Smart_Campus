@@ -11,15 +11,15 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePathname, useSegments, useRouter } from 'expo-router';
-import { Feather, Ionicons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../../context/ThemeContext';
 
 const ORB_SIZE = 58;
-const DOCKED_TAB_WIDTH = 36; // Chiều rộng tab mép khi thu gọn (nằm hoàn toàn trong màn hình)
+const EDGE_MARGIN = 8; // Khoảng cách cách mép màn hình khi bóng hít vào cạnh
+const DOCKED_TAB_WIDTH = 36; // Chiều rộng tab mép khi bấm nút ẩn
 const DOCKED_TAB_HEIGHT = 50; // Chiều cao tab mép
-const FREE_MARGIN = 12; // Khoảng cách tới mép màn hình khi nổi tự do
 
 export function FloatingChatBot() {
   const router = useRouter();
@@ -30,7 +30,6 @@ export function FloatingChatBot() {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 
   // 1. Kiểm tra màn hình ẩn (Map, Settings, Chat)
-  // Nếu ở màn hình ẩn thì return null ngay để không bị bóng ma trong suốt
   const isHiddenRoute = useMemo(() => {
     const path = (pathname || '').toLowerCase();
     const segs = (segments || []).map((s) => (typeof s === 'string' ? s.toLowerCase() : ''));
@@ -41,7 +40,7 @@ export function FloatingChatBot() {
     return false;
   }, [pathname, segments]);
 
-  // Trạng thái thu gọn mép
+  // Trạng thái thu gọn mép khi chủ động bấm nút ẩn
   const [isDocked, setIsDocked] = useState(false);
   const [dockSide, setDockSide] = useState<'left' | 'right'>('right');
   const [showTooltip, setShowTooltip] = useState(false);
@@ -68,16 +67,16 @@ export function FloatingChatBot() {
     return () => pulseLoop.stop();
   }, [pulseAnim]);
 
-  // Hiệu ứng scale nhún lò xo
+  // Hiệu ứng scale nhún đàn hồi khi chạm / kéo
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  // Giới hạn vùng an toàn theo chiều dọc
-  const minY = insets.top + 35;
-  const maxY = screenHeight - insets.bottom - 110;
+  // Giới hạn vùng an toàn theo chiều dọc (tránh status bar và bottom nav)
+  const minY = insets.top + 30;
+  const maxY = screenHeight - insets.bottom - 105;
   const initialY = Math.max(minY, Math.min(maxY, screenHeight - insets.bottom - 170));
-  const initialX = screenWidth - ORB_SIZE - FREE_MARGIN;
+  const initialX = screenWidth - ORB_SIZE - EDGE_MARGIN;
 
-  // Tọa độ vị trí: Dùng pan.getLayout() để Android cập nhật trực tiếp left & top của native View
+  // Tọa độ vị trí của bóng (Dùng pan.getLayout() gán trực tiếp left & top trên Android)
   const pan = useRef(new Animated.ValueXY({ x: initialX, y: initialY })).current;
   const currentPos = useRef({ x: initialX, y: initialY });
   const dragStartPos = useRef({ x: initialX, y: initialY });
@@ -94,7 +93,7 @@ export function FloatingChatBot() {
     dockSideRef.current = dockSide;
   }, [dockSide]);
 
-  // Lắng nghe cập nhật tọa độ
+  // Lắng nghe cập nhật tọa độ liên tục
   useEffect(() => {
     const listenerId = pan.addListener((value) => {
       currentPos.current = value;
@@ -104,12 +103,12 @@ export function FloatingChatBot() {
     };
   }, [pan]);
 
-  // Kiểm tra an toàn màn hình khi xoay hướng
+  // Đảm bảo bóng không lọt màn hình khi xoay hướng
   useEffect(() => {
     const safeY = Math.max(minY, Math.min(maxY, currentPos.current.y));
     const safeX = isDockedRef.current
       ? (dockSideRef.current === 'right' ? screenWidth - DOCKED_TAB_WIDTH : 0)
-      : (dockSideRef.current === 'right' ? screenWidth - ORB_SIZE - FREE_MARGIN : FREE_MARGIN);
+      : (dockSideRef.current === 'right' ? screenWidth - ORB_SIZE - EDGE_MARGIN : EDGE_MARGIN);
 
     if (currentPos.current.x > screenWidth || currentPos.current.x < 0) {
       pan.setValue({ x: safeX, y: safeY });
@@ -123,8 +122,8 @@ export function FloatingChatBot() {
     router.push('/(main)/chat' as any);
   };
 
-  // 1. HIỆU ỨNG ẨN / THU GỌN VÀO MÉP MÀN HÌNH (Dock to Edge)
-  const handleDockToEdge = (sideArg?: 'left' | 'right', targetYArg?: number) => {
+  // 1. HIỆU ỨNG ẨN / THU GỌN VÀO MÉP KHI BẤM NÚT ẨN
+  const handleDockToEdge = (sideArg?: 'left' | 'right') => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setShowTooltip(false);
 
@@ -137,10 +136,8 @@ export function FloatingChatBot() {
     setIsDocked(true);
     isDockedRef.current = true;
 
-    // Tọa độ tab mép: Nằm gọn gàng sát mép tường màn hình (không để icon bị lọt ra ngoài)
     const targetX = isRight ? screenWidth - DOCKED_TAB_WIDTH : 0;
-    const targetY = targetYArg !== undefined ? targetYArg : currentPos.current.y;
-    const safeY = Math.max(minY, Math.min(maxY, targetY));
+    const safeY = Math.max(minY, Math.min(maxY, currentPos.current.y));
 
     Animated.parallel([
       Animated.spring(pan, {
@@ -158,11 +155,11 @@ export function FloatingChatBot() {
     ]).start();
   };
 
-  // 2. HIỆU ỨNG BUNG MỞ RA KHỎI MÉP (Undock Spring Pop)
+  // 2. HIỆU ỨNG BUNG RA TỪ TAB MÉP (Chạm vào tab mép để bung ra lại)
   const handleUndockFromEdge = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     const isRight = dockSideRef.current === 'right';
-    const targetX = isRight ? screenWidth - ORB_SIZE - FREE_MARGIN : FREE_MARGIN;
+    const targetX = isRight ? screenWidth - ORB_SIZE - EDGE_MARGIN : EDGE_MARGIN;
     const safeY = Math.max(minY, Math.min(maxY, currentPos.current.y));
 
     setIsDocked(false);
@@ -198,9 +195,10 @@ export function FloatingChatBot() {
     });
   };
 
-  // 3. CƠ CHẾ KÉO THẢ NATIVE MESSENGER (Không giật, chạm là bám tay)
+  // 3. CƠ CHẾ KÉO THẢ TỰ DO & TỰ ĐỘNG CHẠY VỀ CẠNH THEO CHIỀU NGANG Ở BẤT CỨ VỊ TRÍ NÀO
   const panResponder = useRef(
     PanResponder.create({
+      // Bắt ngay lập tức khi ngón tay vừa chạm vào bóng
       onStartShouldSetPanResponder: () => true,
       onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponder: () => true,
@@ -216,9 +214,9 @@ export function FloatingChatBot() {
           dragStartPos.current = { x: val.x, y: val.y };
         });
 
-        // Nhấc bóng to lên 1.12 bám tay ngay
+        // Nhấc bóng to lên 1.1 bám chặt ngón tay
         Animated.spring(scaleAnim, {
-          toValue: 1.12,
+          toValue: 1.1,
           friction: 5,
           tension: 120,
           useNativeDriver: false,
@@ -228,6 +226,7 @@ export function FloatingChatBot() {
       },
 
       onPanResponderMove: (_, gesture) => {
+        // Cho phép kéo tự do đến bất cứ đâu trên màn hình
         const currentItemWidth = isDockedRef.current ? DOCKED_TAB_WIDTH : ORB_SIZE;
         const minX = 0;
         const maxX = screenWidth - currentItemWidth;
@@ -243,7 +242,7 @@ export function FloatingChatBot() {
         const touchDuration = Date.now() - touchStartTime.current;
 
         // ─── TRƯỜNG HỢP 1: BẤM NHẸ (TAP) ───
-        if (moveDist < 8 && touchDuration < 320) {
+        if (moveDist < 7 && touchDuration < 300) {
           Animated.spring(scaleAnim, {
             toValue: isDockedRef.current ? 0.96 : 1,
             friction: 5,
@@ -263,46 +262,43 @@ export function FloatingChatBot() {
           return;
         }
 
-        // ─── TRƯỜNG HỢP 2: KÉO THẢ (DRAG CHUẨN MESSENGER) ───
+        // ─── TRƯỜNG HỢP 2: KÉO THẢ -> TỰ ĐỘNG CHẠY VỀ CẠNH THEO CHIỀU NGANG TẠI VỊ TRÍ Y ĐÓ ───
         const finalX = currentPos.current.x;
         const finalY = currentPos.current.y;
+        // Giữ nguyên độ cao Y bạn vừa thả (chỉ clamp an toàn)
         const safeY = Math.max(minY, Math.min(maxY, finalY));
 
+        // Nhận diện mép cần hít vào theo hướng vẩy tay (fling vx) hoặc vị trí X
         let isRight = finalX + ORB_SIZE / 2 >= screenWidth / 2;
-        if (gesture.vx > 0.35) isRight = true;
-        if (gesture.vx < -0.35) isRight = false;
+        if (gesture.vx > 0.3) isRight = true;
+        if (gesture.vx < -0.3) isRight = false;
 
         const side = isRight ? 'right' : 'left';
         setDockSide(side);
         dockSideRef.current = side;
 
-        // Vuốt cực mạnh hoặc thả sát mép (< 16px) -> Thu gọn vào mép
-        const flingToEdge = (isRight && gesture.vx > 0.95) || (!isRight && gesture.vx < -0.95);
-        const nearEdge = (isRight && finalX > screenWidth - ORB_SIZE - 16) || (!isRight && finalX < 16);
+        // Tọa độ hít vào cạnh ngang (cách lề EDGE_MARGIN = 8px)
+        const snapX = isRight ? screenWidth - ORB_SIZE - EDGE_MARGIN : EDGE_MARGIN;
 
-        if (flingToEdge || nearEdge) {
-          handleDockToEdge(side, safeY);
-        } else {
-          // Bay vút vào lề nổi tự do kèm độ nảy lò xo (Messenger Spring Bounce)
-          const snapX = isRight ? screenWidth - ORB_SIZE - FREE_MARGIN : FREE_MARGIN;
-          setIsDocked(false);
-          isDockedRef.current = false;
+        // Đảm bảo bóng luôn là quả bóng tròn hoàn chỉnh
+        setIsDocked(false);
+        isDockedRef.current = false;
 
-          Animated.parallel([
-            Animated.spring(pan, {
-              toValue: { x: snapX, y: safeY },
-              bounciness: 12,
-              speed: 14,
-              useNativeDriver: false,
-            }),
-            Animated.spring(scaleAnim, {
-              toValue: 1,
-              friction: 6,
-              tension: 80,
-              useNativeDriver: false,
-            }),
-          ]).start();
-        }
+        // CHẠY VÚT VỀ CẠNH THEO CHIỀU NGANG VÀ NẢY LÒ XO ĐÀN HỒI (MESSENGER BOUNCE)
+        Animated.parallel([
+          Animated.spring(pan, {
+            toValue: { x: snapX, y: safeY },
+            bounciness: 11,
+            speed: 15,
+            useNativeDriver: false,
+          }),
+          Animated.spring(scaleAnim, {
+            toValue: 1,
+            friction: 6,
+            tension: 80,
+            useNativeDriver: false,
+          }),
+        ]).start();
 
         setTimeout(() => {
           isDragging.current = false;
@@ -317,7 +313,7 @@ export function FloatingChatBot() {
         }).start();
 
         const isRight = currentPos.current.x + ORB_SIZE / 2 >= screenWidth / 2;
-        const snapX = isRight ? screenWidth - ORB_SIZE - FREE_MARGIN : FREE_MARGIN;
+        const snapX = isRight ? screenWidth - ORB_SIZE - EDGE_MARGIN : EDGE_MARGIN;
         Animated.spring(pan, {
           toValue: { x: snapX, y: Math.max(minY, Math.min(maxY, currentPos.current.y)) },
           bounciness: 10,
@@ -330,7 +326,7 @@ export function FloatingChatBot() {
     })
   ).current;
 
-  // Nếu là route ẩn thì không render
+  // Nếu là route ẩn (Bản đồ, Cài đặt, Chat) thì không render để tránh bóng ma
   if (isHiddenRoute) {
     return null;
   }
@@ -338,7 +334,7 @@ export function FloatingChatBot() {
   const isRight = dockSide === 'right';
 
   return (
-    // DÙNG pan.getLayout() ĐỂ CẬP NHẬT TRỰC TIẾP TỌA ĐỘ NATIVE VIEW TRÊN ANDROID
+    // DÙNG pan.getLayout() ĐỂ CẬP NHẬT TRỰC TIẾP LEFT & TOP TRÊN ANDROID NATIVE
     <Animated.View
       style={[
         isDocked
@@ -372,7 +368,7 @@ export function FloatingChatBot() {
         </TouchableOpacity>
       )}
 
-      {/* ─── NÚT THU GỌN / ẨN VÀO MÉP (Chỉ hiện khi mở tự do) ─── */}
+      {/* ─── NÚT THU GỌN / ẨN VÀO MÉP (Bấm vào để chủ động thu gọn) ─── */}
       {!isDocked && (
         <TouchableOpacity
           activeOpacity={0.75}
@@ -394,11 +390,10 @@ export function FloatingChatBot() {
         </TouchableOpacity>
       )}
 
-      {/* ─── THÂN BÓNG CHAT CHÍNH (XỬ LÝ RIÊNG BIỆT: KHI DOCKED VÀ KHI TỰ DO) ─── */}
+      {/* ─── THÂN QUẢ BÓNG CHAT CHÍNH (GẮN TRỰC TIẾP PANRESPONDER ĐỂ KÉO SIÊU MƯỢT) ─── */}
       <View {...panResponder.panHandlers}>
         {isDocked ? (
-          /* ═══ 1. TRẠNG THÁI THU GỌN VÀO MÉP (TAB MÉP) ═══ */
-          /* Nằm gọn 100% trong màn hình, ICON LUÔN HIỂN THỊ RÕ RÀNG */
+          /* ═══ TRẠNG THÁI ẨN / THU GỌN VÀO MÉP ═══ */
           <LinearGradient
             colors={isDark ? ['#312E81', '#1D4ED8'] : ['#4338CA', '#2563EB']}
             start={{ x: 0, y: 0 }}
@@ -408,13 +403,11 @@ export function FloatingChatBot() {
               isRight ? styles.dockedTabRight : styles.dockedTabLeft,
             ]}
           >
-            {/* Logo trường nhỏ xinh xắn trên tab mép */}
             <Image
               source={require('../../../../assets/images/favicon.png')}
               style={styles.dockedLogo}
               resizeMode="contain"
             />
-            {/* Mũi tên chỉ thị hướng bung ra */}
             <Feather
               name={isRight ? 'chevron-left' : 'chevron-right'}
               size={12}
@@ -423,8 +416,7 @@ export function FloatingChatBot() {
             />
           </LinearGradient>
         ) : (
-          /* ═══ 2. TRẠNG THÁI MỞ TỰ DO (QUẢ BÓNG TRÒN) ═══ */
-          /* Hiển thị đầy đủ Logo trường TTN, viền bóng kính & chấm online */
+          /* ═══ TRẠNG THÁI BÓNG TRÒN TỰ DO (CHẠY VỀ CẠNH THEO CHIỀU NGANG) ═══ */
           <View style={styles.orb}>
             <LinearGradient
               colors={isDark ? ['#4338CA', '#2563EB', '#0284C7'] : ['#4F46E5', '#3B82F6', '#06B6D4']}
@@ -439,7 +431,7 @@ export function FloatingChatBot() {
                 resizeMode="cover"
               />
 
-              {/* Lớp phủ sáng nhẹ tạo hiệu ứng bóng kính */}
+              {/* Lớp phủ sáng bóng kính */}
               <View style={styles.glassRim} />
             </LinearGradient>
 
@@ -460,7 +452,7 @@ export function FloatingChatBot() {
 }
 
 const styles = StyleSheet.create({
-  // Container khi ở chế độ mở tự do
+  // Container khi ở chế độ bóng tròn tự do
   freeWrapper: {
     position: 'absolute',
     width: ORB_SIZE,
@@ -485,7 +477,7 @@ const styles = StyleSheet.create({
   dockedWrapperLeft: {
     alignItems: 'flex-start',
   },
-  // Tab mép khi thu gọn (Docked Tab): Bo cong ôm sát mép tường, ICON NẰM Ở CHÍNH GIỮA
+  // Tab mép khi thu gọn
   dockedTab: {
     width: DOCKED_TAB_WIDTH,
     height: DOCKED_TAB_HEIGHT,

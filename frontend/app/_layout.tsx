@@ -5,6 +5,7 @@ import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
 import { initNotifications, addNotificationResponseListener, handleIncomingSosAlert } from '../src/services/notificationService';
 import { initSocket, onNewSos, isSelfSentSos } from '../src/services/socketService';
 import { syncAllWidgets } from '../src/services/widgetService';
+import { SosAlertModal } from '../src/components/SosAlertModal';
 import '../src/widgets/registerWidgets';
 
 function RootStack() {
@@ -85,6 +86,7 @@ export default function RootLayout() {
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>
       <ThemeProvider>
         <RootStack />
+        <SosAlertModal />
       </ThemeProvider>
     </SafeAreaProvider>
   );
