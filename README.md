@@ -301,9 +301,9 @@ Dự án được nghiên cứu và phát triển phục vụ học phần **L�
 | STT | Họ và tên | Mã sinh viên | Vai trò | Email liên hệ |
 |:---:|:---|:---:|:---|:---|
 | 1 | **Nguyễn Huy Hoàng** | **23103023** | **Trưởng nhóm (Team Leader)** | [huyhoangpro187@gmail.com](mailto:huyhoangpro187@gmail.com) |
-| 2 | **Lê Xuân Hoàng** | **23103022** | Thành viên | [lxhoang@ttn.edu.vn](mailto:lxhoang@ttn.edu.vn) |
-| 3 | **Nguyễn Thị Mỹ Duyên** | **23103095** | Thành viên | [ntmduyen@ttn.edu.vn](mailto:ntmduyen@ttn.edu.vn) |
-| 4 | **Mai Đàm Thế Kiên** | **23103035** | Thành viên | [mdtkien@ttn.edu.vn](mailto:mdtkien@ttn.edu.vn) |
+| 2 | **Lê Xuân Hoàng** | **23103022** | Thành viên |  |
+| 3 | **Nguyễn Thị Mỹ Duyên** | **23103095** | Thành viên | |
+| 4 | **Mai Đàm Thế Kiên** | **23103035** | Thành viên |  |
 
 ---
 
