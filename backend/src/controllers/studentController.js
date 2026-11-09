@@ -310,7 +310,7 @@ exports.getSchedule = async (req, res) => {
     let customItems = [];
     try {
       const [customRows] = await db.query(
-        'SELECT id, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich, week_range, ngay_hoc FROM student_schedules WHERE (mssv = ? OR mssv = "guest") AND is_custom = 1 ORDER BY id ASC',
+        'SELECT id, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich, week_range, ngay_hoc FROM student_schedules WHERE (mssv = ? OR mssv = \'guest\') AND is_custom = 1 ORDER BY id ASC',
         [mssv]
       );
       customItems = customRows || [];
@@ -422,7 +422,7 @@ exports.getSchedule = async (req, res) => {
   if (mssv && !isGuestOrEmail(mssv)) {
     try {
       const [allRows] = await db.query(
-        'SELECT id, mssv, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich, week_range, ngay_hoc, created_at FROM student_schedules WHERE (mssv = ? OR (mssv = "guest" AND is_custom = 1)) ORDER BY id ASC',
+        'SELECT id, mssv, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich, week_range, ngay_hoc, created_at FROM student_schedules WHERE (mssv = ? OR (mssv = \'guest\' AND is_custom = 1)) ORDER BY id ASC',
         [mssv]
       );
       if (allRows && allRows.length > 0) {
@@ -473,7 +473,7 @@ exports.getSchedule = async (req, res) => {
   if (mssv && !isGuestOrEmail(mssv)) {
     try {
       const [newRows] = await db.query(
-        'SELECT id, mssv, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich, week_range, ngay_hoc FROM student_schedules WHERE (mssv = ? OR (mssv = "guest" AND is_custom = 1)) ORDER BY id ASC',
+        'SELECT id, mssv, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich, week_range, ngay_hoc FROM student_schedules WHERE (mssv = ? OR (mssv = \'guest\' AND is_custom = 1)) ORDER BY id ASC',
         [mssv]
       );
       if (newRows && newRows.length > 0) {
@@ -517,7 +517,7 @@ exports.getSchedule = async (req, res) => {
   if (mssv) {
     try {
       const [cRows] = await db.query(
-        'SELECT id, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich, week_range, ngay_hoc FROM student_schedules WHERE (mssv = ? OR mssv = "guest") AND is_custom = 1 ORDER BY id ASC',
+        'SELECT id, thu, ten_hp, tiet, phong, giang_vien, hoc_ky, is_custom, ghi_chu, loai_lich, week_range, ngay_hoc FROM student_schedules WHERE (mssv = ? OR mssv = \'guest\') AND is_custom = 1 ORDER BY id ASC',
         [mssv]
       );
       fallbackCustom = cRows || [];
@@ -1181,10 +1181,10 @@ exports.deleteCustomSchedule = async (req, res) => {
 
     if (mssv && mssv !== 'guest') {
       // Cho phép xóa nếu thuộc tài khoản MSSV này hoặc là lịch demo/khách
-      query += ' AND (mssv = ? OR mssv = "guest")';
+      query += ' AND (mssv = ? OR mssv = \'guest\')';
       params.push(mssv);
     } else {
-      query += ' AND mssv = "guest"';
+      query += ' AND mssv = \'guest\'';
     }
 
     const [result] = await db.query(query, params);
