@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { LogBox } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
@@ -7,6 +8,11 @@ import { initSocket, onNewSos, isSelfSentSos } from '../src/services/socketServi
 import { syncAllWidgets } from '../src/services/widgetService';
 import { SosAlertModal } from '../src/components/SosAlertModal';
 import '../src/widgets/registerWidgets';
+
+LogBox.ignoreLogs([
+  '`expo-notifications` functionality is not fully supported in Expo Go',
+  'expo-notifications: Android Push notifications',
+]);
 
 function RootStack() {
   const { colors } = useTheme();

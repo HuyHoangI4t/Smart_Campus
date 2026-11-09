@@ -19,7 +19,7 @@ const TABLE_DEFINITIONS = {
       password VARCHAR(255) NOT NULL,
       role VARCHAR(50) DEFAULT 'sinh_vien',
       so_dien_thoai VARCHAR(50) DEFAULT '',
-      lop VARCHAR(100) DEFAULT 'Kỹ thuật phần mềm K23',
+      lop VARCHAR(100) DEFAULT 'K23',
       khoa VARCHAR(100) DEFAULT 'Công nghệ Thông tin',
       avatar LONGTEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -78,7 +78,9 @@ const TABLE_DEFINITIONS = {
       week_range VARCHAR(100) DEFAULT NULL,
       ngay_hoc VARCHAR(20) DEFAULT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      INDEX idx_sched_mssv (mssv)
+      CONSTRAINT fk_sched_users FOREIGN KEY (mssv) REFERENCES users(mssv) ON UPDATE CASCADE ON DELETE CASCADE,
+      INDEX idx_sched_mssv (mssv),
+      INDEX idx_sched_hocky (hoc_ky)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `,
 
@@ -104,7 +106,9 @@ const TABLE_DEFINITIONS = {
       hoc_phi VARCHAR(100) DEFAULT NULL,
       hoc_ky VARCHAR(50) DEFAULT 'HK1 (2025-2026)',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      INDEX idx_grades_mssv (mssv)
+      CONSTRAINT fk_grades_users FOREIGN KEY (mssv) REFERENCES users(mssv) ON UPDATE CASCADE ON DELETE CASCADE,
+      INDEX idx_grades_mssv (mssv),
+      INDEX idx_grades_hocky (hoc_ky)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `,
 
@@ -144,7 +148,9 @@ const TABLE_DEFINITIONS = {
       rating INT DEFAULT 5,
       status VARCHAR(50) DEFAULT 'Đã giải quyết',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      INDEX idx_feedback_mssv (mssv)
+      CONSTRAINT fk_feedback_users FOREIGN KEY (mssv) REFERENCES users(mssv) ON UPDATE CASCADE ON DELETE CASCADE,
+      INDEX idx_feedback_mssv (mssv),
+      INDEX idx_feedback_status (status)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `,
 
@@ -160,7 +166,9 @@ const TABLE_DEFINITIONS = {
       incident_type VARCHAR(100) DEFAULT 'Khẩn cấp',
       status VARCHAR(50) DEFAULT 'Đã tiếp nhận',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      INDEX idx_sos_mssv (mssv)
+      INDEX idx_sos_mssv (mssv),
+      INDEX idx_sos_status (status),
+      INDEX idx_sos_created_at (created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `,
 
@@ -173,7 +181,9 @@ const TABLE_DEFINITIONS = {
       type VARCHAR(50) DEFAULT 'info',
       sender VARCHAR(100) DEFAULT 'Phòng Đào Tạo',
       date VARCHAR(50),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_notif_type (type),
+      INDEX idx_notif_created_at (created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `,
 
@@ -187,6 +197,7 @@ const TABLE_DEFINITIONS = {
       token VARCHAR(255) NOT NULL,
       expires_at DATETIME NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT fk_pwd_users FOREIGN KEY (mssv) REFERENCES users(mssv) ON UPDATE CASCADE ON DELETE CASCADE,
       INDEX idx_pwd_mssv (mssv)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `,
@@ -214,7 +225,8 @@ const TABLE_DEFINITIONS = {
       mssv VARCHAR(50) DEFAULT 'guest',
       ip_address VARCHAR(50) DEFAULT '',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      INDEX idx_act_mssv (mssv)
+      INDEX idx_act_mssv (mssv),
+      INDEX idx_act_created_at (created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `
 };
@@ -242,6 +254,22 @@ async function safeAddIndex(connection, table, col, indexName) {
 }
 
 /**
+ * Thêm Khóa Ngoại một cách an toàn (bỏ qua nếu đã tồn tại)
+ */
+async function safeAddForeignKey(connection, table, fkName, fkCol, refTable, refCol, onDelete = 'CASCADE') {
+  try {
+    await connection.query(`
+      ALTER TABLE ${table} 
+      ADD CONSTRAINT ${fkName} 
+      FOREIGN KEY (${fkCol}) REFERENCES ${refTable}(${refCol}) 
+      ON UPDATE CASCADE ON DELETE ${onDelete}
+    `);
+  } catch {
+    // Đã tồn tại ràng buộc, bỏ qua
+  }
+}
+
+/**
  * Hàm khởi tạo tất cả các bảng và đồng bộ cột di trú tối thiểu
  * @param {import('mysql2/promise').Connection|import('mysql2/promise').Pool} connection
  */
@@ -258,6 +286,9 @@ async function createAllTables(connection) {
   await safeAddColumn(connection, 'map_locations', 'y', 'INT NULL DEFAULT 50');
   await safeAddColumn(connection, 'map_locations', 'type', "VARCHAR(50) DEFAULT 'academic'");
   await safeAddColumn(connection, 'map_locations', 'color', 'VARCHAR(50) NULL DEFAULT "#6366F1"');
+  await safeAddColumn(connection, 'student_schedules', 'ma_hp', 'VARCHAR(50) DEFAULT ""');
+  await safeAddColumn(connection, 'student_grades', 'ma_hp', 'VARCHAR(50) DEFAULT ""');
+
   await safeAddColumn(connection, 'student_schedules', 'is_custom', 'TINYINT(1) DEFAULT 0');
   await safeAddColumn(connection, 'student_schedules', 'ghi_chu', 'VARCHAR(255) DEFAULT ""');
   await safeAddColumn(connection, 'student_schedules', 'loai_lich', 'VARCHAR(50) DEFAULT "chinh_khoa"');
@@ -272,16 +303,32 @@ async function createAllTables(connection) {
   await safeAddColumn(connection, 'sos_alerts', 'longitude', 'DECIMAL(11, 8) NULL');
   await safeAddColumn(connection, 'sos_alerts', 'incident_type', "VARCHAR(100) DEFAULT 'Khẩn cấp'");
 
-  // Chỉ tạo các index thiết yếu nhất
+  // Chỉ tạo các index thiết yếu nhất để tăng tốc READ mà không làm chậm WRITE
   await safeAddIndex(connection, 'users', 'email', 'idx_users_email');
+  await safeAddIndex(connection, 'users', 'role', 'idx_users_role');
+  await safeAddIndex(connection, 'map_locations', 'category', 'idx_map_category');
   await safeAddIndex(connection, 'student_schedules', 'mssv', 'idx_sched_mssv');
+  await safeAddIndex(connection, 'student_schedules', 'hoc_ky', 'idx_sched_hocky');
   await safeAddIndex(connection, 'student_grades', 'mssv', 'idx_grades_mssv');
+  await safeAddIndex(connection, 'student_grades', 'hoc_ky', 'idx_grades_hocky');
   await safeAddIndex(connection, 'news_cache', 'type', 'idx_news_type');
   await safeAddIndex(connection, 'feedback', 'mssv', 'idx_feedback_mssv');
+  await safeAddIndex(connection, 'feedback', 'status', 'idx_feedback_status');
   await safeAddIndex(connection, 'sos_alerts', 'mssv', 'idx_sos_mssv');
+  await safeAddIndex(connection, 'sos_alerts', 'status', 'idx_sos_status');
+  await safeAddIndex(connection, 'sos_alerts', 'created_at', 'idx_sos_created_at');
+  await safeAddIndex(connection, 'notifications', 'type', 'idx_notif_type');
+  await safeAddIndex(connection, 'notifications', 'created_at', 'idx_notif_created_at');
   await safeAddIndex(connection, 'password_resets', 'mssv', 'idx_pwd_mssv');
   await safeAddIndex(connection, 'registration_otps', 'mssv', 'idx_reg_mssv');
   await safeAddIndex(connection, 'activity_logs', 'mssv', 'idx_act_mssv');
+  await safeAddIndex(connection, 'activity_logs', 'created_at', 'idx_act_created_at');
+
+  // Ràng buộc Khóa Ngoại (Foreign Keys) đảm bảo toàn vẹn dữ liệu
+  await safeAddForeignKey(connection, 'student_schedules', 'fk_sched_users', 'mssv', 'users', 'mssv', 'CASCADE');
+  await safeAddForeignKey(connection, 'student_grades', 'fk_grades_users', 'mssv', 'users', 'mssv', 'CASCADE');
+  await safeAddForeignKey(connection, 'feedback', 'fk_feedback_users', 'mssv', 'users', 'mssv', 'CASCADE');
+  await safeAddForeignKey(connection, 'password_resets', 'fk_pwd_users', 'mssv', 'users', 'mssv', 'CASCADE');
 }
 
 module.exports = {
@@ -289,4 +336,5 @@ module.exports = {
   createAllTables,
   safeAddColumn,
   safeAddIndex,
+  safeAddForeignKey,
 };

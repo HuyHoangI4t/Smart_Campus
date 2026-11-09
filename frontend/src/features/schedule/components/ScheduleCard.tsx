@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet, Linking } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { AppColors } from "../../../constants/appColors";
@@ -281,6 +281,37 @@ export const ScheduleCard = React.memo(function ScheduleCard({
     onDelete?.(item);
   };
 
+  const isOnline = Boolean(
+    item.direction?.isOnline ||
+    (item.room || "").toUpperCase().includes("ONLINE") ||
+    (item.room || "").toUpperCase().includes("TRỰC TUYẾN") ||
+    (item.direction?.buildingCode === "Online")
+  );
+
+  const combinedInfo = `${item.direction?.meetingInfo || ""} ${item.note || ""} ${item.room || ""}`.trim();
+  const meetCodeMatch = combinedInfo.match(/([a-z]{3}-[a-z]{4}-[a-z]{3})/i);
+  let onlineUrl = item.direction?.meetingUrl;
+  if (!onlineUrl) {
+    if (meetCodeMatch) {
+      onlineUrl = `https://meet.google.com/${meetCodeMatch[1].toLowerCase()}`;
+    } else {
+      const urlMatch = combinedInfo.match(/https?:\/\/[^\s]+/i);
+      if (urlMatch) onlineUrl = urlMatch[0];
+    }
+  }
+
+  const handleOpenLink = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    if (onlineUrl) {
+      Linking.openURL(onlineUrl).catch((err) => {
+        console.warn("Lỗi mở link phòng học:", err);
+        onSelectDirection(item);
+      });
+    } else {
+      onSelectDirection(item);
+    }
+  };
+
   return (
     <View
       style={[
@@ -405,9 +436,37 @@ export const ScheduleCard = React.memo(function ScheduleCard({
 
       {/* ── GHI CHÚ NẾU CÓ ── */}
       {item.note ? (
-        <View style={[styles.noteBox, { backgroundColor: isDark ? "#0F172A" : colors.muted, borderColor: colors.border }]}>
-          <Feather name="info" size={12} color={colors.textMuted} />
-          <Text style={[styles.noteText, { color: colors.textSecondary }]} numberOfLines={2}>
+        <View
+          style={[
+            styles.noteBox,
+            {
+              backgroundColor: isOnline
+                ? isDark
+                  ? "rgba(37, 99, 235, 0.15)"
+                  : "#EFF6FF"
+                : isDark
+                ? "#0F172A"
+                : colors.muted,
+              borderColor: isOnline
+                ? isDark
+                  ? "rgba(59, 130, 246, 0.4)"
+                  : "#BFDBFE"
+                : colors.border,
+            },
+          ]}
+        >
+          <Feather
+            name={isOnline ? "video" : "info"}
+            size={12}
+            color={isOnline ? (isDark ? "#60A5FA" : "#2563EB") : colors.textMuted}
+          />
+          <Text
+            style={[
+              styles.noteText,
+              { color: isOnline ? (isDark ? "#93C5FD" : "#1D4ED8") : colors.textSecondary, fontWeight: isOnline ? "600" : "400" },
+            ]}
+            numberOfLines={2}
+          >
             {item.note}
           </Text>
         </View>
@@ -420,17 +479,54 @@ export const ScheduleCard = React.memo(function ScheduleCard({
             onPress={handleDirection}
             style={({ pressed }) => [
               styles.roomTouchable,
+              isOnline && {
+                backgroundColor: isDark ? "rgba(37, 99, 235, 0.15)" : "#EFF6FF",
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: isDark ? "rgba(59, 130, 246, 0.3)" : "#DBEAFE",
+              },
               pressed && { opacity: 0.7 },
             ]}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel={`Vị trí phòng ${item.room}`}
+            accessibilityLabel={isOnline ? `Thông tin học trực tuyến ${item.room}` : `Vị trí phòng ${item.room}`}
           >
-            <View style={[styles.roomIconCircle, { backgroundColor: `${colors.primary}1A` }]}>
-              <Feather name="map-pin" size={13} color={colors.primary} />
+            <View
+              style={[
+                styles.roomIconCircle,
+                {
+                  backgroundColor: isOnline
+                    ? isDark
+                      ? "rgba(59, 130, 246, 0.3)"
+                      : "#DBEAFE"
+                    : `${colors.primary}1A`,
+                },
+              ]}
+            >
+              <Feather
+                name={isOnline ? "video" : "map-pin"}
+                size={13}
+                color={isOnline ? "#2563EB" : colors.primary}
+              />
             </View>
-            <Text style={[styles.roomText, { color: colors.text }]}>{item.room}</Text>
-            <Feather name="info" size={12} color={colors.primaryLight} />
+            <Text
+              style={[
+                styles.roomText,
+                {
+                  color: isOnline ? (isDark ? "#60A5FA" : "#1D4ED8") : colors.text,
+                  fontWeight: isOnline ? "700" : "600",
+                },
+              ]}
+            >
+              {item.room}
+            </Text>
+            <Feather
+              name={isOnline ? "external-link" : "info"}
+              size={12}
+              color={isOnline ? "#2563EB" : colors.primaryLight}
+            />
           </Pressable>
 
           <View style={styles.lecturerRow}>
@@ -477,23 +573,50 @@ export const ScheduleCard = React.memo(function ScheduleCard({
             </>
           )}
 
-          <Pressable
-            onPress={handleDirection}
-            style={({ pressed }) => [
-              styles.directionCapsuleBtn,
-              {
-                backgroundColor: isDark ? "#334155" : `${colors.primary}12`,
-                borderColor: isDark ? colors.cardBorder : `${colors.primary}2E`,
-              },
-              pressed && styles.buttonPressed,
-            ]}
-            hitSlop={6}
-            accessibilityRole="button"
-            accessibilityLabel={`Chỉ đường tới phòng ${item.room}`}
-          >
-            <Feather name="navigation" size={13} color={colors.primary} />
-            <Text style={[styles.directionCapsuleText, { color: colors.primary }]}>Chỉ đường</Text>
-          </Pressable>
+          {isOnline ? (
+            <Pressable
+              onPress={handleOpenLink}
+              style={({ pressed }) => [
+                styles.directionCapsuleBtn,
+                {
+                  backgroundColor: isDark ? "rgba(37, 99, 235, 0.25)" : "#EFF6FF",
+                  borderColor: isDark ? "#2563EB" : "#93C5FD",
+                },
+                pressed && styles.buttonPressed,
+              ]}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel="Mở link phòng học trực tuyến"
+            >
+              <Feather name="external-link" size={13} color="#2563EB" />
+              <Text
+                style={[
+                  styles.directionCapsuleText,
+                  { color: isDark ? "#60A5FA" : "#1D4ED8", fontWeight: "700" },
+                ]}
+              >
+                Mở link
+              </Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={handleDirection}
+              style={({ pressed }) => [
+                styles.directionCapsuleBtn,
+                {
+                  backgroundColor: isDark ? "#334155" : `${colors.primary}12`,
+                  borderColor: isDark ? colors.cardBorder : `${colors.primary}2E`,
+                },
+                pressed && styles.buttonPressed,
+              ]}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel={`Chỉ đường tới phòng ${item.room}`}
+            >
+              <Feather name="navigation" size={13} color={colors.primary} />
+              <Text style={[styles.directionCapsuleText, { color: colors.primary }]}>Chỉ đường</Text>
+            </Pressable>
+          )}
         </View>
       </View>
     </View>

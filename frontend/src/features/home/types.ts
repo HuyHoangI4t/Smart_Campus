@@ -12,11 +12,17 @@ export interface NextClassInfo {
   subject: string;
   room: string;
   time: string;
+  timeDetail?: string;
   lecturer?: string;
   dayText: string;
+  date?: string;
   status: 'IN_PROGRESS' | 'UPCOMING_TODAY' | 'NEXT_DAY';
   statusLabel: string;
   statusBadgeColor: string;
+  isOnline?: boolean;
+  meetingUrl?: string;
+  meetingCode?: string;
+  note?: string;
 }
 
 export interface GpaSummary {

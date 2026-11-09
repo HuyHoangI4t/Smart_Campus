@@ -239,11 +239,22 @@ export default function HomeScreen() {
         }
       }
 
-      if (rawScheduleList.length > 0) {
-        const computed = computeNextClass(rawScheduleList);
-        if (computed) {
-          setNextClass(computed);
+      // Nếu tuần hiện tại không còn môn học nào nhưng có tuần tới trong availableWeeks, lấy lịch tuần tới
+      if (rawScheduleList.length === 0 && Array.isArray(scheduleRes.availableWeeks)) {
+        const curIdx = scheduleRes.currentWeekIndex ?? 0;
+        const nextWeek = scheduleRes.availableWeeks.find((w: any) => w.index > curIdx && Array.isArray(w.schedules) && w.schedules.length > 0);
+        if (nextWeek && Array.isArray(nextWeek.schedules)) {
+          rawScheduleList = nextWeek.schedules;
         }
+      }
+
+      let targetNextClass: NextClassInfo | null = null;
+      if (rawScheduleList.length > 0) {
+        targetNextClass = computeNextClass(rawScheduleList);
+      }
+
+      if (targetNextClass) {
+        setNextClass(targetNextClass);
       } else if (scheduleRes.nextClass) {
         const rawT = scheduleRes.nextClass.time || "";
         const periodStr = rawT.startsWith("Tiết") ? rawT : (rawT ? `Tiết ${rawT}` : "Tiết 1-4");
@@ -261,8 +272,21 @@ export default function HomeScreen() {
               : scheduleRes.nextClass.status === "UPCOMING_TODAY"
                 ? "#3B82F6"
                 : "#A855F7",
+          isOnline: Boolean(
+            scheduleRes.nextClass.isOnline ||
+            scheduleRes.nextClass.direction?.isOnline ||
+            (scheduleRes.nextClass.room || "").toUpperCase().includes("ONLINE")
+          ),
+          meetingUrl: scheduleRes.nextClass.direction?.meetingUrl,
+          meetingCode: scheduleRes.nextClass.direction?.meetingCode,
+          note: scheduleRes.nextClass.note,
         });
+      } else {
+        // Nếu không có môn học nào hoặc lịch đã bị xóa, dọn sạch trạng thái
+        setNextClass(null);
       }
+    } else {
+      setNextClass(null);
     }
 
     // 3. Thông báo & Tin tức
@@ -357,7 +381,7 @@ export default function HomeScreen() {
       // BƯỚC 2: Đồng bộ song song cả 5 API từ server (bao gồm Profile chính thức)
       const [dashRes, scheduleRes, newsRes, gradesRes, profileRes] = await Promise.all([
         apiGetDashboard(isRealAccount ? mssv : undefined, true),
-        apiGetSchedule(isRealAccount ? mssv : undefined),
+        apiGetSchedule(isRealAccount ? mssv : undefined, true),
         apiGetNews(),
         apiGetGrades(isRealAccount ? mssv : undefined, true),
         isRealAccount && mssv ? apiGetProfile(mssv, true) : Promise.resolve(null),
@@ -690,7 +714,9 @@ export default function HomeScreen() {
             {isLoggedIn && (
               <HomeNextClassCard
                 nextClass={nextClass}
-                onPress={handleOpenMapDirections}
+                onPress={() => router.push("/(main)/schedule")}
+                onDirection={handleOpenMapDirections}
+                onViewAll={() => router.push("/(main)/schedule")}
               />
             )}
 

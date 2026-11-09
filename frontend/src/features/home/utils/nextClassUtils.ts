@@ -2,24 +2,33 @@ import { NextClassInfo } from "../types";
 
 export function getPeriodMinutes(startPeriod: number, endPeriod: number) {
   const periodTimes: Record<number, { start: number; end: number }> = {
-    1: { start: 7 * 60, end: 7 * 60 + 50 },
-    2: { start: 7 * 60 + 50, end: 8 * 60 + 40 },
-    3: { start: 8 * 60 + 50, end: 9 * 60 + 40 },
-    4: { start: 9 * 60 + 50, end: 10 * 60 + 40 },
-    5: { start: 10 * 60 + 40, end: 11 * 60 + 30 },
-    6: { start: 13 * 60, end: 13 * 60 + 50 },
-    7: { start: 13 * 60 + 50, end: 14 * 60 + 40 },
-    8: { start: 14 * 60 + 50, end: 15 * 60 + 40 },
-    9: { start: 15 * 60 + 50, end: 16 * 60 + 40 },
+    1: { start: 6 * 60 + 45, end: 7 * 60 + 35 },
+    2: { start: 7 * 60 + 40, end: 8 * 60 + 30 },
+    3: { start: 8 * 60 + 45, end: 9 * 60 + 35 },
+    4: { start: 9 * 60 + 40, end: 10 * 60 + 30 },
+    5: { start: 10 * 60 + 35, end: 11 * 60 + 25 },
+    6: { start: 11 * 60 + 30, end: 12 * 60 + 20 },
+    7: { start: 13 * 60 + 45, end: 14 * 60 + 35 },
+    8: { start: 14 * 60 + 40, end: 15 * 60 + 30 },
+    9: { start: 15 * 60 + 45, end: 16 * 60 + 35 },
     10: { start: 16 * 60 + 40, end: 17 * 60 + 30 },
     11: { start: 17 * 60 + 45, end: 18 * 60 + 35 },
-    12: { start: 18 * 60 + 35, end: 19 * 60 + 25 },
+    12: { start: 18 * 60 + 40, end: 19 * 60 + 30 },
     13: { start: 19 * 60 + 35, end: 20 * 60 + 25 },
   };
 
-  const start = periodTimes[startPeriod]?.start || 7 * 60;
+  const start = periodTimes[startPeriod]?.start || 6 * 60 + 45;
   const end = periodTimes[endPeriod]?.end || (start + 90);
   return { startMinutes: start, endMinutes: end };
+}
+
+export function formatTimeRangeString(startMinutes: number, endMinutes: number): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const sH = Math.floor(startMinutes / 60);
+  const sM = startMinutes % 60;
+  const eH = Math.floor(endMinutes / 60);
+  const eM = endMinutes % 60;
+  return `${pad(sH)}:${pad(sM)} – ${pad(eH)}:${pad(eM)}`;
 }
 
 export function parseClassTimeRange(timeStr: string): { startMinutes: number; endMinutes: number } {
@@ -49,9 +58,9 @@ export function parseClassTimeRange(timeStr: string): { startMinutes: number; en
   }
 
   if ((timeStr || "").toLowerCase().includes("chiều") || (timeStr || "").toLowerCase().includes("tối")) {
-    return { startMinutes: 13 * 60, endMinutes: 17 * 60 };
+    return { startMinutes: 13 * 60 + 45, endMinutes: 17 * 60 + 30 };
   }
-  return { startMinutes: 7 * 60, endMinutes: 11 * 60 + 30 };
+  return { startMinutes: 6 * 60 + 45, endMinutes: 11 * 60 + 25 };
 }
 
 export function getDayNameFromNum(num: number): string {
@@ -65,6 +74,53 @@ export function getDayNameFromNum(num: number): string {
     case 7: return "Thứ Bảy";
     default: return "Thứ Hai";
   }
+}
+
+function buildNextClassInfo(
+  c: any,
+  dayText: string,
+  status: 'IN_PROGRESS' | 'UPCOMING_TODAY' | 'NEXT_DAY',
+  statusLabel: string,
+  statusBadgeColor: string
+): NextClassInfo {
+  const isOnline = Boolean(
+    c.isOnline ||
+    (c.room || "").toUpperCase().includes("ONLINE") ||
+    (c.room || "").toUpperCase().includes("TRỰC TUYẾN") ||
+    (c.direction?.buildingCode === "Online")
+  );
+
+  const combined = `${c.note || ""} ${c.ghi_chu || ""} ${c.room || ""}`.trim();
+  const meetMatch = combined.match(/([a-z]{3}-[a-z]{4}-[a-z]{3})/i);
+  const meetingCode = meetMatch ? meetMatch[1].toLowerCase() : undefined;
+  let meetingUrl = c.direction?.meetingUrl;
+  if (!meetingUrl) {
+    if (meetingCode) {
+      meetingUrl = `https://meet.google.com/${meetingCode}`;
+    } else {
+      const urlMatch = combined.match(/https?:\/\/[^\s]+/i);
+      if (urlMatch) meetingUrl = urlMatch[0];
+    }
+  }
+
+  const timeDetail = formatTimeRangeString(c.startMinutes, c.endMinutes);
+
+  return {
+    subject: c.subject,
+    room: c.room,
+    time: c.time,
+    timeDetail,
+    lecturer: c.lecturer,
+    dayText,
+    date: c.date,
+    status,
+    statusLabel,
+    statusBadgeColor,
+    isOnline,
+    meetingUrl,
+    meetingCode,
+    note: c.note || c.ghi_chu,
+  };
 }
 
 export function computeNextClass(rawSchedules: any[]): NextClassInfo | null {
@@ -121,9 +177,12 @@ export function computeNextClass(rawSchedules: any[]): NextClassInfo | null {
       period: periodText,
       dayNum,
       day: item.day || item.code || item.thu || `Thứ ${dayNum}`,
+      date: item.date || item.ngay_hoc || undefined,
       startMinutes: range.startMinutes,
       endMinutes: range.endMinutes,
       lecturer: item.lecturer || item.giang_vien || "",
+      note: item.note || item.ghi_chu || "",
+      direction: item.direction,
     };
   });
 
@@ -137,16 +196,13 @@ export function computeNextClass(rawSchedules: any[]): NextClassInfo | null {
     (c) => currentMinutes >= c.startMinutes && currentMinutes <= c.endMinutes
   );
   if (inProgressClass) {
-    return {
-      subject: inProgressClass.subject,
-      room: inProgressClass.room,
-      time: inProgressClass.time,
-      lecturer: inProgressClass.lecturer,
-      dayText: "Hôm nay",
-      status: "IN_PROGRESS",
-      statusLabel: "ĐANG TRONG GIỜ HỌC",
-      statusBadgeColor: "#10B981", // Xanh lá
-    };
+    return buildNextClassInfo(
+      inProgressClass,
+      "Hôm nay",
+      "IN_PROGRESS",
+      "ĐANG TRONG GIỜ HỌC",
+      "#10B981"
+    );
   }
 
   // 1B. Hôm nay còn môn chưa học (Lớp kế tiếp hôm nay)
@@ -154,16 +210,13 @@ export function computeNextClass(rawSchedules: any[]): NextClassInfo | null {
     (c) => currentMinutes < c.startMinutes
   );
   if (upcomingTodayClass) {
-    return {
-      subject: upcomingTodayClass.subject,
-      room: upcomingTodayClass.room,
-      time: upcomingTodayClass.time,
-      lecturer: upcomingTodayClass.lecturer,
-      dayText: "Hôm nay",
-      status: "UPCOMING_TODAY",
-      statusLabel: "LỚP HỌC KẾ TIẾP",
-      statusBadgeColor: "#3B82F6", // Xanh dương
-    };
+    return buildNextClassInfo(
+      upcomingTodayClass,
+      "Hôm nay",
+      "UPCOMING_TODAY",
+      "LỚP HỌC KẾ TIẾP",
+      "#3B82F6"
+    );
   }
 
   // 2. NẾU ĐÃ HẾT GIỜ HỌC HÔM NAY HOẶC HÔM NAY KHÔNG CÓ LỊCH:
@@ -175,16 +228,13 @@ export function computeNextClass(rawSchedules: any[]): NextClassInfo | null {
   if (tomorrowClasses.length > 0) {
     const firstTomorrowClass = tomorrowClasses[0];
     const tomorrowDayName = getDayNameFromNum(tomorrowNum);
-    return {
-      subject: firstTomorrowClass.subject,
-      room: firstTomorrowClass.room,
-      time: firstTomorrowClass.time,
-      lecturer: firstTomorrowClass.lecturer,
-      dayText: "Ngày mai",
-      status: "NEXT_DAY",
-      statusLabel: `NGÀY MAI (${tomorrowDayName.toUpperCase()})`,
-      statusBadgeColor: "#A855F7", // Tím
-    };
+    return buildNextClassInfo(
+      firstTomorrowClass,
+      "Ngày mai",
+      "NEXT_DAY",
+      `NGÀY MAI (${tomorrowDayName.toUpperCase()})`,
+      "#A855F7"
+    );
   }
 
   // 3. Nếu ngày mai không có tiết, tìm ngày tiếp theo gần nhất
@@ -198,19 +248,15 @@ export function computeNextClass(rawSchedules: any[]): NextClassInfo | null {
       const firstClassNextDay = nextDayClasses[0];
       const dayName = getDayNameFromNum(nextDayNum);
 
-      return {
-        subject: firstClassNextDay.subject,
-        room: firstClassNextDay.room,
-        time: firstClassNextDay.time,
-        lecturer: firstClassNextDay.lecturer,
-        dayText: dayName,
-        status: "NEXT_DAY",
-        statusLabel: `LỊCH HỌC ${dayName.toUpperCase()}`,
-        statusBadgeColor: "#8B5CF6", // Tím
-      };
+      return buildNextClassInfo(
+        firstClassNextDay,
+        dayName,
+        "NEXT_DAY",
+        `LỊCH HỌC ${dayName.toUpperCase()}`,
+        "#8B5CF6"
+      );
     }
   }
 
   return null;
 }
-

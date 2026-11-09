@@ -162,9 +162,9 @@ export async function syncPendingScheduleMutations(): Promise<number> {
             method: 'DELETE',
             headers,
           },
-          5000
+          8000
         );
-        if (res.ok) syncedCount++;
+        if (res.ok || res.status === 404) syncedCount++;
         else remaining.push(item);
       }
     } catch {
@@ -250,13 +250,49 @@ export async function apiDeleteCustomSchedule(id: string | number) {
   try {
     clearTtlCache('schedule_');
     const headers = await getAuthHeaders();
+    const cleanId = String(id);
+
+    // Dọn sạch lịch vừa xóa khỏi offline cache để màn hình Home và Schedule đồng bộ ngay tức thì
+    const cleanFromCache = async (cacheKey: string) => {
+      try {
+        const cached = await readLocalCache<any>(cacheKey);
+        if (cached && cached.data) {
+          const updatedSchedules = (cached.data.schedules || []).filter(
+            (s: any) => String(s.id) !== cleanId
+          );
+          const updatedAvailableWeeks = (cached.data.availableWeeks || []).map((w: any) => ({
+            ...w,
+            schedules: Array.isArray(w.schedules)
+              ? w.schedules.filter((s: any) => String(s.id) !== cleanId)
+              : [],
+          }));
+          let updatedNextClass = cached.data.nextClass;
+          if (updatedNextClass && (String(updatedNextClass.id) === cleanId || String(updatedNextClass.courseId) === cleanId)) {
+            updatedNextClass = null;
+          }
+          await saveLocalCache(cacheKey, {
+            ...cached.data,
+            schedules: updatedSchedules,
+            availableWeeks: updatedAvailableWeeks,
+            nextClass: updatedNextClass,
+          });
+        }
+      } catch {}
+    };
+
+    const targetMssv = headers['X-MSSV'] || headers['x-mssv'];
+    if (targetMssv) {
+      await cleanFromCache(`@offline_schedule_${targetMssv}`);
+    }
+    await cleanFromCache('@offline_schedule_current');
+
     const response = await fetchWithTimeout(
       `${API_BASE_URL}/student/schedule/custom/${id}`,
       {
         method: 'DELETE',
         headers,
       },
-      5000
+      8000
     );
     const result = await handleResponse(response);
     if (result && result.success) return result;

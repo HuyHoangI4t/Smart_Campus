@@ -5,14 +5,69 @@
  */
 
 // Hàm phân tích phòng học và sinh hướng dẫn chỉ đường chi tiết
-function parseRoomDirections(roomRaw) {
+function parseRoomDirections(roomRaw, extraNote = '') {
   const room = (roomRaw || '').trim();
   const upper = room.toUpperCase();
 
-  let building = 'Nhà học số 2';
-  let buildingCode = 'Nhà 2';
+  // Kiểm tra lớp học trực tuyến / Online
+  const isOnline =
+    upper.includes('ONLINE') ||
+    upper.includes('TRỰC TUYẾN') ||
+    upper.includes('TRUC TUYEN') ||
+    upper.includes('GOOGLE MEET') ||
+    upper.includes('ZOOM') ||
+    upper.includes('TEAMS') ||
+    upper.startsWith('MEET');
+
+  if (isOnline) {
+    const combined = `${room} ${extraNote}`.trim();
+    const meetMatch = combined.match(/([a-z]{3}-[a-z]{4}-[a-z]{3})/i);
+    const meetingCode = meetMatch ? meetMatch[1].toLowerCase() : '';
+    const meetingUrl = meetingCode
+      ? `https://meet.google.com/${meetingCode}`
+      : (combined.match(/https?:\/\/[^\s]+/i) ? combined.match(/https?:\/\/[^\s]+/i)[0] : '');
+
+    return {
+      room: room || 'Online',
+      building: 'Lớp học trực tuyến (Online)',
+      buildingCode: 'Online',
+      floor: 'Học từ xa',
+      mapQuery: '',
+      isOnline: true,
+      meetingInfo: extraNote || (room !== 'Online' ? room : ''),
+      meetingUrl: meetingUrl || undefined,
+      steps: [
+        {
+          step: 1,
+          title: 'Chuẩn bị thiết bị & Internet',
+          desc: 'Kiểm tra kết nối Wifi/4G, sạc pin thiết bị, chuẩn bị tai nghe và micro trước giờ học 5 - 10 phút.',
+          icon: 'wifi',
+        },
+        {
+          step: 2,
+          title: 'Khởi động ứng dụng học trực tuyến',
+          desc: 'Mở Google Meet, Zoom hoặc MS Teams trên điện thoại hoặc máy tính theo thông báo của giảng viên.',
+          icon: 'video',
+        },
+        {
+          step: 3,
+          title: 'Đăng nhập & Tham gia phòng',
+          desc: 'Đăng nhập bằng tài khoản email sinh viên (@dhtn.edu.vn) và nhập đúng mã phòng học để điểm danh.',
+          icon: 'log-in',
+        },
+      ],
+      tips: [
+        'Sử dụng tai nghe có mic để nghe giảng rõ ràng và hạn chế tiếng vọng từ không gian xung quanh.',
+        'Đăng nhập đúng tài khoản email sinh viên và đặt tên đầy đủ kèm MSSV để giảng viên dễ duyệt và điểm danh.',
+        'Nên vào phòng sớm 5 phút để kiểm tra âm thanh, hình ảnh sẵn sàng trước khi bài học bắt đầu.',
+      ],
+    };
+  }
+
+  let building = 'Khu giảng đường';
+  let buildingCode = 'Giảng đường';
   let floor = '';
-  let mapQuery = 'Nhà 2';
+  let mapQuery = '';
   let roomDisplay = room || 'Khu giảng đường';
 
   // 1. Dạng 3 phần: X.Y.Z (vd: 7.3.18 -> Nhà 7, Tầng 3, Phòng 18)
@@ -301,8 +356,9 @@ function processSchedulePayload(rawTables, weekRangeText, customItems = [], opti
           const time = r[2] ? (String(r[2]).startsWith('Tiết') ? r[2] : `Tiết ${r[2]}`) : 'Ca học tiêu chuẩn';
           const room = r[3] || 'Khu giảng đường';
           const lecturer = r[4] || 'Giảng viên bộ môn';
+          const note = r[5] || '';
 
-          const direction = parseRoomDirections(room);
+          const direction = parseRoomDirections(room, note);
 
           const dayMeta = daysWithDates.find((d) => d.num === dayNum);
           const itemDate = dayMeta?.date || null;
@@ -319,6 +375,7 @@ function processSchedulePayload(rawTables, weekRangeText, customItems = [], opti
             date: itemDate,
             dateShort: itemDateShort,
             lecturer,
+            note: note || undefined,
             direction,
             isCustom: false,
           };
@@ -346,7 +403,8 @@ function processSchedulePayload(rawTables, weekRangeText, customItems = [], opti
       const time = rawTime.startsWith('Tiết') || rawTime.includes(':') ? rawTime : `Tiết ${rawTime}`;
       const room = c.phong || c.room || 'Phòng thực hành';
       const lecturer = c.giang_vien || c.lecturer || 'Giảng viên hướng dẫn';
-      const direction = c.direction || parseRoomDirections(room);
+      const note = c.ghi_chu || c.note || '';
+      const direction = c.direction || parseRoomDirections(room, note);
 
       const dayMeta = daysWithDates.find((d) => d.num === dayNum);
       const itemDate = c.ngay_hoc ? normalizeDateVN(c.ngay_hoc) : (dayMeta?.date || null);
@@ -407,6 +465,21 @@ function processSchedulePayload(rawTables, weekRangeText, customItems = [], opti
       return ta.startMin - tb.startMin;
     });
   }
+
+  // Sắp xếp toàn bộ danh sách lịch học (parsed) theo thứ tự ngày trong tuần (Thứ 2 -> Chủ nhật) và theo tiết học
+  parsed.sort((a, b) => {
+    const orderA = a.dayNum === 1 ? 7 : a.dayNum - 1;
+    const orderB = b.dayNum === 1 ? 7 : b.dayNum - 1;
+    if (orderA !== orderB) return orderA - orderB;
+    const ta = parseTimeRange(a.time);
+    const tb = parseTimeRange(b.time);
+    return ta.startMin - tb.startMin;
+  });
+  parsed.forEach((item, idx) => {
+    if (!item.isCustom) {
+      item.id = `sc-${idx + 1}`;
+    }
+  });
 
   // Xác định tiết học hôm nay và tiết học kế tiếp (bao gồm logic ngày mai)
   const now = new Date();
@@ -516,6 +589,27 @@ function processSchedulePayload(rawTables, weekRangeText, customItems = [], opti
             type: upcomingClasses[0].type || 'chinh_khoa',
           };
           break;
+        }
+      }
+
+      // 4. Nếu tuần hiện tại không còn tiết học nào, tìm tiết học sớm nhất của tuần kế tiếp (nextWeekSchedule)
+      if (!nextClass && options.nextWeekSchedule && Array.isArray(options.nextWeekSchedule) && options.nextWeekSchedule.length > 0) {
+        const nextWeekClass = options.nextWeekSchedule[0];
+        if (nextWeekClass) {
+          nextClass = {
+            subject: nextWeekClass.course || nextWeekClass.subject,
+            room: nextWeekClass.room,
+            time: nextWeekClass.time,
+            lecturer: nextWeekClass.lecturer,
+            day: nextWeekClass.day,
+            direction: nextWeekClass.direction,
+            status: 'NEXT_DAY',
+            statusLabel: `LỊCH HỌC ${nextWeekClass.day?.toUpperCase() || ''} (TUẦN MỚI)`,
+            dayText: nextWeekClass.day || 'Tuần sau',
+            isCustom: nextWeekClass.isCustom || false,
+            note: nextWeekClass.note || '',
+            type: nextWeekClass.type || 'chinh_khoa',
+          };
         }
       }
     }

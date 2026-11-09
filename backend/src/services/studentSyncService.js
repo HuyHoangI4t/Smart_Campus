@@ -119,7 +119,8 @@ function pushScheduleRow(headers, colIdx, buoi, currentLesson, parsedRows) {
     currentLesson.ten_hp,
     currentLesson.tiet || (buoi === 'Sáng' ? '1-4' : '7-10'),
     currentLesson.phong || 'Chưa xếp',
-    currentLesson.giang_vien || 'Giảng viên'
+    currentLesson.giang_vien || 'Giảng viên',
+    currentLesson.ghi_chu || ''
   ]);
 }
 
@@ -317,13 +318,14 @@ async function syncScheduleForStudent(mssv, dk = '10') {
     const parsedWeeks = [];
 
     function parseTableRows(tableElem) {
-      const rows = [["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"]];
+      const rows = [["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên", "Ghi chú"]];
       if (!tableElem || tableElem.length === 0) return rows;
       const headers = [];
       tableElem.find('tr').first().find('th').slice(1).each((j, th) => {
         headers.push($(th).text().replace(/\s+/g, ' ').trim());
       });
 
+      const extractedLessons = [];
       tableElem.find('tr').slice(1).each((rowIdx, tr) => {
         const tds = $(tr).find('td');
         if (tds.length > 0) {
@@ -333,15 +335,15 @@ async function syncScheduleForStudent(mssv, dk = '10') {
             if (!cellHtml.includes('HP:')) continue;
 
             const lines = cellHtml.split(/<br\s*\/?>/i);
-            let currentLesson = { ten_hp: '', tiet: '', phong: '', giang_vien: '' };
+            let currentLesson = { ten_hp: '', tiet: '', phong: '', giang_vien: '', ghi_chu: '' };
 
             lines.forEach(rawLine => {
               const line = cheerio.load(rawLine).text().trim();
               if (!line) return;
               if (line.startsWith('HP:')) {
                 if (currentLesson.ten_hp) {
-                  pushScheduleRow(headers, colIdx, buoi, currentLesson, rows);
-                  currentLesson = { ten_hp: '', tiet: '', phong: '', giang_vien: '' };
+                  extractedLessons.push({ colIdx, buoi, lesson: { ...currentLesson } });
+                  currentLesson = { ten_hp: '', tiet: '', phong: '', giang_vien: '', ghi_chu: '' };
                 }
                 const match = line.match(/HP:\s*(.*?)\s*\(([\d\s-]+)\)/);
                 if (match) {
@@ -354,15 +356,32 @@ async function syncScheduleForStudent(mssv, dk = '10') {
                 currentLesson.giang_vien = line.replace('GV:', '').trim();
               } else if (line.startsWith('Phòng:')) {
                 currentLesson.phong = line.replace('Phòng:', '').trim();
+              } else if (line.startsWith('PM:') || line.startsWith('Phần mềm:') || line.toLowerCase().includes('google meet') || line.toLowerCase().includes('zoom') || line.toLowerCase().includes('mã:')) {
+                currentLesson.ghi_chu = currentLesson.ghi_chu ? `${currentLesson.ghi_chu} • ${line}` : line;
               }
             });
 
             if (currentLesson.ten_hp) {
-              pushScheduleRow(headers, colIdx, buoi, currentLesson, rows);
+              extractedLessons.push({ colIdx, buoi, lesson: { ...currentLesson } });
             }
           }
         }
       });
+
+      // Sắp xếp các tiết học theo thứ tự thứ trong tuần (colIdx tăng dần: Thứ 2 -> Chủ nhật) và theo tiết học bắt đầu
+      extractedLessons.sort((a, b) => {
+        if (a.colIdx !== b.colIdx) return a.colIdx - b.colIdx;
+        const parseTiet = (t) => {
+          const m = String(t || '').match(/(\d+)/);
+          return m ? parseInt(m[1], 10) : 0;
+        };
+        return parseTiet(a.lesson.tiet) - parseTiet(b.lesson.tiet);
+      });
+
+      extractedLessons.forEach(({ colIdx, buoi, lesson }) => {
+        pushScheduleRow(headers, colIdx, buoi, lesson, rows);
+      });
+
       return rows;
     }
 
@@ -408,7 +427,7 @@ async function syncScheduleForStudent(mssv, dk = '10') {
               r[4],
               'HK1 (2025-2026)',
               0,
-              '',
+              r[5] || '',
               'chinh_khoa',
               w.weekRangeText
             ]);

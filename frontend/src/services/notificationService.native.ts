@@ -3,6 +3,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import { showSosAlertModal } from "../components/SosAlertModal";
 
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
 export const NOTIFICATION_CHANNELS = {
   SCHEDULE: "schedule_reminders",
   CAMPUS: "campus_announcements",
@@ -12,8 +14,27 @@ export const NOTIFICATION_CHANNELS = {
 
 let Notifications: any = null;
 try {
+  // Tạm thời vô hiệu hóa cảnh báo/lỗi Expo Go push notifications khi require module
+  const _origErr = console.error;
+  const _origWarn = console.warn;
+  console.error = (...args: any[]) => {
+    const msg = typeof args[0] === "string" ? args[0] : "";
+    if (msg.includes("Android Push notifications") || msg.includes("expo-notifications")) return;
+    _origErr.apply(console, args);
+  };
+  console.warn = (...args: any[]) => {
+    const msg = typeof args[0] === "string" ? args[0] : "";
+    if (msg.includes("expo-notifications") || msg.includes("dev-client")) return;
+    _origWarn.apply(console, args);
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   Notifications = require("expo-notifications");
+
+  // Khôi phục lại console nguyên bản
+  console.error = _origErr;
+  console.warn = _origWarn;
+
   if (Notifications && Notifications.setNotificationHandler) {
     Notifications.setNotificationHandler({
       handleNotification: async () => ({

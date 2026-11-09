@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet, Linking } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { AppColors } from "../../../constants/appColors";
@@ -9,6 +9,8 @@ import { NextClassInfo } from "../types";
 export interface HomeNextClassCardProps {
   nextClass: NextClassInfo | null;
   onPress: () => void;
+  onDirection?: () => void;
+  onViewAll?: () => void;
 }
 
 /**
@@ -19,10 +21,37 @@ export interface HomeNextClassCardProps {
 export const HomeNextClassCard = React.memo(function HomeNextClassCard({
   nextClass,
   onPress,
+  onDirection,
 }: HomeNextClassCardProps) {
   const { colors, isDark } = useTheme();
 
-  const handlePress = () => {
+  const isOnline = Boolean(
+    nextClass?.isOnline ||
+    (nextClass?.room || "").toUpperCase().includes("ONLINE") ||
+    (nextClass?.room || "").toUpperCase().includes("TRỰC TUYẾN")
+  );
+
+  const handleActionPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    if (isOnline) {
+      const url =
+        nextClass?.meetingUrl ||
+        (nextClass?.meetingCode ? `https://meet.google.com/${nextClass.meetingCode}` : null);
+      if (url) {
+        Linking.openURL(url).catch(() => {
+          onPress();
+        });
+        return;
+      }
+    }
+    if (onDirection) {
+      onDirection();
+    } else {
+      onPress();
+    }
+  };
+
+  const handleCardPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     onPress();
   };
@@ -31,7 +60,7 @@ export const HomeNextClassCard = React.memo(function HomeNextClassCard({
 
   return (
     <Pressable
-      onPress={handlePress}
+      onPress={handleCardPress}
       style={({ pressed }) => [
         styles.card,
         {
@@ -103,7 +132,7 @@ export const HomeNextClassCard = React.memo(function HomeNextClassCard({
           ) : null}
         </View>
 
-        {/* Row 3: Giảng viên + Nút chỉ đường viên con nhộng */}
+        {/* Row 3: Giảng viên + Nút chỉ đường / Mở link viên con nhộng */}
         <View style={styles.footerRow}>
           <View style={styles.lecturerRow}>
             <View style={[styles.lecturerIconCircle, isDark && { backgroundColor: "rgba(255,255,255,0.12)" }]}>
@@ -120,16 +149,26 @@ export const HomeNextClassCard = React.memo(function HomeNextClassCard({
             </Text>
           </View>
 
-          <View style={[styles.directionCapsule, isDark && { backgroundColor: "rgba(91, 97, 244, 0.25)" }]}>
+          <Pressable
+            onPress={handleActionPress}
+            style={({ pressed }) => [
+              styles.directionCapsule,
+              isDark && { backgroundColor: "rgba(91, 97, 244, 0.25)" },
+              pressed && { opacity: 0.8, transform: [{ scale: 0.95 }] },
+            ]}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel={nextClass ? (isOnline ? "Mở link phòng học" : "Chỉ đường đến phòng") : "Xem lịch học"}
+          >
             <Text style={[styles.directionText, isDark && { color: colors.accentLight }]}>
-              {nextClass ? "Chỉ đường" : "Xem lịch"}
+              {nextClass ? (isOnline ? "Mở link" : "Chỉ đường") : "Xem lịch"}
             </Text>
             <Feather
-              name={nextClass ? "navigation" : "calendar"}
+              name={nextClass ? (isOnline ? "external-link" : "navigation") : "calendar"}
               size={12}
               color={isDark ? colors.accentLight : AppColors.textLight}
             />
-          </View>
+          </Pressable>
         </View>
       </View>
     </Pressable>
@@ -269,4 +308,3 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
 });
-

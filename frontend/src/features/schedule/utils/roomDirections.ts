@@ -1,16 +1,52 @@
 import { DirectionStep, RoomDirectionInfo } from "../types";
 
 /**
- * Phân tích và tạo lộ trình hướng dẫn từng bước đến phòng học
+ * Phân tích và tạo lộ trình hướng dẫn từng bước đến phòng học (hoặc thông tin tham gia lớp trực tuyến)
  */
-export function parseRoomDirections(roomRaw: string): RoomDirectionInfo {
+export function parseRoomDirections(roomRaw: string, extraNote: string = ""): RoomDirectionInfo {
   const room = (roomRaw || "").trim();
   const upper = room.toUpperCase();
 
-  let building = "Nhà học số 2";
-  let buildingCode = "Nhà 2";
+  // Kiểm tra lớp học trực tuyến / Online
+  const isOnline =
+    upper.includes("ONLINE") ||
+    upper.includes("TRỰC TUYẾN") ||
+    upper.includes("TRUC TUYEN") ||
+    upper.includes("GOOGLE MEET") ||
+    upper.includes("ZOOM") ||
+    upper.includes("TEAMS") ||
+    upper.startsWith("MEET");
+
+  if (isOnline) {
+    const combined = `${room} ${extraNote}`.trim();
+    const meetMatch = combined.match(/([a-z]{3}-[a-z]{4}-[a-z]{3})/i);
+    const meetingCode = meetMatch ? meetMatch[1].toLowerCase() : "";
+    const meetingUrl = meetingCode
+      ? `https://meet.google.com/${meetingCode}`
+      : (combined.match(/https?:\/\/[^\s]+/i) ? combined.match(/https?:\/\/[^\s]+/i)![0] : undefined);
+
+    return {
+      room: room || "Online",
+      building: "Lớp học trực tuyến (Online)",
+      buildingCode: "Online",
+      floor: "Học từ xa",
+      mapQuery: "",
+      isOnline: true,
+      meetingInfo: extraNote || (room !== "Online" ? room : undefined),
+      meetingUrl,
+      steps: [], // Không cần chỉ đường đi bộ đối với lớp online
+      tips: [
+        "Sử dụng tai nghe có mic để nghe giảng rõ ràng và hạn chế tiếng vọng từ không gian xung quanh.",
+        "Đăng nhập đúng tài khoản email sinh viên và đặt tên đầy đủ kèm MSSV để giảng viên dễ duyệt và điểm danh.",
+        "Nên vào phòng sớm 5 phút để kiểm tra âm thanh, hình ảnh sẵn sàng trước khi bài học bắt đầu.",
+      ],
+    };
+  }
+
+  let building = "Khu giảng đường";
+  let buildingCode = "Giảng đường";
   let floor = "";
-  let mapQuery = "Nhà 2";
+  let mapQuery = "";
   let roomDisplay = room || "Khu giảng đường";
 
   // 1. Dạng 3 phần: X.Y.Z (vd: 7.3.18 -> Nhà 7, Tầng 3, Phòng 18)

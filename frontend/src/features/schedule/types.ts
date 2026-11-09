@@ -15,6 +15,9 @@ export interface RoomDirectionInfo {
   mapQuery: string;
   steps: DirectionStep[];
   tips: string[];
+  isOnline?: boolean;
+  meetingInfo?: string;
+  meetingUrl?: string;
 }
 
 export interface AvailableWeekItem {

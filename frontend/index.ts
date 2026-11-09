@@ -1,6 +1,38 @@
 import 'expo-router/entry';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
-import { Platform } from 'react-native';
+import { LogBox, Platform } from 'react-native';
+
+// Ẩn cảnh báo & RedBox error nội bộ của Expo Go đối với expo-notifications (do Expo SDK 53+ gỡ FCM khỏi Expo Go)
+const _originalConsoleError = console.error;
+const _originalConsoleWarn = console.warn;
+
+console.error = (...args: any[]) => {
+  const msg = typeof args[0] === 'string' ? args[0] : '';
+  if (
+    msg.includes('Android Push notifications') ||
+    msg.includes('expo-notifications: Android Push notifications') ||
+    msg.includes('warnOfExpoGoPushUsage')
+  ) {
+    return;
+  }
+  _originalConsoleError.apply(console, args);
+};
+
+console.warn = (...args: any[]) => {
+  const msg = typeof args[0] === 'string' ? args[0] : '';
+  if (
+    msg.includes('expo-notifications') ||
+    msg.includes('expo.fyi/dev-client')
+  ) {
+    return;
+  }
+  _originalConsoleWarn.apply(console, args);
+};
+
+LogBox.ignoreLogs([
+  '`expo-notifications` functionality is not fully supported in Expo Go',
+  'expo-notifications: Android Push notifications',
+]);
 
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
@@ -20,4 +52,3 @@ if (Platform.OS === 'android' && !isExpoGo) {
     console.warn('Lỗi đăng ký Widget Task Handler tại index.ts:', err);
   }
 }
-

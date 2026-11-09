@@ -84,7 +84,9 @@ CREATE TABLE IF NOT EXISTS `student_schedules` (
   `week_range` VARCHAR(100) DEFAULT NULL,
   `ngay_hoc` VARCHAR(20) DEFAULT NULL,
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX `idx_sched_mssv` (`mssv`)
+  CONSTRAINT `fk_sched_users` FOREIGN KEY (`mssv`) REFERENCES `users` (`mssv`) ON UPDATE CASCADE ON DELETE CASCADE,
+  INDEX `idx_sched_mssv` (`mssv`),
+  INDEX `idx_sched_hocky` (`hoc_ky`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
@@ -110,7 +112,9 @@ CREATE TABLE IF NOT EXISTS `student_grades` (
   `hoc_phi` VARCHAR(100) DEFAULT NULL,
   `hoc_ky` VARCHAR(50) DEFAULT 'HK1 (2025-2026)',
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX `idx_grades_mssv` (`mssv`)
+  CONSTRAINT `fk_grades_users` FOREIGN KEY (`mssv`) REFERENCES `users` (`mssv`) ON UPDATE CASCADE ON DELETE CASCADE,
+  INDEX `idx_grades_mssv` (`mssv`),
+  INDEX `idx_grades_hocky` (`hoc_ky`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
@@ -150,7 +154,9 @@ CREATE TABLE IF NOT EXISTS `feedback` (
   `rating` INT DEFAULT 5,
   `status` VARCHAR(50) DEFAULT 'Đã giải quyết',
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX `idx_feedback_mssv` (`mssv`)
+  CONSTRAINT `fk_feedback_users` FOREIGN KEY (`mssv`) REFERENCES `users` (`mssv`) ON UPDATE CASCADE ON DELETE CASCADE,
+  INDEX `idx_feedback_mssv` (`mssv`),
+  INDEX `idx_feedback_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
@@ -166,7 +172,9 @@ CREATE TABLE IF NOT EXISTS `sos_alerts` (
   `incident_type` VARCHAR(100) DEFAULT 'Khẩn cấp',
   `status` VARCHAR(50) DEFAULT 'Đã tiếp nhận',
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX `idx_sos_mssv` (`mssv`)
+  INDEX `idx_sos_mssv` (`mssv`),
+  INDEX `idx_sos_status` (`status`),
+  INDEX `idx_sos_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
@@ -179,7 +187,9 @@ CREATE TABLE IF NOT EXISTS `notifications` (
   `type` VARCHAR(50) DEFAULT 'info',
   `sender` VARCHAR(100) DEFAULT 'Phòng Đào Tạo',
   `date` VARCHAR(50) DEFAULT NULL,
-  `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
+  `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_notif_type` (`type`),
+  INDEX `idx_notif_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------------------------
@@ -193,6 +203,7 @@ CREATE TABLE IF NOT EXISTS `password_resets` (
   `token` VARCHAR(255) NOT NULL,
   `expires_at` DATETIME NOT NULL,
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT `fk_pwd_users` FOREIGN KEY (`mssv`) REFERENCES `users` (`mssv`) ON UPDATE CASCADE ON DELETE CASCADE,
   INDEX `idx_pwd_mssv` (`mssv`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -220,7 +231,8 @@ CREATE TABLE IF NOT EXISTS `activity_logs` (
   `mssv` VARCHAR(50) DEFAULT 'guest',
   `ip_address` VARCHAR(50) DEFAULT '',
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX `idx_act_mssv` (`mssv`)
+  INDEX `idx_act_mssv` (`mssv`),
+  INDEX `idx_act_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

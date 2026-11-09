@@ -609,7 +609,8 @@ function pushRow(headers, colIdx, buoi, currentLesson, parsedRows) {
     currentLesson.ten_hp,                    // Cột 1: Tên môn học
     currentLesson.tiet || (buoi === 'Sáng' ? '1-4' : '7-10'), // Cột 2: Tiết
     currentLesson.phong || 'Chưa xếp',       // Cột 3: Phòng
-    currentLesson.giang_vien || 'Giảng viên' // Cột 4: Giảng viên
+    currentLesson.giang_vien || 'Giảng viên', // Cột 4: Giảng viên
+    currentLesson.ghi_chu || ''              // Cột 5: Ghi chú / PM Online
   ]);
 }
 
@@ -631,7 +632,7 @@ function formatDbSchedulesResponse(dbSchedules, customItems, req, res, mssv, isD
     if (!row.is_custom) {
       const wRange = row.week_range || row.hoc_ky || "Lịch học đã lưu từ cổng đào tạo";
       if (!weekMap[wRange]) {
-        weekMap[wRange] = [["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên"]];
+        weekMap[wRange] = [["Ngày", "Tên môn học", "Tiết", "Phòng", "Giảng viên", "Ghi chú"]];
       }
       if (row.ten_hp && row.loai_lich !== 'tuan_trong' && !row.ma_hp?.startsWith('WEEK-')) {
         weekMap[wRange].push([
@@ -639,11 +640,31 @@ function formatDbSchedulesResponse(dbSchedules, customItems, req, res, mssv, isD
           row.ten_hp || "Môn học",
           row.tiet || "1-4",
           row.phong || "Khu giảng đường",
-          row.giang_vien || "Giảng viên bộ môn"
+          row.giang_vien || "Giảng viên bộ môn",
+          row.ghi_chu || ""
         ]);
       }
     }
   }
+
+  // Sắp xếp các tiết học trong từng tuần theo thứ tự ngày (Thứ 2 -> Chủ nhật) và theo tiết học
+  Object.keys(weekMap).forEach((wKey) => {
+    const header = weekMap[wKey][0];
+    const dataRows = weekMap[wKey].slice(1);
+    dataRows.sort((a, b) => {
+      const dayNumA = scheduleService.getDayNumber(a[0]);
+      const dayNumB = scheduleService.getDayNumber(b[0]);
+      const orderA = dayNumA === 1 ? 7 : dayNumA - 1;
+      const orderB = dayNumB === 1 ? 7 : dayNumB - 1;
+      if (orderA !== orderB) return orderA - orderB;
+      const parseTiet = (t) => {
+        const m = String(t || '').match(/(\d+)/);
+        return m ? parseInt(m[1], 10) : 0;
+      };
+      return parseTiet(a[2]) - parseTiet(b[2]);
+    });
+    weekMap[wKey] = [header, ...dataRows];
+  });
 
   // Tự động bổ sung các tuần lân cận nếu chỉ có 1 tuần để sinh viên luôn chọn và duyệt được các tuần
   if (Object.keys(weekMap).length === 1) {
@@ -788,7 +809,7 @@ function parseWeekTable($, table) {
         if (!cellHtml.includes('HP:')) continue;
 
         const lines = cellHtml.split(/<br\s*\/?>/i);
-        let currentLesson = { ten_hp: '', tiet: '', phong: '', giang_vien: '' };
+        let currentLesson = { ten_hp: '', tiet: '', phong: '', giang_vien: '', ghi_chu: '' };
 
         lines.forEach(rawLine => {
           const line = cheerio.load(rawLine).text().trim();
@@ -797,7 +818,7 @@ function parseWeekTable($, table) {
           if (line.startsWith('HP:')) {
             if (currentLesson.ten_hp) {
               pushRow(headers, colIdx, buoi, currentLesson, parsedRows);
-              currentLesson = { ten_hp: '', tiet: '', phong: '', giang_vien: '' };
+              currentLesson = { ten_hp: '', tiet: '', phong: '', giang_vien: '', ghi_chu: '' };
             }
             const match = line.match(/HP:\s*(.*?)\s*\(([\d\s-]+)\)/);
             if (match) {
@@ -810,6 +831,8 @@ function parseWeekTable($, table) {
             currentLesson.giang_vien = line.replace('GV:', '').trim();
           } else if (line.startsWith('Phòng:')) {
             currentLesson.phong = line.replace('Phòng:', '').trim();
+          } else if (line.startsWith('PM:') || line.startsWith('Phần mềm:') || line.toLowerCase().includes('google meet') || line.toLowerCase().includes('zoom') || line.toLowerCase().includes('mã:')) {
+            currentLesson.ghi_chu = currentLesson.ghi_chu ? `${currentLesson.ghi_chu} • ${line}` : line;
           }
         });
 
@@ -1153,12 +1176,16 @@ exports.deleteCustomSchedule = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Thiếu ID lịch học cần xóa' });
     }
 
-    if (!mssv || mssv === 'guest') {
-      return res.status(401).json({ success: false, message: 'Yêu cầu đăng nhập để xóa lịch học cá nhân.' });
-    }
+    let query = 'DELETE FROM student_schedules WHERE id = ?';
+    let params = [id];
 
-    const query = 'DELETE FROM student_schedules WHERE id = ? AND is_custom = 1 AND mssv = ?';
-    const params = [id, mssv];
+    if (mssv && mssv !== 'guest') {
+      // Cho phép xóa nếu thuộc tài khoản MSSV này hoặc là lịch demo/khách
+      query += ' AND (mssv = ? OR mssv = "guest")';
+      params.push(mssv);
+    } else {
+      query += ' AND mssv = "guest"';
+    }
 
     const [result] = await db.query(query, params);
     if (result.affectedRows === 0) {

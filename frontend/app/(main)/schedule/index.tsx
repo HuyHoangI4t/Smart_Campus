@@ -7,6 +7,7 @@ import {
   RefreshControl,
   Linking,
   Alert,
+  Platform,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -20,13 +21,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   apiGetSchedule,
   readLocalCache,
+  saveLocalCache,
   apiCreateCustomSchedule,
   apiUpdateCustomSchedule,
   apiDeleteCustomSchedule,
   CustomSchedulePayload,
 } from "../../../src/services/api";
 
-import { saveScheduleForWidget } from "../../../src/services/widgetService";
+import { syncAllWidgets, saveScheduleForWidget } from "../../../src/services/widgetService";
 import {
   ScheduleItem,
   AvailableWeekItem,
@@ -215,31 +217,72 @@ export default function ScheduleScreen() {
 
       if (isEditing && editingId !== null) {
         await apiUpdateCustomSchedule(editingId, payload);
+        const cleanEditingId = String(editingId);
+        const updatedItemProps = {
+          course: formCourse.trim(),
+          code: thuStr,
+          day: thuStr,
+          dayNum: formDayNum,
+          time: formTime.trim().startsWith("Tiết") ? formTime.trim() : (formTime.includes(":") ? formTime.trim() : `Tiết ${formTime.trim()}`),
+          room: formRoom.trim(),
+          lecturer: formLecturer.trim() || "Chưa có GV",
+          note: formNote.trim(),
+          type: formType,
+          date: cleanDate,
+          dateShort: cleanDate ? cleanDate.substring(0, 5) : undefined,
+          ngay_hoc: cleanDate,
+          week_range: formWeekRange,
+          direction: parseRoomDirections(formRoom.trim()),
+        };
+
         const updatedList = scheduleList.map((item) => {
-          if (item.id === editingId) {
-            return {
-              ...item,
-              course: formCourse.trim(),
-              code: thuStr,
-              day: thuStr,
-              dayNum: formDayNum,
-              time: formTime.trim().startsWith("Tiết") ? formTime.trim() : (formTime.includes(":") ? formTime.trim() : `Tiết ${formTime.trim()}`),
-              room: formRoom.trim(),
-              lecturer: formLecturer.trim() || "Chưa có GV",
-              note: formNote.trim(),
-              type: formType,
-              date: cleanDate,
-              dateShort: cleanDate ? cleanDate.substring(0, 5) : undefined,
-              ngay_hoc: cleanDate,
-              week_range: formWeekRange,
-              direction: parseRoomDirections(formRoom.trim()),
-            };
+          if (String(item.id) === cleanEditingId) {
+            return { ...item, ...updatedItemProps };
           }
           return item;
         });
         setScheduleList(updatedList);
+
+        // Cập nhật availableWeeks khi chỉnh sửa
+        setAvailableWeeks((prevWeeks) =>
+          prevWeeks.map((w) => ({
+            ...w,
+            schedules: Array.isArray(w.schedules)
+              ? w.schedules.map((s) => (String(s.id) === cleanEditingId ? { ...s, ...updatedItemProps } : s))
+              : [],
+          }))
+        );
+
+        // Cập nhật AsyncStorage cache
+        if (studentInfo.mssv) {
+          const cacheKey = `@offline_schedule_${studentInfo.mssv}`;
+          readLocalCache<any>(cacheKey).then((cached) => {
+            if (cached && cached.data) {
+              const updatedCachedSchedules = (cached.data.schedules || []).map((s: any) =>
+                String(s.id) === cleanEditingId ? { ...s, ...updatedItemProps } : s
+              );
+              const updatedCachedWeeks = (cached.data.availableWeeks || []).map((w: any) => ({
+                ...w,
+                schedules: Array.isArray(w.schedules)
+                  ? w.schedules.map((s: any) => (String(s.id) === cleanEditingId ? { ...s, ...updatedItemProps } : s))
+                  : [],
+              }));
+              saveLocalCache(cacheKey, {
+                ...cached.data,
+                schedules: updatedCachedSchedules,
+                availableWeeks: updatedCachedWeeks,
+              }).catch(() => {});
+            }
+          }).catch(() => {});
+        }
+
+        syncAllWidgets().catch(() => {});
         setSelectedDay(formDayNum);
-        Alert.alert("Thành công", `Đã cập nhật lịch học ngày ${cleanDate || thuStr}.`);
+        if (Platform.OS === 'web') {
+          window.alert(`Đã cập nhật lịch học ngày ${cleanDate || thuStr}.`);
+        } else {
+          Alert.alert("Thành công", `Đã cập nhật lịch học ngày ${cleanDate || thuStr}.`);
+        }
       } else {
         const res = await apiCreateCustomSchedule(payload);
         const newId = res?.data?.id || `custom-${Date.now()}`;
@@ -284,49 +327,169 @@ export default function ScheduleScreen() {
           })
         );
 
+        // Cập nhật AsyncStorage cache
+        if (studentInfo.mssv) {
+          const cacheKey = `@offline_schedule_${studentInfo.mssv}`;
+          readLocalCache<any>(cacheKey).then((cached) => {
+            if (cached && cached.data) {
+              const currentCachedSchedules = Array.isArray(cached.data.schedules) ? cached.data.schedules : [];
+              const updatedCachedWeeks = (cached.data.availableWeeks || []).map((w: any) => {
+                const wRange = parseWeekRangeDates(w.weekRange);
+                const inThisWeek =
+                  targetD && wRange.startDate && wRange.endDate
+                    ? targetD >= wRange.startDate && targetD <= wRange.endDate
+                    : w.weekRange === formWeekRange;
+                if (inThisWeek) {
+                  const currentScheds = Array.isArray(w.schedules) ? w.schedules : [];
+                  return { ...w, schedules: [...currentScheds, newItem] };
+                }
+                return w;
+              });
+              saveLocalCache(cacheKey, {
+                ...cached.data,
+                schedules: isInsideCurrentWeek ? [...currentCachedSchedules, newItem] : currentCachedSchedules,
+                availableWeeks: updatedCachedWeeks,
+              }).catch(() => {});
+            }
+          }).catch(() => {});
+        }
+
+        syncAllWidgets().catch(() => {});
+
         if (isInsideCurrentWeek) {
           const newList = [...scheduleList, newItem];
           setScheduleList(newList);
           setSelectedDay(formDayNum);
-          Alert.alert("Thành công", `Đã thêm lịch vào ${thuStr}, ngày ${cleanDate}.`);
+          if (Platform.OS === 'web') {
+            window.alert(`Đã thêm lịch vào ${thuStr}, ngày ${cleanDate}.`);
+          } else {
+            Alert.alert("Thành công", `Đã thêm lịch vào ${thuStr}, ngày ${cleanDate}.`);
+          }
         } else {
-          Alert.alert(
-            "Đã thêm lịch học",
-            `Lịch học đã được lưu thành công vào ngày ${cleanDate} (${formWeekRange}). Bạn có thể chuyển sang tuần tương ứng để theo dõi.`
-          );
+          const msg = `Lịch học đã được lưu thành công vào ngày ${cleanDate} (${formWeekRange}). Bạn có thể chuyển sang tuần tương ứng để theo dõi.`;
+          if (Platform.OS === 'web') {
+            window.alert(msg);
+          } else {
+            Alert.alert("Đã thêm lịch học", msg);
+          }
         }
       }
 
       setModalVisible(false);
       resetForm();
     } catch (err: any) {
-      Alert.alert("Lỗi", "Không thể lưu lịch: " + (err?.message || ""));
+      if (Platform.OS === 'web') {
+        window.alert("Không thể lưu lịch: " + (err?.message || ""));
+      } else {
+        Alert.alert("Lỗi", "Không thể lưu lịch: " + (err?.message || ""));
+      }
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDeleteSchedule = useCallback((item: ScheduleItem) => {
-    Alert.alert(
-      "Xác nhận xóa",
-      `Bạn có chắc chắn muốn xóa lịch "${item.course}"?`,
-      [
-        { text: "Hủy", style: "cancel" },
-        {
-          text: "Xóa",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await apiDeleteCustomSchedule(item.id);
-              setScheduleList((prev) => prev.filter((s) => s.id !== item.id));
-              Alert.alert("Đã xóa", "Lịch học đã được xóa thành công.");
-            } catch (err: any) {
-              Alert.alert("Lỗi", "Không thể xóa lịch: " + (err?.message || ""));
+    const doDelete = async () => {
+      try {
+        const cleanId = String(item.id);
+
+        // 1. Gọi API xóa lịch ở backend
+        await apiDeleteCustomSchedule(item.id);
+
+        // 2. Cập nhật state danh sách lịch học hiện tại
+        setScheduleList((prev) => prev.filter((s) => String(s.id) !== cleanId));
+
+        // 3. Cập nhật availableWeeks để khi chuyển qua lại giữa các tuần không bị phục hồi lại lịch đã xóa
+        setAvailableWeeks((prevWeeks) =>
+          prevWeeks.map((w) => ({
+            ...w,
+            schedules: Array.isArray(w.schedules)
+              ? w.schedules.filter((s) => String(s.id) !== cleanId)
+              : [],
+          }))
+        );
+
+        // 4. Cập nhật offline cache trong AsyncStorage (@offline_schedule_${mssv} và @offline_schedule_current)
+        const userStr = await AsyncStorage.getItem("@auth_user");
+        let mssv = "";
+        if (userStr) {
+          try {
+            const u = JSON.parse(userStr);
+            mssv = u.mssv || u.masv || "";
+          } catch {}
+        }
+
+        const updateCacheKeys = mssv
+          ? [`@offline_schedule_${mssv}`, "@offline_schedule_current"]
+          : ["@offline_schedule_current"];
+
+        for (const cacheKey of updateCacheKeys) {
+          const cached = await readLocalCache<any>(cacheKey);
+          if (cached && cached.data) {
+            const updatedSchedules = (cached.data.schedules || []).filter(
+              (s: any) => String(s.id) !== cleanId
+            );
+            const updatedAvailableWeeks = (cached.data.availableWeeks || []).map((w: any) => ({
+              ...w,
+              schedules: Array.isArray(w.schedules)
+                ? w.schedules.filter((s: any) => String(s.id) !== cleanId)
+                : [],
+            }));
+            let updatedNextClass = cached.data.nextClass;
+            if (
+              updatedNextClass &&
+              (String(updatedNextClass.id) === cleanId ||
+                updatedNextClass.subject === item.course ||
+                updatedNextClass.course === item.course)
+            ) {
+              updatedNextClass = null;
             }
+            await saveLocalCache(cacheKey, {
+              ...cached.data,
+              schedules: updatedSchedules,
+              availableWeeks: updatedAvailableWeeks,
+              nextClass: updatedNextClass,
+            });
+          }
+        }
+
+        // 5. Cập nhật lại Android Home Screen Widgets
+        syncAllWidgets().catch(() => {});
+
+        // 6. Thông báo thành công
+        if (Platform.OS === 'web') {
+          window.alert("Lịch học đã được xóa thành công.");
+        } else {
+          Alert.alert("Đã xóa", "Lịch học đã được xóa thành công.");
+        }
+      } catch (err: any) {
+        if (Platform.OS === 'web') {
+          window.alert("Không thể xóa lịch: " + (err?.message || ""));
+        } else {
+          Alert.alert("Lỗi", "Không thể xóa lịch: " + (err?.message || ""));
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(`Bạn có chắc chắn muốn xóa lịch "${item.course}"?`);
+      if (confirmed) {
+        doDelete();
+      }
+    } else {
+      Alert.alert(
+        "Xác nhận xóa",
+        `Bạn có chắc chắn muốn xóa lịch "${item.course}"?`,
+        [
+          { text: "Hủy", style: "cancel" },
+          {
+            text: "Xóa",
+            style: "destructive",
+            onPress: doDelete,
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   }, []);
 
   const fetchSchedule = async (forceReload = false, weekOpts?: { week?: string; weekOffset?: number; weekIndex?: number }) => {

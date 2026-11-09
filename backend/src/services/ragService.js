@@ -95,18 +95,33 @@ Phong cách: Thân thiện, thông minh, tinh gọn, xưng "mình" và gọi "b�
 10. **Trợ lý ảo TTN Smart Bot (Chat - /(main)/chat)**:
     - Hỗ trợ giải đáp, tra cứu và điều hướng qua nút Action 1-chạm.
 
-# LƯU Ý PHÂN BIỆT NHÀ 9 VÀ PHÒNG 7.4.25 (KHOA KHTN & CN / CNTT):
-- Nhà học số 9: Trụ sở Khoa CNTT (Khoa KHTN&CN), gồm Văn phòng Khoa, khu giảng đường và 8 phòng máy tính thực hành (Tầng 2 & 3). Action: {"type": "OPEN_MAP_3D", "target_id": "Nhà học số 9"}.
-- Phòng 7.4.25 (Nhà học số 7, Tầng 4, Phòng 25): ĐÂY LÀ VĂN PHÒNG BỘ MÔN (VP Bộ môn CNTT / KHTN&CN), nơi sinh viên gặp giảng viên bộ môn để trao đổi đồ án, tiểu luận, chuyên môn. Action: {"type": "OPEN_MAP_3D", "target_id": "Nhà học số 7"}.
+# LƯU Ý ĐẶC THÙ KHUÔN VIÊN & PHÒNG HỌC ĐH TÂY NGUYÊN (QUAN TRỌNG):
+- **Cấu trúc mã phòng dạng X.Y.Z**: 
+  + Ký tự đầu (X): Số Nhà học / Giảng đường (Nhà 1 đến Nhà 9).
+  + Ký tự giữa (Y): Số Tầng (Tầng 1, 2, 3, 4...).
+  + Ký tự cuối (Z): Số thứ tự phòng học.
+  + Ví dụ: **Phòng 9.2.1** -> Nhà học số 9, Tầng 2, Phòng 1.
+  + Ví dụ: **Phòng 7.4.25** -> Nhà học số 7, Tầng 4, Phòng 25.
+- **Nhà học số 9**: Trụ sở Khoa Khoa học Tự nhiên và Công nghệ (Khoa KHTN & CN / CNTT), gồm Văn phòng Khoa, khu giảng đường và 8 phòng máy tính thực hành hiện đại (Tầng 2 & 3). Action: {"type": "OPEN_MAP_3D", "target_id": "Nhà học số 9"}.
+- **Phòng 7.4.25**: VĂN PHÒNG BỘ MÔN CNTT (Nhà học số 7, Tầng 4, Phòng 25) - nơi sinh viên gặp giảng viên trao đổi đồ án, tiểu luận, chuyên môn. Action: {"type": "OPEN_MAP_3D", "target_id": "Nhà học số 7"}.
+- **Thư viện Trung tâm**: Nằm đối diện hồ sinh thái, nơi mượn giáo trình và phòng tự học máy lạnh.
+- **Trạm Y tế**: Nằm gần Ký túc xá, hỗ trợ sơ cấp cứu và bảo hiểm y tế sinh viên.
 
-# DỮ LIỆU CÁ NHÂN SINH VIÊN (từ MySQL Database):
+# DỮ LIỆU CÁ NHÂN SINH VIÊN (từ MySQL Database - HỌC TẬP, LỊCH HỌC, ĐIỂM SỐ):
 Thời gian hiện tại: ${currentTime}
-${JSON.stringify(studentData || "Chưa đăng nhập")}
+${JSON.stringify(studentData || "Chưa đăng nhập", null, 2)}
 
 # DỮ LIỆU TRI THỨC TRÍCH XUẤT (RAG VECTOR DATABASE):
 """
 ${ragContext || "Không có tài liệu liên quan."}
 """
+
+# HƯỚNG DẪN TRẢ LỜI CÁC CÂU HỎI HỌC VỤ & LỊCH HỌC:
+- Nếu hỏi "mai học gì" / "lịch học ngày mai" -> Tra cứu ngay trong trường 'tomorrowSchedule' của Dữ liệu cá nhân.
+- Nếu hỏi "hôm nay học gì" -> Tra cứu ngay trong trường 'todaySchedule'.
+- Nếu hỏi "lịch tuần này" / "cả tuần" -> Tóm tắt các môn theo thứ từ trường 'weeklySchedule'.
+- Nếu hỏi "môn [tên môn] học ở đâu/tiết mấy" -> Quét trong trường 'allCourses' để tìm đúng môn học đó.
+- Nếu hỏi "có được học bổng không" / "cải thiện điểm thế nào" -> Sử dụng trường 'scholarshipAnalysis' và 'failingCourses' để tư vấn cụ thể và chân thành.
 
 # QUY TẮC CHỌN HÀNH ĐỘNG (ACTION BUTTON):
 Gán action phù hợp nhất với câu trả lời để sinh viên bấm chuyển trang tức thì:
@@ -151,8 +166,15 @@ async function getStudentSummaryFromMySQL(mssv) {
       ho_ten: "Sinh viên",
       lop: "",
       khoa: "",
+      currentDayText: "",
+      tomorrowDayText: "",
       todaySchedule: [],
+      tomorrowSchedule: [],
+      weeklySchedule: {},
+      allCourses: [],
       gpaSummary: null,
+      failingCourses: [],
+      scholarshipAnalysis: null,
       tuition: "Đã hoàn thành học phí",
     };
 
@@ -166,16 +188,57 @@ async function getStudentSummaryFromMySQL(mssv) {
       summary.khoa = users[0].khoa || "";
     }
 
-    const dayOfWeek = new Date().getDay() + 1;
-    const thuTarget = dayOfWeek === 1 ? "Chủ nhật" : `Thứ ${dayOfWeek}`;
-    const [schedules] = await db.query(
-      "SELECT ten_hp as course, tiet as time, phong as room, giang_vien as lecturer, thu FROM student_schedules WHERE mssv = ? AND (thu = ? OR thu = ? OR thu = ?) LIMIT 10",
-      [mssv, thuTarget, thuTarget.toLowerCase(), dayOfWeek === 1 ? "Chủ Nhật" : thuTarget]
+    // Tính toán thứ hôm nay và thứ ngày mai theo giờ Việt Nam
+    const now = new Date();
+    const currentDayNum = now.getDay() + 1; // 1 là CN, 2 là Thứ 2, ..., 7 là Thứ 7
+    const tomorrowDayNum = (currentDayNum % 7) + 1;
+
+    const getThuName = (num) => (num === 1 ? "Chủ nhật" : `Thứ ${num}`);
+    summary.currentDayText = getThuName(currentDayNum);
+    summary.tomorrowDayText = getThuName(tomorrowDayNum);
+
+    // Lấy toàn bộ thời khóa biểu của sinh viên
+    const [allSchedules] = await db.query(
+      "SELECT ten_hp as course, tiet as time, phong as room, giang_vien as lecturer, thu, hoc_ky FROM student_schedules WHERE mssv = ? ORDER BY id ASC",
+      [mssv]
     );
-    if (schedules.length > 0) {
-      summary.todaySchedule = schedules;
+
+    if (Array.isArray(allSchedules) && allSchedules.length > 0) {
+      summary.allCourses = allSchedules;
+
+      const normThu = (str) => (str || "").toLowerCase().trim();
+      const todayKeywords = [
+        normThu(summary.currentDayText),
+        summary.currentDayNum === 1 ? "chủ nhật" : `thứ ${currentDayNum}`,
+        `t${currentDayNum}`,
+      ];
+      const tomorrowKeywords = [
+        normThu(summary.tomorrowDayText),
+        tomorrowDayNum === 1 ? "chủ nhật" : `thứ ${tomorrowDayNum}`,
+        `t${tomorrowDayNum}`,
+      ];
+
+      summary.todaySchedule = allSchedules.filter((s) => {
+        const t = normThu(s.thu);
+        return todayKeywords.some((k) => t.includes(k));
+      });
+
+      summary.tomorrowSchedule = allSchedules.filter((s) => {
+        const t = normThu(s.thu);
+        return tomorrowKeywords.some((k) => t.includes(k));
+      });
+
+      // Nhóm theo thứ trong tuần
+      const weekly = {};
+      allSchedules.forEach((s) => {
+        const day = s.thu || "Khác";
+        if (!weekly[day]) weekly[day] = [];
+        weekly[day].push(`${s.course} (Tiết ${s.time}, Phòng ${s.room || "Chưa xếp"})`);
+      });
+      summary.weeklySchedule = weekly;
     }
 
+    // Lấy bảng điểm và phân tích học tập
     const [grades] = await db.query(
       "SELECT ten_hp, so_tin_chi, diem_dbp, diem_thi1, diem_thi2, diem_1, diem_2, diem_hp, diem_chu, hoc_ky, hoc_phi FROM student_grades WHERE mssv = ?",
       [mssv]
@@ -183,13 +246,46 @@ async function getStudentSummaryFromMySQL(mssv) {
     if (grades.length > 0) {
       const processed = gradeService.processGradesPayload(grades);
       if (processed && processed.summary && Number(processed.summary.gradedCredits) > 0) {
+        const gpa4 = Number(processed.summary.gpa4) || 0;
+        const gpa10 = Number(processed.summary.gpa10) || 0;
+
         summary.gpaSummary = {
-          gpa10: processed.summary.gpa10,
-          gpa4: processed.summary.gpa4,
+          gpa10,
+          gpa4,
           totalCredits: processed.summary.accumulatedCredits || processed.summary.totalCredits,
           rank: processed.summary.academicRank?.label || "Khá",
           passedCourses: processed.summary.passedCourses,
           failedCourses: processed.summary.failedCourses,
+        };
+
+        // Lọc môn điểm F hoặc D
+        summary.failingCourses = grades
+          .filter((g) => g.diem_chu === "F" || (g.diem_hp !== null && Number(g.diem_hp) < 4.0))
+          .map((g) => ({ course: g.ten_hp, grade: g.diem_chu || "F", score: g.diem_hp }));
+
+        // Phân tích học bổng khuyến khích
+        let scholarshipTier = "Chưa đạt mức học bổng (cần GPA >= 2.50)";
+        let advice = "";
+        if (gpa4 >= 3.6) {
+          scholarshipTier = "Xuất sắc (GPA >= 3.60, ĐRL >= 90)";
+          advice = "Duy trì phong độ học tập hiện tại và tích cực tham gia hoạt động rèn luyện!";
+        } else if (gpa4 >= 3.2) {
+          scholarshipTier = "Giỏi (GPA >= 3.20, ĐRL >= 80)";
+          const gap = (3.6 - gpa4).toFixed(2);
+          advice = `Bạn chỉ cần tăng thêm ${gap} điểm GPA nữa là chạm mốc Học bổng Xuất sắc!`;
+        } else if (gpa4 >= 2.5) {
+          scholarshipTier = "Khá (GPA >= 2.50, ĐRL >= 70)";
+          const gap = (3.2 - gpa4).toFixed(2);
+          advice = `Cố gắng thêm ${gap} điểm GPA để đạt mức Học bổng Giỏi trong kỳ này!`;
+        } else {
+          const gap = (2.5 - gpa4).toFixed(2);
+          advice = `Cần cải thiện ${gap} điểm GPA để đạt mức Học bổng Khá. Nên ưu tiên học lại các môn điểm F/D.`;
+        }
+
+        summary.scholarshipAnalysis = {
+          currentTier: scholarshipTier,
+          advice,
+          hasFailedCourse: summary.failingCourses.length > 0,
         };
       }
     }
@@ -343,11 +439,39 @@ class RagService {
       };
     }
 
-    // 9. Hỏi lịch học cá nhân hôm nay
-    if (lq.includes("lịch học") || lq.includes("thời khóa biểu") || lq.includes("hôm nay có tiết") || lq.includes("tiết học")) {
+    // 9. Hỏi lịch học cá nhân ngày mai
+    if (lq.includes("mai") || lq.includes("ngày mai") || lq.includes("lịch mai")) {
+      const tomorrowText = studentData?.tomorrowDayText || "Ngày mai";
+      if (studentData && Array.isArray(studentData.tomorrowSchedule) && studentData.tomorrowSchedule.length > 0) {
+        let reply = `Lịch học ${tomorrowText} của bạn (**${studentData.ho_ten || "Sinh viên"}**):\n`;
+        studentData.tomorrowSchedule.forEach((s) => {
+          reply += `- **${s.course || s.subject}**: Tiết **${s.time || "Theo ca"}** tại **${s.room || "Chưa xếp"}**${s.lecturer ? ` (GV: ${s.lecturer})` : ""}\n`;
+        });
+        const firstRoom = studentData.tomorrowSchedule[0]?.room || "";
+        return {
+          intent: "PERSONAL_SCHEDULE",
+          reply: reply.trim(),
+          action: {
+            type: firstRoom ? "OPEN_MAP_3D" : "OPEN_SCHEDULE",
+            target_id: firstRoom || null,
+          },
+          suggested_questions: ["Lịch học hôm nay", "Chỉ đường đến phòng học"],
+        };
+      }
+      return {
+        intent: "PERSONAL_SCHEDULE",
+        reply: `${tomorrowText} bạn **không có tiết học nào**. Bạn có thể xem toàn bộ lịch tuần hoặc ôn tập tại **Thư viện** nhé!`,
+        action: { type: "OPEN_SCHEDULE", target_id: null },
+        suggested_questions: ["Lịch học hôm nay", "Lịch học tuần này"],
+      };
+    }
+
+    // 10. Hỏi lịch học cá nhân hôm nay
+    if (lq.includes("lịch học") || lq.includes("thời khóa biểu") || lq.includes("hôm nay có tiết") || lq.includes("tiết học") || lq.includes("hôm nay học gì")) {
+      const todayText = studentData?.currentDayText || "Hôm nay";
       if (studentData && Array.isArray(studentData.todaySchedule) && studentData.todaySchedule.length > 0) {
-        let reply = `Lịch học hôm nay của bạn (**${studentData.ho_ten || studentData.name || "Sinh viên"}**):\n`;
-        studentData.todaySchedule.forEach((s, idx) => {
+        let reply = `Lịch học ${todayText} của bạn (**${studentData.ho_ten || studentData.name || "Sinh viên"}**):\n`;
+        studentData.todaySchedule.forEach((s) => {
           reply += `- **${s.course || s.subject}**: Tiết **${s.time || "Theo ca"}** tại **${s.room || "Chưa xếp"}**${s.lecturer ? ` (GV: ${s.lecturer})` : ""}\n`;
         });
         const firstRoom = studentData.todaySchedule[0]?.room || "";
@@ -363,10 +487,65 @@ class RagService {
       }
       return {
         intent: "PERSONAL_SCHEDULE",
-        reply: "Hôm nay bạn **không có tiết học nào**. Bạn có thể đến tự học tại **Trung tâm Thư viện** hoặc xem lịch các ngày khác nhé!",
+        reply: `${todayText} bạn **không có tiết học nào**. Bạn có thể đến tự học tại **Trung tâm Thư viện** hoặc xem lịch các ngày khác nhé!`,
         action: { type: "OPEN_SCHEDULE", target_id: null },
         suggested_questions: ["Lịch học ngày mai", "Lịch học tuần này"],
       };
+    }
+
+    // 10.1. Hỏi lịch học cả tuần / tuần này
+    if (lq.includes("lịch tuần") || lq.includes("tuần này") || lq.includes("cả tuần")) {
+      const weekly = studentData?.weeklySchedule;
+      if (weekly && Object.keys(weekly).length > 0) {
+        let reply = `📅 **Thời khóa biểu các ngày trong tuần của bạn:**\n`;
+        for (const [day, list] of Object.entries(weekly)) {
+          reply += `• **${day}**:\n  - ${list.join("\n  - ")}\n`;
+        }
+        return {
+          intent: "PERSONAL_SCHEDULE",
+          reply: reply.trim(),
+          action: { type: "OPEN_SCHEDULE", target_id: null },
+          suggested_questions: ["Lịch học hôm nay", "Lịch học ngày mai"],
+        };
+      }
+      return {
+        intent: "PERSONAL_SCHEDULE",
+        reply: "Bạn có thể xem chi tiết thời khóa biểu toàn bộ các tuần tại tab **Lịch học** trên thanh điều hướng nhé!",
+        action: { type: "OPEN_SCHEDULE", target_id: null },
+        suggested_questions: ["Lịch học hôm nay", "Lịch học ngày mai"],
+      };
+    }
+
+    // 10.2. Hỏi về phân tích học bổng và cải thiện điểm số cá nhân
+    if (
+      lq.includes("học bổng của mình") ||
+      lq.includes("mình được học bổng không") ||
+      lq.includes("cải thiện điểm") ||
+      lq.includes("môn nợ") ||
+      lq.includes("môn rớt") ||
+      lq.includes("môn điểm f")
+    ) {
+      const gpa = studentData?.gpaSummary;
+      const scholar = studentData?.scholarshipAnalysis;
+      const fails = studentData?.failingCourses || [];
+
+      if (gpa) {
+        let reply = `🎓 **Phân tích kết quả & cơ hội học bổng (${studentData.ho_ten}):**\n`;
+        reply += `- GPA hiện tại: **${gpa.gpa4}/4.0** (${gpa.gpa10}/10) | Xếp loại: **${gpa.rank}**\n`;
+        if (scholar) {
+          reply += `- Đánh giá: **${scholar.currentTier}**\n`;
+          reply += `- Lời khuyên: ${scholar.advice}\n`;
+        }
+        if (fails.length > 0) {
+          reply += `⚠️ Bạn đang có môn điểm F cần học lại: **${fails.map((f) => f.course).join(", ")}** (đạt học bổng bắt buộc không có môn điểm F).`;
+        }
+        return {
+          intent: "PERSONAL_GRADE",
+          reply: reply.trim(),
+          action: { type: "OPEN_GRADES", target_id: null },
+          suggested_questions: ["Xem bảng điểm cá nhân", "Quy chế học bổng"],
+        };
+      }
     }
 
     // 10. Hỏi điểm số cá nhân của bản thân
@@ -532,7 +711,9 @@ class RagService {
     // =========================================================================
     const isPersonalQuery =
       lq.includes("của mình") || lq.includes("của tôi") || lq.includes("tôi được") ||
-      lq.includes("hôm nay") || lq.includes("thời khóa biểu");
+      lq.includes("hôm nay") || lq.includes("ngày mai") || lq.includes("mai") ||
+      lq.includes("tuần này") || lq.includes("lịch học") || lq.includes("thời khóa biểu") ||
+      lq.includes("điểm gpa") || lq.includes("môn nợ") || lq.includes("học bổng");
 
     const cacheKey = lq;
     if (!isPersonalQuery && queryCache.has(cacheKey)) {
@@ -569,10 +750,10 @@ class RagService {
     // 2. Tạo Prompt RAG chuẩn
     const systemInstruction = buildUnifiedPrompt(studentData, ragContext, currentTime);
 
-    // Chuẩn bị lịch sử trò chuyện
+    // Chuẩn bị lịch sử trò chuyện (tối đa 6 tin nhắn gần nhất để giữ ngữ cảnh liền mạch)
     const formattedHistory = Array.isArray(history)
       ? history
-          .slice(-4)
+          .slice(-6)
           .filter((h) => h && h.content && h.content.trim())
           .map((h) => ({
             role: h.role === "assistant" ? "model" : "user",

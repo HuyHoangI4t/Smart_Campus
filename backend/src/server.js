@@ -133,6 +133,20 @@ setupSwagger(app);
 
 /**
  * @swagger
+ * /:
+ *   get:
+ *     summary: Chuyển hướng từ trang chủ sang tài liệu API Docs
+ *     tags: [System]
+ *     responses:
+ *       302:
+ *         description: Tự động chuyển hướng sang /api-docs
+ */
+app.get('/', (req, res) => {
+  res.redirect('/api-docs');
+});
+
+/**
+ * @swagger
  * /api/health:
  *   get:
  *     summary: Kiểm tra trạng thái hoạt động của máy chủ (Health Check)
@@ -262,8 +276,6 @@ async function startServer() {
   process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 }
 
-startServer();
-
 // --- Cron Job giữ kết nối database không bị tắt nguồn ---
 const INTERVAL_TIME = 10 * 60 * 1000; // 10 phút gửi 1 lần (tính bằng mili-giây)
 
@@ -276,3 +288,5 @@ setInterval(async () => {
     console.error('⚠️ [Keep-Alive] Lỗi khi ping database:', error.message);
   }
 }, INTERVAL_TIME);
+
+startServer();
